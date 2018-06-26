@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{25f3be7c-3301-450d-a60a-456b7002fac3}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile>pacu.py</StartupFile>
+    <SearchPath />
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId>Global|PythonCore|3.6</InterpreterId>
+    <IsWindowsApplication>False</IsWindowsApplication>
+    <Name>pacu</Name>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include=".flake8" />
+    <Content Include=".gitignore" />
+    <Content Include="documentation\installation.md" />
+    <Content Include="documentation\intro.md" />
+    <Content Include="documentation\logging.md" />
+    <Content Include="documentation\module_development.md" />
+    <Content Include="documentation\module_information.md" />
+    <Content Include="documentation\quick_start.md" />
+    <Content Include="documentation\roadmap.md" />
+    <Content Include="documentation\usage.md" />
+    <Content Include="documentation\warnings.md" />
+    <Content Include="LICENSE.md" />
+    <Content Include="modules\service_regions.json" />
+    <Content Include="README.md" />
+    <Content Include="requirements.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="core\base.py" />
+    <Compile Include="core\mixins.py" />
+    <Compile Include="core\models.py" />
+    <Compile Include="core\__init__.py" />
+    <Compile Include="modules\logging_monitoring\disrupt_monitoring.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="modules\logging_monitoring\dl_cloudtrail_event_history.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="modules\recon_enum_with_keys\enum_ebs_volumes_snapshots.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="modules\recon_enum_with_keys\enum_ec2_termination_protection.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="modules\recon_enum_with_keys\enum_elb_logging.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="modules\recon_enum_with_keys\enum_glue.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="pacu.py" />
+    <Compile Include="modules\escalation\backdoor_assume_role.py" />
+    <Compile Include="modules\escalation\privesc_scan.py" />
+    <Compile Include="modules\escalation\__init__.py" />
+    <Compile Include="modules\logging_monitoring\__init__.py" />
+    <Compile Include="modules\persistence\backdoor_users_keys.py" />
+    <Compile Include="modules\persistence\backdoor_users_password.py" />
+    <Compile Include="modules\persistence\__init__.py" />
+    <Compile Include="modules\post_exploitation\add_ec2_startup_sh_script.py" />
+    <Compile Include="modules\post_exploitation\backdoor_ec2_sec_groups.py" />
+    <Compile Include="modules\post_exploitation\cloudtrail_csv_injection.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="modules\post_exploitation\download_lightsail_ssh_keys.py" />
+    <Compile Include="modules\post_exploitation\__init__.py" />
+    <Compile Include="modules\recon_enum_no_keys\s3_enum.py" />
+    <Compile Include="modules\recon_enum_no_keys\__init__.py" />
+    <Compile Include="modules\recon_enum_with_keys\confirm_permissions.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="modules\recon_enum_with_keys\download_ec2_userdata.py" />
+    <Compile Include="modules\recon_enum_with_keys\enum_ec2.py" />
+    <Compile Include="modules\logging_monitoring\enum_monitoring.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="modules\recon_enum_with_keys\enum_users_roles_policies_groups.py" />
+    <Compile Include="modules\recon_enum_with_keys\get_credential_report.py" />
+    <Compile Include="modules\recon_enum_with_keys\s3_bucket_dump.py" />
+    <Compile Include="modules\recon_enum_with_keys\__init__.py" />
+    <Compile Include="modules\template.py" />
+    <Compile Include="modules\__init__.py" />
+    <Compile Include="settings.py" />
+    <Compile Include="setup_database.py" />
+    <Compile Include="utils.py" />
+    <Compile Include="__init__.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="core\" />
+    <Folder Include="documentation\" />
+    <Folder Include="modules" />
+    <Folder Include="modules\escalation" />
+    <Folder Include="modules\logging_monitoring\" />
+    <Folder Include="modules\persistence" />
+    <Folder Include="modules\post_exploitation" />
+    <Folder Include="modules\recon_enum_no_keys" />
+    <Folder Include="modules\recon_enum_with_keys" />
+  </ItemGroup>
+  <ItemGroup>
+    <InterpreterReference Include="Global|PythonCore|3.6" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
+</Project>

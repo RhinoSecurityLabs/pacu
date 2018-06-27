@@ -97,7 +97,7 @@ def main(args, database):
     ######
 
     # Make sure that this only includes regions that are available for the service you are working with. Some services don't require a region at all
-    regions = get_regions('S3')
+    regions = get_regions('s3')
 
     # Attempt to install the required external dependencies, exit this module if that fails
     if not install_dependencies(module_info['external_dependencies']):

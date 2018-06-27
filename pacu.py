@@ -376,18 +376,33 @@ def parse_command(command, database):
         for region in sorted(util.get_regions('all', database)):
             print('  {}'.format(region))
     elif command[0] == 'update_regions':
+        path = ''
+        devnull = open(os.devnull, 'w')
+
+        # Update boto3 and botocore to fetch the latest version of the AWS region_list
+        try:
+            print('  Using pip3 to update botocore, so we have the latest region list...')
+            subprocess.run(['pip3', 'install', '--upgrade', 'boto3', 'botocore'], shell=True, stderr=devnull, stdout=devnull)
+        except:
+            try:
+                subprocess.run('pip install --upgrade boto3 botocore', shell=True, stderr=devnull, stdout=devnull)
+            except:
+                pip = input('  Could not use pip3 or pip to update botocore to the latest version. Enter the name of your pip binary or press Ctrl+C to exit: ').strip()
+                subprocess.run('{} install --upgrade boto3 botocore'.format(pip), shell=True, stderr=devnull, stdout=devnull)
+
         try:
             output = subprocess.check_output('pip3 show botocore', shell=True)
         except:
             try:
                 output = subprocess.check_output('pip show botocore', shell=True)
             except:
-                output = input('  Could not use pip3 or pip to determine botocore\'s location. Enter it now or press Ctrl+C to exit: ').strip()
+                path = input('  Could not use pip3 or pip to determine botocore\'s location. Enter it now or press Ctrl+C to exit: ').strip()
 
-        rows = output.decode('utf-8').replace('\r', '').replace('\\\\', '/').split('\n') # Account for Windows \r and \\ in file path
-        for row in rows:
-            if row.startswith('Location: '):
-                path = row.split('Location: ')[1]
+        if path == '':
+            rows = output.decode('utf-8').replace('\r', '').replace('\\\\', '/').split('\n') # Account for Windows \r and \\ in file path
+            for row in rows:
+                if row.startswith('Location: '):
+                    path = row.split('Location: ')[1]
 
         with open('{}/botocore/data/endpoints.json'.format(path), 'r+') as regions_file:
             endpoints = json.load(regions_file)

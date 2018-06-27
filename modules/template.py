@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-import boto3, argparse, os, sys
+import argparse
+import boto3
 from botocore.exceptions import ClientError
 from functools import partial
+import os
+import sys
 
 from pacu import util
+
 
 # When writing a module, feel free to remove any comments, placeholders, or anything else that doesn't relate to your module
 
@@ -35,18 +39,20 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-# Just placeholders for arguments, delete/change as needed
+# These two lines are placeholders for arguments. Delete/change as needed.
 # Arguments that accept multiple options (such as --usernames) should be comma-separated (such as --usernames bill,mike,tom)
 # Arguments that are region-specific (such as --instance-ids) should use an @ symbol to separate the data and its region (such as --instance-ids 123@us-west-1,54252@us-east-1,9999@ap-south-1
 # Make sure to add arguments to module_config['arguments_to_autocomplete']
 parser.add_argument('', help='')
 parser.add_argument('', required=False, default=None, help='')
 
-# For when "help module_name" is called, don't modify this
+
+# For when "help module_name" is called. Don't modify this, and make sure it's included in your module.
 def help():
     return [module_info, parser.format_help()]
 
-# Main is the first function that is called when this module is executed
+
+# Main is the first function that is called when this module is executed.
 def main(args, database):
     session = util.get_active_session(database)
 
@@ -60,15 +66,16 @@ def main(args, database):
     install_dependencies = partial(util.install_dependencies, database=database)
     ######
 
-    # Use the print and input functions as you normally would. They have been modified to log the data to a history file as well as print it to the screen
+    # Use the print and input functions as you normally would. They have been modified to log the data to a history file as well as to the console.
 
-    # Fetch information for the currently active set of keys, this returns a dictionary containing information about the AWS key using the session's current key_alias, which includes info like User Name, User Arn, User Id, Account Id, the permissions collected so far for the user, the groups they are a part of, access key id, secret access key, session token, key alias, and a note
+    # key_info fetches information for the currently active set of keys. This returns a dictionary containing information about the AWS key using the session's current key_alias, which includes info like User Name, User Arn, User Id, Account Id, the permissions collected so far for the user, the groups they are a part of, access key id, secret access key, session token, key alias, and a note.
     user = key_info()
 
     # fetch_data is used when there is a prerequisite module to the current module. The example below shows how to fetch all EC2 security group data to use in this module.
-    if fetch_data(['EC2', 'SecurityGroups'], 'enum_ec2_sec_groups', '') is False: # This will be false if the user declines to run the pre-requisite module or it fails. Depending on the module, you may still want to continue execution, so building the check is on you as a developer.
+    if fetch_data(['EC2', 'SecurityGroups'], 'enum_ec2_sec_groups', '') is False:  # This will be false if the user declines to run the pre-requisite module or it fails. Depending on the module, you may still want to continue execution, so building the check is on you as a developer.
         print('Pre-req module not run successfully. Exiting...')
         return
+
     sec_groups = session.EC2['SecurityGroups']
 
     # Attempt to install the required external dependencies, exit this module if the download/install fails
@@ -77,7 +84,7 @@ def main(args, database):
 
     # IMPORTANT NOTE: It is suggested to always utilize the DryRun parameter for boto3 requests that support it. It will test the permissions of the action without actually executing it.
 
-    # Use the get_regions function to fetch an array of supported regions for the service that you pass into it
+    # Use the get_regions function to fetch an array of supported regions for the service that you pass into it.
     regions = get_regions('EC2')
 
     for region in regions:
@@ -87,7 +94,7 @@ def main(args, database):
             region_name=region,
             aws_access_key_id=session.access_key_id,
             aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token # Even if the session doesn't have a session token, this will work because the value will be None and will be ignored
+            aws_session_token=session.session_token  # Even if the session doesn't have a session token, this will work because the value will be None and will be ignored.
         )
 
     print('{} completed.'.format(os.path.basename(__file__)))

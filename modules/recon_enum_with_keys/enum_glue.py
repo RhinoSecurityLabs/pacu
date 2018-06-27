@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-import boto3, argparse, os, sys
-from botocore.exceptions import ClientError
+import argparse
+import boto3
 from copy import deepcopy
 from functools import partial
+import os
+
 from pacu import util
+
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -45,8 +48,6 @@ def main(args, database):
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = partial(util.print, session_name=session.name, database=database)
-    input = partial(util.input, session_name=session.name, database=database)
-    key_info = partial(util.key_info, database=database)
     get_regions = partial(util.get_regions, database=database)
     ######
 
@@ -74,7 +75,7 @@ def main(args, database):
         dev_endpoints = []
         jobs = []
 
-        print('Starting region {}...'.format(region))
+        print(f'Starting region {region}...')
         client = boto3.client(
             'glue',
             region_name=region,
@@ -89,9 +90,11 @@ def main(args, database):
                 response = client.get_connections(
                     MaxResults=200
                 )
+
                 for connection in response['ConnectionList']:
                     connection['Region'] = region
                     connections.append(connection)
+
                 while 'NextToken' in response:
                     response = client.get_connections(
                         MaxResults=200,
@@ -100,10 +103,12 @@ def main(args, database):
                     for connection in response['ConnectionList']:
                         connection['Region'] = region
                         connections.append(connection)
-                print('  {} connection(s) found.'.format(len(connections)))
+
+                print(f'  {len(connections)} connection(s) found.')
                 all_connections += connections
-            except Exception as e:
-                print('Error get_connections: {}'.format(e))
+
+            except Exception as error:
+                print(f'Error while running client.get_connections: {error}')
 
         # Crawlers
         if args.crawlers is True or all is True:
@@ -111,21 +116,26 @@ def main(args, database):
                 response = client.get_crawlers(
                     MaxResults=200
                 )
+
                 for crawler in response['Crawlers']:
                     crawler['Region'] = region
                     crawlers.append(crawler)
+
                 while 'NextToken' in response:
                     response = client.get_crawlers(
                         MaxResults=200,
                         NextToken=response['NextToken']
                     )
+
                     for crawler in response['Crawlers']:
                         crawler['Region'] = region
                         crawlers.append(crawler)
-                print('  {} crawler(s) found.'.format(len(crawlers)))
+
+                print(f'  {len(crawlers)} crawler(s) found.')
                 all_crawlers += crawlers
-            except Exception as e:
-                print('Error get_crawlers: {}'.format(e))
+
+            except Exception as error:
+                print(f'Error while running client.get_crawlers: {error}')
 
         # Databases
         if args.databases is True or all is True:
@@ -133,21 +143,26 @@ def main(args, database):
                 response = client.get_databases(
                     MaxResults=200
                 )
+
                 for each_database in response['DatabaseList']:
                     each_database['Region'] = region
                     databases.append(each_database)
+
                 while 'NextToken' in response:
                     response = client.get_databases(
                         MaxResults=200,
                         NextToken=response['NextToken']
                     )
+
                     for each_database in response['DatabaseList']:
                         each_database['Region'] = region
                         databases.append(each_database)
-                print('  {} database(s) found.'.format(len(databases)))
+
+                print(f'  {len(databases)} database(s) found.')
                 all_databases += databases
-            except Exception as e:
-                print('Error get_databases: {}'.format(e))
+
+            except Exception as error:
+                print(f'Error while running client.get_databases: {error}')
 
         # Development Endpoints
         if args.dev_endpoints is True or all is True:
@@ -156,17 +171,21 @@ def main(args, database):
                 for dev_endpoint in response['DevEndpoints']:
                     dev_endpoint['Region'] = region
                     dev_endpoints.append(dev_endpoint)
+
                 while 'NextToken' in response and not response['NextToken'] == '':
                     response = client.get_dev_endpoints(
                         NextToken=response['NextToken']
                     )
+
                     for dev_endpoint in response['DevEndpoints']:
                         dev_endpoint['Region'] = region
                         dev_endpoints.append(dev_endpoint)
-                print('  {} development endpoint(s) found.'.format(len(dev_endpoints)))
+
+                print(f'  {len(dev_endpoints)} development endpoint(s) found.')
                 all_dev_endpoints += dev_endpoints
-            except Exception as e:
-                print('Error get_dev_endpoints: {}'.format(e))
+
+            except Exception as error:
+                print(f'Error while running client.get_dev_endpoints: {error}')
 
         # Jobs
         if args.jobs is True or all is True:
@@ -174,27 +193,32 @@ def main(args, database):
                 response = client.get_jobs(
                     MaxResults=200
                 )
+
                 for job in response['Jobs']:
                     job['Region'] = region
                     jobs.append(job)
+
                 while 'NextToken' in response:
                     response = client.get_jobs(
                         MaxResults=200,
                         NextToken=response['NextToken']
                     )
+
                     for job in response['Jobs']:
                         job['Region'] = region
                         jobs.append(job)
-                print('  {} job(s) found.'.format(len(jobs)))
-                all_jobs += jobs
-            except Exception as e:
-                print('Error get_jobs: {}'.format(e))
 
-    print('{} total connection(s) found.'.format(len(all_connections)))
-    print('{} total crawler(s) found.'.format(len(all_crawlers)))
-    print('{} total database(s) found.'.format(len(all_databases)))
-    print('{} total development endpoint(s) found.'.format(len(all_dev_endpoints)))
-    print('{} total job(s) found.'.format(len(all_jobs)))
+                print(f'  {len(jobs)} job(s) found.')
+                all_jobs += jobs
+
+            except Exception as error:
+                print(f'Error while running client.get_jobs: {error}')
+
+    print(f'{len(all_connections)} total connection(s) found.')
+    print(f'{len(all_crawlers)} total crawler(s) found.')
+    print(f'{len(all_databases)} total database(s) found.')
+    print(f'{len(all_dev_endpoints)} total development endpoint(s) found.')
+    print(f'{len(all_jobs)} total job(s) found.')
 
     glue_data = deepcopy(session.Glue)
     glue_data['Connections'] = all_connections
@@ -204,5 +228,5 @@ def main(args, database):
     glue_data['Jobs'] = all_jobs
     session.update(database, Glue=glue_data)
 
-    print('{} completed.'.format(os.path.basename(__file__)))
+    print(f'{os.path.basename(__file__)} completed.')
     return

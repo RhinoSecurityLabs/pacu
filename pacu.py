@@ -41,6 +41,8 @@ def display_help():
         services                            Display a list of services that have collected data in the
                                               current session to use with the "data" command
         regions                             Display a list of all valid AWS regions
+        update_regions                      Run a script to update the regions database to the newest
+                                              version.
         set_regions <region> [<region>...]  Set the default regions for this session. These space-separated
                                               regions will be used for modules where regions are required,
                                               but not supplied by the user. The default set of regions is
@@ -191,26 +193,23 @@ class util(object):
 
     def get_regions(service, database):
         session = PacuSession.get_active_session(database)
+        
+        service = str.lower(service)
 
         with open('./modules/service_regions.json', 'r+') as regions_file:
             regions = json.load(regions_file)
 
         # TODO: Add an option for GovCloud regions
-        if str.lower(service) == 'all':
-            return regions['All']
-        if 'all' in session.session_regions or regions[service] == [None]:
-            return regions[service]
-        else:
-            valid_regions = regions[service]
-            return [region for region in valid_regions if region in session.session_regions]
 
-        # # Programmatic way to do it, but much slower
-        # ses = boto3.Session(
-        #    aws_access_key_id='none',
-        #    aws_secret_access_key='none'
-        # )
-        # # TODO: Add an option for GovCloud regions
-        # regions = ses.get_available_regions(str.lower(service), 'aws')
+        if str.lower(service) == 'all':
+            return regions['all']
+        if 'aws-global' in regions[service]['endpoints']:
+            return [None]
+        if 'all' in session.session_regions:
+            return list(regions[service]['endpoints'].keys())
+        else:
+            valid_regions = list(regions[service]['endpoints'].keys())
+            return [region for region in valid_regions if region in session.session_regions]
 
         if 'all' in session.session_regions:
             return regions
@@ -374,8 +373,36 @@ def parse_command(command, database):
         for service in services.keys():
             print('  {}'.format(service))
     elif command[0] == 'regions':
-        for region in sorted(util.get_regions('All', database)):
+        for region in sorted(util.get_regions('all', database)):
             print('  {}'.format(region))
+    elif command[0] == 'update_regions':
+        try:
+            output = subprocess.check_output('pip3 show botocore', shell=True)
+        except:
+            try:
+                output = subprocess.check_output('pip show botocore', shell=True)
+            except:
+                output = input('  Could not use pip3 or pip to determine botocore\'s location. Enter it now or press Ctrl+C to exit: ').strip()
+
+        rows = output.decode('utf-8').replace('\r', '').replace('\\\\', '/').split('\n') # Account for Windows \r and \\ in file path
+        for row in rows:
+            if row.startswith('Location: '):
+                path = row.split('Location: ')[1]
+
+        with open('{}/botocore/data/endpoints.json'.format(path), 'r+') as regions_file:
+            endpoints = json.load(regions_file)
+
+        for partition in endpoints['partitions']:
+            if partition['partition'] == 'aws':
+                regions = dict()
+                regions['all'] = list(partition['regions'].keys())
+                for service in partition['services']:
+                    regions[service] = partition['services'][service]
+
+        with open('modules/service_regions.json', 'w+') as services_file:
+            json.dump(regions, services_file, default=str, sort_keys=True)
+
+        print('  Regions updated to the latest version!')
     else:
         print('  Error: Unrecognized command')
     return

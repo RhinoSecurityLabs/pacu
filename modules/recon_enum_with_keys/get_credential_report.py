@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
-import boto3, argparse, os, time, sys
+import argparse
+import boto3
 from botocore.exceptions import ClientError
 from functools import partial
+import os
+import time
+
 from pacu import util
+
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -49,22 +54,29 @@ def main(args, database):
         aws_secret_access_key=session.secret_access_key,
         aws_session_token=session.session_token
     )
+
     report = None
+
     try:
         report = client.get_credential_report()
-    except ClientError as e:
+
+    except ClientError as error:
         report = None
-        if e.response['Error']['Code'] == 'ReportNotPresent':
+
+        if error.response['Error']['Code'] == 'ReportNotPresent':
             generate = input('Credential report not generated, do you want to generate one? (y/n) ')
+
             if generate == 'y':
                 response = client.generate_credential_report()
                 print('Credential report generation started, this may take up to a couple minutes. Checking if it is ready every 20 seconds...')
+
                 while report is None:
                     time.sleep(20)
+
                     try:
                         report = client.get_credential_report()
-                    except ClientError as e:
-                        if e.response['Error']['Code'] == 'ReportNotPresent':
+                    except ClientError as error:
+                        if error.response['Error']['Code'] == 'ReportNotPresent':
                             report = None
 
     except:
@@ -72,12 +84,14 @@ def main(args, database):
         return
 
     if 'Content' in report:
-        if not os.path.exists('sessions/{}/downloads'.format(session.name)):
-            os.makedirs('sessions/{}/downloads'.format(session.name))
-        filename = 'sessions/{}/downloads/get_credential_report_{}.csv'.format(session.name, time.time())
+        if not os.path.exists(f'sessions/{session.name}/downloads'):
+            os.makedirs(f'sessions/{session.name}/downloads')
+
+        filename = f'sessions/{session.name}/downloads/get_credential_report_{time.time()}.csv'
         with open(filename, 'w+') as csv_file:
             csv_file.write(report['Content'].decode())
-        print('Credential report saved to {}'.format(filename))
 
-    print('\n{} completed.'.format(os.path.basename(__file__)))
+        print(f'Credential report saved to {filename}')
+
+    print(f'\n{os.path.basename(__file__)} completed.')
     return

@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-import boto3, argparse, time, os, sys
+import argparse
+import boto3
 from botocore.exceptions import ClientError
 from copy import deepcopy
 from functools import partial
+import os
+
 from pacu import util
+
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -46,7 +50,6 @@ def main(args, database):
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = partial(util.print, session_name=session.name, database=database)
-    input = partial(util.input, session_name=session.name, database=database)
     ######
 
     client = boto3.client(
@@ -56,95 +59,128 @@ def main(args, database):
         aws_session_token=session.session_token
     )
 
-    if args.users == False and args.roles == False and args.policies == False and args.groups == False:
+    if args.users is False and args.roles is False and args.policies is False and args.groups is False:
         args.users = args.roles = args.policies = args.groups = True
-    if args.users == True:
+
+    if args.users is True:
         users = []
         response = None
         is_truncated = False
+
         try:
-            while response is None or is_truncated == True:
-                if is_truncated == False:
+            while response is None or is_truncated is True:
+                if is_truncated is False:
                     response = client.list_users()
+
                 else:
                     response = client.list_users(
                         Marker=response['Marker']
                     )
+
                 for user in response['Users']:
                     users.append(user)
+
                 is_truncated = response['IsTruncated']
-        except:
+
+        except ClientError:
             print('The current user is not allowed to describe users.')
+
         iam_data = deepcopy(session.IAM)
         iam_data['Users'] = users
         session.update(database, IAM=iam_data)
+
         print(str(users))
-    if args.roles == True:
+
+    if args.roles is True:
         roles = []
         response = None
         is_truncated = False
+
         try:
-            while response is None or is_truncated == True:
-                if is_truncated == False:
+            while response is None or is_truncated is True:
+                if is_truncated is False:
                     response = client.list_roles()
+
                 else:
                     response = client.list_roles(
                         Marker=response['Marker']
                     )
+
                 for role in response['Roles']:
                     roles.append(role)
+
                 is_truncated = response['IsTruncated']
-        except:
+
+        except ClientError:
             print('The current user is not allowed to describe roles.')
+
         iam_data = deepcopy(session.IAM)
         iam_data['Roles'] = roles
         session.update(database, IAM=iam_data)
+
         print(str(roles))
-    if args.policies == True:
+
+    if args.policies is True:
         policies = []
         response = None
         is_truncated = False
+
         try:
-            while response is None or is_truncated == True:
-                if is_truncated == False:
+            while response is None or is_truncated is True:
+                if is_truncated is False:
                     response = client.list_policies(
                         Scope='Local'
                     )
+
                 else:
                     response = client.list_policies(
                         Scope='Local',
                         Marker=response['Marker']
                     )
+
                 for policy in response['Policies']:
                     policies.append(policy)
+
                 is_truncated = response['IsTruncated']
-        except:
+
+        except ClientError:
             print('The current user is not allowed to describe policies.')
+
         iam_data = deepcopy(session.IAM)
         iam_data['Policies'] = policies
         session.update(database, IAM=iam_data)
+
         print(str(policies))
-    if args.groups == True:
+
+    if args.groups is True:
         groups = []
         response = None
         is_truncated = False
+
         try:
-            while response is None or is_truncated == True:
-                if is_truncated == False:
+            while response is None or is_truncated is True:
+
+                if is_truncated is False:
                     response = client.list_groups()
+
                 else:
                     response = client.list_groups(
                         Marker=response['Marker']
                     )
+
                 for group in response['Groups']:
                     groups.append(group)
+
                 is_truncated = response['IsTruncated']
-        except:
+
+        except ClientError:
             print('The current user is not allowed to describe groups.')
+
         iam_data = deepcopy(session.IAM)
         iam_data['Groups'] = groups
         session.update(database, IAM=iam_data)
+
         print(str(groups))
 
-    print('\n{} completed.'.format(os.path.basename(__file__)))
+    print(f'\n{os.path.basename(__file__)} completed.')
     return

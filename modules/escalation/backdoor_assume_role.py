@@ -95,7 +95,7 @@ def main(args, database):
         if ',' in args.user_arns:
             user_arns.extend(args.user_arns.split(','))
         else:
-            user_arns.append(args.user_arns) # Only one ARN was passed in
+            user_arns.append(args.user_arns)  # Only one ARN was passed in
 
     iam = boto3.resource(
         'iam',

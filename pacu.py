@@ -193,7 +193,7 @@ class util(object):
 
     def get_regions(service, database):
         session = PacuSession.get_active_session(database)
-        
+
         service = str.lower(service)
 
         with open('./modules/service_regions.json', 'r+') as regions_file:
@@ -376,36 +376,40 @@ def parse_command(command, database):
         for region in sorted(util.get_regions('all', database)):
             print('  {}'.format(region))
     elif command[0] == 'update_regions':
-        update_regions()
+        update_regions(database)
     else:
         print('  Error: Unrecognized command')
     return
 
-def update_regions():
-    path = ''
-    devnull = open(os.devnull, 'w')
 
+def update_regions(database):
     # Update boto3 and botocore to fetch the latest version of the AWS region_list
     try:
-        print('  Using pip3 to update botocore, so we have the latest region list...')
-        subprocess.run(['pip3', 'install', '--upgrade', 'boto3', 'botocore'], shell=True, stderr=devnull, stdout=devnull)
+        util.print('  Using pip3 to update botocore, so we have the latest region list...\n', database)
+        subprocess.run(['pip3', 'install', '--upgrade', 'boto3', 'botocore'], shell=True)
     except:
         try:
-            subprocess.run(['pip3', 'install', '--upgrade', 'boto3', 'botocore'], shell=True, stderr=devnull, stdout=devnull)
+            util.print('  pip3 failed, trying pip...\n', database)
+            subprocess.run(['pip', 'install', '--upgrade', 'boto3', 'botocore'], shell=True)
         except:
-            pip = input('  Could not use pip3 or pip to update botocore to the latest version. Enter the name of your pip binary or press Ctrl+C to exit: ').strip()
-            subprocess.run(['pip3'.format(pip), 'install', '--upgrade', 'boto3', 'botocore'], shell=True, stderr=devnull, stdout=devnull)
+            pip = util.input('  Could not use pip3 or pip to update botocore to the latest version. Enter the name of your pip binary or press Ctrl+C to exit: ', database).strip()
+            subprocess.run(['{}'.format(pip), 'install', '--upgrade', 'boto3', 'botocore'], shell=True)
+
+    path = ''
 
     try:
+        util.print('  Using pip3 to locate botocore on the operating system...\n', database)
         output = subprocess.check_output('pip3 show botocore', shell=True)
     except:
         try:
+            util.print('  pip3 failed, trying pip...\n', database)
             output = subprocess.check_output('pip show botocore', shell=True)
         except:
-            path = input('  Could not use pip3 or pip to determine botocore\'s location. Enter it now or press Ctrl+C to exit: ').strip()
+            path = util.input('  Could not use pip3 or pip to determine botocore\'s location. Enter it now (example: /usr/local/bin/python3.6/lib/dist-packages) or press Ctrl+C to exit: ', database).strip()
 
     if path == '':
-        rows = output.decode('utf-8').replace('\r', '').replace('\\\\', '/').split('\n') # Account for Windows \r and \\ in file path
+        # Account for Windows \r and \\ in file path (Windows)
+        rows = output.decode('utf-8').replace('\r', '').replace('\\\\', '/').split('\n')
         for row in rows:
             if row.startswith('Location: '):
                 path = row.split('Location: ')[1]
@@ -423,7 +427,8 @@ def update_regions():
     with open('modules/service_regions.json', 'w+') as services_file:
         json.dump(regions, services_file, default=str, sort_keys=True)
 
-    print('  Region list updated to the latest version!')
+    util.print('  Region list updated to the latest version!', database)
+
 
 def import_module_by_name(module_name, include=()):
     module = None

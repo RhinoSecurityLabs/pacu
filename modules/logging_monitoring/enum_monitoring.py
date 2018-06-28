@@ -84,7 +84,7 @@ def main(args, database):
 
     if all is True or args.cloud_trail is True:
         print('Starting CloudTrail...')
-        cloudtrail_regions = get_regions('CloudTrail')
+        cloudtrail_regions = get_regions('cloudtrail')
         all_trails = []
 
         for region in cloudtrail_regions:
@@ -114,7 +114,7 @@ def main(args, database):
 
     if all is True or args.guard_duty is True:
         print('Starting GuardDuty...')
-        guard_duty_regions = get_regions('GuardDuty')
+        guard_duty_regions = get_regions('guardduty')
         all_detectors = []
 
         for region in guard_duty_regions:

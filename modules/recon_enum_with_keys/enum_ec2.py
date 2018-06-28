@@ -83,7 +83,7 @@ def main(args, database):
         all = True
 
     if args.regions is None:
-        regions = get_regions('EC2')
+        regions = get_regions('ec2')
         if regions is None or regions == [] or regions == '' or regions == {}:
             print('This module is not supported in any regions specified in the current sessions region set. Exiting...')
             return

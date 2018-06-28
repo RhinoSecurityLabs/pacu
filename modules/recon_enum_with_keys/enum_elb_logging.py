@@ -48,7 +48,7 @@ def main(args, database):
     print = partial(util.print, session_name=session.name, database=database)
     get_regions = partial(util.get_regions, database=database)
 
-    regions = get_regions('ElasticLoadBalancing')
+    regions = get_regions('elasticloadbalancing')
 
     if 'LoadBalancers' not in session.EC2.keys():
         ec2_data = deepcopy(session.EC2)

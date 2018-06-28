@@ -94,8 +94,8 @@ def main(args, database):
             except:
                 print('  Could not parse the supplied CloudTrail trail and region. Use the format trail_name@region. Skipping trail {}...'.format(trail))
 
-    ct_regions = get_regions('CloudTrail')
-    gd_regions = get_regions('GuardDuty')
+    ct_regions = get_regions('cloudtrail')
+    gd_regions = get_regions('guardduty')
 
     if len(detectors) > 0:
         print('Starting GuardDuty...\n')

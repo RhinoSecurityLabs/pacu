@@ -91,6 +91,9 @@
     <Compile Include="modules\recon_enum_with_keys\__init__.py" />
     <Compile Include="modules\template.py" />
     <Compile Include="modules\__init__.py" />
+    <Compile Include="pacu_proxy.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="settings.py" />
     <Compile Include="setup_database.py" />
     <Compile Include="utils.py" />

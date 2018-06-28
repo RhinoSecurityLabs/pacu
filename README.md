@@ -113,7 +113,6 @@ Pacu's capabilities will increase dramatically as the number of modules grows, a
 ##### Recon Modules
 - `confirm_permissions` - Tries to get a confirmed list of permissions for the current user.
 - `download_ec2_userdata` - Downloads user data from EC2 instances.
-- `enum_cloudtrails` - Enumerates CloudTrail trails, mainly for other modules.
 - `enum_ebs_volumes_snapshots` - Enumerates EBS volumes and snapshots and logs any without encryption.
 - `enum_ec2` - Enumerates a ton of relevant EC2 info.
 - `enum_ec2_termination_protection` - Collects a list of EC2 instances without termination protection.

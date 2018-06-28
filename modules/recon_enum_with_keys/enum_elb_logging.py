@@ -51,7 +51,6 @@ def main(args, database):
     ######
 
     regions = get_regions('ElasticLoadBalancing')
-
     if 'LoadBalancers' not in session.EC2.keys():
         ec2_data = deepcopy(session.EC2)
         ec2_data['LoadBalancers'] = []
@@ -82,6 +81,9 @@ def main(args, database):
                 next_marker = response['NextMarker']
             for load_balancer in response['LoadBalancers']:
                 load_balancer['Region'] = region
+                load_balancer['Attributes'] = client.describe_load_balancer_attributes(
+                   LoadBalancerArn=load_balancer['LoadBalancerArn']
+                    )['Attributes']
                 load_balancers.append(load_balancer)
 
             count += len(response['LoadBalancers'])
@@ -102,12 +104,7 @@ def main(args, database):
 
         for load_balancer in session.EC2['LoadBalancers']:
             print(load_balancer)
-            response = client.describe_load_balancer_attributes(
-                LoadBalancerArn=load_balancer['LoadBalancerArn']
-            )
-            print(response)
-
-            for attribute in response['Attributes']:
+            for attribute in load_balancer['Attributes']:
                 if attribute['Key'] == 'access_logs.s3.enabled':
                     if attribute['Value'] is False or attribute['Value'] == 'false':
                         csv_file.write(f"{load_balancer['LoadBalancerName']},{load_balancer['LoadBalancerArn']},{load_balancer['Region']}\n")

@@ -44,11 +44,9 @@ def help():
 def main(args, database):
     session = util.get_active_session(database)
 
-    ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = partial(util.print, session_name=session.name, database=database)
     get_regions = partial(util.get_regions, database=database)
-    ######
 
     regions = get_regions('ElasticLoadBalancing')
 
@@ -82,6 +80,10 @@ def main(args, database):
                 next_marker = response['NextMarker']
             for load_balancer in response['LoadBalancers']:
                 load_balancer['Region'] = region
+                # Adding Attributes to current load balancer database
+                load_balancer['Attributes'] = client.describe_load_balancer_attributes(
+                    LoadBalancerArn=load_balancer['LoadBalancerArn']
+                )['Attributes']
                 load_balancers.append(load_balancer)
 
             count += len(response['LoadBalancers'])
@@ -99,15 +101,9 @@ def main(args, database):
 
     with open(csv_file_path, 'w+') as csv_file:
         csv_file.write('Load Balancer Name,Load Balancer ARN,Region\n')
-
         for load_balancer in session.EC2['LoadBalancers']:
             print(load_balancer)
-            response = client.describe_load_balancer_attributes(
-                LoadBalancerArn=load_balancer['LoadBalancerArn']
-            )
-            print(response)
-
-            for attribute in response['Attributes']:
+            for attribute in load_balancer['Attributes']:
                 if attribute['Key'] == 'access_logs.s3.enabled':
                     if attribute['Value'] is False or attribute['Value'] == 'false':
                         csv_file.write(f"{load_balancer['LoadBalancerName']},{load_balancer['LoadBalancerArn']},{load_balancer['Region']}\n")

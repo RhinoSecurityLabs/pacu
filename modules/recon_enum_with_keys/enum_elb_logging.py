@@ -44,13 +44,12 @@ def help():
 def main(args, database):
     session = util.get_active_session(database)
 
-    ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = partial(util.print, session_name=session.name, database=database)
     get_regions = partial(util.get_regions, database=database)
-    ######
 
     regions = get_regions('ElasticLoadBalancing')
+
     if 'LoadBalancers' not in session.EC2.keys():
         ec2_data = deepcopy(session.EC2)
         ec2_data['LoadBalancers'] = []
@@ -81,9 +80,10 @@ def main(args, database):
                 next_marker = response['NextMarker']
             for load_balancer in response['LoadBalancers']:
                 load_balancer['Region'] = region
+                # Adding Attributes to current load balancer database
                 load_balancer['Attributes'] = client.describe_load_balancer_attributes(
-                   LoadBalancerArn=load_balancer['LoadBalancerArn']
-                    )['Attributes']
+                    LoadBalancerArn=load_balancer['LoadBalancerArn']
+                )['Attributes']
                 load_balancers.append(load_balancer)
 
             count += len(response['LoadBalancers'])
@@ -101,7 +101,6 @@ def main(args, database):
 
     with open(csv_file_path, 'w+') as csv_file:
         csv_file.write('Load Balancer Name,Load Balancer ARN,Region\n')
-
         for load_balancer in session.EC2['LoadBalancers']:
             print(load_balancer)
             for attribute in load_balancer['Attributes']:

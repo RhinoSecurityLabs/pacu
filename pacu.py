@@ -41,6 +41,8 @@ def display_help():
         services                            Display a list of services that have collected data in the
                                               current session to use with the "data" command
         regions                             Display a list of all valid AWS regions
+        update_regions                      Run a script to update the regions database to the newest
+                                              version.
         set_regions <region> [<region>...]  Set the default regions for this session. These space-separated
                                               regions will be used for modules where regions are required,
                                               but not supplied by the user. The default set of regions is
@@ -192,25 +194,22 @@ class util(object):
     def get_regions(service, database):
         session = PacuSession.get_active_session(database)
 
+        service = str.lower(service)
+
         with open('./modules/service_regions.json', 'r+') as regions_file:
             regions = json.load(regions_file)
 
         # TODO: Add an option for GovCloud regions
-        if str.lower(service) == 'all':
-            return regions['All']
-        if 'all' in session.session_regions or regions[service] == [None]:
-            return regions[service]
-        else:
-            valid_regions = regions[service]
-            return [region for region in valid_regions if region in session.session_regions]
 
-        # # Programmatic way to do it, but much slower
-        # ses = boto3.Session(
-        #    aws_access_key_id='none',
-        #    aws_secret_access_key='none'
-        # )
-        # # TODO: Add an option for GovCloud regions
-        # regions = ses.get_available_regions(str.lower(service), 'aws')
+        if str.lower(service) == 'all':
+            return regions['all']
+        if 'aws-global' in regions[service]['endpoints']:
+            return [None]
+        if 'all' in session.session_regions:
+            return list(regions[service]['endpoints'].keys())
+        else:
+            valid_regions = list(regions[service]['endpoints'].keys())
+            return [region for region in valid_regions if region in session.session_regions]
 
         if 'all' in session.session_regions:
             return regions
@@ -374,11 +373,61 @@ def parse_command(command, database):
         for service in services.keys():
             print('  {}'.format(service))
     elif command[0] == 'regions':
-        for region in sorted(util.get_regions('All', database)):
+        for region in sorted(util.get_regions('all', database)):
             print('  {}'.format(region))
+    elif command[0] == 'update_regions':
+        update_regions(database)
     else:
         print('  Error: Unrecognized command')
     return
+
+
+def update_regions(database):
+    # Update boto3 and botocore to fetch the latest version of the AWS region_list
+    try:
+        util.print('  Using pip3 to update botocore, so we have the latest region list...\n', database)
+        subprocess.run(['pip3', 'install', '--upgrade', 'boto3', 'botocore'], shell=True)
+    except:
+        try:
+            util.print('  pip3 failed, trying pip...\n', database)
+            subprocess.run(['pip', 'install', '--upgrade', 'boto3', 'botocore'], shell=True)
+        except:
+            pip = util.input('  Could not use pip3 or pip to update botocore to the latest version. Enter the name of your pip binary or press Ctrl+C to exit: ', database).strip()
+            subprocess.run(['{}'.format(pip), 'install', '--upgrade', 'boto3', 'botocore'], shell=True)
+
+    path = ''
+
+    try:
+        util.print('  Using pip3 to locate botocore on the operating system...\n', database)
+        output = subprocess.check_output('pip3 show botocore', shell=True)
+    except:
+        try:
+            util.print('  pip3 failed, trying pip...\n', database)
+            output = subprocess.check_output('pip show botocore', shell=True)
+        except:
+            path = util.input('  Could not use pip3 or pip to determine botocore\'s location. Enter it now (example: /usr/local/bin/python3.6/lib/dist-packages) or press Ctrl+C to exit: ', database).strip()
+
+    if path == '':
+        # Account for Windows \r and \\ in file path (Windows)
+        rows = output.decode('utf-8').replace('\r', '').replace('\\\\', '/').split('\n')
+        for row in rows:
+            if row.startswith('Location: '):
+                path = row.split('Location: ')[1]
+
+    with open('{}/botocore/data/endpoints.json'.format(path), 'r+') as regions_file:
+        endpoints = json.load(regions_file)
+
+    for partition in endpoints['partitions']:
+        if partition['partition'] == 'aws':
+            regions = dict()
+            regions['all'] = list(partition['regions'].keys())
+            for service in partition['services']:
+                regions[service] = partition['services'][service]
+
+    with open('modules/service_regions.json', 'w+') as services_file:
+        json.dump(regions, services_file, default=str, sort_keys=True)
+
+    util.print('  Region list updated to the latest version!', database)
 
 
 def import_module_by_name(module_name, include=()):

@@ -7,9 +7,10 @@ class PacuProxy(object):
         self.all_connections = []
         self.all_addresses = []
 
-    def prepare_server(self, global_config):
-        self.host = global_config['ProxyIP']
-        self.port = global_config['ProxyPort']
+    def prepare_server(self, database):
+        session = PacuSession.get_active_session(database)
+        self.host = session.Proxy['IP']
+        self.port = session.Proxy['Port']
         signal.signal(signal.SIGTERM, self.quit_gracefully)
         return
 

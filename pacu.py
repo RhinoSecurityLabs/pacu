@@ -378,7 +378,8 @@ def parse_command(command, database):
             list/ls                             List info on remote agent(s)
             use none|<agent_id>                 Use a remote agent, identified by unique integers 
                                                   (use "proxy list" to see them). Choose "none" to
-                                                  not use any proxy (route from the local host)
+                                                  no longer use any proxy (route from the local
+                                                  host instead)
             shell <agent_id> <command>          Run a shell command on the remote agent
             stager lin|win                      Generate a PacuProxy stager. The two formats available
                                                   are python one-liners for Linux (lin) or Windows
@@ -401,7 +402,7 @@ def parse_command(command, database):
         elif cmd[1] == 'list' or cmd[1] == 'ls': # List active agent connections
             global_config['Proxy'].list_connections(database)
         elif cmd[1] == 'shell' and len(cmd) > 3: # Run shell command on an agent  
-            global_config['Proxy'].run_cmd(int(cmd[2]), global_config['Proxy'].all_connections[int(cmd[2])], ' '.join(cmd[3:]), database)
+            global_config['Proxy'].run_cmd(int(cmd[2]), global_config['Proxy'].all_connections[int(cmd[2])], ' '.join(cmd[3:]))
         elif cmd[1] == 'stop': # Stop proxy server
             if global_config['Proxy'] is None:
                 print('There does not seem to be a listener running currently.')
@@ -412,7 +413,7 @@ def parse_command(command, database):
         elif cmd[1] == 'kill': # Kill an agent connection
             if len(cmd) == 3:
                 print('** Killing agent {}... **'.format(int(cmd[2])))
-                global_config['Proxy'].quit(int(cmd[2]), global_config['Proxy'].all_connections[int(cmd[2])], database)
+                global_config['Proxy'].quit(int(cmd[2]), global_config['Proxy'].all_connections[int(cmd[2])])
                 print('** Agent killed **')
             elif len(cmd) == 2:
                 print(' ** Incorrect input, excepted an agent ID, received nothing. Use format: proxy kill <agent_id> **')

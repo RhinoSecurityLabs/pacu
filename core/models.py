@@ -62,6 +62,22 @@ class AWSKey(Base, ModelUpdateMixin):
         })
 
 
+class PacuProxyData(Base, ModelUpdateMixin):
+    __tablename__ = 'pacu_proxy'
+
+    id = Column(Integer, primary_key=True)
+
+    ip = Column(Text)
+    target_agent = Column(JSONType)
+    port = Column(Integer)
+    listening = Column(Boolean, nullable=False, default=False)
+    ssh_username = Column(Text)
+    ssh_priv_key = Column(Text)
+
+    def __repr__(self):
+        return f"<PacuProxy {self.ip}:{self.port} Target {self.target['ip']} Listening {self.listening}>"
+
+
 class PacuSession(Base, ModelUpdateMixin):
     __tablename__ = 'pacu_session'
     aws_data_field_names = (

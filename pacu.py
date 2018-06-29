@@ -31,6 +31,20 @@ def display_help():
     once that is finished, so you have the necessary data for the module you want to run.
 
     Command info:
+        proxy                               Control PacuProxy/display help
+            start ip [port]                   Start the PacuProxy listener - port 80 by default
+            stop                              Stop the PacuProxy listener
+            kill <agent_id>                   Kill an agent (stop it from running on the host)
+            list/ls                           List info on remote agent(s)
+            use none|<agent_id>               Use a remote agent, identified by unique integers 
+                                                (use "proxy list" to see them). Choose "none" to
+                                                no longer use any proxy (route from the local
+                                                host instead)
+            shell <agent_id> <command>        Run a shell command on the remote agent
+            stager lin|win                    Generate a PacuProxy stager. The two formats available
+                                                are python one-liners for Linux (lin) or Windows
+                                                (win). The only difference in the payloads is how
+                                                command-line escaping is done for valid syntax.
         list/ls                             List all modules
         search <search term>                Search the list of available modules by name
         help                                Display this page of information
@@ -422,6 +436,8 @@ def get_ssh_key(ssh_user, database):
                 subprocess.run(command, shell=True)
                 util.print('Creating authorized_keys file...', database)
                 subprocess.run('cp {}/id_rsa.pub {}/authorized_keys'.format(ssh_dir, ssh_dir))
+
+                # This might be able to be moved to /home/user/.ssh/config so I don't have to modify the servers full SSH settings: https://www.digitalocean.com/community/tutorials/how-to-configure-custom-connection-options-for-your-ssh-client
                 util.print('Ensuring that local port forwarding is disabled (to prevent a "hack back" scenario)...')
                 with open('/etc/sshd_config', 'rw') as f:
                     contents = f.read()

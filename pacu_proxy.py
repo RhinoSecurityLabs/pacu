@@ -1,3 +1,5 @@
+import signal, socket, struct
+
 class PacuProxy(object):
 
     def __init__(self):

@@ -74,6 +74,19 @@ class PacuProxyData(Base, ModelUpdateMixin):
     ssh_username = Column(Text)
     ssh_priv_key = Column(Text)
 
+    @classmethod
+    def get_proxy_data(cls, database):
+        return database.query(PacuProxyData).scalar()
+
+    # How to add a positive-integer-only constraint to a column in SQLAlchemy.
+    __table_args__ = (
+        CheckConstraint(
+            'port > 0',
+            name='check_port_is_positive'
+        ),
+        {}
+    )
+
     def __repr__(self):
         return f"<PacuProxy {self.ip}:{self.port} Target {self.target['ip']} Listening {self.listening}>"
 

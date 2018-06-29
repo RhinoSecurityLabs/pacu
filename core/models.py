@@ -62,8 +62,8 @@ class AWSKey(Base, ModelUpdateMixin):
         })
 
 
-class PacuProxyData(Base, ModelUpdateMixin):
-    __tablename__ = 'pacu_proxy'
+class ProxySettings(Base, ModelUpdateMixin):
+    __tablename__ = 'proxy_settings'
 
     id = Column(Integer, primary_key=True)
 
@@ -75,8 +75,8 @@ class PacuProxyData(Base, ModelUpdateMixin):
     ssh_priv_key = Column(Text)
 
     @classmethod
-    def get_proxy_data(cls, database):
-        return database.query(PacuProxyData).scalar()
+    def get_proxy_settings(cls, database):
+        return database.query(ProxySettings).scalar()
 
     # How to add a positive-integer-only constraint to a column in SQLAlchemy.
     __table_args__ = (

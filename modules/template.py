@@ -47,7 +47,7 @@ def help():
     return [module_info, parser.format_help()]
 
 # Main is the first function that is called when this module is executed
-def main(args, database):
+def main(args, proxy_settings, database):
     session = util.get_active_session(database)
 
     ###### Don't modify these. They can be removed if you are not using the function.
@@ -87,7 +87,11 @@ def main(args, database):
             region_name=region,
             aws_access_key_id=session.access_key_id,
             aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token # Even if the session doesn't have a session token, this will work because the value will be None and will be ignored
+            # Even if the session doesn't have a session token,
+            # this will work because the value will be None and will be ignored:
+            aws_session_token=session.session_token,
+            # Proxy boto3's client if currently proxying through an agent:
+            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if proxy_settings.target_agent is not None else None
         )
 
     print('{} completed.'.format(os.path.basename(__file__)))

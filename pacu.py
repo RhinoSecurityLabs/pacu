@@ -523,7 +523,7 @@ def parse_command(command, server, queue, database):
             if proxy_listening is False:
                 print('There does not seem to be a listener running currently.')
             else:
-                server.quit_gracefully()
+                server.quit_gracefully(database)
                 queue.put(5)
                 server = None
                 proxy_listening = False
@@ -711,7 +711,7 @@ def exec_module(command, database):
         util.print('    {}\n'.format(module.help()[0]['description']), database)
 
         try:
-            module.main(command[2:], database)
+            module.main(command[2:], copy.deepcopy(proxy_settings), database)
         except SystemExit as error:
             exception_type, exception_value, tb = sys.exc_info()
             if 'SIGINT called' in exception_value.args:
@@ -1012,6 +1012,8 @@ def get_data_from_traceback(tb):
 
 def main():
     idle_ready = False
+    server = None
+    queue = Queue()
 
     while True:
         try:
@@ -1085,14 +1087,13 @@ def main():
                 display_help()
 
                 proxy_settings = ProxySettings.get_proxy_settings(database)
-                proxy_data = copy.deepcopy(proxy_settings)
-                if proxy_data['listening'] is True:
+                if proxy_settings.listening is True:
                     # PacuProxy was listening on last shutdown, so restart it
-                    start_proxy(database)
+                    server = start_proxy(queue, database)
 
                 idle_ready = True
 
-            idle(database)
+            idle(server, queue, database)
 
         except (Exception, SystemExit) as error:
             exception_type, exception_value, tb = sys.exc_info()

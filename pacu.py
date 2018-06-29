@@ -365,18 +365,18 @@ def get_ssh_user(ssh_user, database):
             # Create a random username that is randomly 3-9 characters
             username = ''.join(random.choices(string.ascii_lowercase, k=int(''.join(random.choices('3456789', k=1)))))
             command = 'adduser --shell /bin/false --disabled-password {}'.format(username)
-            util.print('Running command: {}'.format(command))
+            util.print('Running command: {}\n'.format(command))
             try:
                 subprocess.run(command.split(' '), shell=True)
                 try:
                     user_id = subprocess.check_output('id -u {}'.format(username), shell=True)
                     if 'no such user' in user_id:
-                        util.print('Failed to find user after creation. Here is the output from the command "id -u {}": {}'.format(user_id, user_id), database)
+                        util.print('Failed to find user after creation. Here is the output from the command "id -u {}": {}\n'.format(user_id, user_id), database)
                         return None
-                    util.print('User {} created successfully!', database)
+                    util.print('User {} created successfully!\n', database)
                     return {'UserName': username}
                 except Exception as e:
-                    util.print('Failed to find user after creation. Here is the output from the command "id -u {}": {}'.format(user_id, user_id), database)
+                    util.print('Failed to find user after creation. Here is the output from the command "id -u {}": {}\n'.format(user_id, user_id), database)
                     return None
             except:
                 util.print('Failed to create user...', database)
@@ -387,7 +387,7 @@ def get_ssh_user(ssh_user, database):
         try:
             user_id = subprocess.check_output('id -u {}'.format(ssh_user['UserName']), shell=True)
             if 'no such user' in user_id:
-                util.print('Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}'.format(user_id, user_id), database)
+                util.print('Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}\n'.format(user_id, user_id), database)
                 new_user = util.input('An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with password login disabled and a /bin/false shell. Do you want to generate that user now? (y/n) ')
                 if new_user == 'y':
                     return get_ssh_user(None, database)
@@ -396,12 +396,36 @@ def get_ssh_user(ssh_user, database):
             else:
                 return ssh_user
         except Exception as e:
-            util.print('Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}'.format(user_id, user_id), database)
+            util.print('Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}\n'.format(user_id, user_id), database)
             new_user = util.input('An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with password login disabled and a /bin/false shell. Do you want to generate that user now? (y/n) ')
             if new_user == 'y':
                 return get_ssh_user(None, database)
             else:
                 return None
+
+
+def get_ssh_key(ssh_user, database):
+    if 'SSHKey' not in ssh_user or ssh_user['SSHKey'] is None or ssh_user['SSHKey'] == '':
+        new_key = util.input('No SSH key found for user {}. Do you want to generate one? (y/n) '.format(ssh_user['UserName']))
+
+        if new_key == 'y':
+            util.print('Creating SSH key for user {}...\n'.format(ssh_user['UserName']))
+            ssh_dir = '/home/{}/.ssh'.format(ssh_user['UserName'])
+            if os.path.isdir(ssh_dir):
+                os.makedirs(ssh_dir)
+            command = "ssh-keygen -t rsa -f {}/id_rsa -N '' {}".format(ssh_dir, ssh_user['UserName'])
+            try:
+                subprocess.run(command, shell=True)
+                with open('{}/id_rsa'.format(ssh_dir), 'r') as f:
+                    ssh_user['SSHKey'] = f.read()
+                return ssh_user
+            except:
+                util.print('Could not generate an SSH key for user {}...'.format(ssh_user['UserName']))
+                return ssh_user
+        else:
+            return ssh_user
+    else:
+        return ssh_user
 
 
 def parse_command(command, database):
@@ -485,9 +509,17 @@ def parse_command(command, database):
                     else:
                         print('Setting proxy target to agent {}...'.format(cmd[2]))
 
+                        # Find or create an SSH user
                         proxy_data['SSHUser'] = get_ssh_user(proxy_data['SSHUser'], database)
                         if proxy_data['SSHUser'] is None:
-                            util.print('No SSH user on the local PacuProxy server, not routing traffic through the target agent.')
+                            util.print('No SSH user on the local PacuProxy server, not routing traffic through the target agent.', database)
+                            session.update(database, Proxy=proxy_data)
+                            return
+
+                        # Find or generate an SSH key for that user
+                        proxy_data['SSHUser'] = get_ssh_key(proxy_data['SSHUser'], database)
+                        if proxy_data['SSHUser']['SSHKey'] is None:
+                            util.print('No SSH key for user {}, not routing traffic through the target agent.'.format(proxy_data['SSHUser']['UserName']), database)
                             session.update(database, Proxy=proxy_data)
                             return
 

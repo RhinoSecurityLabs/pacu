@@ -347,17 +347,17 @@ def start_proxy(queue, database):
     return server
 
 # Create the proxy threads
-def create_workers(database):
-    server.prepare_server(database)
+def create_workers(queue, proxy_ip, proxy_port):
+    server = PacuProxy()
+    server.prepare_server(proxy_ip, proxy_port)
     for _ in range(2):
-        t = threading.Thread(target=work, args=(database,), daemon=True)
+        t = threading.Thread(target=work, args=(server, queue,), daemon=True)
         t.daemon = True
         t.start()
-    return
+    return server
 
 # Handle the next job in queue (one thread handles connections, other sends commands)
-def work(database):
-    server = global_config['Proxy']
+def work(server, queue):
     while True:
         x = queue.get()
         if x == 1:
@@ -370,7 +370,7 @@ def work(database):
     return
 
 # Fill the queue with jobs
-def create_jobs():
+def create_jobs(queue):
     for x in [1, 2]: # Job numbers
         queue.put(x)
     return
@@ -683,6 +683,7 @@ def import_module_by_name(module_name, include=()):
 ######
 def exec_module(command, database):
     session = PacuSession.get_active_session(database)
+    proxy_settings = ProxySettings.get_proxy_settings(database)
 
     # Run key checks so that if no keys have been set, Pacu doesn't default to
     # the AWSCLI default profile:
@@ -703,7 +704,10 @@ def exec_module(command, database):
         ## XML Command Log - Figure out how to auto convert to XML
         # util.print('<command>{}</command>'.format(cmd), database, output_type='xml', output='file')
 
-        util.print('  Running module {}...'.format(module_name), database)
+        if proxy_settings.proxy_target is None or proxy_settings.proxy_target == []:
+            util.print('  Running module {}...'.format(module_name), database)
+        else:
+            util.print('  Running module {} on agent {}...'.format(module_name, proxy_settings.proxy_target[0]), database)
         util.print('    {}\n'.format(module.help()[0]['description']), database)
 
         try:
@@ -755,7 +759,7 @@ def initialize_tab_completion():
     try:
         import readline
         # Big thanks to samplebias: https://stackoverflow.com/a/5638688
-        COMMANDS = ['run', 'exec', 'list', 'ls', 'whoami', 'search', 'services', 'regions', 'set_regions', 'data', 'set_keys', 'swap_keys', 'help', 'exit', 'quit']
+        COMMANDS = ['proxy', 'run', 'exec', 'list', 'ls', 'whoami', 'search', 'services', 'regions', 'set_regions', 'data', 'set_keys', 'swap_keys', 'help', 'exit', 'quit']
         MODULES = []
         for root, dirs, files in os.walk('{}/modules'.format(os.getcwd())):
                     for file in files:
@@ -802,7 +806,7 @@ def initialize_tab_completion():
         pass
 
 
-def idle(database):
+def idle(server, queue, database):
     session = PacuSession.get_active_session(database)
 
     if session.key_alias:
@@ -812,9 +816,9 @@ def idle(database):
 
     command = input('Pacu ({}:{}) > '.format(session.name, alias))
 
-    parse_command(command, database)
+    server, queue = parse_command(command, server, queue, database)
 
-    idle(database)
+    idle(server, queue, database)
 
 
 def list_modules(search_term, database):

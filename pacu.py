@@ -8,6 +8,7 @@ import subprocess
 import sys
 import time
 import traceback
+import importlib
 
 import configure_settings
 import settings
@@ -454,6 +455,7 @@ def import_module_by_name(module_name, include=()):
 
                 # Import the help function from the module
                 module = __import__(module_path, globals(), locals(), include, 0)
+                importlib.reload(module)
 
     return module
 

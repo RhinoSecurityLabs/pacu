@@ -611,7 +611,7 @@ def parse_command(command, server, queue, database):
                         util.print('Telling remote agent to connect back...', database)
                         proxy_target_agent = server.all_addresses[int(command[2])]
                         shm_name = ''.join(random.choices(string.ascii_lowercase, k=int(''.join(random.choices('3456789', k=1)))))
-                        connect_back_cmd = 'echo "{}" > /dev/shm/{} && chmod 600 /dev/shm/{} && ssh -i /dev/shm/{} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -f -N -R 8000 {}@{} >/dev/null 2>&1'.format(proxy_ssh_priv_key, shm_name, shm_name, shm_name, proxy_ssh_username, proxy_ip)
+                        connect_back_cmd = 'echo "{}" > /dev/shm/{} && chmod 600 /dev/shm/{} && ssh -i /dev/shm/{} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -f -N -R 8001 {}@{} >/dev/null 2>&1'.format(proxy_ssh_priv_key, shm_name, shm_name, shm_name, proxy_ssh_username, proxy_ip)
                         server.run_cmd(proxy_target_agent[0], server.all_connections[int(command[2])], connect_back_cmd)
                         util.print('Remote agent connected!', database)
                 except Exception as e:

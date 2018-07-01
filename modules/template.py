@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import boto3, argparse, os, sys
+import boto3, argparse, os, sys, botocore
 from botocore.exceptions import ClientError
 from functools import partial
 

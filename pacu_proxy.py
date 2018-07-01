@@ -1,7 +1,6 @@
 import signal, socket, struct
 
 from core.models import ProxySettings
-from pacu import util
 
 
 class PacuProxy(object):
@@ -16,7 +15,6 @@ class PacuProxy(object):
 
     def prepare_server(self, database):
         proxy_settings = ProxySettings.get_proxy_settings(database)
-        self.database = database
         self.host = proxy_settings.ip
         self.port = proxy_settings.port
         signal.signal(signal.SIGTERM, self.quit_gracefully)
@@ -24,22 +22,22 @@ class PacuProxy(object):
 
     # Close the listener
     def quit_gracefully(self, signal=None, frame=None):
-        util.print('** Stopping proxy listener... **', self.database)
+        print('** Stopping proxy listener... **')
         for conn in self.all_connections:
             try:
                 conn.shutdown(2)
                 conn.close()
             except Exception as e:
-                util.print('** Could not close connection {} **'.format(str(e)), self.database)
+                print('** Could not close connection {} **'.format(str(e)))
         self.socket.close()
-        util.print('** Proxy listener stopped. **', self.database)
+        print('** Proxy listener stopped. **')
 
     # Create the initial socket
     def socket_create(self):
         try:
             self.socket = socket.socket()
         except socket.error as msg:
-            util.print('** Socket creation error: {} **'.format(str(msg)), self.database)
+            print('** Socket creation error: {} **'.format(str(msg)))
             return
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         return
@@ -50,7 +48,7 @@ class PacuProxy(object):
             self.socket.bind((self.host, int(self.port)))
             self.socket.listen(5)
         except socket.error as e:
-            util.print('** Socket binding error: {} **'.format(str(e)), self.database)
+            print('** Socket binding error: {} **'.format(str(e)))
             time.sleep(5)
             self.socket_bind()
         return
@@ -70,11 +68,11 @@ class PacuProxy(object):
             except Exception as e:
                 if 'not a socket' in str(e):
                     break
-                util.print('** Error accepting connections: {} **'.format(str(e)), self.database)
+                print('** Error accepting connections: {} **'.format(str(e)))
                 continue
             self.all_connections.append(conn)
             self.all_addresses.append(address)
-            util.print('** Connection has been established: {} ({}) **'.format(address[-1], address[0]), self.database)
+            print('\n** Connection has been established: {} ({}) **'.format(address[-1], address[0]))
         return
 
     # Run a shell command on an agent
@@ -88,7 +86,7 @@ class PacuProxy(object):
                 client_response = str(cmd_output, 'utf-8')
                 print(client_response, end='')
         except Exception as e:
-            util.print('** Connection was lost {} **'.format(str(e)), self.database)
+            print('** Connection was lost {} **'.format(str(e)))
             del self.all_connections[target]
             del self.all_addresses[target]
         return
@@ -123,7 +121,7 @@ class PacuProxy(object):
                 continue
             results += '{}   | {}   | {}   | {}\n'.format(str(i), str(self.all_addresses[i][0]), str(
                 self.all_addresses[i][1]), str(self.all_addresses[i][2]))
-        util.print('----- Clients -----\nAgent ID | IP   | Process ID | Hostname\n{}'.format(results), self.database)
+        print('----- Clients -----\nAgent ID | IP   | Process ID | Hostname\n{}'.format(results))
         return
 
     # Select the target agent
@@ -132,14 +130,14 @@ class PacuProxy(object):
         try:
             target = int(target)
         except:
-            util.print('** Client index should be an integer. **', self.database)
+            print('** Client index should be an integer. **')
             return None, None
         try:
             conn = self.all_connections[target]
         except IndexError:
-            util.print('** Not a valid selection. **', self.database)
+            print('** Not a valid selection. **')
             return None, None
-        util.print('** You are now connected to {} **'.format(str(self.all_addresses[target][2])), self.database)
+        print('** You are now connected to {} **'.format(str(self.all_addresses[target][2])))
         return target, conn
 
     # Read command output

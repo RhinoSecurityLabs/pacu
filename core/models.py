@@ -3,7 +3,7 @@ import json
 import copy
 
 from sqlalchemy import (
-    Boolean, Column, DateTime, ForeignKey, inspect, Integer, Text
+    Boolean, CheckConstraint, Column, DateTime, ForeignKey, inspect, Integer, Text
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy_utils import JSONType
@@ -67,16 +67,20 @@ class ProxySettings(Base, ModelUpdateMixin):
 
     id = Column(Integer, primary_key=True)
 
-    ip = Column(Text)
-    target_agent = Column(JSONType)
-    port = Column(Integer)
+    ip = Column(Text, nullable=True, default='0.0.0.0')
+    target_agent = Column(JSONType, nullable=False, default=[])
+    port = Column(Integer, nullable=False, default=80)
     listening = Column(Boolean, nullable=False, default=False)
-    ssh_username = Column(Text)
-    ssh_priv_key = Column(Text)
+    ssh_username = Column(Text, nullable=True, default='')
+    ssh_priv_key = Column(Text, nullable=True, default='')
 
     @classmethod
     def get_proxy_settings(cls, database):
         return database.query(ProxySettings).scalar()
+
+    def activate(self, database):
+        database.add(self)
+        database.commit()
 
     # How to add a positive-integer-only constraint to a column in SQLAlchemy.
     __table_args__ = (
@@ -88,7 +92,7 @@ class ProxySettings(Base, ModelUpdateMixin):
     )
 
     def __repr__(self):
-        return f"<PacuProxy {self.ip}:{self.port} Target {self.target['ip']} Listening {self.listening}>"
+        return f"<PacuProxy {self.ip}:{self.port} Target {self.target_agent} Listening {self.listening}>"
 
 
 class PacuSession(Base, ModelUpdateMixin):

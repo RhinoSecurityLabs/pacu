@@ -531,6 +531,9 @@ def parse_command(command, server, queue, database):
                 else:
                     proxy_port = 80
                 proxy_ip = command[2]
+                if proxy_ip == '0.0.0.0':
+                    util.print('Proxy IP must be the public IP of the server to stage agents correctly and not 0.0.0.0. PacuProxy will fallback to listening on 0.0.0.0 if it fails to start a listener on the supplied IP address, but the public IP is required to send to agents so they can contact the server.', database)
+                    return server, queue
                 print('Starting PacuProxy on {}:{}...'.format(proxy_ip, proxy_port))
                 proxy_settings.update(database, ip=proxy_ip, port=proxy_port)
                 server = start_proxy(queue, database)

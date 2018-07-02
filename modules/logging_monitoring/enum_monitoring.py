@@ -42,7 +42,7 @@ def help():
     return [module_info, parser.format_help()]
 
 
-def main(args, proxxy_settings, database):
+def main(args, proxy_settings, database):
     session = util.get_active_session(database)
 
     ###### Don't modify these. They can be removed if you are not using the function.

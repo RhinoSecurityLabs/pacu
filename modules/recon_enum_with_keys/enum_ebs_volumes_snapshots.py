@@ -259,6 +259,7 @@ def main(args, proxy_settings, database):
             print(f'  {count} total snapshot(s) found in {region}.')
 
     if args.vols is True:
+        ec2_data['Volumes'] = all_vols
         unencrypted_volumes_csv_path = f'sessions/{session.name}/downloads/unencrypted_ebs_volumes_{now}.csv'
         with open(unencrypted_volumes_csv_path, 'w+') as unencrypted_volumes_csv:
             unencrypted_volumes_csv.write('Volume Name,Volume ID,Region\n')
@@ -267,15 +268,13 @@ def main(args, proxy_settings, database):
         print(f"{len(ec2_data['Volumes'])} total volume(s) found. A list of unencrypted volumes has been saved to ./{unencrypted_volumes_csv_path}")
 
     if args.snaps is True:
+        ec2_data['Snapshots'] = all_snaps
         unencrypted_snapshots_csv_path = f'sessions/{session.name}/downloads/unencrypted_ebs_snapshots_{now}.csv'
         with open(unencrypted_snapshots_csv_path, 'w+') as unencrypted_snapshots_csv:
             unencrypted_snapshots_csv.write('Snapshot Name,Snapshot ID,Region\n')
             for line in snapshots_csv_data:
                 unencrypted_snapshots_csv.write(line)
         print(f"{len(ec2_data['Snapshots'])} total snapshot(s) found. A list of unencrypted snapshots has been saved to ./{unencrypted_snapshots_csv_path}")
-
-    ec2_data['Volumes'] = all_vols
-    ec2_data['Snapshots'] = all_snaps
 
     session.update(database, EC2=ec2_data)
     print('All data has been saved to the current session.')

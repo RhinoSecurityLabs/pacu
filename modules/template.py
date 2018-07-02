@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-import argparse, os, sys
-import boto3, botocore
+import argparse
+import os
+import boto3
+import botocore
 from botocore.exceptions import ClientError
 from functools import partial
 
@@ -43,9 +45,11 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 parser.add_argument('', help='')
 parser.add_argument('', required=False, default=None, help='')
 
+
 # For when "help module_name" is called, don't modify this
 def help():
     return [module_info, parser.format_help()]
+
 
 # Main is the first function that is called when this module is executed
 def main(args, proxy_settings, database):
@@ -67,13 +71,13 @@ def main(args, proxy_settings, database):
     user = key_info()
 
     # fetch_data is used when there is a prerequisite module to the current module. The example below shows how to fetch all EC2 security group data to use in this module.
-    if fetch_data(['EC2', 'SecurityGroups'], 'enum_ec2_sec_groups', '') is False: # This will be false if the user declines to run the pre-requisite module or it fails. Depending on the module, you may still want to continue execution, so building the check is on you as a developer.
+    if fetch_data(['EC2', 'SecurityGroups'], 'enum_ec2_sec_groups', '') is False:  # This will be false if the user declines to run the pre-requisite module or it fails. Depending on the module, you may still want to continue execution, so building the check is on you as a developer.
         print('Pre-req module not run successfully. Exiting...')
         return
     sec_groups = session.EC2['SecurityGroups']
 
     # Attempt to install the required external dependencies, exit this module if the download/install fails
-    if not install_dependencies(external_dependencies):
+    if not install_dependencies(module_info['external_dependencies']):
         return
 
     # IMPORTANT NOTE: It is suggested to always utilize the DryRun parameter for boto3 requests that support it. It will test the permissions of the action without actually executing it.

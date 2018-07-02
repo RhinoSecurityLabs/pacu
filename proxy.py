@@ -1,4 +1,7 @@
-import signal, socket, struct
+import signal
+import socket
+import struct
+import time
 
 from core.models import ProxySettings
 
@@ -78,7 +81,7 @@ class PacuProxy(object):
     # Run a shell command on an agent
     def run_cmd(self, target, conn, cmd):
         conn.send(str.encode(' '))
-        cwd_bytes = self.read_command_output(conn)
+        self.read_command_output(conn)
         try:
             if len(str.encode(cmd)) > 0:
                 conn.send(str.encode(cmd))
@@ -94,7 +97,7 @@ class PacuProxy(object):
     # Kill an agent
     def quit(self, target, conn):
         conn.send(str.encode(' '))
-        cwd_bytes = self.read_command_output(conn)
+        self.read_command_output(conn)
         try:
             cmd = 'q'
             if len(str.encode(cmd)) > 0:
@@ -158,4 +161,3 @@ class PacuProxy(object):
                 return None
             data += packet
         return data
-

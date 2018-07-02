@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 import argparse
-import boto3, botocore
-from functools import partial
+import boto3
+import botocore
 import json
 import os
 from random import choice
+from functools import partial
 
 from pacu import util
 
@@ -96,7 +97,7 @@ def main(args, proxy_settings, database):
         if ',' in args.user_arns:
             user_arns.extend(args.user_arns.split(','))
         else:
-            user_arns.append(args.user_arns) # Only one ARN was passed in
+            user_arns.append(args.user_arns)  # Only one ARN was passed in
 
     iam = boto3.resource(
         'iam',
@@ -118,7 +119,7 @@ def main(args, proxy_settings, database):
             hacked_policy = modify_assume_role_policy(original_policy, user_arns, args.no_random)
 
             try:
-                response = client.update_assume_role_policy(
+                client.update_assume_role_policy(
                     RoleName=rolename,
                     PolicyDocument=json.dumps(hacked_policy)
                 )

@@ -50,6 +50,11 @@ class PacuProxy(object):
         try:
             self.socket.bind((self.host, int(self.port)))
             self.socket.listen(5)
+        except OSError as e:
+            if 'Cannot assign requested address' in str(e):
+                print('** Failed to start listener on {}, this is a common problem. Trying to listen on 0.0.0.0 and using {} as the IP address to stage agents with. **'.format(self.host, self.host))
+                self.socket.bind(('0.0.0.0', int(self.port)))
+                self.socket.listen(5)
         except socket.error as e:
             print('** Socket binding error: {} **'.format(str(e)))
             time.sleep(5)

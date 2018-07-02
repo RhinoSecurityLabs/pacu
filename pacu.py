@@ -56,7 +56,8 @@ def display_help():
         whoami                              Display information regarding to the active access keys
         data                                Display all data that is stored in this session. Only fields
                                               with values will be displayed
-        data <service>                      Display all data for a service in this session
+        data <service>|proxy                Display all data for a specified service or for PacuProxy
+                                              in this session
         services                            Display a list of services that have collected data in the
                                               current session to use with the "data" command
         regions                             Display a list of all valid AWS regions
@@ -482,6 +483,7 @@ def get_ssh_key(ssh_username, ssh_priv_key, database):
 
 def parse_command(command, server, queue, database):
     session = PacuSession.get_active_session(database)
+    proxy_settings = ProxySettings.get_proxy_settings(database)
 
     command = command.strip()
     command = command.split(' ')
@@ -489,7 +491,6 @@ def parse_command(command, server, queue, database):
     if command[0] == '':
         return server, queue
     elif command[0] == 'proxy':
-        proxy_settings = ProxySettings.get_proxy_settings(database)
         proxy_ip = proxy_settings.ip
         proxy_port = proxy_settings.port
         proxy_listening = proxy_settings.listening
@@ -501,19 +502,24 @@ def parse_command(command, server, queue, database):
             print("""
     PacuProxy command info:
         proxy                               Control PacuProxy/display help
-            start ip [port]                   Start the PacuProxy listener - port 80 by default
-            stop                                Stop the PacuProxy listener
-            kill <agent_id>                     Kill an agent (stop it from running on the host)
-            list/ls                             List info on remote agent(s)
-            use none|<agent_id>                 Use a remote agent, identified by unique integers
-                                                  (use "proxy list" to see them). Choose "none" to
-                                                  no longer use any proxy (route from the local
-                                                  host instead)
-            shell <agent_id> <command>          Run a shell command on the remote agent
-            stager lin|win                      Generate a PacuProxy stager. The two formats available
-                                                  are python one-liners for Linux (lin) or Windows
-                                                  (win). The only difference in the payloads is how
-                                                  command-line escaping is done for valid syntax.
+            start ip [port]                   Start the PacuProxy listener - port 80 by default.
+                                                The listener will attempt to start on the IP
+                                                supplied, but some hosts don't allow this. In
+                                                this case, PacuProxy will listen on 0.0.0.0 and
+                                                use the supplied IP to stage agents and it should
+                                                work the same
+            stop                              Stop the PacuProxy listener
+            kill <agent_id>                   Kill an agent (stop it from running on the host)
+            list/ls                           List info on remote agent(s)
+            use none|<agent_id>               Use a remote agent, identified by unique integers
+                                                (use "proxy list" to see them). Choose "none" to
+                                                no longer use any proxy (route from the local
+                                                host instead)
+            shell <agent_id> <command>        Run a shell command on the remote agent
+            stager lin|win                    Generate a PacuProxy stager. The two formats available
+                                                are python one-liners for Linux (lin) or Windows
+                                                (win). The only difference in the payloads is how
+                                                command-line escaping is done for valid syntax.
 """)
         elif command[1] == 'start':  # Start proxy server
             if len(command) < 3:
@@ -649,9 +655,30 @@ def parse_command(command, server, queue, database):
         print(json.dumps(util.key_info(database), indent=2, default=str))
     elif command[0] == 'data':
         if len(command) == 1:
+            util.print('\nSession data:', database)
             session.print_all_data_in_session()
+            util.print('\nProxy data:', database)
+            proxy = {
+                'IP': proxy_settings.ip,
+                'Port': proxy_settings.port,
+                'Listening': proxy_settings.listening,
+                'SSHUsername': proxy_settings.ssh_username,
+                'SSHPrivateKey': proxy_settings.ssh_priv_key,
+                'TargetAgent': copy.deepcopy(proxy_settings.target_agent)
+            }
+            util.print(proxy, database)
         else:
-            if command[1] not in session.aws_data_field_names:
+            if command[1] == 'proxy':
+                proxy = {
+                    'IP': proxy_settings.ip,
+                    'Port': proxy_settings.port,
+                    'Listening': proxy_settings.listening,
+                    'SSHUsername': proxy_settings.ssh_username,
+                    'SSHPrivateKey': proxy_settings.ssh_priv_key,
+                    'TargetAgent': copy.deepcopy(proxy_settings.target_agent)
+                }
+                util.print(proxy, database)
+            elif command[1] not in session.aws_data_field_names:
                 print('  Service not found.')
             elif getattr(session, command[1]) == {} or getattr(session, command[1]) == [] or getattr(session, command[1]) == '':
                 print('  No data has been collected yet for the specified service.')

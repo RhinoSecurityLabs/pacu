@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-import boto3, argparse, os, sys
+import boto3
+import argparse
+import os
 from botocore.exceptions import ClientError
 from functools import partial
 
@@ -18,7 +20,7 @@ module_info = {
     'one_liner': 'Enumerates data from AWS Lambda',
 
     # Full description about what the module does and how it works
-    'description': 'This module does this thing by using xyz and outputs info to abc. Here is a note also.',
+    'description': 'This module pulls data related to Lambda Functions, versions,',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['Lambda'],
@@ -34,24 +36,20 @@ module_info = {
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
+parser.add_argument('--versionsAll', required=False, default=False, action='store_true', help='Grab all versions instead of just the latest')
 
-# Just placeholders for arguments, delete/change as needed
-# Arguments that accept multiple options (such as --usernames) should be comma-separated (such as --usernames bill,mike,tom)
-# Arguments that are region-specific (such as --instance-ids) should use an @ symbol to separate the data and its region (such as --instance-ids 123@us-west-1,54252@us-east-1,9999@ap-south-1
-# Make sure to add arguments to module_config['arguments_to_autocomplete']
-#parser.add_argument('', help='')
-#parser.add_argument('', required=False, default=None, help='')
 
 # For when "help module_name" is called, don't modify this
 def help():
     return [module_info, parser.format_help()]
+
 
 # Main is the first function that is called when this module is executed
 def main(args, database):
     session = util.get_active_session(database)
 
     ###### Don't modify these. They can be removed if you are not using the function.
-    #args = parser.parse_args(args)
+    args = parser.parse_args(args)
     print = partial(util.print, session_name=session.name, database=database)
     #input = partial(util.input, session_name=session.name, database=database)
     key_info = partial(util.key_info, database=database)
@@ -60,29 +58,10 @@ def main(args, database):
     #install_dependencies = partial(util.install_dependencies, database=database)
     ######
 
-
-    # Fetch information for the currently active set of keys, this returns a dictionary containing information about the AWS key using the session's current key_alias, which includes info like User Name, User Arn, User Id, Account Id, the permissions collected so far for the user, the groups they are a part of, access key id, secret access key, session token, key alias, and a note
-    user = key_info()
-
-    # fetch_data is used when there is a prerequisite module to the current module. The example below shows how to fetch all EC2 security group data to use in this module.
-    #if fetch_data(['EC2', 'SecurityGroups'], 'enum_ec2_sec_groups', '') is False: # This will be false if the user declines to run the pre-requisite module or it fails. Depending on the module, you may still want to continue execution, so building the check is on you as a developer.
-    #    print('Pre-req module not run successfully. Exiting...')
-    #    return
-    #sec_groups = session.EC2['SecurityGroups']
-
-    # Attempt to install the required external dependencies, exit this module if the download/install fails
-    #if not install_dependencies(external_dependencies):
-    #    return
-
-    # IMPORTANT NOTE: It is suggested to always utilize the DryRun parameter for boto3 requests that support it. It will test the permissions of the action without actually executing it.
-
-    # Use the get_regions function to fetch an array of supported regions for the service that you pass into it
     regions = get_regions('Lambda')
 
     lambda_data = {}
-    lambda_functions = []
-    lambda_account_settings = []
-
+    lambda_data['Functions'] = []
     for region in regions:
         print('Starting region {}...'.format(region))
         client = boto3.client(
@@ -90,30 +69,79 @@ def main(args, database):
             region_name=region,
             aws_access_key_id=session.access_key_id,
             aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token # Even if the session doesn't have a session token, this will work because the value will be None and will be ignored
+            aws_session_token=session.session_token
         )
-        
-        account_settings = client.get_account_settings()
-        lambda_data['AccountLimit'] = account_settings['AccountLimit']
-        lambda_data['AccountUsage'] = account_settings['AccountUsage']
+        try:
+            account_settings = client.get_account_settings()
+            # pop any ResponseMetaData to have cleaner account_settings response
+            account_settings.pop('ResponseMetadata', None)
+            for key in account_settings:
+                lambda_data[key] = account_settings[key]
+        except ClientError as err:
+            if(err.response['Error']['Code'] == 'AccessDeniedException'):
+                print('Access Denied for get-account-settings')
+            else:
+                print(err)
 
-        response = client.list_functions()
-        if response['Functions']:
-            lambda_functions += response['Functions']
-
-
-            for func in lambda_functions:
-                func['Code'] = client.get_function(FunctionName= func['FunctionArn'])['Code']
-                func['Aliases'] = client.list_aliases(FunctionName=func['FunctionArn'])['Aliases']
-                print(func['FunctionArn'])
-                #Have to check if a policy exists, otherwise you get an error
+        lambda_functions = []
+        try:
+            response = client.list_functions()
+            lambda_functions = response['Functions']
+            while 'NextMarker' in response:
+                response = client.list_functions(Marker=response['NextMarker'])
+                lambda_functions += response['Functions']
+        except ClientError as err:
+            if(err.response['Error']['Code'] == 'AccessDeniedException'):
+                print('Access Denied for list_functions')
+        for func in lambda_functions:
+            try:
+                func['Code'] = client.get_function(FunctionName=func['FunctionArn'])['Code']
+            except ClientError as err:
+                if(err.response['Error']['Code'] == 'AccessDeniedException'):
+                    print('Access Denied for get-function')
+            try:
+                response = client.list_aliases(FunctionName=func['FunctionArn'])
+                func['Aliases'] = response['Aliases']
+                while 'NextMarker' in response:
+                    response = client.list_aliases(FunctionName=func['FunctionArn'], Marker=response['NextMarker'])
+                    func['Aliases'] += response['Aliases']
+            except ClientError as err:
+                if(err.response['Error']['Code'] == 'AccessDeniedException'):
+                    print('Access Denied for list-aliases')
+            try:
+                response = client.list_event_source_mappings(FunctionName=func['FunctionArn'])
+                func['EventSourceMappings'] = response['EventSourceMappings']
+                while 'NextMarker' in response:
+                    response = client.list_event_source_mappings(FunctionName=func['FunctionArn'], Marker=response['NextMarker'])
+                    func['EventSourceMappings'] += response['EventSourceMappings']
+            except ClientError as err:
+                if(err.response['Error']['Code'] == 'AccessDeniedException'):
+                    print('Access Denied for list-event-source-mappings')
+            if args.versionsAll:
+                try:
+                    response = client.list_versions_by_function(FunctionName=func['FunctionArn'])
+                    func['Versions'] = response['Versions']
+                    while 'NextMarker' in response:
+                        response = client.list_versions_by_function(FunctionName=func['FunctionArn'], Marker=response['NextMarker'])
+                        func['Versions'] += response['Versions']
+                except ClientError as err:
+                    if(err.response['Error']['Code'] == 'AccessDeniedException'):
+                        print('Access Denied for list-versions-by-function')
+            try:
+                func['Tags'] = client.list_tags(Resource=func['FunctionArn'])['Tags']
+            except ClientError as err:
+                if(err.response['Error']['Code'] == 'AccessDeniedException'):
+                    print('Access Denied for list-tags')
+            try:
                 func['Policy'] = client.get_policy(FunctionName=func['FunctionArn'])['Policy']
+            except client.exceptions.ResourceNotFoundException:
+                print('No valid Policy found for ' + func['FunctionName'])
+            except ClientError as err:
+                if(err.response['Error']['Code'] == 'AccessDeniedException'):
+                    print('Access Denied for get-policy')
+        lambda_data['Functions'] += lambda_functions
 
-    
-    
-          
-    lambda_data['Functions'] = lambda_functions
-    print(lambda_data)
+    session.update(database, Lambda=lambda_data)
 
     print('{} completed.'.format(os.path.basename(__file__)))
     return

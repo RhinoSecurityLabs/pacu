@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-import boto3, argparse, os, sys, botocore
+import argparse, os, sys
+import boto3, botocore
 from botocore.exceptions import ClientError
 from functools import partial
 
@@ -91,7 +92,7 @@ def main(args, proxy_settings, database):
             # this will work because the value will be None and will be ignored:
             aws_session_token=session.session_token,
             # Proxy boto3's client if currently proxying through an agent:
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if proxy_settings.target_agent is not None else None
+            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
         )
 
     print('{} completed.'.format(os.path.basename(__file__)))

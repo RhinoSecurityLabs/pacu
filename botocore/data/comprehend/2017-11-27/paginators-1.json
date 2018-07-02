@@ -1,0 +1,10 @@
+{
+  "pagination": {
+    "ListTopicsDetectionJobs": {
+      "result_key": "TopicsDetectionJobPropertiesList",
+      "output_token": "NextToken",
+      "input_token": "NextToken",
+      "limit_key": "MaxResults"
+    }
+  }
+}

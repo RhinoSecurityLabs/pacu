@@ -63,7 +63,7 @@ def main(args, proxxy_settings, database):
             aws_access_key_id=session.access_key_id,
             aws_secret_access_key=session.secret_access_key,
             aws_session_token=session.session_token,
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if proxy_settings.target_agent is not None else None
+            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
         )
 
         subscription = client.get_subscription_state()
@@ -97,7 +97,7 @@ def main(args, proxxy_settings, database):
                 aws_access_key_id=session.access_key_id,
                 aws_secret_access_key=session.secret_access_key,
                 aws_session_token=session.session_token,
-                config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if proxy_settings.target_agent is not None else None
+                config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
             )
 
             trails = client.describe_trails(
@@ -129,7 +129,7 @@ def main(args, proxxy_settings, database):
                 aws_access_key_id=session.access_key_id,
                 aws_secret_access_key=session.secret_access_key,
                 aws_session_token=session.session_token,
-                config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if proxy_settings.target_agent is not None else None
+                config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
             )
 
             response = client.list_detectors()

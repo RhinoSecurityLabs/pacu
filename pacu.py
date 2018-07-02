@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import copy
+import importlib
 import json
 import os
 import re
@@ -444,7 +445,9 @@ def import_module_by_name(module_name, include=()):
     file_path = os.path.join(os.getcwd(), 'modules', module_name, 'main.py')
     if os.path.exists(file_path):
         import_path = f'modules.{module_name}.main'.replace('/', '.').replace('\\', '.')
-        return __import__(import_path, globals(), locals(), include, 0)
+        module = __import__(import_path, globals(), locals(), include, 0)
+        importlib.reload(module)
+        return module
     return None
 
 
@@ -552,7 +555,7 @@ def initialize_tab_completion():
 
                     # Import the help function from the module
                     module = __import__(module_path, globals(), locals(), ['help'], 0)
-
+                    importlib.reload(module)
                     CATEGORIES.append(module.help()[0]['category'])
 
         RE_SPACE = re.compile('.*\s+$', re.M)
@@ -647,6 +650,7 @@ def list_modules(search_term, database, by_category=False):
                 module_path = f'modules/{module_name}/main'.replace('/', '.').replace('\\', '.')
                 # Import the help function from the module
                 module = __import__(module_path, globals(), locals(), ['help'], 0)
+                importlib.reload(module)
                 category = module.help()[0]['category']
                 services = module.help()[0]['services']
 

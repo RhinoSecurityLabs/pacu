@@ -31,7 +31,7 @@ def display_help():
 
     Command info:
         list/ls                             List all modules
-        search <search term>                Search the list of available modules by name
+        search [cat[egory]] <search term>   Search the list of available modules by name or category
         help                                Display this page of information
         help <module name>                  Display information about a module
         whoami                              Display information regarding to the active access keys
@@ -332,9 +332,19 @@ def parse_command(command, database):
     elif (command[0] == 'run' or command[0] == 'exec') and len(command) > 1:
         exec_module(command, database)
     elif command[0] == 'list' or command[0] == 'ls':
-        list_modules('', database)
-    elif command[0] == 'search' and len(command) > 1:
-        list_modules(command[1], database)
+        if len(command) == 1:
+            list_modules('', database)
+        elif len(command) == 2:
+            if command[1] in ('cat', 'category'):
+                list_modules('', database, by_category=True)
+    elif command[0] == 'search':
+        if len(command) == 1:
+            list_modules('', database)
+        elif len(command) == 2:
+            list_modules(command[1], database)
+        elif len(command) >= 3:
+            if command[1] in ('cat', 'category'):
+                list_modules(command[2], database, by_category=True)
     elif command[0] == 'set_keys':
         set_keys(database)
     elif command[0] == 'swap_keys':
@@ -431,31 +441,11 @@ def update_regions(database):
 
 
 def import_module_by_name(module_name, include=()):
-    module = None
-
-    for root, categories, files in os.walk('{}/modules'.format(os.getcwd())):
-        modules_directory_path = os.path.realpath('{}/modules'.format(os.getcwd()))
-        category_path = os.path.realpath(root)
-
-        # Skip any directories inside modules.
-        if not category_path.startswith(modules_directory_path):
-            continue
-
-        # Skip the root directory.
-        elif modules_directory_path == category_path:
-            continue
-
-        category = os.path.basename(root)
-
-        for file in files:
-            if file.endswith(".py") and module_name == file[:-3]:
-                # Make sure the format is correct
-                module_path = 'modules/{}/{}'.format(category, module_name).replace('/', '.').replace('\\', '.')
-
-                # Import the help function from the module
-                module = __import__(module_path, globals(), locals(), include, 0)
-
-    return module
+    file_path = os.path.join(os.getcwd(), 'modules', module_name, 'main.py')
+    if os.path.exists(file_path):
+        import_path = f'modules.{module_name}.main'.replace('/', '.').replace('\\', '.')
+        return __import__(import_path, globals(), locals(), include, 0)
+    return None
 
 
 ###### Some module notes
@@ -526,11 +516,11 @@ def display_module_help(module_name):
             print('External dependencies: {}\n'.format(help[0]['external_dependencies']))
 
         print(help[1].replace(os.path.basename(__file__), 'exec {}'.format(help[0]['name']), 1))
-
         return
 
     else:
         print('Module not found. Is it spelled correctly? Try using the module search function.')
+        return
 
 
 def initialize_tab_completion():
@@ -539,10 +529,32 @@ def initialize_tab_completion():
         # Big thanks to samplebias: https://stackoverflow.com/a/5638688
         COMMANDS = ['run', 'exec', 'list', 'ls', 'whoami', 'search', 'services', 'regions', 'set_regions', 'data', 'set_keys', 'swap_keys', 'help', 'exit', 'quit']
         MODULES = []
-        for root, dirs, files in os.walk('{}/modules'.format(os.getcwd())):
-                    for file in files:
-                        if file.endswith(".py") and '__init__' not in file and 'template.py' not in file:
-                            MODULES.append(file[:-3])
+        CATEGORIES = []
+
+        for root, directories, files in os.walk('{}/modules'.format(os.getcwd())):
+            modules_directory_path = os.path.realpath('{}/modules'.format(os.getcwd()))
+            category_path = os.path.realpath(root)
+
+            # Skip any directories inside module directories.
+            if os.path.dirname(category_path) != modules_directory_path:
+                continue
+            # Skip the root directory.
+            elif modules_directory_path == category_path:
+                continue
+
+            for file in files:
+                if file == 'main.py':
+                    module_name = os.path.basename(root)
+                    MODULES.append(module_name)
+
+                    # Make sure the format is correct
+                    module_path = f'modules/{module_name}/main'.replace('/', '.').replace('\\', '.')
+
+                    # Import the help function from the module
+                    module = __import__(module_path, globals(), locals(), ['help'], 0)
+
+                    CATEGORIES.append(module.help()[0]['category'])
+
         RE_SPACE = re.compile('.*\s+$', re.M)
         readline.set_completer_delims(' \t\n`~!@#$%^&*()=+[{]}\\|;:\'",<>/?')
 
@@ -550,21 +562,34 @@ def initialize_tab_completion():
             def complete(self, text, state):
                 buffer = readline.get_line_buffer()
                 line = readline.get_line_buffer().split()
+
                 # If nothing has been typed, show all commands. If help, exec, or run has been typed, show all modules
                 if not line:
                     return [c + ' ' for c in COMMANDS][state]
+
                 if len(line) == 1 and (line[0] == 'help' or line[0] == 'exec' or line[0] == 'run'):
                     return [c + ' ' for c in MODULES][state]
+
                 # account for last argument ending in a space
                 if RE_SPACE.match(buffer):
                     line.append('')
+
                 # Resolve command to the implementation function
                 if len(line) == 1:
                     cmd = line[0].strip()
                     results = [c + ' ' for c in COMMANDS if c.startswith(cmd)] + [None]
+
                 elif len(line) == 2:
                     cmd = line[1].strip()
-                    results = [c + ' ' for c in MODULES if c.startswith(cmd)] + [None]
+                    if line[0].strip() == 'search':
+                        results = [c + ' ' for c in MODULES + ['category'] if c.startswith(cmd)] + [None]
+                    else:
+                        results = [c + ' ' for c in MODULES if c.startswith(cmd)] + [None]
+
+                elif len(line) == 3 and line[0] == 'search' and line[1] in ('cat', 'category'):
+                        cmd = line[2].strip()
+                        results = [c + ' ' for c in CATEGORIES if c.startswith(cmd)] + [None]
+
                 elif len(line) >= 3:
                     if line[0].strip() == 'run' or line[0].strip() == 'exec':
                         module_name = line[1].strip()
@@ -572,15 +597,16 @@ def initialize_tab_completion():
                         autocomplete_arguments = module.module_info.get('arguments_to_autocomplete', list())
                         current_argument = line[-1].strip()
                         results = [c + ' ' for c in autocomplete_arguments if c.startswith(current_argument)] + [None]
+
                 return results[state]
 
         comp = Completer()
         readline.parse_and_bind("tab: complete")
         readline.set_completer(comp.complete)
-    except Exception as e:
+    except Exception as error:
         # Error means most likely on Windows where readline is not supported
         # TODO: Implement tab-completion for Windows
-        # print(e)
+        # print(error)
         pass
 
 
@@ -599,25 +625,66 @@ def idle(database):
     idle(database)
 
 
-def list_modules(search_term, database):
-    for root, dirs, files in os.walk('{}/modules'.format(os.getcwd())):
-        for category in dirs:
-            # To avoid name collision
-            for root2, dirs2, files2 in os.walk('{}/modules/{}'.format(os.getcwd(), category)):
-                for file in files2:
-                    if file.endswith(".py") and search_term in file and '__init__' not in file and 'template.py' not in file:
-                        regions = []
-                        # Make sure the format is correct
-                        module = 'modules/{}/{}'.format(category, file[:-3]).replace('/', '.').replace('\\', '.')
-                        # Import the help function from the module
-                        module = __import__(module, globals(), locals(), ['help'], 0)
-                        services = module.help()[0]['services']
-                        for service in services:
-                            regions += util.get_regions(service, database)
-                        if len(regions) > 0:
-                            print('  {}'.format(file[:-3]))
-                            if search_term is not None and not search_term == '':
-                                print('    {}\n'.format(module.help()[0]['one_liner']))
+def list_modules(search_term, database, by_category=False):
+    found_modules_by_category = dict()
+    current_directory = os.getcwd()
+    for root, directories, files in os.walk(f'{current_directory}/modules'):
+        modules_directory_path = os.path.realpath(f'{current_directory}/modules')
+        specific_module_directory = os.path.realpath(root)
+
+        # Skip any directories inside module directories.
+        if os.path.dirname(specific_module_directory) != modules_directory_path:
+            continue
+        # Skip the root directory.
+        elif modules_directory_path == specific_module_directory:
+            continue
+
+        module_name = os.path.basename(root)
+
+        for file in files:
+            if file == 'main.py':
+                # Make sure the format is correct
+                module_path = f'modules/{module_name}/main'.replace('/', '.').replace('\\', '.')
+                # Import the help function from the module
+                module = __import__(module_path, globals(), locals(), ['help'], 0)
+                category = module.help()[0]['category']
+                services = module.help()[0]['services']
+
+                regions = []
+                for service in services:
+                    regions += util.get_regions(service, database)
+
+                # Skip modules with no regions in the list of set regions.
+                if len(regions) == 0:
+                    continue
+
+                # Searching for modules by category:
+                if by_category and search_term in category:
+                    if category not in found_modules_by_category.keys():
+                        found_modules_by_category[category] = list()
+
+                    found_modules_by_category[category].append('  {}'.format(module_name))
+
+                    if search_term:
+                        found_modules_by_category[category].append('    {}\n'.format(module.help()[0]['one_liner']))
+
+                # Searching or listing modules without specifying a category:
+                elif not by_category and search_term in module_name:
+                    if category not in found_modules_by_category.keys():
+                        found_modules_by_category[category] = list()
+
+                    found_modules_by_category[category].append('  {}'.format(module_name))
+
+                    if search_term:
+                        found_modules_by_category[category].append('    {}\n'.format(module.help()[0]['one_liner']))
+
+    if found_modules_by_category:
+        for key in sorted(found_modules_by_category.keys()):
+            search_results = '\n'.join(found_modules_by_category[key]).strip('\n')
+            print(f'\n[Category: {key}]\n\n{search_results}')
+    else:
+        print('\nNo modules found.')
+    print('')
 
 
 def set_keys(database):

@@ -445,9 +445,10 @@ def get_ssh_key(ssh_username, ssh_priv_key, database):
                 subprocess.run('cp {}/id_rsa.pub {}/authorized_keys'.format(ssh_dir, ssh_dir).split(' '))
 
                 util.print('Ensuring that local port forwarding is disabled (to prevent a "hack back" scenario)...', database)
-                replace = contents = ''
+                replace = ''
                 with open('/etc/ssh/sshd_config', 'r') as f:
                     contents = f.read()
+                    print('contents {}'.format(contents))
                     if 'AllowTcpForwarding' in contents:
                         if 'AllowTcpForwarding remote' in contents:
                             util.print('Already disabled.', database)
@@ -457,8 +458,8 @@ def get_ssh_key(ssh_username, ssh_priv_key, database):
                         action = 'add'
 
                 with open('/etc/ssh/sshd_config', 'w') as f:
-                    if action == 'update':
-                        re.sub(r'AllowTcpForwarding.*', 'AllowTcpForwarding remote', contents)
+                    if action == 'replace':
+                        contents = re.sub(r'.*AllowTcpForwarding.*', 'AllowTcpForwarding remote', contents)
                         f.write(contents)
                     elif action == 'add':
                         contents += '\nAllowTcpForwarding remote'

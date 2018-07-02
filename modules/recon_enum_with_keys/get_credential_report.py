@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import boto3, argparse, os, time, sys
+import boto3, argparse, os, time, sys, botocore
 from botocore.exceptions import ClientError
 from functools import partial
 from pacu import util
@@ -34,7 +34,7 @@ def help():
     return [module_info, parser.format_help()]
 
 
-def main(args, database):
+def main(args, proxy_settings, database):
     session = util.get_active_session(database)
 
     ###### Don't modify these. They can be removed if you are not using the function.
@@ -47,7 +47,8 @@ def main(args, database):
         'iam',
         aws_access_key_id=session.access_key_id,
         aws_secret_access_key=session.secret_access_key,
-        aws_session_token=session.session_token
+        aws_session_token=session.session_token,
+        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if proxy_settings.target_agent is not None else None
     )
     report = None
     try:

@@ -452,7 +452,12 @@ class Main:
 
         Command info:
             proxy [help]                        Control PacuProxy/display help
-                start ip [port]                   Start the PacuProxy listener - port 80 by default
+                start ip [port]                   Start the PacuProxy listener - port 80 by default.
+                                                    The listener will attempt to start on the IP
+                                                    supplied, but some hosts don't allow this. In
+                                                    this case, PacuProxy will listen on 0.0.0.0 and
+                                                    use the supplied IP to stage agents and it should
+                                                    work the same
                 stop                              Stop the PacuProxy listener
                 kill <agent_id>                   Kill an agent (stop it from running on the host)
                 list/ls                           List info on remote agent(s)

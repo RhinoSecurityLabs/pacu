@@ -452,7 +452,7 @@ class Main:
 
         Command info:
             proxy [help]                        Control PacuProxy/display help
-                start ip [port]                   Start the PacuProxy listener - port 80 by default.
+                start <ip> [port]                 Start the PacuProxy listener - port 80 by default.
                                                     The listener will attempt to start on the IP
                                                     supplied, but some hosts don't allow this. In
                                                     this case, PacuProxy will listen on 0.0.0.0 and
@@ -519,7 +519,7 @@ class Main:
                 print("""
     PacuProxy command info:
         proxy [help]                        Control PacuProxy/display help
-            start ip [port]                   Start the PacuProxy listener - port 80 by default.
+            start <ip> [port]                 Start the PacuProxy listener - port 80 by default.
                                                 The listener will attempt to start on the IP
                                                 supplied, but some hosts don't allow this. In
                                                 this case, PacuProxy will listen on 0.0.0.0 and

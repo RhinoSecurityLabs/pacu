@@ -1,0 +1,16 @@
+{
+  "pagination": {
+    "ListElasticsearchInstanceTypes": {
+      "result_key": "ElasticsearchInstanceTypes",
+      "output_token": "NextToken",
+      "input_token": "NextToken",
+      "limit_key": "MaxResults"
+    },
+    "ListElasticsearchVersions": {
+      "result_key": "ElasticsearchVersions",
+      "output_token": "NextToken",
+      "input_token": "NextToken",
+      "limit_key": "MaxResults"
+    }
+  }
+}

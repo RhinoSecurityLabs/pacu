@@ -23,15 +23,6 @@
   <ItemGroup>
     <Content Include=".flake8" />
     <Content Include=".gitignore" />
-    <Content Include="documentation\installation.md" />
-    <Content Include="documentation\intro.md" />
-    <Content Include="documentation\logging.md" />
-    <Content Include="documentation\module_development.md" />
-    <Content Include="documentation\module_information.md" />
-    <Content Include="documentation\quick_start.md" />
-    <Content Include="documentation\roadmap.md" />
-    <Content Include="documentation\usage.md" />
-    <Content Include="documentation\warnings.md" />
     <Content Include="LICENSE.md" />
     <Content Include="modules\service_regions.json" />
     <Content Include="README.md" />
@@ -91,6 +82,9 @@
     <Compile Include="modules\recon_enum_with_keys\__init__.py" />
     <Compile Include="modules\template.py" />
     <Compile Include="modules\__init__.py" />
+    <Compile Include="proxy.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="settings.py" />
     <Compile Include="setup_database.py" />
     <Compile Include="utils.py" />
@@ -98,7 +92,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="core\" />
-    <Folder Include="documentation\" />
     <Folder Include="modules" />
     <Folder Include="modules\escalation" />
     <Folder Include="modules\logging_monitoring\" />

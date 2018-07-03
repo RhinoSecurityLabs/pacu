@@ -45,6 +45,7 @@ Temporary Items
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/
+*__pycache/
 *.py[cod]
 *$py.class
 
@@ -368,8 +369,6 @@ PublishScripts/
 
 # NuGet Packages
 *.nupkg
-# The packages folder can be ignored because of Package Restore
-**/packages/*
 # except build/, which is used as an MSBuild target.
 !**/packages/build/
 # Uncomment if necessary however generally it will be regenerated when needed

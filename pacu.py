@@ -451,7 +451,7 @@ class Main:
         once that is finished, so you have the necessary data for the module you want to run.
 
         Command info:
-            proxy                               Control PacuProxy/display help
+            proxy [help]                        Control PacuProxy/display help
                 start ip [port]                   Start the PacuProxy listener - port 80 by default
                 stop                              Stop the PacuProxy listener
                 kill <agent_id>                   Kill an agent (stop it from running on the host)

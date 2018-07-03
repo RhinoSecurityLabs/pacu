@@ -38,7 +38,7 @@ If you're interested in writing your own modules for Pacu, check out our [Module
 
 * 0.1 - Beta release (June 26th, 2018)
 * 0.2 - 0.X - Beta releases
-  * Proxy+Stager for routing Pacu activity through a compromised host.
+  * ~~Proxy+Stager for routing Pacu activity through a compromised host.~~
   * Easy-install script
   * Improved command syntax
   * Filter available modules by category and required permissions/data
@@ -59,7 +59,7 @@ If you're interested in writing your own modules for Pacu, check out our [Module
 * PinPoint SMS/Email/Mobile Push Abuse
 * S3 Item Interception
 * Download CloudWatch Logs
-* Enumerate Lambda Functions
+* ~~Enumerate Lambda Functions~~
 * Create API Gateway Keys
 * And many more.
 
@@ -118,6 +118,7 @@ Pacu's capabilities will increase dramatically as the number of modules grows, a
 - `enum_ec2_termination_protection` - Collects a list of EC2 instances without termination protection.
 - `enum_elb_logging` - Collects a list of Elastic Load Balancers without access logging.
 - `enum_glue` - Enumerates Glue connections, crawlers, databases, development endpoints, and jobs.
+- `enum_lambda` - Pulls data related to Lambda Functions, source code, aliases, event source mappings, versions, tags, and policies.
 - `enum_monitoring` - Detects monitoring and logging capabilities.
 - `enum_users_roles_policies_groups` - Enumerates users, roles, customer-managed policies, and groups.
 - `get_credential_report` - Generates and downloads an IAM credential report.

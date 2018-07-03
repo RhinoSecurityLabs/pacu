@@ -129,7 +129,7 @@ class PacuProxy(object):
                 continue
             results += '{}   | {}   | {}   | {}\n'.format(str(i), str(self.all_addresses[i][0]), str(
                 self.all_addresses[i][1]), str(self.all_addresses[i][2]))
-        print('----- Clients -----\nAgent ID | IP   | Process ID | Hostname\n{}'.format(results))
+        print('----- Clients -----\nAgent ID | IP   | Process ID | OS\\Hostname\n{}'.format(results))
         return
 
     # Select the target agent

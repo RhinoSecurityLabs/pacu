@@ -120,7 +120,7 @@ def main(args, pacu_main):
                 if error.response['Error']['Code'] == 'AccessDeniedException':
                     print('Access Denied for list-event-source-mappings')
 
-            if args.versionsAll:
+            if args.versions_all:
                 try:
                     response = client.list_versions_by_function(FunctionName=func['FunctionArn'])
                     func['Versions'] = response['Versions']

@@ -25,7 +25,17 @@ module_info = {
     'services': ['Glue'],
 
     # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
-    'prerequisite_modules': []
+    'prerequisite_modules': [],
+
+    # Module arguments to autocomplete when the user hits tab
+    'arguments_to_autocomplete': [
+        '--regions',
+        '--connections',
+        '--crawlers',
+        '--databases',
+        '--dev-endpoints',
+        '--jobs'
+    ],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])

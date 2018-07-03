@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import boto3
+import botocore
 from botocore.exceptions import ClientError
 import os
 
@@ -64,6 +65,7 @@ def help():
 # Main is the first function that is called when this module is executed.
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
+    proxy_settings = pacu_main.get_proxy_settings()
 
     ###### These can be removed if you are not using the function.
     args = parser.parse_args(args)
@@ -100,7 +102,7 @@ def main(args, pacu_main):
 
     # Attempt to install the required external dependencies, exit this module
     # if the download/install fails
-    if not install_dependencies(external_dependencies):
+    if not install_dependencies(module_info['external_dependencies']):
         return
 
     # IMPORTANT NOTE: It is suggested to always utilize the DryRun parameter
@@ -120,7 +122,9 @@ def main(args, pacu_main):
             aws_secret_access_key=session.secret_access_key,
             # Even if the session doesn't have a session token, this will work
             # because the value will be None and will be ignored.
-            aws_session_token=session.session_token
+            aws_session_token=session.session_token,
+            # Proxy boto3's client if currently proxying through an agent:
+            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
         )
 
     print(f"{module_info['name']} completed.\n")

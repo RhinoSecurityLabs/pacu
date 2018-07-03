@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import boto3
+import botocore
 from botocore.exceptions import ClientError
 from copy import deepcopy
 import time
@@ -46,6 +47,7 @@ def help():
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
+    proxy_settings = pacu_main.get_proxy_settings()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
@@ -96,7 +98,8 @@ def main(args, pacu_main):
                         'iam',
                         aws_access_key_id=session.access_key_id,
                         aws_secret_access_key=session.secret_access_key,
-                        aws_session_token=session.session_token
+                        aws_session_token=session.session_token,
+                        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
                     )
 
                     user = client.get_user()['User']
@@ -139,7 +142,8 @@ def main(args, pacu_main):
             region_name='us-east-1',
             aws_access_key_id=session.access_key_id,
             aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token
+            aws_session_token=session.session_token,
+            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
     )
 
     # Check permissions before hammering through each region
@@ -177,7 +181,8 @@ def main(args, pacu_main):
             region_name=region,
             aws_access_key_id=session.access_key_id,
             aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token
+            aws_session_token=session.session_token,
+            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
         )
 
         if args.vols is True:
@@ -255,6 +260,7 @@ def main(args, pacu_main):
             print(f'  {count} total snapshot(s) found in {region}.')
 
     if args.vols is True:
+        ec2_data['Volumes'] = all_vols
         unencrypted_volumes_csv_path = f'sessions/{session.name}/downloads/unencrypted_ebs_volumes_{now}.csv'
         with open(unencrypted_volumes_csv_path, 'w+') as unencrypted_volumes_csv:
             unencrypted_volumes_csv.write('Volume Name,Volume ID,Region\n')
@@ -263,15 +269,13 @@ def main(args, pacu_main):
         print(f"{len(ec2_data['Volumes'])} total volume(s) found. A list of unencrypted volumes has been saved to ./{unencrypted_volumes_csv_path}")
 
     if args.snaps is True:
+        ec2_data['Snapshots'] = all_snaps
         unencrypted_snapshots_csv_path = f'sessions/{session.name}/downloads/unencrypted_ebs_snapshots_{now}.csv'
         with open(unencrypted_snapshots_csv_path, 'w+') as unencrypted_snapshots_csv:
             unencrypted_snapshots_csv.write('Snapshot Name,Snapshot ID,Region\n')
             for line in snapshots_csv_data:
                 unencrypted_snapshots_csv.write(line)
         print(f"{len(ec2_data['Snapshots'])} total snapshot(s) found. A list of unencrypted snapshots has been saved to ./{unencrypted_snapshots_csv_path}")
-
-    ec2_data['Volumes'] = all_vols
-    ec2_data['Snapshots'] = all_snaps
 
     session.update(pacu_main.database, EC2=ec2_data)
     print('All data has been saved to the current session.')

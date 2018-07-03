@@ -3,10 +3,7 @@ import argparse
 import base64
 import boto3
 from botocore.exceptions import ClientError
-from functools import partial
 import os
-
-from pacu import util
 
 
 module_info = {
@@ -44,13 +41,13 @@ def help():
     return [module_info, parser.format_help()]
 
 
-def main(args, database):
-    session = util.get_active_session(database)
+def main(args, pacu_main):
+    session = pacu_main.get_active_session()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = partial(util.print, session_name=session.name, database=database)
-    fetch_data = partial(util.fetch_data, database=database)
+    print = pacu_main.print
+    fetch_data = pacu_main.fetch_data
     ######
 
     instances = []

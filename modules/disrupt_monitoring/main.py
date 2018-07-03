@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import boto3
-from functools import partial
-
-from pacu import util
 
 
 module_info = {
@@ -42,15 +39,15 @@ def help():
     return [module_info, parser.format_help()]
 
 
-def main(args, database):
-    session = util.get_active_session(database)
+def main(args, pacu_main):
+    session = pacu_main.get_active_session()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = partial(util.print, session_name=session.name, database=database)
-    input = partial(util.input, session_name=session.name, database=database)
-    fetch_data = partial(util.fetch_data, database=database)
-    get_regions = partial(util.get_regions, database=database)
+    print = pacu_main.print
+    input = pacu_main.input
+    fetch_data = pacu_main.fetch_data
+    get_regions = pacu_main.get_regions
     ######
 
     detectors = []
@@ -64,7 +61,7 @@ def main(args, database):
             try:
                 detectors = session.GuardDuty['Detectors']
             except:
-                detectors = [] # They probably said no to enumerating detectors
+                detectors = []  # They probably said no to enumerating detectors
     else:
         for detector in args.detectors.split(','):
             split = detector.split('@')
@@ -84,7 +81,7 @@ def main(args, database):
             try:
                 trails = session.CloudTrail['Trails']
             except:
-                trails = [] # They probably said no to enumerating trails
+                trails = []  # They probably said no to enumerating trails
     else:
         for trail in args.trails.split(','):
             split = trail.split('@')

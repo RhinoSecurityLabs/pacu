@@ -2,9 +2,6 @@
 import argparse
 import boto3
 from copy import deepcopy
-from functools import partial
-
-from pacu import util
 
 
 module_info = {
@@ -44,13 +41,13 @@ def help():
     return [module_info, parser.format_help()]
 
 
-def main(args, database):
-    session = util.get_active_session(database)
+def main(args, pacu_main):
+    session = pacu_main.get_active_session()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = partial(util.print, session_name=session.name, database=database)
-    get_regions = partial(util.get_regions, database=database)
+    print = pacu_main.print
+    get_regions = pacu_main.get_regions
     ######
 
     all = False
@@ -75,13 +72,13 @@ def main(args, database):
             shield_data['AdvancedProtection'] = True
             shield_data['StartTime'] = time_period['Subscription']['StartTime']
             shield_data['TimeCommitmentInDays'] = time_period['Subscription']['TimeCommitmentInSeconds'] / 60 / 60 / 24
-            session.update(database, Shield=shield_data)
+            session.update(pacu_main.database, Shield=shield_data)
             print(f"    Advanced (paid) DDoS protection enabled through AWS Shield.\n      Subscription Started: {session.Shield['StartTime']}\nSubscription Commitment: {session.Shield['TimeCommitmentInDays']} days")
 
         else:
             shield_data = deepcopy(session.Shield)
             shield_data['AdvancedProtection'] = False
-            session.update(database, Shield=shield_data)
+            session.update(pacu_main.database, Shield=shield_data)
             print('    Standard (default/free) DDoS protection enabled through AWS Shield.')
 
     if all is True or args.cloud_trail is True:
@@ -111,7 +108,7 @@ def main(args, database):
 
         cloudtrail_data = deepcopy(session.CloudTrail)
         cloudtrail_data['Trails'] = all_trails
-        session.update(database, CloudTrail=cloudtrail_data)
+        session.update(pacu_main.database, CloudTrail=cloudtrail_data)
         print(f"  {len(session.CloudTrail['Trails'])} total CloudTrail trails found.\n")
 
     if all is True or args.guard_duty is True:
@@ -155,7 +152,7 @@ def main(args, database):
 
         guardduty_data = deepcopy(session.GuardDuty)
         guardduty_data['Detectors'] = all_detectors
-        session.update(database, GuardDuty=guardduty_data)
+        session.update(pacu_main.database, GuardDuty=guardduty_data)
         print(f"  {len(session.GuardDuty['Detectors'])} total GuardDuty Detectors found.\n")
 
     print(f"{module_info['name']} completed.\n")

@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 import argparse
 import boto3
-from functools import partial
 import json
 from random import choice
-
-from pacu import util
 
 
 module_info = {
@@ -46,15 +43,15 @@ def help():
     return [module_info, parser.format_help()]
 
 
-def main(args, database):
-    session = util.get_active_session(database)
+def main(args, pacu_main):
+    session = pacu_main.get_active_session()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = partial(util.print, session_name=session.name, database=database)
-    key_info = partial(util.key_info, database=database)
-    fetch_data = partial(util.fetch_data, database=database)
-    get_aws_key_by_alias = partial(util.get_aws_key_by_alias, database=database)
+    print = pacu_main.print
+    key_info = pacu_main.key_info
+    fetch_data = pacu_main.fetch_data
+    get_aws_key_by_alias = pacu_main.get_aws_key_by_alias
     ######
 
     client = boto3.client(
@@ -90,7 +87,7 @@ def main(args, database):
 
         if 'UserArn' not in user or user['UserArn'] is None:
             user_info = client.get_user()['User']
-            active_aws_key.update(database, user_arn=user_info['Arn'])
+            active_aws_key.update(pacu_main.database, user_arn=user_info['Arn'])
 
         user_arns.append(active_aws_key.user_arn)
     else:

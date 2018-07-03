@@ -2,11 +2,7 @@
 import argparse
 import boto3
 from botocore.exceptions import ClientError
-from functools import partial
 import os
-import sys
-
-from pacu import util
 
 
 # When writing a module, feel free to remove any comments, placeholders, or
@@ -66,17 +62,17 @@ def help():
 
 
 # Main is the first function that is called when this module is executed.
-def main(args, database):
-    session = util.get_active_session(database)
+def main(args, pacu_main):
+    session = pacu_main.get_active_session()
 
     ###### These can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = partial(util.print, session_name=session.name, database=database)
-    input = partial(util.input, session_name=session.name, database=database)
-    key_info = partial(util.key_info, database=database)
-    fetch_data = partial(util.fetch_data, database=database)
-    get_regions = partial(util.get_regions, database=database)
-    install_dependencies = partial(util.install_dependencies, database=database)
+    print = pacu_main.print
+    input = pacu_main.input
+    key_info = pacu_main.key_info
+    fetch_data = pacu_main.fetch_data
+    get_regions = pacu_main.get_regions
+    install_dependencies = pacu_main.install_dependencies
     ######
 
     # Use the print and input functions as you normally would. They have been

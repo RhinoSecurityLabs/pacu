@@ -3,10 +3,7 @@ import argparse
 import boto3
 from botocore.exceptions import ClientError
 from copy import deepcopy
-from functools import partial
 import time
-
-from pacu import util
 
 
 module_info = {
@@ -47,15 +44,15 @@ def help():
     return [module_info, parser.format_help()]
 
 
-def main(args, database):
-    session = util.get_active_session(database)
+def main(args, pacu_main):
+    session = pacu_main.get_active_session()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = partial(util.print, session_name=session.name, database=database)
-    input = partial(util.input, session_name=session.name, database=database)
-    key_info = partial(util.key_info, database=database)
-    get_regions = partial(util.get_regions, database=database)
+    print = pacu_main.print
+    input = pacu_main.input
+    key_info = pacu_main.key_info
+    get_regions = pacu_main.get_regions
     ######
 
     if args.snaps is False and args.vols is False:
@@ -66,7 +63,7 @@ def main(args, database):
         ec2_data['Volumes'] = []
     if 'Snapshots' not in ec2_data.keys():
         ec2_data['Snapshots'] = []
-    session.update(database, EC2=ec2_data)
+    session.update(pacu_main.database, EC2=ec2_data)
 
     if args.regions is None:
         regions = get_regions('ec2')
@@ -108,9 +105,9 @@ def main(args, database):
                     current_account = user['Arn'].split('rn:aws:iam::')[1].split(':user/')[0]
                     account_ids = [current_account]
 
-                    session_aws_key = session.get_active_aws_key(database)
+                    session_aws_key = session.get_active_aws_key(pacu_main.database)
                     session_aws_key.update(
-                        database,
+                        pacu_main.database,
                         account_id=current_account,
                         user_name=user['UserName'],
                         user_arn=user['Arn'],
@@ -276,7 +273,7 @@ def main(args, database):
     ec2_data['Volumes'] = all_vols
     ec2_data['Snapshots'] = all_snaps
 
-    session.update(database, EC2=ec2_data)
+    session.update(pacu_main.database, EC2=ec2_data)
     print('All data has been saved to the current session.')
 
     print(f"{module_info['name']} completed.\n")

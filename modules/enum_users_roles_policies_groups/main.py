@@ -3,9 +3,6 @@ import argparse
 import boto3
 from botocore.exceptions import ClientError
 from copy import deepcopy
-from functools import partial
-
-from pacu import util
 
 
 module_info = {
@@ -46,12 +43,12 @@ def help():
     return [module_info, parser.format_help()]
 
 
-def main(args, database):
-    session = util.get_active_session(database)
+def main(args, pacu_main):
+    session = pacu_main.get_active_session()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = partial(util.print, session_name=session.name, database=database)
+    print = pacu_main.print
     ######
 
     client = boto3.client(
@@ -89,7 +86,7 @@ def main(args, database):
 
         iam_data = deepcopy(session.IAM)
         iam_data['Users'] = users
-        session.update(database, IAM=iam_data)
+        session.update(pacu_main.database, IAM=iam_data)
 
         print(str(users))
 
@@ -118,7 +115,7 @@ def main(args, database):
 
         iam_data = deepcopy(session.IAM)
         iam_data['Roles'] = roles
-        session.update(database, IAM=iam_data)
+        session.update(pacu_main.database, IAM=iam_data)
 
         print(str(roles))
 
@@ -150,7 +147,7 @@ def main(args, database):
 
         iam_data = deepcopy(session.IAM)
         iam_data['Policies'] = policies
-        session.update(database, IAM=iam_data)
+        session.update(pacu_main.database, IAM=iam_data)
 
         print(str(policies))
 
@@ -180,7 +177,7 @@ def main(args, database):
 
         iam_data = deepcopy(session.IAM)
         iam_data['Groups'] = groups
-        session.update(database, IAM=iam_data)
+        session.update(pacu_main.database, IAM=iam_data)
 
         print(str(groups))
 

@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import boto3
-from functools import partial
 import json
-
-from pacu import util
 
 
 module_info = {
@@ -40,13 +37,13 @@ def help():
     return [module_info, parser.format_help()]
 
 
-def main(args, database):
-    session = util.get_active_session(database)
+def main(args, pacu_main):
+    session = pacu_main.get_active_session()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = partial(util.print, session_name=session.name, database=database)
-    get_regions = partial(util.get_regions, database=database)
+    print = pacu_main.print
+    get_regions = pacu_main.get_regions
     ######
 
     regions = get_regions('lightsail')

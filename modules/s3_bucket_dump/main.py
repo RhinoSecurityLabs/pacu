@@ -3,10 +3,7 @@ import argparse
 import boto3
 from botocore.exceptions import ClientError
 from copy import deepcopy
-from functools import partial
 import os
-
-from pacu import util
 
 
 module_info = {
@@ -46,13 +43,13 @@ def help():
     return [module_info, parser.format_help()]
 
 
-def main(args, database):
-    session = util.get_active_session(database)
+def main(args, pacu_main):
+    session = pacu_main.get_active_session()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = partial(util.print, session_name=session.name, database=database)
-    input = partial(util.input, session_name=session.name, database=database)
+    print = pacu_main.print
+    input = pacu_main.input
     ######
 
     if (args.names_only is True and args.dl_names is True) or (args.names_only is True and args.dl_all is True) or (args.dl_names is True and args.dl_all is True):
@@ -82,7 +79,7 @@ def main(args, database):
 
         s3_data = deepcopy(session.S3)
         s3_data['Buckets'] = deepcopy(response['Buckets'])
-        session.update(database, S3=s3_data)
+        session.update(pacu_main.database, S3=s3_data)
 
         for bucket in response['Buckets']:
             buckets.append(bucket['Name'])

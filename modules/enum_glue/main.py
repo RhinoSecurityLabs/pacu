@@ -2,9 +2,6 @@
 import argparse
 import boto3
 from copy import deepcopy
-from functools import partial
-
-from pacu import util
 
 
 module_info = {
@@ -44,13 +41,13 @@ def help():
     return [module_info, parser.format_help()]
 
 
-def main(args, database):
-    session = util.get_active_session(database)
+def main(args, pacu_main):
+    session = pacu_main.get_active_session()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = partial(util.print, session_name=session.name, database=database)
-    get_regions = partial(util.get_regions, database=database)
+    print = pacu_main.print
+    get_regions = pacu_main.get_regions
     ######
 
     all = False
@@ -146,9 +143,9 @@ def main(args, database):
                     MaxResults=200
                 )
 
-                for each_database in response['DatabaseList']:
-                    each_database['Region'] = region
-                    databases.append(each_database)
+                for database in response['DatabaseList']:
+                    database['Region'] = region
+                    databases.append(database)
 
                 while 'NextToken' in response:
                     response = client.get_databases(
@@ -156,9 +153,9 @@ def main(args, database):
                         NextToken=response['NextToken']
                     )
 
-                    for each_database in response['DatabaseList']:
-                        each_database['Region'] = region
-                        databases.append(each_database)
+                    for database in response['DatabaseList']:
+                        database['Region'] = region
+                        databases.append(database)
 
                 print(f'  {len(databases)} database(s) found.')
                 all_databases += databases
@@ -228,7 +225,7 @@ def main(args, database):
     glue_data['Databases'] = all_databases
     glue_data['DevEndpoints'] = all_dev_endpoints
     glue_data['Jobs'] = all_jobs
-    session.update(database, Glue=glue_data)
+    session.update(pacu_main.database, Glue=glue_data)
 
     print(f"{module_info['name']} completed.\n")
     return

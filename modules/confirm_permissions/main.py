@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 import argparse
 import boto3
-from functools import partial
 import json
 import os
-
-from pacu import util
 
 
 module_info = {
@@ -49,14 +46,14 @@ def help():
     return [module_info, parser.format_help()]
 
 
-def main(args, database):
-    session = util.get_active_session(database)
+def main(args, pacu_main):
+    session = pacu_main.get_active_session()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = partial(util.print, session_name=session.name, database=database)
-    key_info = partial(util.key_info, database=database)
-    fetch_data = partial(util.fetch_data, database=database)
+    print = pacu_main.print
+    key_info = pacu_main.key_info
+    fetch_data = pacu_main.fetch_data
     ######
 
     client = boto3.client(
@@ -92,9 +89,9 @@ def main(args, database):
         })
     else:
         user = client.get_user()
-        active_aws_key = session.get_active_aws_key(database)
+        active_aws_key = session.get_active_aws_key(pacu_main.database)
         active_aws_key.update(
-            database,
+            pacu_main.database,
             user_name=user['User']['UserName'],
             user_arn=user['User']['Arn'],
             user_id=user['User']['UserId'],
@@ -250,7 +247,7 @@ def main(args, database):
 
             if args.user_name is None and args.all_users is False:  # TODO: If this runs and gets all permissions, replace the current set under user['Permissions'] rather than add to it in this module
                 active_aws_key.update(
-                    database,
+                    pacu_main.database,
                     user_name=user['UserName'],
                     user_arn=user['UserArn'],
                     user_id=user['UserId'],

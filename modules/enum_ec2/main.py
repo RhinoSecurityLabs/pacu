@@ -3,10 +3,7 @@ import argparse
 import boto3
 from botocore.exceptions import ClientError
 from copy import deepcopy
-from functools import partial
 from random import choice
-
-from pacu import util
 
 
 module_info = {
@@ -73,12 +70,12 @@ def help():
     return [module_info, parser.format_help()]
 
 
-def main(args, database):
-    session = util.get_active_session(database)
+def main(args, pacu_main):
+    session = pacu_main.get_active_session()
 
     args = parser.parse_args(args)
-    print = partial(util.print, session_name=session.name, database=database)
-    get_regions = partial(util.get_regions, database=database)
+    print = pacu_main.print
+    get_regions = pacu_main.get_regions
 
     all = False
     if args.instances is False and args.security_groups is False and args.elastic_ips is False and args.customer_gateways is False and args.dedicated_hosts is False and args.network_acls is False and args.nat_gateways is False and args.network_interfaces is False and args.route_tables is False and args.subnets is False and args.vpcs is False and args.vpc_endpoints is False:
@@ -437,7 +434,7 @@ def main(args, database):
     ec2_data['Subnets'] = all_subnets
     ec2_data['VPCs'] = all_vpcs
     ec2_data['VPCEndpoints'] = all_vpc_endpoints
-    session.update(database, EC2=ec2_data)
+    session.update(pacu_main.database, EC2=ec2_data)
 
     print(f'{len(all_instances)} total instance(s) found.')
     print(f'{len(all_security_groups)} total security group(s) found.')

@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 import argparse
-from functools import partial
 import logging
 from queue import Queue
 import subprocess
 from threading import Thread
-
-from pacu import util
 
 
 module_info = {
@@ -88,14 +85,12 @@ def help():
     return [module_info, parser.format_help()]
 
 
-def main(args, database):
-    session = util.get_active_session(database)
-
+def main(args, pacu_main):
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = partial(util.print, session_name=session.name, database=database)
-    get_regions = partial(util.get_regions, database=database)
-    install_dependencies = partial(util.install_dependencies, database=database)
+    print = pacu_main.print
+    get_regions = pacu_main.get_regions
+    install_dependencies = pacu_main.install_dependencies
     ######
 
     # Make sure that this only includes regions that are available for the service you are working with. Some services don't require a region at all

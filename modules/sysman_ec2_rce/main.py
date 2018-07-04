@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-import boto3, argparse, os, sys, re
+import boto3
+import argparse
+import os
+import re
 from botocore.exceptions import ClientError
-from functools import partial
-
-from pacu import util
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -35,22 +35,24 @@ def help():
     return [module_info, parser.format_help()]
 
 
-def main(args, database):
-    session = util.get_active_session(database)
+def main(args, pacu_main):
+    session = pacu_main.get_active_session()
+    proxy_settings = pacu_main.get_proxy_settings()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = partial(util.print, session_name=session.name, database=database)
-    input = partial(util.input, session_name=session.name, database=database)
-    key_info = partial(util.key_info, database=database)
-    fetch_data = partial(util.fetch_data, database=database)
-    get_regions = partial(util.get_regions, database=database)
+    print = pacu_main.print
+    input = pacu_main.input
+    key_info = pacu_main.key_info
+    fetch_data = pacu_main.fetch_data
+    get_regions = pacu_main.get_regions
     ######
 
     if fetch_data(['EC2', 'Instances'], 'enum_ec2', '--instances') is False:
         print('Pre-req module not run successfully. Exiting...')
         return
     instances = session.EC2['Instances']
+    session.EC2['ActiveImages'] = []
 
     # Images
     try:
@@ -59,7 +61,8 @@ def main(args, database):
             region_name='us-east-1',
             aws_access_key_id=session.access_key_id,
             aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token
+            aws_session_token=session.session_token,
+            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
         )
         dryrun = client.describe_images(
             DryRun=True
@@ -77,6 +80,7 @@ def main(args, database):
         #'Windows Server 2003-2012 R2 released after November 2016'
     ]
 
+    # Begin enumeration of vulnerable images
     for region in regions:
         image_ids = []
         print('Starting region {}...\n'.format(region))
@@ -85,7 +89,8 @@ def main(args, database):
             region_name=region,
             aws_access_key_id=session.access_key_id,
             aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token
+            aws_session_token=session.session_token,
+            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
         )
 
         for instance in instances:
@@ -93,23 +98,95 @@ def main(args, database):
                 image_ids.append(instance['ImageId'])
 
         # Describe all images being used in the environment
-        images = client.describe_images(
-            ImageIds=list(set(image_ids))
-        )['Images']
+        if image_ids == []:
+            print('  No images found.\n')
+        else:
+            images = client.describe_images(
+                ImageIds=list(set(image_ids))
+            )['Images']
 
-        session.EC2['Images'] = images
+            session.EC2['ActiveImages'] += images
 
-        vuln_images = []
+            vuln_images = []
 
-        # Iterate images and determine if they are possibly one of the operating systems with SSM agent installed by default
-        for image in images:
-            os_details = '{} {} {}'.format(image['Description'], image['ImageLocation'], image['Name'])
-            for vuln_os in os_with_default_ssm_agent:
-                result = re.match(r'{}'.format(vuln_os), os_details)
-                if result is not None:
-                    vuln_images.append(image['ImageId'])
-                    break
-        print('Vuln images: {}'.format(vuln_images))
+            # Iterate images and determine if they are possibly one of the operating systems with SSM agent installed by default
+            count = 0
+            for image in images:
+                os_details = '{} {} {}'.format(image['Description'], image['ImageLocation'], image['Name'])
+                for vuln_os in os_with_default_ssm_agent:
+                    result = re.match(r'{}'.format(vuln_os), os_details)
+                    if result is not None:
+                        count += 1
+                        vuln_images.append(image['ImageId'])
+                        break
+            print('  {} vulnerable images found.\n'.format(count))
+    print('Total vulnerable images found: {}\n'.format(len(vuln_images)))
+    
+    # Begin Systems Manager role finder/creator
+    client = boto3.client(
+        'iam',
+        aws_access_key_id=session.access_key_id,
+        aws_secret_access_key=session.secret_access_key,
+        aws_session_token=session.session_token,
+        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
+    )
+
+    ssm_policy = client.get_policy(
+        PolicyArn='arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
+    )['Policy']
+
+    ssm_role_name = ''
+    if ssm_policy['AttachmentCount'] > 0:
+        if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles') is False:
+            print('Pre-req module not run successfully. Exiting...')
+            return
+        roles = session.IAM['Roles']
+
+        # For each role that exists in the account
+        for role in roles:
+            # For each AssumeRole statement
+            for statement in role['AssumeRolePolicyDocument']['Statement']:
+                # Statement->Principal could be a liist or a dict
+                if type(statement['Principal']) is list:
+                    # For each item in the list, check if ec2.amazonaws.com is in it
+                    for principal in statement['Principal']:
+                        if 'ec2.amazonaws.com' in principal:
+                            attached_policies = client.list_attached_role_policies(
+                                RoleName=role['RoleName'],
+                                PathPrefix='/service-role/'
+                            )['AttachedPolicies']
+                            # It is an EC2 role, now figure out if it is an SSM EC2 role by checking for the SSM policy being attached
+                            for policy in attached_policies:
+                                if policy['PolicyArn'] == 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM':
+                                    ssm_role_name = role['RoleName']
+                                    break
+                            if not ssm_role_name == '':
+                                break
+                    if not ssm_role_name == '':
+                        break
+                elif type(statement['Principal']) is dict:
+                    # For each key in the dict, check if it equal ec2.amazonaws.com
+                    for key in statement['Principal']:
+                        if statement['Principal'][key] == 'ec2.amazonaws.com':
+                            attached_policies = client.list_attached_role_policies(
+                                RoleName=role['RoleName'],
+                                PathPrefix='/service-role/'
+                            )['AttachedPolicies']
+                            # It is an EC2 role, now figure out if it is an SSM EC2 role by checking for the SSM policy being attached
+                            for policy in attached_policies:
+                                if policy['PolicyArn'] == 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM':
+                                    ssm_role_name = role['RoleName']
+                                    break
+                            if not ssm_role_name == '':
+                                break
+                    if not ssm_role_name == '':
+                        break
+            if not ssm_role_name == '':
+                break
+    if ssm_role_name == '':
+        print('Did not find valid EC2 SystemsManager service role.\n')
+    else:
+        print('Found valid SystemsManager service role: {}\n'.format(ssm_role_name))
 
 
     print('{} completed.'.format(os.path.basename(__file__)))

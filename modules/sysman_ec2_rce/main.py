@@ -184,7 +184,23 @@ def main(args, pacu_main):
             if not ssm_role_name == '':
                 break
     if ssm_role_name == '':
-        print('Did not find valid EC2 SystemsManager service role.\n')
+        print('Did not find valid EC2 SystemsManager service role. Trying to create one now...\n')
+        try:
+            create_response = client.create_role(
+                RoleName='SSM',
+                AssumeRolePolicyDocument='{"Version": "2012-10-17", "Statement": [{"Sid": "", "Effect": "Allow", "Principal": {"Service": "ec2.amazonaws.com"}, "Action": "sts:AssumeRole"}]}'
+            )['Role']
+
+            ssm_role_name = create_response['RoleName']
+
+            attach_response = client.attach_role_policy(
+                RoleName=ssm_role_name,
+                PolicyArn='arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
+            )
+            print('Successfully created the required role: {}'.format(create_response['Arn']))
+        except Exception as error:
+            print('Unable to create the required role: {}'.format(str(error)))
+            return
     else:
         print('Found valid SystemsManager service role: {}\n'.format(ssm_role_name))
 

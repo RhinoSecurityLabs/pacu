@@ -506,8 +506,6 @@ dependencies/
 sessions/
 tmp/
 *.pyproj
-*.pyproj*
-pacu.pyproj
 
 # Databases
 sqlite.db

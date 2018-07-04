@@ -8,6 +8,21 @@ This private beta is intended to expose Pacu to a small handful of AWS security 
 
 Finally, please remember that *Pacu is a BETA product.* Please be mindful of this, avoid using it in production, and be gentle in your first impressions.
 
+## Installation
+
+Pacu is a fairly lightweight program, as it requires only [Python3](https://www.python.org/downloads/) and pip3 to install a handful of Python libraries.
+
+## Quick Installation
+
+```
+  > git clone https://github.com/RhinoSecurityLabs/pacu
+  > cd pacu
+  > pip3 install -r requirements.txt
+  > python3 pacu.py
+```
+
+For a more detailed and user-friendly set of user instructions, please check out the Wiki's [installation guide](https://github.com/RhinoSecurityLabs/pacu/wiki/Installation).
+
 ## Key Features
 
 * **Comprehensive AWS security-testing toolkit**, supported by a leading cybersecurity firm.
@@ -67,21 +82,6 @@ If you're interested in writing your own modules for Pacu, check out our [Module
 
 * Pacu is officially supported in OSX and Linux.
 * Pacu is Open-Source Software, and is distributed with a BSD-3-Clause License.
-
-## Installation
-
-Pacu is a fairly lightweight program, as it requires only [Python3](https://www.python.org/downloads/) and pip3 to install a handful of Python libraries.
-
-## Quick Installation
-
-```
-  > git clone https://github.com/RhinoSecurityLabs/pacu
-  > cd pacu
-  > pip3 install -r requirements.txt
-  > python3 pacu.py
-```
-
-For a more detailed and user-friendly set of user instructions, please check out the Wiki's [installation guide](https://github.com/RhinoSecurityLabs/pacu/wiki/Installation).
 
 ## Getting Started
 

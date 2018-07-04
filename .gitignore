@@ -505,7 +505,7 @@ output/
 dependencies/
 sessions/
 tmp/
-*.pyproj
+*.pyproj*
 
 # Databases
 sqlite.db

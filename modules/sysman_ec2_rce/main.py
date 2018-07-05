@@ -436,7 +436,7 @@ def main(args, pacu_main):
             # Collectively attack all new instances that showed up in the last check for this region
            
             # Windows
-            if len(windows_instances_to_attack) > 0 and (args.target_os.lower() == 'all' or instance[1].lower() == 'windows'):
+            if len(windows_instances_to_attack) > 0 and (args.target_os.lower() == 'all' or args.target_os.lower() == 'windows'):
                 response = client.send_command(
                     InstanceIds=windows_instances_to_attack,
                     DocumentName='AWS-RunPowerShellScript',
@@ -449,7 +449,7 @@ def main(args, pacu_main):
                 attacked_instances.extend(windows_instances_to_attack)
             
             # Linux
-            if len(linux_instances_to_attack) > 0 and (args.target_os.lower() == 'all' or instance[1].lower() == 'linux'):
+            if len(linux_instances_to_attack) > 0 and (args.target_os.lower() == 'all' or args.target_os.lower() == 'linux'):
                 response = client.send_command(
                     InstanceIds=linux_instances_to_attack,
                     DocumentName='AWS-RunShellScript',

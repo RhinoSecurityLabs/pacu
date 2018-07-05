@@ -752,24 +752,24 @@ class Main:
         # Update boto3 and botocore to fetch the latest version of the AWS region_list
         try:
             self.print('  Using pip3 to update botocore, so we have the latest region list...\n')
-            subprocess.run(['pip3', 'install', '--upgrade', 'boto3', 'botocore'], shell=True)
+            subprocess.run(['pip3', 'install', '--upgrade', 'botocore'])
         except:
             try:
                 self.print('  pip3 failed, trying pip...\n')
-                subprocess.run(['pip', 'install', '--upgrade', 'boto3', 'botocore'], shell=True)
+                subprocess.run(['pip', 'install', '--upgrade', 'botocore'])
             except:
                 pip = self.input('  Could not use pip3 or pip to update botocore to the latest version. Enter the name of your pip binary or press Ctrl+C to exit: ').strip()
-                subprocess.run(['{}'.format(pip), 'install', '--upgrade', 'boto3', 'botocore'], shell=True)
+                subprocess.run(['{}'.format(pip), 'install', '--upgrade', 'boto3', 'botocore'])
 
         path = ''
 
         try:
             self.print('  Using pip3 to locate botocore on the operating system...\n')
-            output = subprocess.check_output('pip3 show botocore', shell=True)
+            output = subprocess.check_output('pip3 show botocore')
         except:
             try:
                 self.print('  pip3 failed, trying pip...\n')
-                output = subprocess.check_output('pip show botocore', shell=True)
+                output = subprocess.check_output('pip show botocore')
             except:
                 path = self.input('  Could not use pip3 or pip to determine botocore\'s location. Enter it now (example: /usr/local/bin/python3.6/lib/dist-packages) or press Ctrl+C to exit: ').strip()
 

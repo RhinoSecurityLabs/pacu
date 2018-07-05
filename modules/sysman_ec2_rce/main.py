@@ -69,8 +69,8 @@ def main(args, pacu_main):
 
     # If no command was passed in and PacuProxy is listening, set the command to be executed to a PacuProxy stager
     if args.command is None and proxy_settings.listening is True:
-        pp_windows_stager = pacu_main.get_stager('win')
-        pp_linux_stager = pacu_main.get_stager('lin')
+        pp_windows_stager = pacu_main.get_proxy_stager(proxy_settings.ip, proxy_settings.port, 'win')
+        pp_linux_stager = pacu_main.get_proxy_stager(proxy_settings.ip, proxy_settings.port, 'lin')
 
     if fetch_data(['EC2', 'Instances'], 'enum_ec2', '--instances') is False:
         print('Pre-req module not run successfully. Exiting...')

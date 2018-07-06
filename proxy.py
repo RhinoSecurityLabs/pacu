@@ -84,7 +84,7 @@ class PacuProxy(object):
         return
 
     # Run a shell command on an agent
-    def run_cmd(self, target, conn, cmd):
+    def run_cmd(self, target, conn, cmd, print_res=True):
         conn.send(str.encode(' '))
         self.read_command_output(conn)
         try:
@@ -92,7 +92,8 @@ class PacuProxy(object):
                 conn.send(str.encode(cmd))
                 cmd_output = self.read_command_output(conn)
                 client_response = str(cmd_output, 'utf-8')
-                print(client_response, end='')
+                if print_res is True:
+                    print(client_response, end='')
                 return client_response
         except Exception as e:
             print('** Connection was lost {} **'.format(str(e)))

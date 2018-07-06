@@ -481,6 +481,11 @@ class Main:
                                                     no longer use any proxy (route from the local
                                                     host instead)
                 shell <agent_id> <command>        Run a shell command on the remote agent
+                fetch_ec2_keys <agent_id>         Try to read the meta-data of the target agent to
+                                                    request a set of temporary credentials for the
+                                                    attached instance profile (if there is one),
+                                                    then save them to the Pacu database and set
+                                                    them as the active key pair
                 stager sh|ps                      Generate a PacuProxy stager. The "bash" format is
                                                     for *sh shells in Unix, and the "ps" format is
                                                     for PowerShell on Windows.
@@ -547,6 +552,11 @@ class Main:
                                                 no longer use any proxy (route from the local
                                                 host instead)
             shell <agent_id> <command>        Run a shell command on the remote agent
+            fetch_ec2_keys <agent_id>         Try to read the meta-data of the target agent to
+                                                request a set of temporary credentials for the
+                                                attached instance profile (if there is one),
+                                                then save them to the Pacu database and set
+                                                them as the active key pair
             stager sh|ps                      Generate a PacuProxy stager. The "bash" format is
                                                 for *sh shells in Unix, and the "ps" format is
                                                 for PowerShell on Windows.
@@ -579,6 +589,11 @@ class Main:
                     self.server.run_cmd(int(command[2]), self.server.all_connections[int(command[2])], ' '.join(command[3:]))
                 else:
                     print('** Incorrect input, expected an agent ID and a shell command. Use the format: proxy shell <agent_id> <shell command> **')
+            elif command[1] == 'fetch_ec2_keys':
+                if len(command) == 3:
+                    self.fetch_ec2_keys(int(command[2]), self.server.all_connections[int(command[2])])
+                else:
+                    self.print('** Incorrect input, expect an agent ID. Use the format: proxy fetch_ec2_keys <agent_id> **')
             elif command[1] == 'stop':  # Stop proxy server
                 if proxy_listening is False:
                     print('There does not seem to be a listener running currently.')

@@ -93,6 +93,7 @@ class PacuProxy(object):
                 cmd_output = self.read_command_output(conn)
                 client_response = str(cmd_output, 'utf-8')
                 print(client_response, end='')
+                return client_response
         except Exception as e:
             print('** Connection was lost {} **'.format(str(e)))
             del self.all_connections[target]

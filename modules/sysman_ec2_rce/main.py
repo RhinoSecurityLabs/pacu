@@ -70,8 +70,8 @@ def main(args, pacu_main):
 
     # If no command was passed in and PacuProxy is listening, set the command to be executed to a PacuProxy stager
     if args.command is None and proxy_settings.listening is True:
-        pp_windows_stager = pacu_main.get_proxy_stager(proxy_settings.ip, proxy_settings.port, 'win')
-        pp_linux_stager = pacu_main.get_proxy_stager(proxy_settings.ip, proxy_settings.port, 'lin')
+        pp_windows_stager = pacu_main.get_proxy_stager(proxy_settings.ip, proxy_settings.port, 'ps')
+        pp_linux_stager = pacu_main.get_proxy_stager(proxy_settings.ip, proxy_settings.port, 'sh')
     elif args.command is None and proxy_settings.listening is False:
         print('Invalid arguments received. No command argument was passed in and PacuProxy is not listening, so there is no default. Either start PacuProxy and run again or run again with the --command argument.\n')
         return

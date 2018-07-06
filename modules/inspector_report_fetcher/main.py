@@ -6,14 +6,15 @@ import os
 import urllib.request
 
 module_info = {
-    'name': 'Inspector Report Fetcher',
+    'name': 'inspector_report_fetcher',
     'author': 'Alexander Morgenstern',
     'category': 'recon_enum_with_keys',
     'one_liner': 'Captures vulnerabilties found when running a preconfigured inspector report',
     'description':
-        """This module captures findings for reports in regions that support AWS Inspector.
-        The optional argument --download-reports will automatically download any reports found
-        into the session downloads directory under a folder named after the run id of the
+        """
+                This module captures findings for reports in regions that support AWS Inspector.
+    The optional argument --download-reports will automatically download any reports found
+                            into the session downloads directory under a folder named after the run id of the
         inspector report.""",
     'services': ['Inspector'],
     'prerequisite_modules': [],
@@ -86,6 +87,8 @@ def main(args, pacu_main):
                 print('Access Denied for list-findings')
                 continue
         try:
+            if len(findings) < 1:
+                continue
             descriptions = client.describe_findings(findingArns=findings)['findings']
             complete_data[region] = descriptions
         except ClientError as error:
@@ -94,7 +97,3 @@ def main(args, pacu_main):
     session.update(pacu_main.database, Inspector=complete_data)
     print(f"{module_info['name']} completed.\n")
     return
-
-
-def download_report(url, destination):
-    return True

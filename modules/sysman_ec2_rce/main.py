@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import boto3
+import botocore
 import argparse
 import os
 import re
@@ -385,7 +386,7 @@ def main(args, pacu_main):
                         replace = False
                         break
             
-    print('  Done.\n')
+    print('\n  Done.\n')
 
     # Start polling SystemsManager/RunCommand to see if instances show up
     print('Waiting for targeted instances to appear in Systems Manager... This will be checked every 30 seconds for 10 minutes (or until all targeted instances have shown up, whichever is first). After each check, the shell command will be executed against all new instances that showed up since the last check. If an instance has not shown up after 10 minutes, it most likely means that it does not have the SSM Agent installed and is not vulnerable to this attack.\n')
@@ -493,7 +494,7 @@ def main(args, pacu_main):
             print('Waiting 30 seconds...\n')
             time.sleep(30)
 
-    if i == 10:
+    if i == 20:
         # We are here because it has been 10 minutes
         print('It has been 10 minutes, if any target instances were not successfully attacked, then that most likely means they are not vulnerable to this attack (most likely the SSM Agent is not installed on the instances).\n')
         print('Successfully attacked the following instances: {}\n'.format(attacked_instances))

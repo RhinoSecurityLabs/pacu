@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import boto3
-import botocore
 from botocore.exceptions import ClientError
 from copy import deepcopy
 from random import choice
@@ -73,7 +71,6 @@ def help():
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
 
     args = parser.parse_args(args)
     print = pacu_main.print
@@ -91,15 +88,8 @@ def main(args, pacu_main):
     else:
         regions = args.regions.split(',')
 
-    client = boto3.client(
-            'ec2',
-            region_name=choice(regions),
-            aws_access_key_id=session.access_key_id,
-            aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token,
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-    )
-
+    client = pacu_main.get_boto3_client('ec2', choice(regions))
+    
     # Check permissions before hammering through each region
 
     # Instances
@@ -240,14 +230,7 @@ def main(args, pacu_main):
         vpc_endpoints = []
 
         print('Starting region {}...\n'.format(region))
-        client = boto3.client(
-            'ec2',
-            region_name=region,
-            aws_access_key_id=session.access_key_id,
-            aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token,
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-        )
+        client = pacu_main.get_boto3_client('ec2', region)
 
         # Instances
         if args.instances is True or all is True:

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import boto3
 from botocore.exceptions import ClientError
 import os
 import urllib.request
@@ -43,13 +42,7 @@ def main(args, pacu_main):
     complete_data = {}
     for region in regions:
         print('Starting region {}...'.format(region))
-        client = boto3.client(
-            'inspector',
-            region_name=region,
-            aws_access_key_id=session.access_key_id,
-            aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token
-        )
+        client = pacu_main.get_boto3_client('inspector', region)
 
         if args.download_reports:
             assessment_runs = []

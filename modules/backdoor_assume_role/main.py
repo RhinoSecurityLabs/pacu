@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import boto3
-import botocore
 import json
 from random import choice
 
@@ -46,7 +44,6 @@ def help():
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
@@ -56,13 +53,7 @@ def main(args, pacu_main):
     get_aws_key_by_alias = pacu_main.get_aws_key_by_alias
     ######
 
-    client = boto3.client(
-        'iam',
-        aws_access_key_id=session.access_key_id,
-        aws_secret_access_key=session.secret_access_key,
-        aws_session_token=session.session_token,
-        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-    )
+    client = pacu_main.get_boto3_client('iam')
 
     rolenames = []
     user_arns = []
@@ -99,13 +90,7 @@ def main(args, pacu_main):
         else:
             user_arns.append(args.user_arns)  # Only one ARN was passed in
 
-    iam = boto3.resource(
-        'iam',
-        aws_access_key_id=session.access_key_id,
-        aws_secret_access_key=session.secret_access_key,
-        aws_session_token=session.session_token,
-        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-    )
+    iam = pacu_main.get_boto3_resource('iam')
 
     for rolename in rolenames:
         target_role = 'n'

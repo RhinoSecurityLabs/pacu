@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-import boto3
-import botocore
 import argparse
 import os
 import re
@@ -95,14 +93,7 @@ def main(args, pacu_main):
     if args.all_instances is False and args.target_instances is None:
         # DryRun describe_images (don't need to DryRun this if args.all_instances is True)
         try:
-            client = boto3.client(
-                'ec2',
-                region_name=regions[0],
-                aws_access_key_id=session.access_key_id,
-                aws_secret_access_key=session.secret_access_key,
-                aws_session_token=session.session_token,
-                config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-            )
+            client = pacu_main.get_boto3_client('ec2', regions[0])
             client.describe_images(
                 DryRun=True
             )
@@ -122,14 +113,7 @@ def main(args, pacu_main):
         for region in regions:
             image_ids = []
             print('Starting region {}...\n'.format(region))
-            client = boto3.client(
-                'ec2',
-                region_name=region,
-                aws_access_key_id=session.access_key_id,
-                aws_secret_access_key=session.secret_access_key,
-                aws_session_token=session.session_token,
-                config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-            )
+            client = pacu_main.get_boto3_client('ec2', region)
 
             for instance in instances:
                 if instance['Region'] == region:
@@ -158,13 +142,7 @@ def main(args, pacu_main):
 
     if ssm_instance_profile_name == '':
         # Begin Systems Manager role finder/creator
-        client = boto3.client(
-            'iam',
-            aws_access_key_id=session.access_key_id,
-            aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token,
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-        )
+        client = pacu_main.get_boto3_client('iam')
 
         ssm_policy = client.get_policy(
             PolicyArn='arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
@@ -300,14 +278,7 @@ def main(args, pacu_main):
     # error handling section
     replace = args.replace
     for region in regions:
-        client = boto3.client(
-            'ec2',
-            region_name=region,
-            aws_access_key_id=session.access_key_id,
-            aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token,
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-        )
+        client = pacu_main.get_boto3_client('ec2', region)
         # instances_to_replace will be filled up as each instance is checked for
         # each region. The describe_iam_instance_profile_associations API call
         # supports multiple instance IDs as filters, so by collecting a list and
@@ -400,14 +371,7 @@ def main(args, pacu_main):
             # Accumulate a list of instances to attack to minimize the amount of API calls being made
             windows_instances_to_attack = []
             linux_instances_to_attack = []
-            client = boto3.client(
-                'ssm',
-                region_name=region,
-                aws_access_key_id=session.access_key_id,
-                aws_secret_access_key=session.secret_access_key,
-                aws_session_token=session.session_token,
-                config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-            )
+            client = pacu_main.get_boto3_client('ssm', region)
 
             # Enumerate instances that appear available to Systems Manager
             response = client.describe_instance_information()

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import boto3
-import botocore
 from copy import deepcopy
 
 
@@ -44,7 +42,6 @@ def help():
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
@@ -58,14 +55,7 @@ def main(args, pacu_main):
 
     if all is True or args.shield is True:
         print('Starting Shield...')
-        client = boto3.client(
-            'shield',
-            region_name='us-east-1',
-            aws_access_key_id=session.access_key_id,
-            aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token,
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-        )
+        client = pacu_main.get_boto3_client('shield', 'us-east-1')
 
         subscription = client.get_subscription_state()
 
@@ -92,14 +82,7 @@ def main(args, pacu_main):
         for region in cloudtrail_regions:
             print(f'  Starting region {region}...')
 
-            client = boto3.client(
-                'cloudtrail',
-                region_name=region,
-                aws_access_key_id=session.access_key_id,
-                aws_secret_access_key=session.secret_access_key,
-                aws_session_token=session.session_token,
-                config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-            )
+            client = pacu_main.get_boto3_client('cloudtrail', region)
 
             trails = client.describe_trails(
                 includeShadowTrails=False
@@ -124,14 +107,7 @@ def main(args, pacu_main):
             detectors = []
             print(f'  Starting region {region}...')
 
-            client = boto3.client(
-                'guardduty',
-                region_name=region,
-                aws_access_key_id=session.access_key_id,
-                aws_secret_access_key=session.secret_access_key,
-                aws_session_token=session.session_token,
-                config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-            )
+            client = pacu_main.get_boto3_client('guardduty', region)
 
             response = client.list_detectors()
 

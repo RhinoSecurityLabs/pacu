@@ -337,7 +337,7 @@ class Main:
         if os == 'lin':  # Linux one-liner (uses \" to escape inline double-quotes)
             return 'python3 -c "{}" &'.format("exec(\\\"\\\"\\\"{}\\\"\\\"\\\")".format(python_stager))
         elif os == 'win':  # Windows one-liner (uses `" to escape inline double-quotes)
-            return 'cmd.exe START /K /MIN /SEPARATE python3 -c {}'.format("exec(`\"`\"`\"{}`\"`\"`\")".format(python_stager))
+            return 'Start-Process -FilePath "python3" -Verb open -ArgumentList "-c {}"'.format('exec(`\"`\"`\"{}`\"`\"`\")'.format(python_stager))
         else:
             self.print('Incorrect input, expected target operating system ("win" or "lin"), received: {}'.format(os))
             return False

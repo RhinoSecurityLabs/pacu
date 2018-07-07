@@ -1053,7 +1053,7 @@ class Main:
         self.database.commit()
 
         if key_alias is None:
-            self.print('Configuration variables have been set.')
+            self.print('Configuration variables have been set.\n')
 
     def swap_keys(self):
         session = self.get_active_session()

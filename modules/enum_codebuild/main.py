@@ -7,11 +7,11 @@ import os
 
 
 module_info = {
-    'name': 'enum_codebuild_env_vars',
+    'name': 'enum_codebuild',
     'author': 'Spencer Gietzen of Rhino Security Labs',
     'category': 'recon_enum_with_keys',
-    'one_liner': 'Enumerates environment variables stored in CodeBuild to find sensitive data',
-    'description': 'This module enumerates environment variables in all CodeBuild projects, with the goal of finding sensitive information like passwords, secrets, or API keys.',
+    'one_liner': 'Enumerates CodeBuild builds and projects while looking for sensitive data',
+    'description': 'This module enumerates all CodeBuild builds and projects, with the goal of finding sensitive information in the environment variables associated with each one, like passwords, secrets, or API keys.',
     'services': ['CodeBuild'],
     'prerequisite_modules': [],
     'external_dependencies': [],
@@ -34,10 +34,8 @@ def main(args, pacu_main):
     args = parser.parse_args(args)
     print = pacu_main.print
     input = pacu_main.input
-    key_info = pacu_main.key_info
     fetch_data = pacu_main.fetch_data
     get_regions = pacu_main.get_regions
-    install_dependencies = pacu_main.install_dependencies
 
     regions = get_regions('CodeBuild')
 

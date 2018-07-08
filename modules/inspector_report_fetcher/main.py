@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-<<<<<<< HEAD
-=======
-import boto3
-import botocore
->>>>>>> 30a33fdd8b0b370a9f2ea3a2a9d4d359ea296cc0
 from botocore.exceptions import ClientError
 import os
 import urllib.request

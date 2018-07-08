@@ -42,6 +42,7 @@ def main(args, pacu_main):
     complete_data = {}
     for region in regions:
         print('Starting region {}...'.format(region))
+
         client = pacu_main.get_boto3_client('inspector', region)
 
         if args.download_reports:

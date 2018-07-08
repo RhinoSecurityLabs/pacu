@@ -1163,9 +1163,14 @@ class Main:
 
         return session, global_data_in_all_frames, local_data_in_all_frames
 
-    def get_boto3_client(self, service, region=None):
+    def get_boto3_client(self, service, region=None, user_agent=None):
         session = self.get_active_session()
         proxy_settings = self.get_proxy_settings()
+
+        boto_config = botocore.config.Config(
+            proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'} if not proxy_settings.target_agent == [] else None,
+            user_agent=user_agent
+        )
 
         return boto3.client(
             service,
@@ -1173,12 +1178,17 @@ class Main:
             aws_access_key_id=session.access_key_id,
             aws_secret_access_key=session.secret_access_key,
             aws_session_token=session.session_token,
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
+            config=boto_config
         )
 
-    def get_boto3_resource(self, service, region=None):
+    def get_boto3_resource(self, service, region=None, user_agent=None):
         session = self.get_active_session()
         proxy_settings = self.get_proxy_settings()
+
+        boto_config = botocore.config.Config(
+            proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'} if not proxy_settings.target_agent == [] else None,
+            user_agent=user_agent
+        )
 
         return boto3.resource(
             service,
@@ -1186,7 +1196,7 @@ class Main:
             aws_access_key_id=session.access_key_id,
             aws_secret_access_key=session.secret_access_key,
             aws_session_token=session.session_token,
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
+            config=boto_config
         )
 
     def initialize_tab_completion(self):

@@ -1163,13 +1163,14 @@ class Main:
 
         return session, global_data_in_all_frames, local_data_in_all_frames
 
-    def get_boto3_client(self, service, region=None, user_agent=None, socks_port=8001):
+    def get_boto3_client(self, service, region=None, user_agent=None, socks_port=8001, parameter_validation=True):
         session = self.get_active_session()
         proxy_settings = self.get_proxy_settings()
 
         boto_config = botocore.config.Config(
             proxies={'https': f'socks5://127.0.0.1:{socks_port}', 'http': f'socks5://127.0.0.1:{socks_port}'} if not proxy_settings.target_agent == [] else None,
-            user_agent=user_agent
+            user_agent=user_agent,  # If user_agent=None, botocore will use the real UA which is what we want
+            parameter_validation=parameter_validation
         )
 
         return boto3.client(
@@ -1181,18 +1182,21 @@ class Main:
             config=boto_config
         )
 
-    def get_boto3_resource(self, service, region=None, user_agent=None, socks_port=8001):
+    def get_boto3_resource(self, service, region=None, user_agent=None, socks_port=8001, parameter_validation=True):
+        # All the comments from get_boto3_client apply here too
+
         session = self.get_active_session()
         proxy_settings = self.get_proxy_settings()
 
         boto_config = botocore.config.Config(
             proxies={'https': f'socks5://127.0.0.1:{socks_port}', 'http': f'socks5://127.0.0.1:{socks_port}'} if not proxy_settings.target_agent == [] else None,
-            user_agent=user_agent
+            user_agent=user_agent,
+            parameter_validation=parameter_validation
         )
 
         return boto3.resource(
             service,
-            region_name=region,  # Whether region has a value or is None, it will work here
+            region_name=region,
             aws_access_key_id=session.access_key_id,
             aws_secret_access_key=session.secret_access_key,
             aws_session_token=session.session_token,

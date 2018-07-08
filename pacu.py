@@ -1163,12 +1163,12 @@ class Main:
 
         return session, global_data_in_all_frames, local_data_in_all_frames
 
-    def get_boto3_client(self, service, region=None, user_agent=None):
+    def get_boto3_client(self, service, region=None, user_agent=None, socks_port=8001):
         session = self.get_active_session()
         proxy_settings = self.get_proxy_settings()
 
         boto_config = botocore.config.Config(
-            proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'} if not proxy_settings.target_agent == [] else None,
+            proxies={'https': f'socks5://127.0.0.1:{socks_port}', 'http': f'socks5://127.0.0.1:{socks_port}'} if not proxy_settings.target_agent == [] else None,
             user_agent=user_agent
         )
 
@@ -1181,12 +1181,12 @@ class Main:
             config=boto_config
         )
 
-    def get_boto3_resource(self, service, region=None, user_agent=None):
+    def get_boto3_resource(self, service, region=None, user_agent=None, socks_port=8001):
         session = self.get_active_session()
         proxy_settings = self.get_proxy_settings()
 
         boto_config = botocore.config.Config(
-            proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'} if not proxy_settings.target_agent == [] else None,
+            proxies={'https': f'socks5://127.0.0.1:{socks_port}', 'http': f'socks5://127.0.0.1:{socks_port}'} if not proxy_settings.target_agent == [] else None,
             user_agent=user_agent
         )
 

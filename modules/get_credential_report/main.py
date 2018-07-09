@@ -47,7 +47,7 @@ def main(args, pacu_main):
     input = pacu_main.input
     ######
 
-    client = boto3.client('iam')
+    client = pacu_main.get_boto3_client('iam')
 
     report = None
 

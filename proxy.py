@@ -30,8 +30,8 @@ class PacuProxy(object):
             try:
                 conn.shutdown(2)
                 conn.close()
-            except Exception as e:
-                print('** Could not close connection {} **'.format(str(e)))
+            except Exception as error:
+                print('** Could not close connection {} **'.format(str(error)))
         self.socket.close()
         print('** Proxy listener stopped. **')
 
@@ -50,13 +50,13 @@ class PacuProxy(object):
         try:
             self.socket.bind((self.host, int(self.port)))
             self.socket.listen(5)
-        except OSError as e:
-            if 'Cannot assign requested address' in str(e):
+        except OSError as error:
+            if 'Cannot assign requested address' in str(error):
                 print('** Failed to start listener on {}, this is a common problem. Listening on 0.0.0.0 instead and using {} as the IP address to stage agents with. **'.format(self.host, self.host))
                 self.socket.bind(('0.0.0.0', int(self.port)))
                 self.socket.listen(5)
-        except socket.error as e:
-            print('** Socket binding error: {} **'.format(str(e)))
+        except socket.error as error:
+            print('** Socket binding error: {} **'.format(str(error)))
             time.sleep(5)
             self.socket_bind()
         return
@@ -73,10 +73,10 @@ class PacuProxy(object):
                 conn.setblocking(1)
                 client_hostname = conn.recv(1024).decode('utf-8')
                 address = address + (client_hostname,)
-            except Exception as e:
-                if 'not a socket' in str(e):
+            except Exception as error:
+                if 'not a socket' in str(error):
                     break
-                print('** Error accepting connections: {} **'.format(str(e)))
+                print('** Error accepting connections: {} **'.format(str(error)))
                 continue
             self.all_connections.append(conn)
             self.all_addresses.append(address)
@@ -95,8 +95,8 @@ class PacuProxy(object):
                 if mute is False:
                     print(client_response, end='')
                 return client_response
-        except Exception as e:
-            print('** Connection was lost {} **'.format(str(e)))
+        except Exception as error:
+            print(f'** Connection was lost {str(error)} **')
             del self.all_connections[target]
             del self.all_addresses[target]
         return
@@ -129,8 +129,12 @@ class PacuProxy(object):
                 del self.all_connections[i]
                 del self.all_addresses[i]
                 continue
-            results += '{}        | {}       | {}   | {}\n'.format(str(i), str(self.all_addresses[i][1]), str(
-                self.all_addresses[i][0]), str(self.all_addresses[i][2]))
+            results += '{}        | {}       | {}   | {}\n'.format(
+                str(i),
+                str(self.all_addresses[i][1]),
+                str(self.all_addresses[i][0]),
+                str(self.all_addresses[i][2])
+            )
         print('----- Clients -----\nAgent ID | Remote Port | IP Address    | OS\\Hostname\n{}'.format(results))
         return
 

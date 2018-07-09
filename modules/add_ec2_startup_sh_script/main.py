@@ -58,19 +58,19 @@ def main(args, pacu_main):
 
     # Check permissions before hammering through each region
     try:
-        dryrun = client.stop_instances(
+        client.stop_instances(
             DryRun=True,
             InstanceIds=['i-asdasdas']
         )
-        dryrun = client.describe_instance_attribute(  # This isn't necesarilly required, but ideally you don't delete the old user data and you read it then append the script to instead of replace it and mess up something on the instance
+        client.describe_instance_attribute(  # This isn't necesarilly required, but ideally you don't delete the old user data and you read it then append the script to instead of replace it and mess up something on the instance
             DryRun=True,
             InstanceId='i-adsadsada'
         )
-        dryrun = client.start_instances(
+        client.start_instances(
             DryRun=True,
             InstanceIds=['i-asdasdasd']
         )
-        dryrun = client.modify_instance_attribute(
+        client.modify_instance_attribute(
             DryRun=True,
             InstanceId='i-asdasdas'
         )
@@ -118,7 +118,7 @@ def stop_instance(client, instance_id):
 
     result = False
     try:
-        response = client.stop_instances(
+        client.stop_instances(
             InstanceIds=[instance_id]
         )
         result = True
@@ -134,7 +134,7 @@ def start_instance(client, instance_id):
 
     result = False
     try:
-        response = client.start_instances(
+        client.start_instances(
             InstanceIds=[instance_id]
         )
         result = True
@@ -171,7 +171,7 @@ def update_userdata(client, instance_id, user_data):
 
     while(code == 'IncorrectInstanceState' and not result):
         try:
-            response = client.modify_instance_attribute(
+            client.modify_instance_attribute(
                 InstanceId=instance_id,
                 UserData={
                     'Value': user_data

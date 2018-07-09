@@ -134,7 +134,7 @@ def main(args, pacu_main):
     # Check permissions before hammering through each region
     if args.vols is True:
         try:
-            dryrun = client.describe_volumes(
+            client.describe_volumes(
                 DryRun=True
             )
         except ClientError as error:
@@ -144,7 +144,7 @@ def main(args, pacu_main):
 
     if args.snaps is True and not account_ids == []:
         try:
-            dryrun = client.describe_snapshots(
+            client.describe_snapshots(
                 OwnerIds=account_ids,
                 DryRun=True
             )

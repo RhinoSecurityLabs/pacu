@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 import argparse
-from botocore.exceptions import ClientError
 import os
 import re
 import time
+from botocore.exceptions import ClientError
 
 
 module_info = {
@@ -93,7 +93,7 @@ def main(args, pacu_main):
         ssm_instance_profile_name = ''
 
     if args.all_instances is False and args.target_instances is None:
-        # DryRun describe_images (unneeded if args.all_instances is True)
+        # DryRun describe_images (don't need to DryRun this if args.all_instances is True)
         try:
             client = pacu_main.get_boto3_client('ec2', regions[0])
             client.describe_images(
@@ -174,6 +174,7 @@ def main(args, pacu_main):
                                     RoleName=role['RoleName'],
                                     PathPrefix='/service-role/'
                                 )['AttachedPolicies']
+
                                 # It is an EC2 role, now figure out if it is an SSM EC2
                                 # role by checking for the SSM policy being attached
                                 for policy in attached_policies:
@@ -191,6 +192,7 @@ def main(args, pacu_main):
                                 attached_policies = client.list_attached_role_policies(
                                     RoleName=role['RoleName']
                                 )['AttachedPolicies']
+
                                 # It is an EC2 role, now figure out if it is an SSM EC2
                                 # role by checking for the SSM policy being attached
                                 for policy in attached_policies:

@@ -54,7 +54,7 @@ def main(args, pacu_main):
     # Check permissions before doing anything
     try:
         client = pacu_main.get_boto3_client('ec2', 'us-east-1')
-        dryrun = client.describe_instance_attribute(
+        client.describe_instance_attribute(
             Attribute='userData',
             DryRun=True,
             InstanceId='1'

@@ -611,8 +611,6 @@ def CreateAccessKey(pacu_main, print, input, fetch_data):
 
     print('  Starting method CreateAccessKey...')
 
-    client = pacu_main.get_boto3_client('iam')
-
     username = input('    Is there a specific user you want to target? They must not already have two sets of access keys created for their user. Enter their user name now or just hit enter to enumerate users and view a list of options: ')
     if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies', '--users') is False:
         print('Pre-req module not run successfully. Exiting...')
@@ -646,8 +644,6 @@ def CreateLoginProfile(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
 
     print('  Starting method CreatingLoginProfile...')
-
-    client = pacu_main.get_boto3_client('iam')
 
     username = input('    Is there a specific user you want to target? They must not already have a login profile (password for logging into the AWS Console). Enter their user name now or just hit enter to enumerate users and view a list of options: ')
     if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies', '--users') is False:
@@ -690,8 +686,6 @@ def UpdateLoginProfile(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
 
     print('  Starting method UpdateLoginProfile...')
-
-    client = pacu_main.get_boto3_client('iam')
 
     username = input('    Is there a specific user you want to target? They must already have a login profile (password for logging into the AWS Console). Enter their user name now or just hit enter to enumerate users and view a list of options: ')
     if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies', '--users') is False:
@@ -742,7 +736,7 @@ def AttachUserPolicy(pacu_main, print, input, fetch_data):
 
     try:
         active_aws_key = session.get_active_aws_key(pacu_main.database)
-        response = client.attach_user_policy(
+        client.attach_user_policy(
             UserName=active_aws_key['UserName'],
             policy_arn=policy_arn
         )
@@ -798,7 +792,7 @@ def AddUserToGroup(pacu_main, print, input, fetch_data):
 
     try:
         active_aws_key = session.get_active_aws_key(pacu_main.database)
-        response = client.add_user_to_group(
+        client.add_user_to_group(
             GroupName=group_name,
             UserName=active_aws_key['UserName']
         )
@@ -864,7 +858,7 @@ def UpdateExistingGlueDevEndpoint(pacu_main, print, input, fetch_data):
         client = pacu_main.get_boto3_client('glue', dev_endpoints[int(choice) - 1]['Region'])
 
     try:
-        response = client.update_dev_endpoint(
+        client.update_dev_endpoint(
             EndpointName=endpoint_name,
             PublicKey=pub_ssh_key
         )

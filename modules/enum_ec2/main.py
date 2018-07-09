@@ -94,7 +94,7 @@ def main(args, pacu_main):
 
     # Instances
     try:
-        dryrun = client.describe_instances(
+        client.describe_instances(
             DryRun=True
         )
     except ClientError as error:
@@ -105,7 +105,7 @@ def main(args, pacu_main):
             return
     # Security Groups
     try:
-        dryrun = client.describe_security_groups(
+        client.describe_security_groups(
             DryRun=True
         )
     except ClientError as error:
@@ -116,7 +116,7 @@ def main(args, pacu_main):
             return
     # Elastic IPs
     try:
-        dryrun = client.describe_addresses(
+        client.describe_addresses(
             DryRun=True
         )
     except ClientError as error:
@@ -127,7 +127,7 @@ def main(args, pacu_main):
             return
     # VPN Customer Gateways
     try:
-        dryrun = client.describe_customer_gateways(
+        client.describe_customer_gateways(
             DryRun=True
         )
     except ClientError as error:
@@ -138,7 +138,7 @@ def main(args, pacu_main):
             return
     # Network ACLs
     try:
-        dryrun = client.describe_network_acls(
+        client.describe_network_acls(
             DryRun=True
         )
     except ClientError as error:
@@ -149,7 +149,7 @@ def main(args, pacu_main):
             return
     # Network Interfaces
     try:
-        dryrun = client.describe_network_interfaces(
+        client.describe_network_interfaces(
             DryRun=True
         )
     except ClientError as error:
@@ -160,7 +160,7 @@ def main(args, pacu_main):
             return
     # Route Tables
     try:
-        dryrun = client.describe_route_tables(
+        client.describe_route_tables(
             DryRun=True
         )
     except ClientError as error:
@@ -171,7 +171,7 @@ def main(args, pacu_main):
             return
     # Subnets
     try:
-        dryrun = client.describe_subnets(
+        client.describe_subnets(
             DryRun=True
         )
     except ClientError as error:
@@ -182,7 +182,7 @@ def main(args, pacu_main):
             return
     # VPCs
     try:
-        dryrun = client.describe_vpcs(
+        client.describe_vpcs(
             DryRun=True
         )
     except ClientError as error:
@@ -193,7 +193,7 @@ def main(args, pacu_main):
             return
     # VPC Endpoints
     try:
-        dryrun = client.describe_vpc_endpoints(
+        client.describe_vpc_endpoints(
             DryRun=True
         )
     except ClientError as error:

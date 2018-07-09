@@ -37,8 +37,6 @@ def help():
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
-
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = pacu_main.print

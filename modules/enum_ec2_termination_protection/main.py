@@ -57,7 +57,7 @@ def main(args, pacu_main):
 
     try:
         client = pacu_main.get_boto3_client('ec2', instances[0]['Region'])
-        dryrun = client.describe_instance_attribute(
+        client.describe_instance_attribute(
             DryRun=True,
             Attribute='disableApiTermination',
             InstanceId=instances[0]['InstanceId']

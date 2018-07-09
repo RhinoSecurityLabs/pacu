@@ -736,7 +736,7 @@ def AttachUserPolicy(pacu_main, print, input, fetch_data):
 
     try:
         active_aws_key = session.get_active_aws_key(pacu_main.database)
-        response = client.attach_user_policy(
+        client.attach_user_policy(
             UserName=active_aws_key['UserName'],
             policy_arn=policy_arn
         )
@@ -792,7 +792,7 @@ def AddUserToGroup(pacu_main, print, input, fetch_data):
 
     try:
         active_aws_key = session.get_active_aws_key(pacu_main.database)
-        response = client.add_user_to_group(
+        client.add_user_to_group(
             GroupName=group_name,
             UserName=active_aws_key['UserName']
         )
@@ -858,7 +858,7 @@ def UpdateExistingGlueDevEndpoint(pacu_main, print, input, fetch_data):
         client = pacu_main.get_boto3_client('glue', dev_endpoints[int(choice) - 1]['Region'])
 
     try:
-        response = client.update_dev_endpoint(
+        client.update_dev_endpoint(
             EndpointName=endpoint_name,
             PublicKey=pub_ssh_key
         )

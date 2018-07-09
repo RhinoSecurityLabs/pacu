@@ -109,7 +109,7 @@ def main(args, pacu_main):
 
                     if action == 'dis':
                         try:
-                            response = client.update_detector(
+                            client.update_detector(
                                 DetectorId=detector['Id'],
                                 Enable=False
                             )
@@ -119,7 +119,7 @@ def main(args, pacu_main):
 
                     elif action == 'del':
                         try:
-                            response = client.delete_detector(
+                            client.delete_detector(
                                 DetectorId=detector['Id']
                             )
                             print(f"        Successfully deleted detector {detector['Id']}!\n")
@@ -148,7 +148,7 @@ def main(args, pacu_main):
 
                     if action == 'dis':
                         try:
-                            response = client.stop_logging(
+                            client.stop_logging(
                                 Name=trail['Name']
                             )
                             print(f"        Successfully disabled trail {trail['Name']}!\n")
@@ -157,7 +157,7 @@ def main(args, pacu_main):
 
                     elif action == 'del':
                         try:
-                            response = client.delete_trail(
+                            client.delete_trail(
                                 Name=trail['Name']
                             )
                             print(f"        Successfully deleted trail {trail['Name']}!\n")
@@ -166,7 +166,7 @@ def main(args, pacu_main):
 
                     elif action == 'm':
                         try:
-                            response = client.update_trail(
+                            client.update_trail(
                                 Name=trail['Name'],
                                 SnsTopicName='',
                                 IncludeGlobalServiceEvents=False,

@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import boto3
-import botocore
-from botocore.exceptions import ClientError
-import os
 
 
 module_info = {
@@ -31,12 +27,9 @@ def help():
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
 
     args = parser.parse_args(args)
     print = pacu_main.print
-    input = pacu_main.input
-    fetch_data = pacu_main.fetch_data
     get_regions = pacu_main.get_regions
 
     all = False
@@ -94,7 +87,7 @@ def main(args, pacu_main):
                 all_builds.extend(region_builds)
 
     # Begin environment variable dump
-    
+
     # Projects
     for project in all_projects:
         if 'environment' in project and 'environmentVariables' in project['environment']:
@@ -119,7 +112,6 @@ def main(args, pacu_main):
 
     print('All environment variables found (duplicates removed):\n')
     print(environment_variables)
-    
 
     print(f"{module_info['name']} completed.\n")
     return

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import boto3
-import botocore
 from botocore.exceptions import ClientError
 import os
 

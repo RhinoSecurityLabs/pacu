@@ -56,7 +56,7 @@ def main(args, pacu_main):
 
     # Check permissions before hammering through each region
     try:
-        dryrun = client.authorize_security_group_ingress(
+        client.authorize_security_group_ingress(
             DryRun=True
         )
     except ClientError as error:
@@ -84,7 +84,7 @@ def main(args, pacu_main):
 
         try:
             print(f"Applying rule to security group {group['GroupName']}...")
-            response = client.authorize_security_group_ingress(
+            client.authorize_security_group_ingress(
                 GroupName=group['GroupName'],
                 CidrIp=args.ip,
                 FromPort=int(args.port_range.split('-')[0]),
@@ -92,11 +92,7 @@ def main(args, pacu_main):
                 IpProtocol=args.protocol
             )
             print('  Success.')
-            # If it is an old account, you may need to use:
-            # authorize_db_security_group_ingress
-            # authorize_cache_security_group_ingress
-            # authorize_cluster_security_group_ingress
-            print(f'  Port range {args.port_range} opened for IP {args.ip}.')
+            print(f'Port range {args.port_range} opened for IP {args.ip}.')
         except ClientError as error:
             print(f"  Error: {error.response['Error']['Message']}")
 

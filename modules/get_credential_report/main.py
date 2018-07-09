@@ -61,7 +61,7 @@ def main(args, pacu_main):
             generate = input('Credential report not generated, do you want to generate one? (y/n) ')
 
             if generate == 'y':
-                response = client.generate_credential_report()
+                client.generate_credential_report()
                 print('Credential report generation started, this may take up to a couple minutes. Checking if it is ready every 20 seconds...')
 
                 while report is None:

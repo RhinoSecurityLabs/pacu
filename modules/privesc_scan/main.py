@@ -833,8 +833,6 @@ def UpdateExistingGlueDevEndpoint(pacu_main, print, input, fetch_data):
 
     print('  Starting method UpdateExistingGlueDevEndpoint...')
 
-    
-
     endpoint_name = input('    Is there a specific Glue Development Endpoint you want to target? Enter the name of it now or just hit enter to enumerate development endpoints and view a list of options: ')
     pub_ssh_key = input('    Enter your personal SSH public key to access the development endpoint (in the format of an authorized_keys file: ssh-rsa AAASDJHSKH....AAAAA== name) or just hit enter to skip this privilege escalation attempt: ')
 

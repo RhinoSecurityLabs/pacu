@@ -89,7 +89,7 @@ def main(args, pacu_main):
         regions = args.regions.split(',')
 
     client = pacu_main.get_boto3_client('ec2', choice(regions))
-    
+
     # Check permissions before hammering through each region
 
     # Instances

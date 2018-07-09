@@ -609,7 +609,7 @@ class Main:
                     self.server.quit(int(command[2]), self.server.all_connections[int(command[2])])
                     self.print('** Agent killed **')
                 elif len(command) == 2:
-                    print(' ** Incorrect input, excepted an agent ID, received nothing. Use format: proxy kill <agent_id> **')
+                    print('** Incorrect input, excepted an agent ID, received nothing. Use format: proxy kill <agent_id> **')
                 else:
                     print('** Incorrect input, excepted an agent ID, received: {}'.format(command[2:]))
             elif command[1] == 'stager':
@@ -1184,7 +1184,6 @@ class Main:
 
     def get_boto3_resource(self, service, region=None, user_agent=None, socks_port=8001, parameter_validation=True):
         # All the comments from get_boto3_client apply here too
-
         session = self.get_active_session()
         proxy_settings = self.get_proxy_settings()
 

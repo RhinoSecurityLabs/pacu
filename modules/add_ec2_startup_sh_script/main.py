@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 import argparse
 import base64
-import boto3
-import botocore
 from botocore.exceptions import ClientError
 import time
+import random
 
 
 module_info = {
@@ -45,7 +44,6 @@ def help():
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
@@ -54,14 +52,9 @@ def main(args, pacu_main):
     get_regions = pacu_main.get_regions
     ######
 
-    client = boto3.client(
-        'ec2',
-        region_name='us-east-1',
-        aws_access_key_id=session.access_key_id,
-        aws_secret_access_key=session.secret_access_key,
-        aws_session_token=session.session_token,
-        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-    )
+    regions = get_regions('ec2')
+
+    client = pacu_main.get_boto3_client('ec2', random.choice(regions))
 
     # Check permissions before hammering through each region
     try:
@@ -86,8 +79,6 @@ def main(args, pacu_main):
             print('Dry run failed, the current AWS account does not have the necessary permissions to run this module.\nExiting...')
             return
 
-    regions = get_regions('ec2')
-
     instances = []
     if args.instance_ids is not None:  # need to update this to include the regions of these IDs
         for instance in args.instance_ids.split(','):
@@ -107,14 +98,7 @@ def main(args, pacu_main):
             })
 
     for region in regions:
-        client = boto3.client(
-            'ec2',
-            region_name=region,
-            aws_access_key_id=session.access_key_id,
-            aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token,
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-        )
+        client = pacu_main.get_boto3_client('ec2', region)
 
         for instance in instances:
             if instance['Region'] == region:

@@ -65,6 +65,8 @@ def help():
 # Main is the first function that is called when this module is executed.
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
+
+    # For if you need information from the PacuProxy listener or agents
     proxy_settings = pacu_main.get_proxy_settings()
 
     ###### These can be removed if you are not using the function.
@@ -115,17 +117,7 @@ def main(args, pacu_main):
 
     for region in regions:
         print('Starting region {}...'.format(region))
-        client = boto3.client(
-            'aws_service',
-            region_name=region,
-            aws_access_key_id=session.access_key_id,
-            aws_secret_access_key=session.secret_access_key,
-            # Even if the session doesn't have a session token, this will work
-            # because the value will be None and will be ignored.
-            aws_session_token=session.session_token,
-            # Proxy boto3's client if currently proxying through an agent:
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-        )
+        client = pacu_main.get_boto3_client('aws_service', region)
 
     print(f"{module_info['name']} completed.\n")
     return

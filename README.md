@@ -10,7 +10,7 @@ Finally, please remember that *Pacu is a BETA product.* Please be mindful of thi
 
 ## Installation
 
-Pacu is a fairly lightweight program, as it requires only [Python3](https://www.python.org/downloads/) and pip3 to install a handful of Python libraries.
+Pacu is a fairly lightweight program, as it requires only [Python3.6+](https://www.python.org/downloads/) and pip3 to install a handful of Python libraries.
 
 ## Quick Installation
 
@@ -70,7 +70,7 @@ If you're interested in writing your own modules for Pacu, check out our [Module
 ## Upcoming Pacu Modules
 
 * Bruteforce Permission Enumeration
-* Systems Manager EC2 root/SYSTEM RCE
+* ~~Systems Manager EC2 root/SYSTEM RCE~~
 * PinPoint SMS/Email/Mobile Push Abuse
 * S3 Item Interception
 * Download CloudWatch Logs
@@ -106,13 +106,14 @@ Pacu's capabilities will increase dramatically as the number of modules grows, a
 
 #### Unauthenticated Modules
 
-- `s3_enum` - Enumerates/bruteforces S3 buckets based on different parameters.
+- `s3_finder` - Enumerates/bruteforces S3 buckets based on different parameters.
 
 #### Authenticated Modules
 
 ##### Recon Modules
 - `confirm_permissions` - Tries to get a confirmed list of permissions for the current user.
 - `download_ec2_userdata` - Downloads user data from EC2 instances.
+- `enum_codebuild` - Enumerates CodeBuild builds and projects while looking for sensitive data.
 - `enum_ebs_volumes_snapshots` - Enumerates EBS volumes and snapshots and logs any without encryption.
 - `enum_ec2` - Enumerates a ton of relevant EC2 info.
 - `enum_ec2_termination_protection` - Collects a list of EC2 instances without termination protection.
@@ -122,6 +123,7 @@ Pacu's capabilities will increase dramatically as the number of modules grows, a
 - `enum_monitoring` - Detects monitoring and logging capabilities.
 - `enum_users_roles_policies_groups` - Enumerates users, roles, customer-managed policies, and groups.
 - `get_credential_report` - Generates and downloads an IAM credential report.
+- `inspector_report_fetcher` - Captures vulnerabilties found when running a preconfigured inspector report.
 - `s3_bucket_dump` - Enumerate and dumps files from S3 buckets.
 
 ##### Post Exploitation Modules
@@ -129,6 +131,7 @@ Pacu's capabilities will increase dramatically as the number of modules grows, a
 - `backdoor_ec2_sec_groups` - Adds backdoor rules to EC2 security groups.
 - `cloudtrail_csv_injection` - Inject malicious formulas/data into CloudTrail event history.
 - `download_lightsail_ssh_keys` - Downloads Lightsails default SSH key pairs.
+- `sysman_ec2_rce` - Tries to execute code as root/SYSTEM on EC2 instances.
 
 ##### Escalation Modules
 - `backdoor_assume_role` - Creates assume-role trust relationships between users and roles.

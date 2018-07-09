@@ -609,7 +609,7 @@ class Main:
                     self.server.quit(int(command[2]), self.server.all_connections[int(command[2])])
                     self.print('** Agent killed **')
                 elif len(command) == 2:
-                    print(' ** Incorrect input, excepted an agent ID, received nothing. Use format: proxy kill <agent_id> **')
+                    print('** Incorrect input, excepted an agent ID, received nothing. Use format: proxy kill <agent_id> **')
                 else:
                     print('** Incorrect input, excepted an agent ID, received: {}'.format(command[2:]))
             elif command[1] == 'stager':

@@ -611,8 +611,6 @@ def CreateAccessKey(pacu_main, print, input, fetch_data):
 
     print('  Starting method CreateAccessKey...')
 
-    client = pacu_main.get_boto3_client('iam')
-
     username = input('    Is there a specific user you want to target? They must not already have two sets of access keys created for their user. Enter their user name now or just hit enter to enumerate users and view a list of options: ')
     if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies', '--users') is False:
         print('Pre-req module not run successfully. Exiting...')
@@ -646,8 +644,6 @@ def CreateLoginProfile(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
 
     print('  Starting method CreatingLoginProfile...')
-
-    client = pacu_main.get_boto3_client('iam')
 
     username = input('    Is there a specific user you want to target? They must not already have a login profile (password for logging into the AWS Console). Enter their user name now or just hit enter to enumerate users and view a list of options: ')
     if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies', '--users') is False:
@@ -690,8 +686,6 @@ def UpdateLoginProfile(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
 
     print('  Starting method UpdateLoginProfile...')
-
-    client = pacu_main.get_boto3_client('iam')
 
     username = input('    Is there a specific user you want to target? They must already have a login profile (password for logging into the AWS Console). Enter their user name now or just hit enter to enumerate users and view a list of options: ')
     if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies', '--users') is False:

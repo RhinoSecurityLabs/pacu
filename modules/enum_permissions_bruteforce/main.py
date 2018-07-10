@@ -125,6 +125,7 @@ service_name_mismatch_mapper = {
 
 allow_permissions = {}
 deny_permissions = {}
+maybe_permissions = {}
 
 def help():
     return [module_info, parser.format_help()]
@@ -146,66 +147,47 @@ def get_regions(service):
         service = service_name_mismatch_mapper[service]
     return complete_regions[service]
 
-def missing_param_builder(error):
-    missing_params = {}
-    for line in error.split('\n'):
-        if 'Missing required parameter' in line:
-            index = line.find('"')
-            word = line[index+1:-1]
-            missing_params[word] = 'string'
-    return missing_params
 
-def invalid_param_builder(error):
-    param_types = {
-        'str':'i-123456789abcde123',
-        'list':['string',],
-        'int':1,
-        'dict':{'Key': 'val'},
-        'bool':False
-    }    
-    invalid_params = {}
-    for line in error.split('\n'):
-        if 'Invalid type for parameter' in line:
-
-            param_name = line.split()[4][:-1]
-
-            if param_name in special_types.keys():
-                invalid_params[param_name] = special_types[param_name]
-                continue
-
-            valid_type = line.split()[13]
-
-            if valid_type[-1] == ',':
-                valid_type = valid_type[:-1]
-            valid_type = valid_type[1:-2]
-
-            print(f'Valid_type found = {line.split()[13]}')
-
-            invalid_params[param_name] = param_types[valid_type]
-        if 'Unknown parameter in' in line:
-            param_name = line.split()[3][:-1]
-            val = line.split()[-1]
-            invalid_params[param_name] = {val:'i-123456789abcde123'}
-
-    return invalid_params
-
-def clean_key(key):
-    removenonletters = re.compile('[^a-zA-Z]')
-    return removenonletters.sub('', key)
 
 def build_kwargs(error):
-    missing_params = missing_param_builder(error)
-    invalid_params = invalid_param_builder(error)
-    kwargs = {**missing_params, **invalid_params}
+    print('\tBuilding params...')
+    kwargs = {}
+
+    if 'Missing required parameter' in str(error):
+        missing_param = str(error).split()[-1]
+        #Capitalize the error
+        missing_param = missing_param[0].upper() + missing_param[1:]
+        print(f'\tFilling missing parameter({missing_param})')
+        kwargs[missing_param] = 'pcx-5f8d3c24'
     return kwargs
 
-def build_args(error):
-    args = []
-    if 'operation_name' in error:
-        args.append('list_objects')
-    if 'Waiter does not exist' in error:
-        args.append('waiter_name')
-    return args
+def missing_param(param):
+    out = {param:'string'}
+    return out
+
+def invalid_param(valid_type):
+    print('checking for invalid types')
+    types = {
+        'list': ['string',],
+        'int': 1
+    }
+    
+    return types[valid_type]
+
+def error_delegator(error):
+    kwargs = {}
+    #ignore first line of error message
+    for line in str(error).split('\n')[::-1][:-1]:
+        #print(f'\t Processing Line: {line}')
+        if 'Missing required parameter' in line:
+            if line[line.find('"') + 1:-1] not in kwargs.keys():
+                kwargs = {**kwargs, **missing_param(line.split()[-1][1:-1])}
+        if 'Invalid type for parameter' in line:            
+            param_name = line.split()[4][:-1]
+            valid_type = line.split("'")[3]
+            kwargs[param_name] = invalid_param(valid_type)
+    return kwargs
+
 
 def valid_func(func):
     if func[0] == '_':
@@ -239,6 +221,7 @@ def main(args, pacu_main):
     for service in service_list:
         allow_permissions[service] = []
         deny_permissions[service] = []
+        maybe_permissions[service] = []
         regions = ['none']
         try:
             client = boto3.client(
@@ -250,44 +233,45 @@ def main(args, pacu_main):
             client = boto3.client(
                 service,
                 region_name = region,
-                #config=botocore.config.Config(parameter_validation=False)
+	            #config = botocore.config.Config(parameter_validation=False)
             )
             functions = [func for func in dir(client) if valid_func(func)]
-            #functions = ['create_dhcp_options']
-            #functions = ['bundle_instance']
-            #functions = ['create_fleet']
-            #functions = ['associate_iam_instance_profile']
-            for func in functions:
-                args = []
+            for func in functions[5:10]:
+                print('*************************NEW FUNCTION*************************')
+                kwargs = {'DryRun':True}
                 kwargs = {}
                 while True:
-                    try:   
+                    try:  
+                        print('---------------------------------------------------------')
                         print(f'Trying {func}...')
-                        print(f'args: {args}')
                         print(f'Kwargs: {kwargs}')
-                        print('\n\n\n\n')
                         caller = getattr(client, func)
-                        result = caller(*args, **kwargs)
+                        result = caller(**kwargs)
                         allow_permissions[service].append(func)
                         break
-                    #except TypeError as error:
-                    #    print(f'TypeError: {error}')
-                    #    args = build_args(str(error))
-                    #except ValueError as error:
-                    #    print(f'ValueError: {error}')
-                    #    args = build_args(str(error))
                     except ParamValidationError as error:
-                        print(f'ParamValidationError: {error}')
-                        kwargs = build_kwargs(str(error))
+                        print(error)
+                        kwargs = {**kwargs, **error_delegator(error)}
                     except ClientError as error:
-                        if error.response['Error']['Code'] == 'AccessDeniedException':
+                        print(f'ClientError: {error}')
+                        code = error.response['Error']['Code']
+                        if code == 'AccessDeniedException' or 'UnauthorizedOperation' in str(error):
+                            print(f'Unauthorized for permission: {service}:{func}')
                             deny_permissions[service].append(func)
-                        elif 'UnauthorizedOperation' in str(error):
-                            deny_permissions[service].append(func)
+                            break
+                        elif code == 'MissingParameter':
+                            param = str(error).split()[-1]
+                            param = param[0].upper() + param[1:]
+                            kwargs = {**kwargs, **missing_param(param)}
+                        elif 'Malformed' in error.response['Error']['Code']:
+                            print('Unable to determine authorization')
+                            maybe_permissions[service].append(func)
+                            break
                         else:
                             print('Unknown error:')
                             print(error)
-                        break    
+                            maybe_permissions[service].append(func)                            
+                            print('*************************END FUNCTION*************************\n')
             break
         break
 
@@ -296,6 +280,9 @@ def main(args, pacu_main):
 
     print('Denied Permissions: ')
     print(deny_permissions)
+
+    print('Maybe Permissions: ')
+    print(maybe_permissions)
 
 
 

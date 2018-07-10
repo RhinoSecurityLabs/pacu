@@ -10,7 +10,7 @@ import os
 # This data will include any information about your local file system and
 # execution environment that Python has loaded into global and local variables
 # at the time an error is written to the logs. Use with extreme caution.
-ERROR_LOG_VERBOSITY = 'low'
+ERROR_LOG_VERBOSITY = 'minimal'
 
 
 DATABASE_FILE_PATH = os.path.join(os.getcwd(), 'sqlite.db')

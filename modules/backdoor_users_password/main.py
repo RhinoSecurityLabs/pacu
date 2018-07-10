@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import boto3
-import botocore
 from random import choice
 import string
 
@@ -44,7 +42,6 @@ def help():
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
@@ -54,13 +51,7 @@ def main(args, pacu_main):
     ######
 
     users = []
-    client = boto3.client(
-        'iam',
-        aws_access_key_id=session.access_key_id,
-        aws_secret_access_key=session.secret_access_key,
-        aws_session_token=session.session_token,
-        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-    )
+    client = pacu_main.get_boto3_client('iam')
 
     if args.usernames is not None:
         if ',' in args.usernames:
@@ -84,7 +75,8 @@ def main(args, pacu_main):
     try:
         password_policy = client.get_account_password_policy()
     except:
-        # Policy unable to be fetched, set to None so that a 128 char password with all types of characters gets created below
+        # Policy unable to be fetched, set to None so that a 128 char password
+        # with all types of characters gets created below
         password_policy = None
 
     target_user = ''
@@ -98,7 +90,7 @@ def main(args, pacu_main):
 
             if args.update is False:
                 try:
-                    response = client.create_login_profile(
+                    client.create_login_profile(
                         UserName=user,
                         Password=password,
                         PasswordResetRequired=False
@@ -115,13 +107,12 @@ def main(args, pacu_main):
 
             else:
                 try:
-                    response = client.update_login_profile(
+                    client.update_login_profile(
                         UserName=user,
                         Password=password,
                         PasswordResetRequired=False
                     )
                     print(f'  Password: {password}\n')
-
                 except Exception as error:
                     print(f'  Failed to update password: {user} most likely doesn\'t have a login profile. The error is shown here:\n{error}')
 
@@ -148,7 +139,8 @@ def create_valid_password(password_policy):
             while len(password) < password_policy['MinimumPasswordLength']:
                 password += choice(string.digits)
     except:
-        # Password policy couldn't be grabbed for some reason, make a max-length password with all types of characters, so no matter what, it will be accepted.
+        # Password policy couldn't be grabbed for some reason, make a max-length
+        # password with all types of characters, so no matter what, it will be accepted.
         characters = string.ascii_lowercase + string.ascii_uppercase + string.digits + symbols
         password = ''.join(choice(characters) for _ in range(128))
     return password

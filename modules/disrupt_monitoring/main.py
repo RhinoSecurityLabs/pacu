@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import boto3
-import botocore
 
 
 module_info = {
@@ -42,7 +40,6 @@ def help():
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
@@ -104,14 +101,7 @@ def main(args, pacu_main):
         for region in gd_regions:
             print(f'  Starting region {region}...\n')
 
-            client = boto3.client(
-                'guardduty',
-                region_name=region,
-                aws_access_key_id=session.access_key_id,
-                aws_secret_access_key=session.secret_access_key,
-                aws_session_token=session.session_token,
-                config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-            )
+            client = pacu_main.get_boto3_client('guardduty', region)
 
             for detector in detectors:
                 if detector['Region'] == region:
@@ -119,7 +109,7 @@ def main(args, pacu_main):
 
                     if action == 'dis':
                         try:
-                            response = client.update_detector(
+                            client.update_detector(
                                 DetectorId=detector['Id'],
                                 Enable=False
                             )
@@ -129,7 +119,7 @@ def main(args, pacu_main):
 
                     elif action == 'del':
                         try:
-                            response = client.delete_detector(
+                            client.delete_detector(
                                 DetectorId=detector['Id']
                             )
                             print(f"        Successfully deleted detector {detector['Id']}!\n")
@@ -150,13 +140,7 @@ def main(args, pacu_main):
         for region in ct_regions:
             print(f'  Starting region {region}...\n')
 
-            client = boto3.client(
-                'cloudtrail',
-                aws_access_key_id=session.access_key_id,
-                aws_secret_access_key=session.secret_access_key,
-                aws_session_token=session.session_token,
-                config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-            )
+            client = pacu_main.get_boto3_client('cloudtrail', region)
 
             for trail in trails:
                 if trail['Region'] == region:
@@ -164,7 +148,7 @@ def main(args, pacu_main):
 
                     if action == 'dis':
                         try:
-                            response = client.stop_logging(
+                            client.stop_logging(
                                 Name=trail['Name']
                             )
                             print(f"        Successfully disabled trail {trail['Name']}!\n")
@@ -173,7 +157,7 @@ def main(args, pacu_main):
 
                     elif action == 'del':
                         try:
-                            response = client.delete_trail(
+                            client.delete_trail(
                                 Name=trail['Name']
                             )
                             print(f"        Successfully deleted trail {trail['Name']}!\n")
@@ -182,7 +166,7 @@ def main(args, pacu_main):
 
                     elif action == 'm':
                         try:
-                            response = client.update_trail(
+                            client.update_trail(
                                 Name=trail['Name'],
                                 SnsTopicName='',
                                 IncludeGlobalServiceEvents=False,

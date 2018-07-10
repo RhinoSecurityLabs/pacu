@@ -4,7 +4,7 @@ import os
 # Meaningful values: 'minimal', 'low', 'high', 'extreme'
 # 'Minimal' will only add tracebacks to error log files.
 # 'Low' will also add data from the current PacuSession, with its
-# secret_access_key field censored.
+# secret_access_key field censored. This data includes all gathered AWS data.
 # 'High' and 'extreme' will dump all global and local data in the most recent
 # two stack frames, and in all stack frames, respectively, of every traceback.
 # This data will include any information about your local file system and

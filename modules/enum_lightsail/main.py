@@ -95,8 +95,6 @@ def fetch_lightsail_data(client, func):
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
-
     args = parser.parse_args(args)
     print = pacu_main.print
     get_regions = pacu_main.get_regions

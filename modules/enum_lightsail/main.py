@@ -2,10 +2,6 @@
 import argparse
 from botocore.exceptions import ClientError
 
-
-# When writing a module, feel free to remove any comments, placeholders, or
-# anything else that doesn't relate to your module.
-
 module_info = {
     'name': 'enum_lightsail',
     'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
@@ -18,7 +14,18 @@ module_info = {
         """,
     'services': ['lightsail'],
     'external_dependencies': [],
-    'arguments_to_autocomplete': [],
+    'arguments_to_autocomplete': [
+        'active-names',
+        'blueprints',
+        'bundles',
+        'instances',
+        'key-pairs',
+        'operations',
+        'static-ips',
+        'disks',
+        'disk-snapshots',
+        'load-balancers'
+    ],
 }
 
 master_fields = [

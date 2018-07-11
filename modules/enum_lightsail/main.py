@@ -68,6 +68,7 @@ def setup_storage(fields):
     return out
 
 
+# Converts snake_case to camelcase.
 def camelCase(name):
     splitted = name.split('_')
     out = splitted[0]
@@ -77,6 +78,7 @@ def camelCase(name):
 
 
 def fetch_lightsail_data(client, func):
+    # Adding 'get_' portion to each field to build command.
     caller = getattr(client, 'get_' + func)
     try:
         response = caller()
@@ -104,6 +106,7 @@ def main(args, pacu_main):
         if getattr(args, arg):
             fields.append(arg)
     if not fields:
+        # Converts kekbab-case to snake_case to match expected Boto3 function names.
         fields = [field.replace('-', '_') for field in master_fields]
 
     lightsail_data = setup_storage(fields)

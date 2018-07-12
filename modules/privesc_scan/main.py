@@ -612,7 +612,7 @@ def CreateAccessKey(pacu_main, print, input, fetch_data):
     print('  Starting method CreateAccessKey...')
 
     username = input('    Is there a specific user you want to target? They must not already have two sets of access keys created for their user. Enter their user name now or just hit enter to enumerate users and view a list of options: ')
-    if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies', '--users') is False:
+    if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies_groups', '--users') is False:
         print('Pre-req module not run successfully. Exiting...')
         return False
     users = session.IAM['Users']

@@ -216,7 +216,7 @@ class Main:
                 return False
 
             if args:
-                self.exec_module(['exec', module, args])
+                self.exec_module(['exec', module] + args.split(' '))
             else:
                 self.exec_module(['exec', module])
         return True

@@ -848,7 +848,7 @@ class Main:
 
         module_name = command[1]
         module = self.import_module_by_name(module_name, include=['main', 'help'])
-        print(f'Execing with command: {command[2:]}')
+
         if module is not None:
             # Plaintext Command Log
             self.print('{} ({}): {}'.format(session.access_key_id, time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime()), ' '.join(command).strip()), output='file', is_cmd=True)

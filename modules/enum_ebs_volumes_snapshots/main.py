@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 import argparse
-import boto3
-import botocore
 from botocore.exceptions import ClientError
 from copy import deepcopy
 import time
+import random
 
 
 module_info = {
@@ -47,7 +46,6 @@ def help():
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
@@ -94,13 +92,7 @@ def main(args, pacu_main):
 
             elif current_account == 'y':
                 try:
-                    client = boto3.client(
-                        'iam',
-                        aws_access_key_id=session.access_key_id,
-                        aws_secret_access_key=session.secret_access_key,
-                        aws_session_token=session.session_token,
-                        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-                    )
+                    client = pacu_main.get_boto3_client('iam')
 
                     user = client.get_user()['User']
 
@@ -137,19 +129,12 @@ def main(args, pacu_main):
     else:
         pass  # Ignore args.account_ids if args.snaps is False
 
-    client = boto3.client(
-            'ec2',
-            region_name='us-east-1',
-            aws_access_key_id=session.access_key_id,
-            aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token,
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-    )
+    client = pacu_main.get_boto3_client('ec2', random.choice(regions))
 
     # Check permissions before hammering through each region
     if args.vols is True:
         try:
-            dryrun = client.describe_volumes(
+            client.describe_volumes(
                 DryRun=True
             )
         except ClientError as error:
@@ -159,7 +144,7 @@ def main(args, pacu_main):
 
     if args.snaps is True and not account_ids == []:
         try:
-            dryrun = client.describe_snapshots(
+            client.describe_snapshots(
                 OwnerIds=account_ids,
                 DryRun=True
             )
@@ -176,14 +161,7 @@ def main(args, pacu_main):
     snapshots_csv_data = []
     for region in regions:
         print(f'Starting region {region} (this may take a while if there are thousands of EBS volumes/snapshots)...')
-        client = boto3.client(
-            'ec2',
-            region_name=region,
-            aws_access_key_id=session.access_key_id,
-            aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token,
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-        )
+        client = pacu_main.get_boto3_client('ec2', region)
 
         if args.vols is True:
             # Start EBS Volumes in this region

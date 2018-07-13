@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import boto3
-import botocore
 import json
 
 
@@ -39,9 +37,6 @@ def help():
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
-
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = pacu_main.print
@@ -51,14 +46,7 @@ def main(args, pacu_main):
     regions = get_regions('lightsail')
 
     for region in regions:
-        client = boto3.client(
-            'lightsail',
-            region_name=region,
-            aws_access_key_id=session.access_key_id,
-            aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token,
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-        )
+        client = pacu_main.get_boto3_client('lightsail', region)
         downloaded_keys = client.download_default_key_pair()
         restructured_keys = {
             'publicKey': downloaded_keys['publicKeyBase64'],

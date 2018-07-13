@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 import argparse
 import base64
-import boto3
-import botocore
 from botocore.exceptions import ClientError
 import time
+import random
 
 
 module_info = {
@@ -45,7 +44,6 @@ def help():
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
@@ -54,30 +52,25 @@ def main(args, pacu_main):
     get_regions = pacu_main.get_regions
     ######
 
-    client = boto3.client(
-        'ec2',
-        region_name='us-east-1',
-        aws_access_key_id=session.access_key_id,
-        aws_secret_access_key=session.secret_access_key,
-        aws_session_token=session.session_token,
-        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-    )
+    regions = get_regions('ec2')
+
+    client = pacu_main.get_boto3_client('ec2', random.choice(regions))
 
     # Check permissions before hammering through each region
     try:
-        dryrun = client.stop_instances(
+        client.stop_instances(
             DryRun=True,
             InstanceIds=['i-asdasdas']
         )
-        dryrun = client.describe_instance_attribute(  # This isn't necesarilly required, but ideally you don't delete the old user data and you read it then append the script to instead of replace it and mess up something on the instance
+        client.describe_instance_attribute(  # This isn't necesarilly required, but ideally you don't delete the old user data and you read it then append the script to instead of replace it and mess up something on the instance
             DryRun=True,
             InstanceId='i-adsadsada'
         )
-        dryrun = client.start_instances(
+        client.start_instances(
             DryRun=True,
             InstanceIds=['i-asdasdasd']
         )
-        dryrun = client.modify_instance_attribute(
+        client.modify_instance_attribute(
             DryRun=True,
             InstanceId='i-asdasdas'
         )
@@ -85,8 +78,6 @@ def main(args, pacu_main):
         if not str(error).find('UnauthorizedOperation') == -1:
             print('Dry run failed, the current AWS account does not have the necessary permissions to run this module.\nExiting...')
             return
-
-    regions = get_regions('ec2')
 
     instances = []
     if args.instance_ids is not None:  # need to update this to include the regions of these IDs
@@ -107,14 +98,7 @@ def main(args, pacu_main):
             })
 
     for region in regions:
-        client = boto3.client(
-            'ec2',
-            region_name=region,
-            aws_access_key_id=session.access_key_id,
-            aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token,
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-        )
+        client = pacu_main.get_boto3_client('ec2', region)
 
         for instance in instances:
             if instance['Region'] == region:
@@ -134,7 +118,7 @@ def stop_instance(client, instance_id):
 
     result = False
     try:
-        response = client.stop_instances(
+        client.stop_instances(
             InstanceIds=[instance_id]
         )
         result = True
@@ -150,7 +134,7 @@ def start_instance(client, instance_id):
 
     result = False
     try:
-        response = client.start_instances(
+        client.start_instances(
             InstanceIds=[instance_id]
         )
         result = True
@@ -187,7 +171,7 @@ def update_userdata(client, instance_id, user_data):
 
     while(code == 'IncorrectInstanceState' and not result):
         try:
-            response = client.modify_instance_attribute(
+            client.modify_instance_attribute(
                 InstanceId=instance_id,
                 UserData={
                     'Value': user_data

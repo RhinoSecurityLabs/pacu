@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import boto3
-import botocore
 from botocore.exceptions import ClientError
 
 
@@ -45,7 +43,6 @@ def help():
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
@@ -55,18 +52,11 @@ def main(args, pacu_main):
 
     groups = []
 
-    client = boto3.client(
-        'ec2',
-        region_name='us-east-1',
-        aws_access_key_id=session.access_key_id,
-        aws_secret_access_key=session.secret_access_key,
-        aws_session_token=session.session_token,
-        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-    )
+    client = pacu_main.get_boto3_client('ec2', 'us-east-1')
 
     # Check permissions before hammering through each region
     try:
-        dryrun = client.authorize_security_group_ingress(
+        client.authorize_security_group_ingress(
             DryRun=True
         )
     except ClientError as error:
@@ -90,18 +80,11 @@ def main(args, pacu_main):
     for group in groups:
         print(f"Group: {group['GroupName']}")
 
-        client = boto3.client(
-            'ec2',
-            region_name=group['Region'],
-            aws_access_key_id=session.access_key_id,
-            aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token,
-            config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-        )
+        client = pacu_main.get_boto3_client('ec2', group['Region'])
 
         try:
             print(f"Applying rule to security group {group['GroupName']}...")
-            response = client.authorize_security_group_ingress(
+            client.authorize_security_group_ingress(
                 GroupName=group['GroupName'],
                 CidrIp=args.ip,
                 FromPort=int(args.port_range.split('-')[0]),
@@ -109,11 +92,7 @@ def main(args, pacu_main):
                 IpProtocol=args.protocol
             )
             print('  Success.')
-            # If it is an old account, you may need to use:
-            # authorize_db_security_group_ingress
-            # authorize_cache_security_group_ingress
-            # authorize_cluster_security_group_ingress
-            print(f'  Port range {args.port_range} opened for IP {args.ip}.')
+            print(f'Port range {args.port_range} opened for IP {args.ip}.')
         except ClientError as error:
             print(f"  Error: {error.response['Error']['Message']}")
 

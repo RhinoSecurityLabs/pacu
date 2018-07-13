@@ -486,9 +486,9 @@ class Main:
                                                     attached instance profile (if there is one),
                                                     then save them to the Pacu database and set
                                                     them as the active key pair
-                stager sh|ps                      Generate a PacuProxy stager. The "bash" format is
-                                                    for *sh shells in Unix, and the "ps" format is
-                                                    for PowerShell on Windows.
+                stager sh|ps                      Generate a PacuProxy stager. The "sh" format is
+                                                    for *sh shells in Unix (like bash), and the "ps"
+                                                    format is for PowerShell on Windows.
             list/ls                             List all modules
             search [cat[egory]] <search term>   Search the list of available modules by name or category
             help                                Display this page of information
@@ -557,9 +557,9 @@ class Main:
                                                 attached instance profile (if there is one),
                                                 then save them to the Pacu database and set
                                                 them as the active key pair
-            stager sh|ps                      Generate a PacuProxy stager. The "bash" format is
-                                                for *sh shells in Unix, and the "ps" format is
-                                                for PowerShell on Windows.
+            stager sh|ps                      Generate a PacuProxy stager. The "sh" format is
+                                                for *sh shells in Unix (like bash), and the "ps"
+                                                format is for PowerShell on Windows
 """)
             elif command[1] == 'start':  # Start proxy server
                 if len(command) < 3:

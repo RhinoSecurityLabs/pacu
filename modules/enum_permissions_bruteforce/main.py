@@ -176,7 +176,7 @@ def invalid_param(valid_type):
 
 def error_delegator(error):
     kwargs = {}
-    #ignore first line of error message
+    # Ignore first line of error message and process in reverse order.
     for line in str(error).split('\n')[::-1][:-1]:
         #print(f'\t Processing Line: {line}')
         if 'Missing required parameter' in line:
@@ -184,6 +184,7 @@ def error_delegator(error):
                 kwargs = {**kwargs, **missing_param(line.split()[-1][1:-1])}
         if 'Invalid type for parameter' in line:            
             param_name = line.split()[4][:-1]
+
             valid_type = line.split("'")[3]
             kwargs[param_name] = invalid_param(valid_type)
     return kwargs
@@ -233,15 +234,13 @@ def main(args, pacu_main):
             client = boto3.client(
                 service,
                 region_name = region,
-	            #config = botocore.config.Config(parameter_validation=False)
             )
             functions = [func for func in dir(client) if valid_func(func)]
             for func in functions[5:10]:
                 print('*************************NEW FUNCTION*************************')
-                kwargs = {'DryRun':True}
-                kwargs = {}
+                kwargs = special_types[func] if func in special_types else {}
                 while True:
-                    try:  
+                    try:                        
                         print('---------------------------------------------------------')
                         print(f'Trying {func}...')
                         print(f'Kwargs: {kwargs}')

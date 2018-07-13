@@ -1,42 +1,6 @@
 {
-	"Storage": {
-		"S3": {
-			"AWSAccessKeyId": "string",
-			"Bucket": "string",
-			"Prefix": "string",
-			"UploadPolicy": "bytes",
-			"UploadPolicySignature": "string"
-		}
-	},
-	"DhcpConfigurations":[
-		{                
-		"Key":"val",
-		"Values":["string", "string"]
-		}
-	],
-	"LaunchTemplateConfigs":[
-		{
-			"LaunchTemplateSpecification": 
-			{
-				"LaunchTemplateId": "string",
-				"LaunchTemplateName": "string",
-				"Version": "string"
-			},
-			"Overrides": [
-				{
-					"InstanceType": "t1.micro",
-					"MaxPrice": "string",
-					"SubnetId": "string",
-					"AvailabilityZone": "string",
-					"WeightedCapacity": 123.0
-				}
-			]
-		}
-	],
-	"TargetCapacitySpecification":{
-		"TotalTargetCapacity": 123,
-		"OnDemandTargetCapacity": 123,
-		"SpotTargetCapacity": 123,
-		"DefaultTargetCapacityType": "spot"
-	}
+  "associate_address": {
+    "InstanceId": "i-1234567890abcdef0",
+    "PublicIp": "192.0.2.1"
+  }
 }

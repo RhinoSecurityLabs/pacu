@@ -48,31 +48,37 @@ def main(args, pacu_main):
     ######
 
     client = pacu_main.get_boto3_client('iam')
-
     report = None
-    
     generated = False
-    try:
-        while not report:
+    while True:        
+        try:
             report = client.get_credential_report()
-
-    except ClientError as error:
-        code = error.response['Error']['Code']
-        if code == 'ReportNotPresent':
-            if generated:
-                time.sleep(20)
-            else:
-                generate = input('Credential report not generated, do you want to generate one? (y/n) ') 
-                if generate == 'y':
-                    try:
-                        client.generate_credential_report()
-                        print('Credential report generation started, this may take up to a couple minutes. Checking if it is ready every 20 seconds...')
-                        generated = True
-                    except ClientError as error:
-                        if error.response['Error']['Code'] == 'AccessDenied':
-                            print('Unauthorized to generate_credential_report')                            
-        elif code == 'AccessDenied':
-            print('Access Denied for get_credential_report') 
+            break
+        except ClientError as error:
+            code = error.response['Error']['Code']
+            if code == 'ReportNotPresent':
+                if generated:
+                    print('waiting...')
+                    time.sleep(20)
+                else:
+                    generate = input('Credential report not generated, do you want to generate one? (y/n) ')
+                    if generate == 'y':
+                        try:
+                            client.generate_credential_report()
+                            print('Credential report generation started, this may take up to a couple minutes. Checking if it is ready every 20 seconds...')
+                            generated = True
+                        except ClientError as error:
+                            if error.response['Error']['Code'] == 'AccessDenied':
+                                print('Unauthorized to generate_credential_report')                                
+                                report = None
+                                break
+                    else:
+                        report = None
+                        break
+            elif code == 'AccessDenied':
+                print('Access Denied for get_credential_report')
+                report = None
+                break
 
     if report and 'Content' in report:
         if not os.path.exists(f'sessions/{session.name}/downloads'):

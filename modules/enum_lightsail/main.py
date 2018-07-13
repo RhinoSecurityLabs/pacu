@@ -2,32 +2,6 @@
 import argparse
 from botocore.exceptions import ClientError
 
-module_info = {
-    'name': 'enum_lightsail',
-    'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
-    'category': 'recon_enum_with_keys',
-    'one_liner': 'Captures common data associated with lightsail',
-    'description': """
-        This module takes a set of compromised keys and captures data found into the
-        database. This data includes instances, states, snapshots, domains, disks, and
-        operations.
-        """,
-    'services': ['lightsail'],
-    'external_dependencies': [],
-    'arguments_to_autocomplete': [
-        'active-names',
-        'blueprints',
-        'bundles',
-        'instances',
-        'key-pairs',
-        'operations',
-        'static-ips',
-        'disks',
-        'disk-snapshots',
-        'load-balancers'
-    ],
-}
-
 master_fields = [
     'active-names',
     'blueprints',
@@ -40,6 +14,21 @@ master_fields = [
     'disk-snapshots',
     'load-balancers'
 ]
+
+module_info = {
+    'name': 'enum_lightsail',
+    'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
+    'category': 'recon_enum_with_keys',
+    'one_liner': 'Captures common data associated with LIghtsail',
+    'description': """
+        This module examines available Lightsail and captures data found into the Pacu
+        database. This data includes instances, states, snapshots, domains, disks, and
+        operations.
+        """,
+    'services': ['Lightsail'],
+    'external_dependencies': [],
+    'arguments_to_autocomplete': ['--' + field for field in master_fields],
+}
 
 
 def add_field(name):
@@ -85,7 +74,7 @@ def fetch_lightsail_data(client, func):
         data = response[camelCase(func)]
         while 'nextPageToken' in response:
             response = caller(pageToken=response['nextPageToken'])
-            data.append(response[camelCase(func)])
+            data.extend(response[camelCase(func)])
         return data
     except ClientError as error:
         if error.response['Error']['Code'] == 'AccessDeniedException':
@@ -101,12 +90,9 @@ def main(args, pacu_main):
     print = pacu_main.print
     get_regions = pacu_main.get_regions
 
-    fields = []
-    for arg in vars(args):
-        if getattr(args, arg):
-            fields.append(arg)
+    fields = [arg for arg in vars(args) if getattr(args, arg)]
     if not fields:
-        # Converts kekbab-case to snake_case to match expected Boto3 function names.
+        # Converts kebab-case to snake_case to match expected Boto3 function names.
         fields = [field.replace('-', '_') for field in master_fields]
 
     lightsail_data = setup_storage(fields)

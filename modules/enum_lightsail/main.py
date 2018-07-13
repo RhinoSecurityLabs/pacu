@@ -19,11 +19,12 @@ module_info = {
     'name': 'enum_lightsail',
     'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
     'category': 'recon_enum_with_keys',
-    'one_liner': 'Captures common data associated with LIghtsail',
+    'one_liner': 'Captures common data associated with Lightsail',
     'description': """
-        This module examines available Lightsail and captures data found into the Pacu
-        database. This data includes instances, states, snapshots, domains, disks, and
-        operations.
+        This module examines Lightsail data fields and automatically enumerates
+        them for all available regions. Available fields can be passed upon execution
+        to only look at certain types of data. By default, all Lightsail fields will
+        captured.
         """,
     'services': ['Lightsail'],
     'external_dependencies': [],

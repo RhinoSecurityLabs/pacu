@@ -50,34 +50,31 @@ def main(args, pacu_main):
     client = pacu_main.get_boto3_client('iam')
 
     report = None
-
+    
+    generated = False
     try:
-        report = client.get_credential_report()
+        while not report:
+            report = client.get_credential_report()
 
     except ClientError as error:
-        report = None
-
-        if error.response['Error']['Code'] == 'ReportNotPresent':
-            generate = input('Credential report not generated, do you want to generate one? (y/n) ')
-
-            if generate == 'y':
-                client.generate_credential_report()
-                print('Credential report generation started, this may take up to a couple minutes. Checking if it is ready every 20 seconds...')
-
-                while report is None:
-                    time.sleep(20)
-
+        code = error.response['Error']['Code']
+        if code == 'ReportNotPresent':
+            if generated:
+                time.sleep(20)
+            else:
+                generate = input('Credential report not generated, do you want to generate one? (y/n) ') 
+                if generate == 'y':
                     try:
-                        report = client.get_credential_report()
+                        client.generate_credential_report()
+                        print('Credential report generation started, this may take up to a couple minutes. Checking if it is ready every 20 seconds...')
+                        generated = True
                     except ClientError as error:
-                        if error.response['Error']['Code'] == 'ReportNotPresent':
-                            report = None
+                        if error.response['Error']['Code'] == 'AccessDenied':
+                            print('Unauthorized to generate_credential_report')                            
+        elif code == 'AccessDenied':
+            print('Access Denied for get_credential_report') 
 
-    except:
-        print('Download failed, you do not have the correct permissions to download a credential report.')
-        return
-
-    if 'Content' in report:
+    if report and 'Content' in report:
         if not os.path.exists(f'sessions/{session.name}/downloads'):
             os.makedirs(f'sessions/{session.name}/downloads')
 

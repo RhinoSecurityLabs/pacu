@@ -2,7 +2,7 @@
 import argparse
 from botocore.exceptions import ClientError
 
-master_fields = [
+MASTER_FIELDS = [
     'active-names',
     'blueprints',
     'bundles',
@@ -27,7 +27,7 @@ module_info = {
         """,
     'services': ['Lightsail'],
     'external_dependencies': [],
-    'arguments_to_autocomplete': ['--' + field for field in master_fields],
+    'arguments_to_autocomplete': ['--' + field for field in MASTER_FIELDS],
 }
 
 
@@ -42,7 +42,7 @@ def add_field(name):
 
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
-for field in master_fields:
+for field in MASTER_FIELDS:
     add_field(field)
 
 
@@ -93,7 +93,7 @@ def main(args, pacu_main):
     fields = [arg for arg in vars(args) if getattr(args, arg)]
     if not fields:
         # Converts kebab-case to snake_case to match expected Boto3 function names.
-        fields = [field.replace('-', '_') for field in master_fields]
+        fields = [field.replace('-', '_') for field in MASTER_FIELDS]
 
     lightsail_data = setup_storage(fields)
     regions = get_regions('lightsail')

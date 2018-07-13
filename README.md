@@ -10,14 +10,14 @@ Finally, please remember that *Pacu is a BETA product.* Please be mindful of thi
 
 ## Installation
 
-Pacu is a fairly lightweight program, as it requires only [Python3.6+](https://www.python.org/downloads/) and pip3 to install a handful of Python libraries.
+Pacu is a fairly lightweight program, as it requires only [Python3.6+](https://www.python.org/downloads/) and pip3 to install a handful of Python libraries. Running install.sh will check your Python version and ensure all Python packages are up to date.
 
 ## Quick Installation
 
 ```
   > git clone https://github.com/RhinoSecurityLabs/pacu
   > cd pacu
-  > pip3 install -r requirements.txt
+  > sh install.sh
   > python3 pacu.py
 ```
 

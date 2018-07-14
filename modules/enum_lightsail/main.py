@@ -79,9 +79,9 @@ def fetch_lightsail_data(client, func):
         return data
     except ClientError as error:
         if error.response['Error']['Code'] == 'AccessDeniedException':
-            print(f'AccessDenied for: {func}')
+            print('AccessDenied for: {}'.format(func))
         else:
-            print(f'Unknown Error:\n{error}')
+            print('Unknown Error:\n{}'.format(error))
     return []
 
 
@@ -100,11 +100,11 @@ def main(args, pacu_main):
     regions = get_regions('lightsail')
 
     for region in regions:
-        print(f'Starting region {region}...')
+        print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('lightsail', region)
         for field in fields:
             lightsail_data[field] = fetch_lightsail_data(client, field)
 
     session.update(pacu_main.database, Lightsail=lightsail_data)
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

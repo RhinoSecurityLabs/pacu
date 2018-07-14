@@ -78,12 +78,12 @@ def main(args, pacu_main):
         groups = session.EC2['SecurityGroups']
 
     for group in groups:
-        print(f"Group: {group['GroupName']}")
+        print('Group: {}'.format(group['GroupName']))
 
         client = pacu_main.get_boto3_client('ec2', group['Region'])
 
         try:
-            print(f"Applying rule to security group {group['GroupName']}...")
+            print('Applying rule to security group {}...'.format(group['GroupName']))
             client.authorize_security_group_ingress(
                 GroupName=group['GroupName'],
                 CidrIp=args.ip,
@@ -92,9 +92,9 @@ def main(args, pacu_main):
                 IpProtocol=args.protocol
             )
             print('  Success.')
-            print(f'Port range {args.port_range} opened for IP {args.ip}.')
+            print('Port range {} opened for IP {}.'.format(args.port_range, args.ip))
         except ClientError as error:
-            print(f"  Error: {error.response['Error']['Message']}")
+            print('  Error: {}'.format(error.response['Error']['Message']))
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

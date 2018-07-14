@@ -107,14 +107,14 @@ def main(args, pacu_main):
                     update_userdata(client, instance['InstanceId'], prepare_user_data(client, instance['InstanceId'], args.script))
                     start_instance(client, instance['InstanceId'])
                 else:
-                    print(f"Failed to stop instance {instance['InstanceId']}@{instance['Region']}, skipping.")
+                    print('Failed to stop instance {}@{}, skipping.'.format(instance['InstanceId'], instance['Region']))
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return
 
 
 def stop_instance(client, instance_id):
-    print(f'Stopping instance id {instance_id}')
+    print('Stopping instance id {}'.format(instance_id))
 
     result = False
     try:
@@ -130,7 +130,7 @@ def stop_instance(client, instance_id):
 
 
 def start_instance(client, instance_id):
-    print(f'Starting instance id {instance_id}')
+    print('Starting instance id {}'.format(instance_id))
 
     result = False
     try:
@@ -154,17 +154,17 @@ def prepare_user_data(client, instance_id, script):  # Replace this with a fetch
         user_data = base64.b64decode(response['UserData']['Value']).decode("utf-8")
         # Save the current data in case there is something sensitive
         # with open('output/scrapedUserData.txt', 'a+') as scraped_user_data_file:
-        #     scraped_user_data_file.write(f'User data for instance id {instance_id}: {user_data}\n')
+        #     scraped_user_data_file.write('User data for instance id {}: {}\n'.format(instance_id, user_data))
 
     with open(script, 'r') as shell_script:
         # Append our script to their old user data to not screw up the instance
-        user_data = f'#cloud-boothook\n{shell_script.read()}\n\n{user_data}'  # the #cloud-boothook directive is what runs the code every single time the EC2 starts. Regular old user data only runs on the first instance launch
+        user_data = '#cloud-boothook\n{}\n\n{}'.format(shell_script.read(), user_data)  # the #cloud-boothook directive is what runs the code every single time the EC2 starts. Regular old user data only runs on the first instance launch
 
     return user_data
 
 
 def update_userdata(client, instance_id, user_data):
-    print(f'Setting userData for instance id {instance_id}')
+    print('Setting userData for instance id {}'.format(instance_id))
 
     result = False
     code = 'IncorrectInstanceState'

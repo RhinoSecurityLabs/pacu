@@ -222,14 +222,15 @@ class Main:
         return True
 
     def key_info(self, alias=''):
-        """ Return the set of information stored specifically to the active key
-        pair, as a dictionary. """
+        """ Return the set of information stored in the session's active key
+        or the session's key with a specified alias, as a dictionary. """
         session = self.get_active_session()
 
         if alias == '':
             alias = session.key_alias
 
-        aws_key = self.database.query(AWSKey).filter(AWSKey.key_alias == alias).scalar()
+        aws_key = self.get_aws_key_by_alias(alias)
+
         if aws_key is not None:
             return aws_key.get_fields_as_camel_case_dictionary()
         else:
@@ -293,10 +294,16 @@ class Main:
         return ProxySettings.get_proxy_settings(self.database)
 
     def get_aws_key_by_alias(self, alias):
-        """ Return an AWSKey with the supplied alias from the database, or
-        None if no AWSKey with the supplied alias exists. If more than one key
-        with the alias exists, an exception will be raised. """
-        return self.database.query(AWSKey).filter(AWSKey.key_alias == alias).scalar()
+        """ Return an AWSKey with the supplied alias that is assigned to the
+        currently active PacuSession from the database, or None if no AWSKey
+        with the supplied alias exists. If more than one key with the alias
+        exists for the active session, an exception will be raised. """
+        session = self.get_active_session()
+        key = self.database.query(AWSKey)                           \
+                           .filter(AWSKey.session_id == session.id) \
+                           .filter(AWSKey.key_alias == alias)       \
+                           .scalar()
+        return key
 
     def start_proxy(self):
         proxy_settings = self.get_proxy_settings()

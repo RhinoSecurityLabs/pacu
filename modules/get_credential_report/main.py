@@ -50,7 +50,7 @@ def main(args, pacu_main):
     client = pacu_main.get_boto3_client('iam')
     report = None
     generated = False
-    while True:        
+    while True:
         try:
             report = client.get_credential_report()
             break
@@ -69,7 +69,7 @@ def main(args, pacu_main):
                             generated = True
                         except ClientError as error:
                             if error.response['Error']['Code'] == 'AccessDenied':
-                                print('Unauthorized to generate_credential_report')                                
+                                print('Unauthorized to generate_credential_report')
                                 report = None
                                 break
                     else:

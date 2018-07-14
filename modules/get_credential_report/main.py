@@ -79,6 +79,9 @@ def main(args, pacu_main):
                 print('Access Denied for get_credential_report')
                 report = None
                 break
+            else:
+                print(f"Unrecognized ClientError: {str(error)} ({error.response['Error']['Code']})")
+                break
 
     if report and 'Content' in report:
         if not os.path.exists(f'sessions/{session.name}/downloads'):
@@ -89,6 +92,9 @@ def main(args, pacu_main):
             csv_file.write(report['Content'].decode())
 
         print(f'Credential report saved to {filename}')
+
+    else:
+        print('\n  Unable to generate report.\n')
 
     print(f"{module_info['name']} completed.\n")
     return

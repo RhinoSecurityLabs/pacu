@@ -117,7 +117,7 @@ def main(args, pacu_main):
         print("\t\t{}: {} (USD)".format(k, service_spend[k]))
 
 
-    # session.update(pacu_main.database, Lambda=lambda_data)
+    session.update(pacu_main.database, AccountSpend=service_spend)
 
     print(f"{module_info['name']} completed.\n")
     return

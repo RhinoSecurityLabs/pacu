@@ -79,13 +79,15 @@ def main(args, pacu_main):
             Statistics=['Maximum'],
             Unit='None'
         )
-        account_spend = response['Datapoints'][0]['Maximum']
-    except KeyError as e:
-        print("KeyError getting spend: {} -- Response: {}".format(e, response))
-    except IndexError as e:
-        print("IndexError getting spend: {} -- Response: {}".format(e, response))
+        if len(response['Datapoints']) == 0:
+            account_spend = "unavailable"
+        elif 'Maximum' not in response['Datapoints'][0]:
+            account_spend = "unavailable"
+        else:
+            account_spend = response['Datapoints'][0]['Maximum']
     except ClientError as e:
         print("ClientError getting spend: {}".format(e))
+        account_spend = "unavailable"
 
     org_client = pacu_main.get_boto3_client('organizations')
     org_response = org_client.describe_organization()

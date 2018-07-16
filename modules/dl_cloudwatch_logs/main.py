@@ -10,7 +10,7 @@ module_info = {
     'name': 'dl_cloudwatch_logs',
     'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
     'category': 'logging_monitoring',
-    'one_liner': 'Captures cloudtrail logs and downloads them to the session downloads folder',
+    'one_liner': 'Captures Cloudwatch logs and downloads them to the session downloads folder',
     'description': """
         This module examines all logs for all regions and saves them as CSV files. By default,
         only events that were logged in the past 24 hours will be captured. Otherwise, they will
@@ -32,13 +32,13 @@ parser.add_argument(
     '--from-time',
     required=False,
     default=DEFAULT_FROM_TIME,
-    help='Download logs from time format "yyyy-mm-dd-hh-mm-ss". Unfilled fields will assume earliest possible time'
+    help='Download logs from time format "yyyy[-mm[-dd-[hh-mm-ss]]]". Unfilled fields will assume earliest possible time'
 )
 parser.add_argument(
     '--to-time',
     required=False,
     default=None,
-    help='Download logs up to and not including time format "yyyy-mm-dd-hh-mm-ss". Unfilled fields will assume earliest possible time'
+    help='Download logs up to and not including time format "yyyy[-mm[-dd-[hh-mm-ss]]]". Unfilled fields will assume earliest possible time'
 )
 
 
@@ -79,8 +79,8 @@ def write_stream_file(session_name, scan_time, group_name, stream_name, events):
     return True
 
 
-# Collects data given a Boto3 client, function, and a key to look for responses. Returns a list.
 def collect_all(client, func, key, **kwargs):
+    """Collects data given a Boto3 client, function, and a key to look for responses. Returns a list."""
     caller = getattr(client, func)
     try:
         response = caller(**kwargs)
@@ -91,7 +91,7 @@ def collect_all(client, func, key, **kwargs):
         return out
     except ClientError as error:
         if error.response['Error']['Code'] == 'AccessDeniedException':
-            print(f'AccessDenied for: {func}')
+            print('AccessDenied for: {}'.format(func))
     return []
 
 
@@ -111,7 +111,6 @@ def main(args, pacu_main):
 
     scan_time = int(datetime.datetime.now().timestamp())
     regions = get_regions('logs')
-    regions = ['us-east-1']
     log_groups = {}
     for region in regions:
         client = pacu_main.get_boto3_client('logs', region)
@@ -147,10 +146,9 @@ def main(args, pacu_main):
                     )
                     write_stream_file(session.name, scan_time, group, stream, response['events'])
                     if old_Token == response['nextBackwardToken']:
-                        print(f'\tCaptured Events for {stream}')
-
+                        print('Captured Events for {}'.format(stream))
                         break
 
-    print(f'Logs Downloaded to pacu\sessions\{session.name}\downloads\cloud_watch_logs\{scan_time}')
-    print(f"{module_info['name']} completed.\n")
+    print('Logs Downloaded to pacu\sessions\{}\downloads\cloud_watch_logs\{}'.format(session.name, scan_time))
+    print("{} completed.\n".format(module_info['name']))
     return

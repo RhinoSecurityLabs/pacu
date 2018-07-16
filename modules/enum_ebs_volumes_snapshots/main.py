@@ -40,10 +40,6 @@ parser.add_argument('--snaps', required=False, default=False, action='store_true
 parser.add_argument('--account-ids', required=False, default=None, help='One or more (comma separated) AWS account IDs. If snapshot enumeration is enabled, then this module will fetch all snapshots owned by each account in this list of AWS account IDs. Defaults to the current user accounts AWS account ID.')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 

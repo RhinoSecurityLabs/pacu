@@ -32,10 +32,6 @@ module_info = {
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)

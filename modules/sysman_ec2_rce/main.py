@@ -42,10 +42,6 @@ parser.add_argument('--replace', required=False, default=False, action='store_tr
 parser.add_argument('--ip-name', required=False, default=None, help='The name of an existing instance profile with an "EC2 Role for Simple Systems Manager" attached to it. This will skip the automatic role/instance profile enumeration and the searching for a Systems Manager role/instance profile')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
     proxy_settings = pacu_main.get_proxy_settings()

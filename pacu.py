@@ -860,7 +860,7 @@ class Main:
             return
 
         module_name = command[1]
-        module = self.import_module_by_name(module_name, include=['main', 'help'])
+        module = self.import_module_by_name(module_name, include=['main', 'module_info'])
 
         if module is not None:
             # Plaintext Command Log
@@ -873,7 +873,7 @@ class Main:
                 self.print('  Running module {}...'.format(module_name))
             else:
                 self.print('  Running module {} on agent at {}...'.format(module_name, proxy_settings.target_agent[0]))
-            self.print('    {}\n'.format(module.help()[0]['description']))
+            self.print('    {}\n'.format(module.module_info['description']))
 
             try:
                 module.main(command[2:], self)
@@ -898,20 +898,19 @@ class Main:
             return
 
     def display_module_help(self, module_name):
-        module = self.import_module_by_name(module_name, include=['help'])
+        module = self.import_module_by_name(module_name, include=['module_info', 'parser'])
 
         if module is not None:
-            help = module.help()
+            print('\n{} written by {}.\n'.format(module.module_info['name'], module.module_info['author']))
 
-            print('\n{} written by {}.\n'.format(help[0]['name'], help[0]['author']))
+            if 'prerequisite_modules' in module.module_info and len(module.module_info['prerequisite_modules']) > 0:
+                print('Prerequisite Module(s): {}\n'.format(module.module_info['prerequisite_modules']))
 
-            if 'prerequisite_modules' in help[0] and len(help[0]['prerequisite_modules']) > 0:
-                print('Prerequisite Module(s): {}\n'.format(help[0]['prerequisite_modules']))
+            if 'external_dependencies' in module.module_info and len(module.module_info['external_dependencies']) > 0:
+                print('External dependencies: {}\n'.format(module.module_info['external_dependencies']))
 
-            if 'external_dependencies' in help[0] and len(help[0]['external_dependencies']) > 0:
-                print('External dependencies: {}\n'.format(help[0]['external_dependencies']))
-
-            print(help[1].replace(os.path.basename(__file__), 'exec {}'.format(help[0]['name']), 1))
+            parser_help = module.parser.format_help()
+            print(parser_help.replace(os.path.basename(__file__), 'exec {}'.format(module.module_info['name']), 1))
             return
 
         else:
@@ -939,10 +938,10 @@ class Main:
                     # Make sure the format is correct
                     module_path = 'modules/{}/main'.format(module_name).replace('/', '.').replace('\\', '.')
                     # Import the help function from the module
-                    module = __import__(module_path, globals(), locals(), ['help'], 0)
+                    module = __import__(module_path, globals(), locals(), ['module_info'], 0)
                     importlib.reload(module)
-                    category = module.help()[0]['category']
-                    services = module.help()[0]['services']
+                    category = module.module_info['category']
+                    services = module.module_info['services']
 
                     regions = []
                     for service in services:
@@ -960,7 +959,7 @@ class Main:
                         found_modules_by_category[category].append('  {}'.format(module_name))
 
                         if search_term:
-                            found_modules_by_category[category].append('    {}\n'.format(module.help()[0]['one_liner']))
+                            found_modules_by_category[category].append('    {}\n'.format(module.module_info['one_liner']))
 
                     # Searching or listing modules without specifying a category:
                     elif not by_category and search_term in module_name:
@@ -970,7 +969,7 @@ class Main:
                         found_modules_by_category[category].append('  {}'.format(module_name))
 
                         if search_term:
-                            found_modules_by_category[category].append('    {}\n'.format(module.help()[0]['one_liner']))
+                            found_modules_by_category[category].append('    {}\n'.format(module.module_info['one_liner']))
 
         if found_modules_by_category:
             for key in sorted(found_modules_by_category.keys()):
@@ -1243,9 +1242,9 @@ class Main:
                         module_path = 'modules/{}/main'.format(module_name).replace('/', '.').replace('\\', '.')
 
                         # Import the help function from the module
-                        module = __import__(module_path, globals(), locals(), ['help'], 0)
+                        module = __import__(module_path, globals(), locals(), ['module_info'], 0)
                         importlib.reload(module)
-                        CATEGORIES.append(module.help()[0]['category'])
+                        CATEGORIES.append(module.module_info['category'])
 
             RE_SPACE = re.compile('.*\s+$', re.M)
             readline.set_completer_delims(' \t\n`~!@#$%^&*()=+[{]}\\|;:\'",<>/?')

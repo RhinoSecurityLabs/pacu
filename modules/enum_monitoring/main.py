@@ -36,10 +36,6 @@ parser.add_argument('--shield', required=False, default=False, action='store_tru
 parser.add_argument('--guard-duty', required=False, default=False, action='store_true', help='Enumerate GuardDuty security implementations.')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 

@@ -40,6 +40,8 @@ module_info = {
     'arguments_to_autocomplete': [],
 }
 
+# Every module must include an ArgumentParser named "parser", even if it
+# doesn't use any additional arguments.
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 # The two add_argument calls are placeholders for arguments. Change as needed.
@@ -52,12 +54,6 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 # Make sure to add all arguments to module_info['arguments_to_autocomplete']
 parser.add_argument('', help='')
 parser.add_argument('', required=False, default=None, help='')
-
-
-# For when "help module_name" is called. Don't modify this, and make sure it's
-# included in your module.
-def help():
-    return [module_info, parser.format_help()]
 
 
 # Main is the first function that is called when this module is executed.

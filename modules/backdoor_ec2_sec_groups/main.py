@@ -37,10 +37,6 @@ parser.add_argument('--protocol', required=False, default='tcp', help='The proto
 parser.add_argument('--groups', required=False, default=None, help='The EC2 security groups to backdoor in the format of a comma separated list of name@region. If omitted, all security groups will be backdoored.')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 

@@ -29,10 +29,6 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 parser.add_argument('--download-reports', required=False, default=False, action='store_true', help='Optional argument to download HTML reports for each run')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
     args = parser.parse_args(args)

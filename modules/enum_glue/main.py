@@ -46,10 +46,6 @@ parser.add_argument('--dev-endpoints', required=False, default=False, help='Enum
 parser.add_argument('--jobs', required=False, default=False, help='Enumerate Glue jobs.')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 

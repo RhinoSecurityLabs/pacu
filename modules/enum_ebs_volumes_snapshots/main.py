@@ -306,7 +306,7 @@ def main(args, pacu_main):
         print('{} total snapshot(s) found. A list of unencrypted snapshots has been saved to ./{}'.format(len(ec2_data['Snapshots']), unencrypted_snapshots_csv_path))
 
     if args.snapshot_permissions:
-        path = os.path.join(os.getcwd(), 'sessions', session.name, 'downloads', 'snapshot_permissions.txt')
+        path = os.path.join(os.getcwd(), 'sessions', session.name, 'downloads', 'snapshot_permissions_' + str(now) + '.txt')
         with open(path, 'w') as out_file:
             out_file.write('Public:\n')
             for public in snapshot_permissions['Public']:

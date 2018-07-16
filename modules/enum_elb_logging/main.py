@@ -55,7 +55,7 @@ def main(args, pacu_main):
 
     load_balancers = list()
     for region in regions:
-        print(f'Starting region {region}...')
+        print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('elbv2', region)
 
         count = 0
@@ -80,16 +80,16 @@ def main(args, pacu_main):
 
             count += len(response['LoadBalancers'])
 
-        print(f'  {count} total load balancer(s) found in {region}.')
+        print('  {} total load balancer(s) found in {}.'.format(count, region))
 
     ec2_data = deepcopy(session.EC2)
     ec2_data['LoadBalancers'] = deepcopy(load_balancers)
     session.update(pacu_main.database, EC2=ec2_data)
 
-    print(f"{len(session.EC2['LoadBalancers'])} total load balancer(s) found.")
+    print('{} total load balancer(s) found.'.format(len(session.EC2['LoadBalancers'])))
 
     now = time.time()
-    csv_file_path = f'sessions/{session.name}/downloads/elbs_no_logs_{now}.csv'
+    csv_file_path = 'sessions/{}/downloads/elbs_no_logs_{}.csv'.format(session.name, now)
 
     with open(csv_file_path, 'w+') as csv_file:
         csv_file.write('Load Balancer Name,Load Balancer ARN,Region\n')
@@ -98,10 +98,10 @@ def main(args, pacu_main):
             for attribute in load_balancer['Attributes']:
                 if attribute['Key'] == 'access_logs.s3.enabled':
                     if attribute['Value'] is False or attribute['Value'] == 'false':
-                        csv_file.write(f"{load_balancer['LoadBalancerName']},{load_balancer['LoadBalancerArn']},{load_balancer['Region']}\n")
+                        csv_file.write('{},{},{}\n'.format(load_balancer['LoadBalancerName'], load_balancer['LoadBalancerArn'], load_balancer['Region']))
 
-    print(f'A list of load balancers without access logging has been saved to ./{csv_file_path}')
+    print('A list of load balancers without access logging has been saved to ./{}'.format(csv_file_path))
     print('All data has been saved to the current session.')
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

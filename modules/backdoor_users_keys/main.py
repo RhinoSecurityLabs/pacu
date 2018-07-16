@@ -71,17 +71,17 @@ def main(args, pacu_main):
     add_key = ''
     for username in usernames:
         if args.usernames is None:
-            add_key = input(f'  Do you want to add an access key pair to the user {username} (y/n)? ')
+            add_key = input('  Do you want to add an access key pair to the user {} (y/n)? '.format(username))
 
         if add_key == 'y' or args.usernames is not None:
             try:
                 response = client.create_access_key(
                     UserName=username
                 )
-                print(f"    Access Key ID: {response['AccessKey']['AccessKeyId']}\n")
-                print(f"    Secret Access Key: {response['AccessKey']['SecretAccessKey']}\n")
+                print('    Access Key ID: {}\n'.format(response['AccessKey']['AccessKeyId']))
+                print('    Secret Access Key: {}\n'.format(response['AccessKey']['SecretAccessKey']))
             except ClientError as e:
-                print(f"    Error: {e.response['Error']['Message']}\n")
+                print('    Error: {}\n'.format(e.response['Error']['Message']))
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

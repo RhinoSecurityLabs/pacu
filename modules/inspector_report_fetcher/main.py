@@ -42,7 +42,7 @@ def main(args, pacu_main):
     regions = get_regions('Inspector')
     complete_data = {}
     for region in regions:
-        print(f'Starting region {region}...')
+        print('Starting region {}...'.format(region))
 
         client = pacu_main.get_boto3_client('inspector', region)
 
@@ -64,9 +64,9 @@ def main(args, pacu_main):
                     reportFileFormat='HTML',
                     reportType='FULL'
                 )
-                if not os.path.exists(f'sessions/{session.name}/downloads/inspector_assessments/'):
-                    os.makedirs(f'sessions/{session.name}/downloads/inspector_assessments/')
-                file_name = f'sessions/{session.name}/downloads/inspector_assessments/' + str(run)[-10:] + '.html'
+                if not os.path.exists('sessions/{}/downloads/inspector_assessments/'.format(session.name)):
+                    os.makedirs('sessions/{}/downloads/inspector_assessments/'.format(session.name))
+                file_name = 'sessions/{}/downloads/inspector_assessments/'.format(session.name) + str(run)[-10:] + '.html'
                 print('Report saved to: ' + file_name)
                 with urllib.request.urlopen(response['url']) as response, open(file_name, 'a') as out_file:
                     out_file.write(str(response.read()))
@@ -90,5 +90,5 @@ def main(args, pacu_main):
             if error.response['Error']['Code'] == 'AccessDeniedException':
                 print('Access Denied for describe-findings')
     session.update(pacu_main.database, Inspector=complete_data)
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

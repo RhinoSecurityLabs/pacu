@@ -8,7 +8,7 @@ def setup_database_if_not_present(database_file_path, auto_proceed=True):
     if os.path.exists(database_file_path):
         return True
     else:
-        print(f'No database found at {database_file_path}')
+        print('No database found at {}'.format(database_file_path))
         return attempt_to_create_database(database_file_path, auto_proceed)
 
 
@@ -16,7 +16,7 @@ def attempt_to_create_database(database_file_path, auto_proceed=True):
     if auto_proceed:
         proceed = 'y'
     else:
-        print(f'A database will be created at the following location:\n    {database_file_path}')
+        print('A database will be created at the following location:\n    {}'.format(database_file_path))
 
         if os.path.exists(database_file_path):
             question = 'A file already exists at this location.\nAre you sure you want to delete and recreate it? [y/n]\n> '
@@ -34,7 +34,7 @@ def attempt_to_create_database(database_file_path, auto_proceed=True):
         from core.models import AWSKey, PacuSession, ProxySettings
         Base.metadata.create_all(engine)
 
-        print(f'Database created at {database_file_path}\n')
+        print('Database created at {}\n'.format(database_file_path))
         return True
 
     else:

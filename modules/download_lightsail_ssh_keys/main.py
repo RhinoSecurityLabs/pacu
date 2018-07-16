@@ -52,7 +52,7 @@ def main(args, pacu_main):
             'publicKey': downloaded_keys['publicKeyBase64'],
             'privateKey': downloaded_keys['privateKeyBase64']
         }
-        print(f'Region: {region}\n{json.dumps(restructured_keys)}\n')
+        print('Region: {}\n{}\n'.format(region, json.dumps(restructured_keys)))
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

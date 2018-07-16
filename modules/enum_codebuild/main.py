@@ -45,7 +45,7 @@ def main(args, pacu_main):
         region_projects = []
         region_builds = []
 
-        print(f'Starting region {region}...')
+        print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('codebuild', region)
 
         # Begin enumeration
@@ -65,7 +65,7 @@ def main(args, pacu_main):
                 region_projects = client.batch_get_projects(
                     names=project_names
                 )['projects']
-                print(f'  Found {len(region_projects)} projects.')
+                print('  Found {} projects.'.format(len(region_projects)))
                 all_projects.extend(region_projects)
 
         # Builds
@@ -83,7 +83,7 @@ def main(args, pacu_main):
                 region_builds = client.batch_get_builds(
                     ids=build_ids
                 )['builds']
-                print(f'  Found {len(region_builds)} builds.\n')
+                print('  Found {} builds.\n'.format(len(region_builds)))
                 all_builds.extend(region_builds)
 
     # Begin environment variable dump
@@ -113,5 +113,5 @@ def main(args, pacu_main):
     print('All environment variables found (duplicates removed):\n')
     print(environment_variables)
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

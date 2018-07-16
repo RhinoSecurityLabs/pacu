@@ -99,13 +99,13 @@ def main(args, pacu_main):
         print('Starting GuardDuty...\n')
 
         for region in gd_regions:
-            print(f'  Starting region {region}...\n')
+            print('  Starting region {}...\n'.format(region))
 
             client = pacu_main.get_boto3_client('guardduty', region)
 
             for detector in detectors:
                 if detector['Region'] == region:
-                    action = input(f"    GuardDuty detector ID: {detector['Id']}\n        Do you want to disable (dis), delete (del), or skip (s) it? (dis/del/s) ")
+                    action = input('    GuardDuty detector ID: {}\n        Do you want to disable (dis), delete (del), or skip (s) it? (dis/del/s) '.format(detector['Id']))
 
                     if action == 'dis':
                         try:
@@ -113,21 +113,21 @@ def main(args, pacu_main):
                                 DetectorId=detector['Id'],
                                 Enable=False
                             )
-                            print(f"        Successfully disabled detector {detector['Id']}!\n")
+                            print('        Successfully disabled detector {}!\n'.format(detector['Id']))
                         except Exception as error:
-                            print(f"        Could not disable detector {detector['Id']}:\n      {error}\n")
+                            print('        Could not disable detector {}:\n      {}\n'.format(detector['Id'], error))
 
                     elif action == 'del':
                         try:
                             client.delete_detector(
                                 DetectorId=detector['Id']
                             )
-                            print(f"        Successfully deleted detector {detector['Id']}!\n")
+                            print('        Successfully deleted detector {}!\n'.format(detector['Id']))
                         except Exception as error:
-                            print(f"        Could not delete detector {detector['Id']}:\n      {error}\n")
+                            print('        Could not delete detector {}:\n      {}\n'.format(detector['Id'], error))
 
                     else:
-                        print(f"    Skipping detector {detector['Id']}...\n")
+                        print('    Skipping detector {}...\n'.format(detector['Id']))
 
         print('GuardDuty finished.\n')
 
@@ -138,31 +138,31 @@ def main(args, pacu_main):
         print('Starting CloudTrail...\n')
 
         for region in ct_regions:
-            print(f'  Starting region {region}...\n')
+            print('  Starting region {}...\n'.format(region))
 
             client = pacu_main.get_boto3_client('cloudtrail', region)
 
             for trail in trails:
                 if trail['Region'] == region:
-                    action = input(f"    CloudTrail trail name: {trail['Name']}\n        Do you want to disable (dis), delete (del), minimize (m), or skip (s) it? (dis/del/m/s) ")
+                    action = input('    CloudTrail trail name: {}\n        Do you want to disable (dis), delete (del), minimize (m), or skip (s) it? (dis/del/m/s) '.format(trail['Name']))
 
                     if action == 'dis':
                         try:
                             client.stop_logging(
                                 Name=trail['Name']
                             )
-                            print(f"        Successfully disabled trail {trail['Name']}!\n")
+                            print('        Successfully disabled trail {}!\n'.format(trail['Name']))
                         except Exception as error:
-                            print(f"        Could not disable trail {trail['Name']}:\n      {error}\n")
+                            print('        Could not disable trail {}:\n      {}\n'.format(trail['Name'], error))
 
                     elif action == 'del':
                         try:
                             client.delete_trail(
                                 Name=trail['Name']
                             )
-                            print(f"        Successfully deleted trail {trail['Name']}!\n")
+                            print('        Successfully deleted trail {}!\n'.format(trail['Name']))
                         except Exception as error:
-                            print(f"        Could not delete trail {trail['Name']}:\n      {error}\n")
+                            print('        Could not delete trail {}:\n      {}\n'.format(trail['Name'], error))
 
                     elif action == 'm':
                         try:
@@ -175,17 +175,17 @@ def main(args, pacu_main):
                                 CloudWatchLogsLogGroupArn='',
                                 CloudWatchLogsRoleArn=''
                             )
-                            print(f"        Successfully minimized trail {trail['Name']}!\n")
+                            print('        Successfully minimized trail {}!\n'.format(trail['Name']))
                         except Exception as error:
-                            print(f"        Could not minimize trail {trail['Name']}:\n      {error}\n")
+                            print('        Could not minimize trail {}:\n      {}\n'.format(trail['Name'], error))
 
                     else:
-                        print(f"        Skipping trail {trail['Name']}...\n")
+                        print('        Skipping trail {}...\n'.format(trail['Name']))
 
         print('CloudTrail finished.\n')
 
     else:
         print('No trails found. Skipping CloudTrail...\n')
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

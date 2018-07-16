@@ -54,7 +54,7 @@ def main(args, pacu_main):
         regions = get_regions('cloudtrail')
 
     for region in regions:
-        print(f'Starting region {region}...')
+        print('Starting region {}...'.format(region))
 
         print('  Starting CreateTrail attack...')
 
@@ -91,7 +91,7 @@ def main(args, pacu_main):
                 print('  RunInstances attack failed.')
                 print(error)
 
-        print(f'  {region} finished.')
+        print('  {} finished.'.format(region))
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

@@ -83,10 +83,10 @@ def main(args, pacu_main):
     password = create_valid_password(password_policy)
     for user in users:
         if args.usernames is None:
-            target_user = input(f'  Do you want to target the user {user} (y/n)? ')
+            target_user = input('  Do you want to target the user {} (y/n)? '.format(user))
 
         if target_user == 'y' or args.usernames is not None:
-            print(f'  User: {user}\n')
+            print('  User: {}\n'.format(user))
 
             if args.update is False:
                 try:
@@ -95,10 +95,10 @@ def main(args, pacu_main):
                         Password=password,
                         PasswordResetRequired=False
                     )
-                    print(f'  Password: {password}\n')
+                    print('  Password: {}\n'.format(password))
 
                 except Exception as error:
-                    print(f'  Failed to set password: {user} most likely already has a password. The error is shown here:\n{error}')
+                    print('  Failed to set password: {} most likely already has a password. The error is shown here:\n{}'.format(user, error))
 
                     quit = input('Based on the error returned, would you like to continue to the next user (y) or cancel (n)? ')
                     if quit == 'n':
@@ -112,16 +112,16 @@ def main(args, pacu_main):
                         Password=password,
                         PasswordResetRequired=False
                     )
-                    print(f'  Password: {password}\n')
+                    print('  Password: {}\n'.format(password))
                 except Exception as error:
-                    print(f'  Failed to update password: {user} most likely doesn\'t have a login profile. The error is shown here:\n{error}')
+                    print('  Failed to update password: {} most likely doesn\'t have a login profile. The error is shown here:\n{}'.format(user, error))
 
                     quit = input('Based on the error returned, would you like to continue to the next user (y) or cancel (n)? ')
                     if quit == 'n':
                         print('  User cancelled. Quitting.')
                         return
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return
 
 

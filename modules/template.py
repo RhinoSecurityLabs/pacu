@@ -114,8 +114,8 @@ def main(args, pacu_main):
     regions = get_regions('EC2')
 
     for region in regions:
-        print(f'Starting region {region}...')
+        print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('aws_service', region)
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

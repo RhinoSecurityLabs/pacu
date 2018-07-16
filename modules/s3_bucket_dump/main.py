@@ -92,9 +92,9 @@ def main(args, pacu_main):
     print('Starting scan process...')
 
     for bucket in buckets:
-        print(f'  Bucket name: "{bucket}"')
+        print('  Bucket name: "{}"'.format(bucket))
 
-        bucket_download_path = f'sessions/{session.name}/downloads/s3_dump/{bucket}'
+        bucket_download_path = 'sessions/{}/downloads/s3_dump/{}'.format(session.name, bucket)
 
         try:
             print('    Checking read permissions...')
@@ -104,7 +104,7 @@ def main(args, pacu_main):
             )
 
             if args.dl_all is False and args.names_only is False and args.dl_names is False:
-                try_to_dl = input(f'      You have permission to read files in bucket {bucket}, do you want to attempt to download all files in it? (y/n) ')
+                try_to_dl = input('      You have permission to read files in bucket {}, do you want to attempt to download all files in it? (y/n) '.format(bucket))
                 if try_to_dl == 'n':
                     print('      Skipping to next bucket.')
                     continue
@@ -115,7 +115,7 @@ def main(args, pacu_main):
 
         except ClientError:
             try_to_dl = 'n'
-            print(f'      You do not have permission to view files in bucket {bucket}, skipping to next bucket.')
+            print('      You do not have permission to view files in bucket {}, skipping to next bucket.'.format(bucket))
             continue
 
         if try_to_dl == 'y':
@@ -131,9 +131,9 @@ def main(args, pacu_main):
                 if not os.path.exists('tmp/{}'.format(os.path.dirname(first_obj_key))):
                     os.makedirs('tmp/{}'.format(os.path.dirname(first_obj_key)))
 
-                s3.meta.client.download_file(bucket, first_obj_key, f'tmp/{first_obj_key}')
+                s3.meta.client.download_file(bucket, first_obj_key, 'tmp/{}'.format(first_obj_key))
 
-                with open(f'tmp/{first_obj_key}', 'rb') as test_file:
+                with open('tmp/{}'.format(first_obj_key), 'rb') as test_file:
                     test_file.read()
 
                 print('      Test file has been downloaded to ./tmp and read successfully.')
@@ -185,11 +185,11 @@ def main(args, pacu_main):
                 print('      Failed to collect all available files, skipping to the next bucket...')
                 continue
 
-            file_names_list_path = f'sessions/{session.name}/downloads/s3_dump/s3_bucket_dump_file_names.txt'
+            file_names_list_path = 'sessions/{}/downloads/s3_dump/s3_bucket_dump_file_names.txt'.format(session.name)
             with open(file_names_list_path, 'w+') as file_names_list:
                 for file in s3_objects:
-                    file_names_list.write(f'{file}@{bucket}\n')
-            print(f'    Saved found file names to ./{file_names_list_path}')
+                    file_names_list.write('{}@{}\n'.format(file, bucket))
+            print('    Saved found file names to ./{}'.format(file_names_list_path))
 
         else:
             print('    File names were supplied, skipping file name enumeration.')
@@ -199,8 +199,8 @@ def main(args, pacu_main):
 
             if args.dl_names is not False:
                 for file in names_and_buckets:
-                    if f'@{bucket}' in file:
-                        s3_objects.append(file.split(f'@{bucket}')[0])
+                    if '@{}'.format(bucket) in file:
+                        s3_objects.append(file.split('@{}'.format(bucket))[0])
 
             failed_dl = 0
             cont = 'y'
@@ -211,7 +211,7 @@ def main(args, pacu_main):
 
                 if cont == 'y':
                     try:
-                        print(f'      Downloading file {key}...')
+                        print('      Downloading file {}...'.format(key))
 
                         nested_key_directory_path, file_name = os.path.split(key)
                         key_directory_path = os.path.join(bucket_download_path, nested_key_directory_path)
@@ -231,5 +231,5 @@ def main(args, pacu_main):
                         failed_dl += 1
 
     print('All buckets have been analyzed.')
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

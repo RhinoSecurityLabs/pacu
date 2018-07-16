@@ -83,7 +83,7 @@ def main(args, pacu_main):
         dev_endpoints = []
         jobs = []
 
-        print(f'Starting region {region}...')
+        print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('glue', region)
 
         # Connections
@@ -106,11 +106,11 @@ def main(args, pacu_main):
                         connection['Region'] = region
                         connections.append(connection)
 
-                print(f'  {len(connections)} connection(s) found.')
+                print('  {} connection(s) found.'.format(len(connections)))
                 all_connections += connections
 
             except Exception as error:
-                print(f'Error while running client.get_connections: {error}')
+                print('Error while running client.get_connections: {}'.format(error))
 
         # Crawlers
         if args.crawlers is True or all is True:
@@ -133,11 +133,11 @@ def main(args, pacu_main):
                         crawler['Region'] = region
                         crawlers.append(crawler)
 
-                print(f'  {len(crawlers)} crawler(s) found.')
+                print('  {} crawler(s) found.'.format(len(crawlers)))
                 all_crawlers += crawlers
 
             except Exception as error:
-                print(f'Error while running client.get_crawlers: {error}')
+                print('Error while running client.get_crawlers: {}'.format(error))
 
         # Databases
         if args.databases is True or all is True:
@@ -160,11 +160,11 @@ def main(args, pacu_main):
                         database['Region'] = region
                         databases.append(database)
 
-                print(f'  {len(databases)} database(s) found.')
+                print('  {} database(s) found.'.format(len(databases)))
                 all_databases += databases
 
             except Exception as error:
-                print(f'Error while running client.get_databases: {error}')
+                print('Error while running client.get_databases: {}'.format(error))
 
         # Development Endpoints
         if args.dev_endpoints is True or all is True:
@@ -183,11 +183,11 @@ def main(args, pacu_main):
                         dev_endpoint['Region'] = region
                         dev_endpoints.append(dev_endpoint)
 
-                print(f'  {len(dev_endpoints)} development endpoint(s) found.')
+                print('  {} development endpoint(s) found.'.format(len(dev_endpoints)))
                 all_dev_endpoints += dev_endpoints
 
             except Exception as error:
-                print(f'Error while running client.get_dev_endpoints: {error}')
+                print('Error while running client.get_dev_endpoints: {}'.format(error))
 
         # Jobs
         if args.jobs is True or all is True:
@@ -210,17 +210,17 @@ def main(args, pacu_main):
                         job['Region'] = region
                         jobs.append(job)
 
-                print(f'  {len(jobs)} job(s) found.')
+                print('  {} job(s) found.'.format(len(jobs)))
                 all_jobs += jobs
 
             except Exception as error:
-                print(f'Error while running client.get_jobs: {error}')
+                print('Error while running client.get_jobs: {}'.format(error))
 
-    print(f'{len(all_connections)} total connection(s) found.')
-    print(f'{len(all_crawlers)} total crawler(s) found.')
-    print(f'{len(all_databases)} total database(s) found.')
-    print(f'{len(all_dev_endpoints)} total development endpoint(s) found.')
-    print(f'{len(all_jobs)} total job(s) found.')
+    print('{} total connection(s) found.'.format(len(all_connections)))
+    print('{} total crawler(s) found.'.format(len(all_crawlers)))
+    print('{} total database(s) found.'.format(len(all_databases)))
+    print('{} total development endpoint(s) found.'.format(len(all_dev_endpoints)))
+    print('{} total job(s) found.'.format(len(all_jobs)))
 
     glue_data = deepcopy(session.Glue)
     glue_data['Connections'] = all_connections
@@ -230,5 +230,5 @@ def main(args, pacu_main):
     glue_data['Jobs'] = all_jobs
     session.update(pacu_main.database, Glue=glue_data)
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

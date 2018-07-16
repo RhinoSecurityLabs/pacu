@@ -96,7 +96,7 @@ class PacuProxy(object):
                     print(client_response, end='')
                 return client_response
         except Exception as error:
-            print(f'** Connection was lost {str(error)} **')
+            print('** Connection was lost {} **'.format(str(error)))
             del self.all_connections[target]
             del self.all_addresses[target]
         return

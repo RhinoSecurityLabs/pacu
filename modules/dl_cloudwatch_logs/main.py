@@ -15,7 +15,7 @@ module_info = {
         This module examines all logs for all regions and saves them as CSV files. By default,
         only events that were logged in the past 24 hours will be captured. Otherwise, they will
         be captured based on the passed time arguments. The files will be downloaded in a similar
-        format to pacu\sessions\{session}\downloads\cloud_watch_logs\{timestamp}, with session 
+        format to pacu\sessions\{session}\downloads\cloud_watch_logs\{timestamp}, with session
         being the active session, and timestamp being the start of this module's execution.
         """,
     'services': ['logs'],

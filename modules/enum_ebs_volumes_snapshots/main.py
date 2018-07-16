@@ -22,7 +22,7 @@ module_info = {
     'one_liner': 'Enumerates EBS volumes and snapshots and logs any without encryption.',
 
     # Description about what the module does and how it works
-    'description': 'This module will enumerate all of the Elastic Block Store volumes and snapshots in the account and save the data to the current session. It will also note whether or not each volume/snapshot is encrypted, then write a list of the unencrypted volumes to ./sessions/[current_session_name]/downloads/unencrypted_ebs_volumes_[timestamp].csv and unencrypted snapshots to ./sessions/[current_session_name]/downloads/unencrypted_ebs_snapshots_[timestamp].csv in .CSV format.',
+    'description': 'This module will enumerate all of the Elastic Block Store volumes, snapshots, and snapshot permissions in the account and save the data to the current session. It will also note whether or not each volume/snapshot is encrypted, then write a list of the unencrypted volumes to ./sessions/[current_session_name]/downloads/unencrypted_ebs_volumes_[timestamp].csv and unencrypted snapshots to ./sessions/[current_session_name]/downloads/unencrypted_ebs_snapshots_[timestamp].csv in .CSV format.',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['EC2'],

@@ -1,6 +1,79 @@
 {
-  "associate_address": {
-    "InstanceId": "i-1234567890abcdef0",
-    "PublicIp": "192.0.2.1"
+  "bundle_instance": {
+    "InstanceId": "string",
+    "Storage": {
+      "S3": {
+        "AWSAccessKeyId": "string",
+        "Bucket": "string",
+        "Prefix": "string",
+        "UploadPolicy": "b'bytes'",
+        "UploadPolicySignature": "string"
+      }
+    },
+    "DryRun": true
+  },
+  "create_dhcp_options": {
+    "DhcpConfigurations": [
+      {
+        "Key": "string",
+        "Values": [
+          "string"
+        ]
+      }
+    ],
+    "DryRun": true
+  },
+  "create_fleet": {
+    "DryRun": true,
+    "LaunchTemplateConfigs": [
+      {
+        "LaunchTemplateSpecification": {
+          "LaunchTemplateId": "string",
+          "LaunchTemplateName": "string",
+          "Version": "string"
+        },
+        "Overrides": [
+          {
+            "InstanceType": "t1.micro",
+            "MaxPrice": "string",
+            "SubnetId": "string",
+            "AvailabilityZone": "string",
+            "WeightedCapacity": 123.0
+          }
+        ]
+      }
+    ],
+    "TargetCapacitySpecification": {
+      "TotalTargetCapacity": 123,
+      "OnDemandTargetCapacity": 123,
+      "SpotTargetCapacity": 123,
+      "DefaultTargetCapacityType": "spot"
+    }
+  },
+  "create_fpga_image": {
+    "DryRun": true,
+    "InputStorageLocation": {
+      "Bucket": "string",
+      "Key": "string"
+    }
+  },
+  "create_launch_template": {
+    "DryRun": true,
+    "LaunchTemplateData": {
+      "KernelId": "string"
+    }
+  },
+  "create_launch_template_version": {
+    "DryRun": true,
+    "LaunchTemplateData": {
+      "KernelId": "string"
+    },
+    "LaunchTemplateId": "String"
+  },
+  "create_network_interface_permission": {
+    "DryRun": true,
+    "Permission": "INSTANCE-ATTACH",
+    "AwsAccountId": "123456789012"
   }
+  
 }

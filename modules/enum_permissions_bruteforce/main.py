@@ -162,14 +162,22 @@ def build_kwargs(error):
     return kwargs
 
 def missing_param(param):
-    out = {param:'string'}
+    common_params = {
+        'InstanceId': 'i-123',
+        'NetworkInterfaceId': 'eni-1a2b3c4d',
+        'PriceSchedules': [{'CurrencyCode': 'USD'}],
+        'RouteTableId': 'rtb-e4ad488d'
+    }
+    out = {param: common_params[param]} if param in common_params else {param: 'string'} 
     return out
 
 def invalid_param(valid_type):
-    print('checking for invalid types')
+    print('Checking for invalid types')
     types = {
-        'list': ['string',],
-        'int': 1
+        'list': ['Name',],
+        'int': 1,
+        'dict': {'Name':'name'},
+        'bool': True
     }
     
     return types[valid_type]
@@ -178,7 +186,7 @@ def error_delegator(error):
     kwargs = {}
     # Ignore first line of error message and process in reverse order.
     for line in str(error).split('\n')[::-1][:-1]:
-        #print(f'\t Processing Line: {line}')
+        print(f'\t Processing Line: {line}')
         if 'Missing required parameter' in line:
             if line[line.find('"') + 1:-1] not in kwargs.keys():
                 kwargs = {**kwargs, **missing_param(line.split()[-1][1:-1])}
@@ -201,6 +209,12 @@ def valid_func(func):
         'generate_presigned_url',
         'exceptions',
         'meta',
+        # EC2
+        'associate_address',
+        'attach_volume',
+        'authorize_security_group_egress',
+        'authorize_security_group_ingress',
+        'create_network_interface_permission'
     ]
     if func in bad_functions:
         return False
@@ -230,15 +244,19 @@ def main(args, pacu_main):
             )
         except NoRegionError:
             regions = get_regions(service)
+
+        regions = ['us-east-1']
         for region in regions:
             client = boto3.client(
                 service,
                 region_name = region,
             )
             functions = [func for func in dir(client) if valid_func(func)]
-            for func in functions[5:10]:
-                print('*************************NEW FUNCTION*************************')
-                kwargs = special_types[func] if func in special_types else {}
+            index = 50
+            for func in functions[index:]:
+                print('*************************NEW FUNCTION({})*************************'.format(index))
+                index += 1
+                kwargs = special_types[func] if func in special_types else {'DryRun':True}
                 while True:
                     try:                        
                         print('---------------------------------------------------------')
@@ -249,8 +267,11 @@ def main(args, pacu_main):
                         allow_permissions[service].append(func)
                         break
                     except ParamValidationError as error:
-                        print(error)
-                        kwargs = {**kwargs, **error_delegator(error)}
+                        if 'Unknown parameter in input: "DryRun"' in str(error):
+                            print('DryRun failed. Retrying without DryRun parameter')
+                            kwargs = {}
+                        else:
+                            kwargs = {**kwargs, **error_delegator(error)}
                     except ClientError as error:
                         print(f'ClientError: {error}')
                         code = error.response['Error']['Code']
@@ -265,6 +286,11 @@ def main(args, pacu_main):
                         elif 'Malformed' in error.response['Error']['Code']:
                             print('Unable to determine authorization')
                             maybe_permissions[service].append(func)
+                            break
+                        elif code == 'UnsupportedOperation':
+                            break
+                        elif code == 'DryRunOperation':
+                            allow_permissions[service].append(func)
                             break
                         else:
                             print('Unknown error:')

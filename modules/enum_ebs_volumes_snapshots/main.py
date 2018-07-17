@@ -310,15 +310,15 @@ def main(args, pacu_main):
         with open(path, 'w') as out_file:
             out_file.write('Public:\n')
             for public in snapshot_permissions['Public']:
-                out_file.write('\t{}'.format(public))
+                out_file.write('    {}'.format(public))
             out_file.write('Shared:\n')
             for snap in snapshot_permissions['Shared']:
-                out_file.write('\t{}\n'.format(snap))
+                out_file.write('    {}\n'.format(snap))
                 for aws_id in snapshot_permissions['Shared'][snap]:
-                    out_file.write('\t\t{}\n'.format(aws_id))
+                    out_file.write('        {}\n'.format(aws_id))
             out_file.write('Private:\n')
             for private in snapshot_permissions['Private']:
-                out_file.write('\t{}\n'.format(private))
+                out_file.write('    {}\n'.format(private))
             print('Found Permissions written to: {}'.format(path))
     session.update(pacu_main.database, EC2=ec2_data)
     print('All data has been saved to the current session.')

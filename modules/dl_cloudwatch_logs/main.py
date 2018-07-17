@@ -6,6 +6,7 @@ import datetime
 import pytz
 import csv
 
+
 module_info = {
     'name': 'dl_cloudwatch_logs',
     'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
@@ -40,10 +41,6 @@ parser.add_argument(
     default=None,
     help='Download logs up to and not including time format "yyyy[-mm[-dd-[hh-mm-ss]]]". Unfilled fields will assume earliest possible time'
 )
-
-
-def help():
-    return [module_info, parser.format_help()]
 
 
 def parse_time(time):

@@ -47,10 +47,6 @@ for field in MASTER_FIELDS:
     add_field(field)
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def setup_storage(fields):
     out = {}
     for field in fields:

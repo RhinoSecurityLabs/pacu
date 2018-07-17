@@ -38,10 +38,6 @@ parser.add_argument('--script', help='File path of the shell script to add to th
 parser.add_argument('--instance-ids', required=False, default=None, help='One or more (comma separated) EC2 instance IDs and their regions in the format instanceid@region. Defaults to all instances.')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 

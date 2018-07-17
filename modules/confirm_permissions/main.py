@@ -41,10 +41,6 @@ parser.add_argument('--user-name', required=False, default=None, help='A single 
 # parser.add_argument('--policy-name', required=False, default=None, help='The name of a specific policy to run this module against. By default, this module will be run against the user which the active AWS keys belong to.')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 

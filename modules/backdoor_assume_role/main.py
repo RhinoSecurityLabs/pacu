@@ -38,10 +38,6 @@ parser.add_argument('--user-arns', required=False, default=None, help='A comma-s
 parser.add_argument('--no-random', required=False, action='store_true', help='If this argument is supplied in addition to a list of user ARNs, a trust relationship is created for each user in the list with each role, rather than one of them at random.')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 

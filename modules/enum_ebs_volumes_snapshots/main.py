@@ -170,7 +170,7 @@ def main(args, pacu_main):
             )
         except ClientError as error:
             if str(error).find('UnauthorizedOperation') != -1:
-                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_volumes".\nExiting module.')
+                print('The current AWS credentials do not have the necessary permissions to run "describe_volumes".\nExiting module.')
                 return
 
     if args.snaps is True and not account_ids == []:
@@ -181,7 +181,7 @@ def main(args, pacu_main):
             )
         except ClientError as error:
             if str(error).find('UnauthorizedOperation') != -1:
-                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_snapshots".\nExiting module.')
+                print('The current AWS credentials do not have the necessary permissions to run "describe_snapshots".\nExiting module.')
                 return
 
     now = time.time()

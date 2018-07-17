@@ -48,44 +48,53 @@ def main(args, pacu_main):
     ######
 
     client = pacu_main.get_boto3_client('iam')
-
     report = None
-
-    try:
-        report = client.get_credential_report()
-
-    except ClientError as error:
-        report = None
-
-        if error.response['Error']['Code'] == 'ReportNotPresent':
-            generate = input('Credential report not generated, do you want to generate one? (y/n) ')
-
-            if generate == 'y':
-                client.generate_credential_report()
-                print('Credential report generation started, this may take up to a couple minutes. Checking if it is ready every 20 seconds...')
-
-                while report is None:
+    generated = False
+    while True:
+        try:
+            report = client.get_credential_report()
+            break
+        except ClientError as error:
+            code = error.response['Error']['Code']
+            if code == 'ReportNotPresent':
+                if generated:
+                    print('waiting...')
                     time.sleep(20)
+                else:
+                    generate = input('Credential report not generated, do you want to generate one? (y/n) ')
+                    if generate == 'y':
+                        try:
+                            client.generate_credential_report()
+                            print('Credential report generation started, this may take up to a couple minutes. Checking if it is ready every 20 seconds...')
+                            generated = True
+                        except ClientError as error:
+                            if error.response['Error']['Code'] == 'AccessDenied':
+                                print('Unauthorized to generate_credential_report')
+                                report = None
+                                break
+                    else:
+                        report = None
+                        break
+            elif code == 'AccessDenied':
+                print('Access Denied for get_credential_report')
+                report = None
+                break
+            else:
+                print('Unrecognized ClientError: {} ({})'.format(str(error), error.response['Error']['Code']))
+                break
 
-                    try:
-                        report = client.get_credential_report()
-                    except ClientError as error:
-                        if error.response['Error']['Code'] == 'ReportNotPresent':
-                            report = None
+    if report and 'Content' in report:
+        if not os.path.exists('sessions/{}/downloads'.format(session.name)):
+            os.makedirs('sessions/{}/downloads'.format(session.name))
 
-    except:
-        print('Download failed, you do not have the correct permissions to download a credential report.')
-        return
-
-    if 'Content' in report:
-        if not os.path.exists(f'sessions/{session.name}/downloads'):
-            os.makedirs(f'sessions/{session.name}/downloads')
-
-        filename = f'sessions/{session.name}/downloads/get_credential_report_{time.time()}.csv'
+        filename = 'sessions/{}/downloads/get_credential_report_{}.csv'.format(session.name, time.time())
         with open(filename, 'w+') as csv_file:
             csv_file.write(report['Content'].decode())
 
-        print(f'Credential report saved to {filename}')
+        print('Credential report saved to {}'.format(filename))
 
-    print(f"{module_info['name']} completed.\n")
+    else:
+        print('\n  Unable to generate report.\n')
+
+    print('{} completed.\n'.format(module_info['name']))
     return

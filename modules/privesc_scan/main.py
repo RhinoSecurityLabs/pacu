@@ -466,7 +466,7 @@ def main(args, pacu_main):
             if escalated is False:
                 print('No potential privilege escalation methods worked.')
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return
 
 

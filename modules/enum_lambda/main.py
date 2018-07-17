@@ -56,7 +56,7 @@ def main(args, pacu_main):
     lambda_data = {}
     lambda_data['Functions'] = []
     for region in regions:
-        print(f'Starting region {region}...')
+        print('Starting region {}...'.format(region))
 
         client = pacu_main.get_boto3_client('lambda', region)
 
@@ -139,5 +139,5 @@ def main(args, pacu_main):
 
     session.update(pacu_main.database, Lambda=lambda_data)
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

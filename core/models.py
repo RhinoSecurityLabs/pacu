@@ -37,7 +37,7 @@ class AWSKey(Base, ModelUpdateMixin):
     deny_permissions = Column(JSONType, nullable=False, default=dict)
 
     def __repr__(self):
-        return f'<AWSKey #{self.id}: {self.key_alias}>'
+        return '<AWSKey #{}: {}>'.format(self.id, self.key_alias)
 
     def get_fields_as_camel_case_dictionary(self):
         # Deep copy because Permissions->allow_permissions and deny_permissions were dicts that were being passed as reference
@@ -92,7 +92,7 @@ class ProxySettings(Base, ModelUpdateMixin):
     )
 
     def __repr__(self):
-        return f"<PacuProxy {self.ip}:{self.port} Target {self.target_agent} Listening {self.listening}>"
+        return '<PacuProxy {}:{} Target {} Listening {}>'.format(self.ip, self.port, self.target_agent, self.listening)
 
 
 class PacuSession(Base, ModelUpdateMixin):
@@ -147,8 +147,8 @@ class PacuSession(Base, ModelUpdateMixin):
         else:
             key_alias = 'No Keys Set'
         if self.is_active:
-            return f'<PacuSession #{self.id} ({self.name}:{key_alias}) (ACTIVE)>'
-        return f'<PacuSession #{self.id} ({self.name}:{key_alias})>'
+            return '<PacuSession #{} ({}:{}) (ACTIVE)>'.format(self.id, self.name, key_alias)
+        return '<PacuSession #{} ({}:{})>'.format(self.id, self.name, key_alias)
 
     @classmethod
     def get_active_session(cls, database):
@@ -185,7 +185,7 @@ class PacuSession(Base, ModelUpdateMixin):
                 if owned_keys:
                     text.append('aws_keys: [')
                     for each_key in owned_keys:
-                        text.append(f'    <AWSKey: {each_key.key_alias}>')
+                        text.append('    <AWSKey: {}>'.format(each_key.key_alias))
                     text.append(']')
 
             elif column.key == 'secret_access_key':

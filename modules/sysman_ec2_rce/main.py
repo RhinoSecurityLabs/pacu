@@ -114,7 +114,7 @@ def main(args, pacu_main):
         vuln_images = []
         for region in regions:
             image_ids = []
-            print(f'Starting region {region}...')
+            print('Starting region {}...'.format(region))
             client = pacu_main.get_boto3_client('ec2', region)
 
             for instance in instances:
@@ -144,8 +144,8 @@ def main(args, pacu_main):
                             count += 1
                             vuln_images.append(image['ImageId'])
                             break
-                print(f'  {count} vulnerable images found.\n')
-        print(f'Total vulnerable images found: {len(vuln_images)}\n')
+                print('  {} vulnerable images found.\n'.format(count))
+        print('Total vulnerable images found: {}\n'.format(len(vuln_images)))
 
     if ssm_instance_profile_name == '':
         # Begin Systems Manager role finder/creator
@@ -221,12 +221,12 @@ def main(args, pacu_main):
                     RoleName=ssm_role_name,
                     PolicyArn='arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
                 )
-                print(f"  Successfully created the required role: {create_response['Arn']}\n")
+                print('  Successfully created the required role: {}\n'.format(create_response['Arn']))
             except Exception as error:
-                print(f'  Unable to create the required role: {str(error)}\n')
+                print('  Unable to create the required role: {}\n'.format(str(error)))
                 return
         else:
-            print(f'Found valid SystemsManager service role: {ssm_role_name}. Checking if it is associated with an instance profile...\n')
+            print('Found valid SystemsManager service role: {}. Checking if it is associated with an instance profile...\n'.format(ssm_role_name))
 
             # Find instance profile belonging to that role
             response = client.list_instance_profiles_for_role(
@@ -237,7 +237,7 @@ def main(args, pacu_main):
             if len(response['InstanceProfiles']) > 0:
                 ssm_instance_profile_name = response['InstanceProfiles'][0]['InstanceProfileName']
                 ssm_instance_profile_arn = response['InstanceProfiles'][0]['Arn']
-                print(f'Found valid instance profile: {ssm_instance_profile_name}.\n')
+                print('Found valid instance profile: {}.\n'.format(ssm_instance_profile_name))
             # Else, leave ssm_instance_profile_name == ''
 
         # If no instance profile yet, create one with the role we have
@@ -258,7 +258,7 @@ def main(args, pacu_main):
                     RoleName=ssm_role_name
                 )
             except Exception as error:
-                print(f'  Unable to create an instance profile: {str(error)}\n')
+                print('  Unable to create an instance profile: {}\n'.format(str(error)))
                 return
 
     # If there are target instances passed in as arguments, fix instances and regions
@@ -306,7 +306,7 @@ def main(args, pacu_main):
                             if args.replace is True and replace is True:
                                 instances_to_replace.append(instance['InstanceId'])
                             else:
-                                print(f"  Instance ID {instance['InstanceId']} already has an instance profile attached to it, skipping...")
+                                print('  Instance ID {} already has an instance profile attached to it, skipping...'.format(instance['InstanceId']))
                                 pass
                         else:
                             # There is no instance profile attached yet, do it now
@@ -318,7 +318,7 @@ def main(args, pacu_main):
                                 }
                             )
                             targeted_instances.append(instance['InstanceId'])
-                            print(f"  Instance profile attached to instance ID {instance['InstanceId']}.")
+                            print('  Instance profile attached to instance ID {}.'.format(instance['InstanceId']))
         if len(instances_to_replace) > 0 and replace is True:
             # There are instances that need their role replaced, so discover association IDs to make that possible
             all_associations = []
@@ -357,9 +357,9 @@ def main(args, pacu_main):
                         }
                     )
                     targeted_instances.append(instance_id)
-                    print(f'  Instance profile replaced for instance ID {instance_id}.')
+                    print('  Instance profile replaced for instance ID {}.'.format(instance_id))
                 except Exception as error:
-                    print(f'  Failed to run replace_iam_instance_profile_association on instance ID {instance_id}: {str(error)}\n')
+                    print('  Failed to run replace_iam_instance_profile_association on instance ID {}: {}\n'.format(instance_id, str(error)))
                     replace = input('Do you want to keep trying to replace instance profiles, or skip the rest based on the error shown? (y/n) ')
                     if replace == 'y':
                         replace = True
@@ -401,19 +401,19 @@ def main(args, pacu_main):
                     if args.target_os.lower() == 'all' or instance[1].lower() == args.target_os.lower():
                         # Is this instance eligible for an attack, but was not targeted?
                         if instance[0] not in targeted_instances:
-                            action = input(f'  Instance ID {instance[0]} (Platform: {instance[1]}) was not found in the list of targeted instances, but it might be possible to attack it, do you want to try and attack this instance (a) or ignore it (i)? (a/i) ')
+                            action = input('  Instance ID {} (Platform: {}) was not found in the list of targeted instances, but it might be possible to attack it, do you want to try and attack this instance (a) or ignore it (i)? (a/i) '.format(instance[0], instance[1]))
                             if action == 'i':
                                 ignored_instances.append(instance[0])
                                 continue
                             else:
-                                print(f'  Adding instance ID {instance[0]} to list of targets.\n')
+                                print('  Adding instance ID {} to list of targets.\n'.format(instance[0]))
                                 targeted_instances.append(instance[0])
                         if instance[1].lower() == 'windows':
                             windows_instances_to_attack.append(instance[0])
                         elif instance[1].lower() == 'linux':
                             linux_instances_to_attack.append(instance[0])
                         else:
-                            print(f'  Unknown operating system for instance ID {instance[0]}: {instance[1]}. Not attacking it...\n')
+                            print('  Unknown operating system for instance ID {}: {}. Not attacking it...\n'.format(instance[0], instance[1]))
 
             # Collectively attack all new instances that showed up in the last check for this region
 
@@ -457,7 +457,7 @@ def main(args, pacu_main):
                 this_check_attacked_instances.extend(linux_instances_to_attack)
                 attacked_instances.extend(linux_instances_to_attack)
 
-        print(f'  {len(this_check_attacked_instances)} new instances attacked in the latest check: {this_check_attacked_instances}\n')
+        print('  {} new instances attacked in the latest check: {}\n'.format(len(this_check_attacked_instances), this_check_attacked_instances))
 
         if attacked_instances == targeted_instances:
             # All targeted instances have been attacked, stop polling every 30 seconds
@@ -471,11 +471,11 @@ def main(args, pacu_main):
     if i == 20:
         # We are here because it has been 10 minutes
         print('It has been 10 minutes, if any target instances were not successfully attacked, then that most likely means they are not vulnerable to this attack (most likely the SSM Agent is not installed on the instances).\n')
-        print(f'Successfully attacked the following instances: {attacked_instances}\n')
+        print('Successfully attacked the following instances: {}\n'.format(attacked_instances))
     else:
         # We are here because all targeted instances have been attacked
         print('All targeted instances showed up and were attacked.\n')
-        print(f'Successfully attacked the following instances: {attacked_instances}\n')
+        print('Successfully attacked the following instances: {}\n'.format(attacked_instances))
 
-    print(f'{os.path.basename(__file__)} completed.')
+    print('{} completed.'.format(os.path.basename(__file__)))
     return

@@ -175,5 +175,5 @@ def main(args, pacu_main):
 
         print(str(groups))
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

@@ -32,10 +32,6 @@ module_info = {
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
@@ -52,7 +48,7 @@ def main(args, pacu_main):
             'publicKey': downloaded_keys['publicKeyBase64'],
             'privateKey': downloaded_keys['privateKeyBase64']
         }
-        print(f'Region: {region}\n{json.dumps(restructured_keys)}\n')
+        print('Region: {}\n{}\n'.format(region, json.dumps(restructured_keys)))
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

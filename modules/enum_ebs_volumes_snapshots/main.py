@@ -40,10 +40,6 @@ parser.add_argument('--snaps', required=False, default=False, action='store_true
 parser.add_argument('--account-ids', required=False, default=None, help='One or more (comma separated) AWS account IDs. If snapshot enumeration is enabled, then this module will fetch all snapshots owned by each account in this list of AWS account IDs. Defaults to the current user accounts AWS account ID.')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
@@ -73,7 +69,7 @@ def main(args, pacu_main):
     else:
         regions = args.regions.split(',')
 
-    print(f'Targeting regions {regions}.')
+    print('Targeting regions {}.'.format(regions))
 
     current_account = None
     account_ids = []
@@ -110,7 +106,7 @@ def main(args, pacu_main):
                     )
 
                 except Exception as error:
-                    print(f'Error running get_user. It is possible that the account ID has been returned in this error: {error}')
+                    print('Error running get_user. It is possible that the account ID has been returned in this error: {}'.format(error))
                     current_account = input('If the AWS account ID was returned in the previous error, enter it now to continue, or enter n to skip EBS snapshot enumeration. ([account_id]/n) ')
                     if current_account == 'n':
                         account_ids = []
@@ -160,7 +156,7 @@ def main(args, pacu_main):
     volumes_csv_data = []
     snapshots_csv_data = []
     for region in regions:
-        print(f'Starting region {region} (this may take a while if there are thousands of EBS volumes/snapshots)...')
+        print('Starting region {} (this may take a while if there are thousands of EBS volumes/snapshots)...'.format(region))
         client = pacu_main.get_boto3_client('ec2', region)
 
         if args.vols is True:
@@ -193,11 +189,11 @@ def main(args, pacu_main):
                                 if tag['Key'] == 'Name':
                                     name = tag['Value']
                                     break
-                        volumes_csv_data.append(f"{name},{volume['VolumeId']},{region}\n")
+                        volumes_csv_data.append('{},{},{}\n'.format(name, volume['VolumeId'], region))
 
                 count += len(response['Volumes'])
 
-            print(f'  {count} total volume(s) found in {region}.')
+            print('  {} total volume(s) found in {}.'.format(count, region))
 
         if args.snaps is True and not account_ids == []:
             # Start EBS Snapshots in this region
@@ -231,32 +227,32 @@ def main(args, pacu_main):
                                 if tag['Key'] == 'Name':
                                     name = tag['Value']
                                     break
-                        snapshots_csv_data.append(f"{name},{snapshot['SnapshotId']},{region}\n")
+                        snapshots_csv_data.append('{},{},{}\n'.format(name, snapshot['SnapshotId'], region))
 
                 count += len(response['Snapshots'])
 
-            print(f'  {count} total snapshot(s) found in {region}.')
+            print('  {} total snapshot(s) found in {}.'.format(count, region))
 
     if args.vols is True:
         ec2_data['Volumes'] = all_vols
-        unencrypted_volumes_csv_path = f'sessions/{session.name}/downloads/unencrypted_ebs_volumes_{now}.csv'
+        unencrypted_volumes_csv_path = 'sessions/{}/downloads/unencrypted_ebs_volumes_{}.csv'.format(session.name, now)
         with open(unencrypted_volumes_csv_path, 'w+') as unencrypted_volumes_csv:
             unencrypted_volumes_csv.write('Volume Name,Volume ID,Region\n')
             for line in volumes_csv_data:
                 unencrypted_volumes_csv.write(line)
-        print(f"{len(ec2_data['Volumes'])} total volume(s) found. A list of unencrypted volumes has been saved to ./{unencrypted_volumes_csv_path}")
+        print('{} total volume(s) found. A list of unencrypted volumes has been saved to ./{}'.format(len(ec2_data['Volumes']), unencrypted_volumes_csv_path))
 
     if args.snaps is True:
         ec2_data['Snapshots'] = all_snaps
-        unencrypted_snapshots_csv_path = f'sessions/{session.name}/downloads/unencrypted_ebs_snapshots_{now}.csv'
+        unencrypted_snapshots_csv_path = 'sessions/{}/downloads/unencrypted_ebs_snapshots_{}.csv'.format(session.name, now)
         with open(unencrypted_snapshots_csv_path, 'w+') as unencrypted_snapshots_csv:
             unencrypted_snapshots_csv.write('Snapshot Name,Snapshot ID,Region\n')
             for line in snapshots_csv_data:
                 unencrypted_snapshots_csv.write(line)
-        print(f"{len(ec2_data['Snapshots'])} total snapshot(s) found. A list of unencrypted snapshots has been saved to ./{unencrypted_snapshots_csv_path}")
+        print('{} total snapshot(s) found. A list of unencrypted snapshots has been saved to ./{}'.format(len(ec2_data['Snapshots']), unencrypted_snapshots_csv_path))
 
     session.update(pacu_main.database, EC2=ec2_data)
     print('All data has been saved to the current session.')
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

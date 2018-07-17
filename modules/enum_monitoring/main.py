@@ -36,10 +36,6 @@ parser.add_argument('--shield', required=False, default=False, action='store_tru
 parser.add_argument('--guard-duty', required=False, default=False, action='store_true', help='Enumerate GuardDuty security implementations.')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
@@ -66,7 +62,7 @@ def main(args, pacu_main):
             shield_data['StartTime'] = time_period['Subscription']['StartTime']
             shield_data['TimeCommitmentInDays'] = time_period['Subscription']['TimeCommitmentInSeconds'] / 60 / 60 / 24
             session.update(pacu_main.database, Shield=shield_data)
-            print(f"    Advanced (paid) DDoS protection enabled through AWS Shield.\n      Subscription Started: {session.Shield['StartTime']}\nSubscription Commitment: {session.Shield['TimeCommitmentInDays']} days")
+            print('    Advanced (paid) DDoS protection enabled through AWS Shield.\n      Subscription Started: {}\nSubscription Commitment: {} days'.format(session.Shield['StartTime'], session.Shield['TimeCommitmentInDays']))
 
         else:
             shield_data = deepcopy(session.Shield)
@@ -80,14 +76,14 @@ def main(args, pacu_main):
         all_trails = []
 
         for region in cloudtrail_regions:
-            print(f'  Starting region {region}...')
+            print('  Starting region {}...'.format(region))
 
             client = pacu_main.get_boto3_client('cloudtrail', region)
 
             trails = client.describe_trails(
                 includeShadowTrails=False
             )
-            print(f"    {len(trails['trailList'])} trails found.")
+            print('    {} trails found.'.format(len(trails['trailList'])))
 
             for trail in trails['trailList']:
                 trail['Region'] = region
@@ -96,7 +92,7 @@ def main(args, pacu_main):
         cloudtrail_data = deepcopy(session.CloudTrail)
         cloudtrail_data['Trails'] = all_trails
         session.update(pacu_main.database, CloudTrail=cloudtrail_data)
-        print(f"  {len(session.CloudTrail['Trails'])} total CloudTrail trails found.\n")
+        print('  {} total CloudTrail trails found.\n'.format(len(session.CloudTrail['Trails'])))
 
     if all is True or args.guard_duty is True:
         print('Starting GuardDuty...')
@@ -105,7 +101,7 @@ def main(args, pacu_main):
 
         for region in guard_duty_regions:
             detectors = []
-            print(f'  Starting region {region}...')
+            print('  Starting region {}...'.format(region))
 
             client = pacu_main.get_boto3_client('guardduty', region)
 
@@ -128,13 +124,13 @@ def main(args, pacu_main):
                         'Region': region
                     })
 
-            print(f'    {len(detectors)} GuardDuty Detectors found.')
+            print('    {} GuardDuty Detectors found.'.format(len(detectors)))
             all_detectors.extend(detectors)
 
         guardduty_data = deepcopy(session.GuardDuty)
         guardduty_data['Detectors'] = all_detectors
         session.update(pacu_main.database, GuardDuty=guardduty_data)
-        print(f"  {len(session.GuardDuty['Detectors'])} total GuardDuty Detectors found.\n")
+        print('  {} total GuardDuty Detectors found.\n'.format(len(session.GuardDuty['Detectors'])))
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

@@ -34,10 +34,6 @@ module_info = {
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
@@ -80,21 +76,21 @@ def main(args, pacu_main):
                 report = None
                 break
             else:
-                print(f"Unrecognized ClientError: {str(error)} ({error.response['Error']['Code']})")
+                print('Unrecognized ClientError: {} ({})'.format(str(error), error.response['Error']['Code']))
                 break
 
     if report and 'Content' in report:
-        if not os.path.exists(f'sessions/{session.name}/downloads'):
-            os.makedirs(f'sessions/{session.name}/downloads')
+        if not os.path.exists('sessions/{}/downloads'.format(session.name)):
+            os.makedirs('sessions/{}/downloads'.format(session.name))
 
-        filename = f'sessions/{session.name}/downloads/get_credential_report_{time.time()}.csv'
+        filename = 'sessions/{}/downloads/get_credential_report_{}.csv'.format(session.name, time.time())
         with open(filename, 'w+') as csv_file:
             csv_file.write(report['Content'].decode())
 
-        print(f'Credential report saved to {filename}')
+        print('Credential report saved to {}'.format(filename))
 
     else:
         print('\n  Unable to generate report.\n')
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

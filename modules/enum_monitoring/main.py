@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import argparse
 from copy import deepcopy
+from botocore.exceptions import ClientError
 
 
 module_info = {
     # Name of the module (should be the same as the filename)
-    'name': 'enum_logging_monitoring',
+    'name': 'enum_monitoring',
 
     # Name and any other notes about the author
     'author': 'Spencer Gietzen of Rhino Security Labs',
@@ -51,24 +52,29 @@ def main(args, pacu_main):
 
     if all is True or args.shield is True:
         print('Starting Shield...')
-        client = pacu_main.get_boto3_client('shield', 'us-east-1')
 
-        subscription = client.get_subscription_state()
+        try:
+            client = pacu_main.get_boto3_client('shield', 'us-east-1')
 
-        if subscription == 'ACTIVE':
-            time_period = client.describe_subscription()
-            shield_data = deepcopy(session.Shield)
-            shield_data['AdvancedProtection'] = True
-            shield_data['StartTime'] = time_period['Subscription']['StartTime']
-            shield_data['TimeCommitmentInDays'] = time_period['Subscription']['TimeCommitmentInSeconds'] / 60 / 60 / 24
-            session.update(pacu_main.database, Shield=shield_data)
-            print('    Advanced (paid) DDoS protection enabled through AWS Shield.\n      Subscription Started: {}\nSubscription Commitment: {} days'.format(session.Shield['StartTime'], session.Shield['TimeCommitmentInDays']))
+            subscription = client.get_subscription_state()
 
-        else:
-            shield_data = deepcopy(session.Shield)
-            shield_data['AdvancedProtection'] = False
-            session.update(pacu_main.database, Shield=shield_data)
-            print('    Standard (default/free) DDoS protection enabled through AWS Shield.')
+            if subscription == 'ACTIVE':
+                time_period = client.describe_subscription()
+                shield_data = deepcopy(session.Shield)
+                shield_data['AdvancedProtection'] = True
+                shield_data['StartTime'] = time_period['Subscription']['StartTime']
+                shield_data['TimeCommitmentInDays'] = time_period['Subscription']['TimeCommitmentInSeconds'] / 60 / 60 / 24
+                session.update(pacu_main.database, Shield=shield_data)
+                print('    Advanced (paid) DDoS protection enabled through AWS Shield.\n      Subscription Started: {}\nSubscription Commitment: {} days'.format(session.Shield['StartTime'], session.Shield['TimeCommitmentInDays']))
+
+            else:
+                shield_data = deepcopy(session.Shield)
+                shield_data['AdvancedProtection'] = False
+                session.update(pacu_main.database, Shield=shield_data)
+                print('    Standard (default/free) DDoS protection enabled through AWS Shield.')
+
+        except ClientError as error:
+            print('Error {} getting Shield Info'.format(error))
 
     if all is True or args.cloud_trail is True:
         print('Starting CloudTrail...')
@@ -108,9 +114,12 @@ def main(args, pacu_main):
             response = client.list_detectors()
 
             for detector in response['DetectorIds']:
+                status, master = get_detector_master(detector, client)
                 detectors.append({
                     'Id': detector,
-                    'Region': region
+                    'Region': region,
+                    'MasterStatus': status,
+                    'MasterAccountId': master
                 })
 
             while 'NextToken' in response:
@@ -119,9 +128,12 @@ def main(args, pacu_main):
                 )
 
                 for detector in response['DetectorIds']:
+                    status, master = get_detector_master(detector, client)
                     detectors.append({
                         'Id': detector,
-                        'Region': region
+                        'Region': region,
+                        'MasterStatus': status,
+                        'MasterAccountId': master
                     })
 
             print('    {} GuardDuty Detectors found.'.format(len(detectors)))
@@ -134,3 +146,24 @@ def main(args, pacu_main):
 
     print('{} completed.\n'.format(module_info['name']))
     return
+
+
+def get_detector_master(detector_id, client):
+
+    response = client.get_master_account(
+        DetectorId=detector_id
+    )
+    if 'Master' not in response:
+        return(None, None)
+
+    status = None
+    master = None
+
+    if 'RelationshipStatus' in response['Master']:
+        status = response['Master']['RelationshipStatus']
+
+    if 'AccountId' in response['Master']:
+        master = response['Master']['AccountId']
+
+    return(status, master)
+

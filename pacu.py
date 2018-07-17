@@ -7,23 +7,30 @@ import platform
 from queue import Queue
 import random
 import re
-import requests
 import string
 import subprocess
 import sys
 import threading
 import time
 import traceback
-import boto3
-import botocore
 
-import configure_settings
-import settings
+try:
+    import requests
+    import boto3
+    import botocore
 
-from core.models import AWSKey, PacuSession, ProxySettings
-from proxy import PacuProxy
-from setup_database import setup_database_if_not_present
-from utils import get_database_connection, set_sigint_handler
+    import configure_settings
+    import settings
+
+    from core.models import AWSKey, PacuSession, ProxySettings
+    from proxy import PacuProxy
+    from setup_database import setup_database_if_not_present
+    from utils import get_database_connection, set_sigint_handler
+except ModuleNotFoundError as error:
+    exception_type, exception_value, tb = sys.exc_info()
+    print('Traceback (most recent call last):\n{}{}: {}\n'.format(''.join(traceback.format_tb(tb)), str(exception_type), str(exception_value)))
+    print('Pacu was not able to start because a required Python package was not found.\nRun `sh install.sh` to check and install Pacu\'s Python requirements.')
+    sys.exit(1)
 
 
 class Main:

@@ -41,10 +41,6 @@ parser.add_argument('--user-name', required=False, default=None, help='A single 
 # parser.add_argument('--policy-name', required=False, default=None, help='The name of a specific policy to run this module against. By default, this module will be run against the user which the active AWS keys belong to.')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
@@ -128,7 +124,7 @@ def main(args, pacu_main):
                     )
                     user['Groups'] += response['Groups']
             except Exception as error:
-                print(f'List groups for user failed: {error}')
+                print('List groups for user failed: {}'.format(error))
                 user['PermissionsConfirmed'] = False
 
             # Get inline and attached group policies
@@ -147,7 +143,7 @@ def main(args, pacu_main):
                         )
                         policies += response['PolicyNames']
                 except Exception as error:
-                    print(f'List group policies failed: {error}')
+                    print('List group policies failed: {}'.format(error))
                     user['PermissionsConfirmed'] = False
 
                 # Get document for each inline policy
@@ -161,7 +157,7 @@ def main(args, pacu_main):
                             PolicyName=policy
                         )['PolicyDocument']
                     except Exception as error:
-                        print(f'Get group policy failed: {error}')
+                        print('Get group policy failed: {}'.format(error))
                         user['PermissionsConfirmed'] = False
                     user = parse_document(document, user)
 
@@ -180,7 +176,7 @@ def main(args, pacu_main):
                         attached_policies += response['AttachedPolicies']
                     group['Policies'] += attached_policies
                 except Exception as error:
-                    print(f'List attached group policies failed: {error}')
+                    print('List attached group policies failed: {}'.format(error))
                     user['PermissionsConfirmed'] = False
                 user = parse_attached_policies(client, attached_policies, user)
 
@@ -204,7 +200,7 @@ def main(args, pacu_main):
                         'PolicyName': policy
                     })
             except Exception as error:
-                print(f'List user policies failed: {error}')
+                print('List user policies failed: {}'.format(error))
                 user['PermissionsConfirmed'] = False
 
             # Get document for each inline policy
@@ -215,7 +211,7 @@ def main(args, pacu_main):
                         PolicyName=policy
                     )['PolicyDocument']
                 except Exception as error:
-                    print(f'Get user policy failed: {error}')
+                    print('Get user policy failed: {}'.format(error))
                     user['PermissionsConfirmed'] = False
                 user = parse_document(document, user)
 
@@ -234,7 +230,7 @@ def main(args, pacu_main):
                     attached_policies += response['AttachedPolicies']
                 user['Policies'] += attached_policies
             except Exception as error:
-                print(f'List attached user policies failed: {error}')
+                print('List attached user policies failed: {}'.format(error))
                 user['PermissionsConfirmed'] = False
 
             user = parse_attached_policies(client, attached_policies, user)
@@ -252,18 +248,18 @@ def main(args, pacu_main):
                     deny_permissions=user['Permissions']['Deny']
                 )
             else:
-                if not os.path.exists(f'sessions/{session.name}/downloads/confirmed_permissions/'):
-                    os.makedirs(f'sessions/{session.name}/downloads/confirmed_permissions/')
+                if not os.path.exists('sessions/{}/downloads/confirmed_permissions/'.format(session.name)):
+                    os.makedirs('sessions/{}/downloads/confirmed_permissions/'.format(session.name))
 
-                with open(f"sessions/{session.name}/downloads/confirmed_permissions/{user['UserName']}.json", 'w+') as user_permissions_file:
+                with open('sessions/{}/downloads/confirmed_permissions/{}.json'.format(session.name, user['UserName']), 'w+') as user_permissions_file:
                     json.dump(user, user_permissions_file, indent=2, default=str)
 
-                print(f"User details stored in ./sessions/{session.name}/downloads/confirmed_permissions/{user['UserName']}.json")
+                print('User details stored in ./sessions/{}/downloads/confirmed_permissions/{}.json'.format(session.name, user['UserName']))
 
         except Exception as error:
-            print(f"Error, skipping user {user['UserName']}:\n{error}")
+            print('Error, skipping user {}:\n{}'.format(user['UserName'], error))
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return
 
 
@@ -287,7 +283,7 @@ def get_attached_policy(client, policy_arn):
         version = policy['DefaultVersionId']
         can_get = True
     except Exception as error:
-        print(f'Get policy failed: {error}')
+        print('Get policy failed: {}'.format(error))
         return False
 
         # NOTE: If v1, v2, and v3 exist, then v2 is deleted, the next version will be v4 still, so this WILL error currently
@@ -312,7 +308,7 @@ def get_attached_policy(client, policy_arn):
         #             return policy_version['Document']
 
     except Exception as error:
-        print(f'Get policy version failed: {error}')
+        print('Get policy version failed: {}'.format(error))
         return False
 
 

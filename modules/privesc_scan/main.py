@@ -40,10 +40,6 @@ parser.add_argument('--folder', required=False, default=None, help='A file path 
 parser.add_argument('--scan-only', required=False, default=False, action='store_true', help='Only run the scan to check for possible escalation methods, don\'t attempt any found methods.')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 # Permissions to check (x == added checks already):
 # 1)x Associate an existing instance profile with an existing EC2 instance
 #   iam:PassRole
@@ -466,7 +462,7 @@ def main(args, pacu_main):
             if escalated is False:
                 print('No potential privilege escalation methods worked.')
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return
 
 

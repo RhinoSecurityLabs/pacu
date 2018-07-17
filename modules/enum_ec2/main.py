@@ -65,10 +65,6 @@ parser.add_argument('--vpcs', required=False, default=False, action='store_true'
 parser.add_argument('--vpc-endpoints', required=False, default=False, action='store_true', help='Enumerate EC2 VPC endpoints')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
@@ -252,7 +248,7 @@ def main(args, pacu_main):
                     for instance in reservation['Instances']:
                         instance['Region'] = region
                         instances.append(instance)
-            print(f'  {len(instances)} instance(s) found.')
+            print('  {} instance(s) found.'.format(len(instances)))
             all_instances += instances
 
         # Security Groups
@@ -274,7 +270,7 @@ def main(args, pacu_main):
                 for group in response['SecurityGroups']:
                     group['Region'] = region
                     security_groups.append(group)
-            print(f'  {len(security_groups)} security groups(s) found.')
+            print('  {} security groups(s) found.'.format(len(security_groups)))
             all_security_groups += security_groups
 
         # Elastic IPs
@@ -283,7 +279,7 @@ def main(args, pacu_main):
             for ip in response['Addresses']:
                 ip['Region'] = region
                 elastic_ips.append(ip)
-            print(f'  {len(elastic_ips)} elastic IP address(es) found.')
+            print('  {} elastic IP address(es) found.'.format(len(elastic_ips)))
             all_elastic_ips += elastic_ips
 
         # VPN Customer Gateways
@@ -292,7 +288,7 @@ def main(args, pacu_main):
             for gateway in response['CustomerGateways']:
                 gateway['Region'] = region
                 vpn_customer_gateways.append(gateway)
-            print(f'  {len(vpn_customer_gateways)} VPN customer gateway(s) found.')
+            print('  {} VPN customer gateway(s) found.'.format(len(vpn_customer_gateways)))
             all_vpn_customer_gateways += vpn_customer_gateways
 
         # Dedicated Hosts
@@ -314,7 +310,7 @@ def main(args, pacu_main):
                 for host in response['Hosts']:
                     host['Region'] = region
                     dedicated_hosts.append(host)
-            print(f'  {len(dedicated_hosts)} dedicated host(s) found.')
+            print('  {} dedicated host(s) found.'.format(len(dedicated_hosts)))
             all_dedicated_hosts += dedicated_hosts
 
         # Network ACLs
@@ -323,7 +319,7 @@ def main(args, pacu_main):
             for acl in response['NetworkAcls']:
                 acl['Region'] = region
                 network_acls.append(acl)
-            print(f'  {len(network_acls)} network ACL(s) found.')
+            print('  {} network ACL(s) found.'.format(len(network_acls)))
             all_network_acls += network_acls
 
         # NAT Gateways
@@ -345,7 +341,7 @@ def main(args, pacu_main):
                 for gateway in response['NatGateways']:
                     gateway['Region'] = region
                     nat_gateways.append(gateway)
-            print(f'  {len(nat_gateways)} NAT gateway(s) found.')
+            print('  {} NAT gateway(s) found.'.format(len(nat_gateways)))
             all_nat_gateways += nat_gateways
 
         # Network Interfaces
@@ -354,7 +350,7 @@ def main(args, pacu_main):
             for interface in response['NetworkInterfaces']:
                 interface['Region'] = region
                 network_interfaces.append(interface)
-            print(f'  {len(network_interfaces)} network interface(s) found.')
+            print('  {} network interface(s) found.'.format(len(network_interfaces)))
             all_network_interfaces += network_interfaces
 
         # Route Tables
@@ -363,7 +359,7 @@ def main(args, pacu_main):
             for table in response['RouteTables']:
                 table['Region'] = region
                 route_tables.append(table)
-            print(f'  {len(route_tables)} route table(s) found.')
+            print('  {} route table(s) found.'.format(len(route_tables)))
             all_route_tables += route_tables
 
         # Subnets
@@ -372,7 +368,7 @@ def main(args, pacu_main):
             for subnet in response['Subnets']:
                 subnet['Region'] = region
                 subnets.append(subnet)
-            print(f'  {len(subnets)} subnet(s) found.')
+            print('  {} subnet(s) found.'.format(len(subnets)))
             all_subnets += subnets
 
         # VPCs
@@ -381,7 +377,7 @@ def main(args, pacu_main):
             for vpc in response['Vpcs']:
                 vpc['Region'] = region
                 vpcs.append(vpc)
-            print(f'  {len(vpcs)} VPC(s) found.')
+            print('  {} VPC(s) found.'.format(len(vpcs)))
             all_vpcs += vpcs
 
         # VPC Endpoints
@@ -403,7 +399,7 @@ def main(args, pacu_main):
                 for endpoint in response['VpcEndpoints']:
                     endpoint['Region'] = region
                     vpc_endpoints.append(endpoint)
-            print(f'  {len(vpc_endpoints)} VPC endpoint(s) found.')
+            print('  {} VPC endpoint(s) found.'.format(len(vpc_endpoints)))
             all_vpc_endpoints += vpc_endpoints
 
         print('')  # Break the line after each region. This isn't on the end of another print because they won't always be all used and isn't before the region print because it would double break lines at the beginning
@@ -423,21 +419,21 @@ def main(args, pacu_main):
     ec2_data['VPCEndpoints'] = all_vpc_endpoints
     session.update(pacu_main.database, EC2=ec2_data)
 
-    print(f'{len(all_instances)} total instance(s) found.')
-    print(f'{len(all_security_groups)} total security group(s) found.')
-    print(f'{len(all_elastic_ips)} total elastic IP address(es) found.')
-    print(f'{len(all_vpn_customer_gateways)} total VPN customer gateway(s) found.')
-    print(f'{len(all_dedicated_hosts)} total dedicated hosts(s) found.')
-    print(f'{len(all_network_acls)} total network ACL(s) found.')
-    print(f'{len(all_nat_gateways)} total NAT gateway(s) found.')
-    print(f'{len(all_network_interfaces)} total network interface(s) found.')
-    print(f'{len(all_route_tables)} total route table(s) found.')
-    print(f'{len(all_subnets)} total subnets(s) found.')
-    print(f'{len(all_vpcs)} total VPC(s) found.')
-    print(f'{len(all_vpc_endpoints)} total VPC endpoint(s) found.')
+    print('{} total instance(s) found.'.format(len(all_instances)))
+    print('{} total security group(s) found.'.format(len(all_security_groups)))
+    print('{} total elastic IP address(es) found.'.format(len(all_elastic_ips)))
+    print('{} total VPN customer gateway(s) found.'.format(len(all_vpn_customer_gateways)))
+    print('{} total dedicated hosts(s) found.'.format(len(all_dedicated_hosts)))
+    print('{} total network ACL(s) found.'.format(len(all_network_acls)))
+    print('{} total NAT gateway(s) found.'.format(len(all_nat_gateways)))
+    print('{} total network interface(s) found.'.format(len(all_network_interfaces)))
+    print('{} total route table(s) found.'.format(len(all_route_tables)))
+    print('{} total subnets(s) found.'.format(len(all_subnets)))
+    print('{} total VPC(s) found.'.format(len(all_vpcs)))
+    print('{} total VPC endpoint(s) found.'.format(len(all_vpc_endpoints)))
 
     print('')  # Same line break as above
 
     print('All data has been saved to the current session.\n')
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

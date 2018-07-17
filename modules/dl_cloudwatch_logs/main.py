@@ -15,7 +15,7 @@ module_info = {
         This module examines all logs for all regions and saves them as CSV files. By default,
         only events that were logged in the past 24 hours will be captured. Otherwise, they will
         be captured based on the passed time arguments. The files will be downloaded in a similar
-        format to pacu\sessions\{session}\downloads\cloud_watch_logs\{timestamp}, with session
+        format to pacu/sessions/{session}/downloads/cloud_watch_logs/{timestamp}, with session
         being the active session, and timestamp being the start of this module's execution.
         """,
     'services': ['logs'],
@@ -113,6 +113,7 @@ def main(args, pacu_main):
     regions = get_regions('logs')
     log_groups = {}
     for region in regions:
+        print('Collecting logs for region {}...'.format(region))
         client = pacu_main.get_boto3_client('logs', region)
         groups = collect_all(client, 'describe_log_groups', 'logGroups')
         group_names = [group['logGroupName'] for group in groups]
@@ -123,6 +124,7 @@ def main(args, pacu_main):
             streams = collect_all(client, 'describe_log_streams', 'logStreams', **{'logGroupName': log_group})
             log_groups[log_group] = [stream['logStreamName'] for stream in streams]
 
+        some_events_found = False
         for group in log_groups.keys():
             for stream in log_groups[group]:
                 start_time = int(from_time.timestamp() * 1000 + from_time.microsecond / 1000)
@@ -137,6 +139,7 @@ def main(args, pacu_main):
                 response = client.get_log_events(**kwargs)
                 if not response['events']:
                     continue
+                some_events_found = True
                 write_stream_file(session.name, scan_time, group, stream, response['events'])
                 while 'nextBackwardToken' in response:
                     old_Token = response['nextBackwardToken']
@@ -149,6 +152,9 @@ def main(args, pacu_main):
                         print('Captured Events for {}'.format(stream))
                         break
 
-    print('Logs Downloaded to pacu\sessions\{}\downloads\cloud_watch_logs\{}'.format(session.name, scan_time))
+        if not some_events_found:
+            print('  No events found.')
+
+    print('\nLogs downloaded to pacu/sessions/{}/downloads/cloud_watch_logs/{}'.format(session.name, scan_time))
     print("{} completed.\n".format(module_info['name']))
     return

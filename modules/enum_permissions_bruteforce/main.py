@@ -147,36 +147,46 @@ def get_regions(service):
         service = service_name_mismatch_mapper[service]
     return complete_regions[service]
 
-
-
-def build_kwargs(error):
-    print('\tBuilding params...')
-    kwargs = {}
-
-    if 'Missing required parameter' in str(error):
-        missing_param = str(error).split()[-1]
-        #Capitalize the error
-        missing_param = missing_param[0].upper() + missing_param[1:]
-        print(f'\tFilling missing parameter({missing_param})')
-        kwargs[missing_param] = 'pcx-5f8d3c24'
-    return kwargs
-
 def missing_param(param):
     common_params = {
-        'InstanceId': 'i-123',
+        'Storage': {
+            'S3': {
+                'AWSAccessKeyId': '1',
+                'Bucket': 'DryRun',
+                'Prefix': 'DryRun',
+                'UploadPolicy': 'DryRun',
+                'UploadPolicySignature': 'DryRun'
+            }
+        },
+        'LaunchTemplateConfigs': [{'LaunchTemplateSpecification': {}}],
+        'TargetCapacitySpecification': {'TotalTargetCapacity': 1},
+        'DhcpConfigurations': [{'Key': 'val'}],
+        'InstanceId': 'i-07421c1ebf30c2070',
         'NetworkInterfaceId': 'eni-1a2b3c4d',
         'PriceSchedules': [{'CurrencyCode': 'USD'}],
-        'RouteTableId': 'rtb-e4ad488d'
+        'RouteTableId': 'rtb-e4ad488d',
+        'VolumeId': 'vol-0f0a1f7dd1e7704a0',
+        'Tags': [{'Key': 'Value'}],
+        'Resources': ['ami-78a54010'],
+        'DestinationCidrBlock': '11.12.0.0/16',
+        'VpcId': 'vpc-abcd1234',
+        'VpnConnectionId': 'vpn-83ad48ea',
+        'CustomerGatewayId': 'cgw-0e11f160',
+        'InputStorageLocation': {'Bucket': 'key'},
+        'LaunchTemplateData': {'ImageId':'ami-aabbccdd'},
+        'PeerVpcId': 'vpc-abcd1235',
+        'InternetGatewayId': 'igw-12312312'
+
     }
-    out = {param: common_params[param]} if param in common_params else {param: 'string'} 
+    out = {param: common_params[param]} if param in common_params else {param: 'DryRun'} 
     return out
 
 def invalid_param(valid_type):
     print('Checking for invalid types')
     types = {
-        'list': ['Name',],
+        'list': ['DryRun',],
         'int': 1,
-        'dict': {'Name':'name'},
+        'dict': {'DryRun': True},
         'bool': True
     }
     
@@ -210,11 +220,23 @@ def valid_func(func):
         'exceptions',
         'meta',
         # EC2
-        'associate_address',
-        'attach_volume',
-        'authorize_security_group_egress',
-        'authorize_security_group_ingress',
-        'create_network_interface_permission'
+        'accept_vpc_peering_connection', # Needs valid vpc peering connection ID
+        'associate_address', # Needs valid public IP or allocation id
+        'associate_iam_instance_profile', # Needs valid instance ID
+        'attach_classic_link_vpc', # Needs valid instance ID
+        'attach_volume', # Requires valid volume ID
+        'authorize_security_group_egress', # Requires valid security group
+        'authorize_security_group_ingress', # Requires valid security group
+        'create_image', # Requires valid instance ID
+        'create_launch_template_version', # Requires valid template ID
+        'create_network_interface_permission', # Requires valid interface ID
+        'create_snapshot', # Requires valid volume ID
+        'create_tags', # Requiresvalid image ID
+        'create_volume', # Need to pass current regions availability zone
+        'create_vpc_peering_connection', # Requires valid vpc
+        'delete_customer_gateway', # Requires valid customer gateway
+        'delete_dhcp_options', # Requires valid DhcpOptionsId
+        'delete_launch_template', # Requires valid template ID
     ]
     if func in bad_functions:
         return False
@@ -225,6 +247,7 @@ def main(args, pacu_main):
     args = parser.parse_args(args)
     print = pacu_main.print
     
+    index = 54
 
     service_list = []
     if args.services:
@@ -252,11 +275,11 @@ def main(args, pacu_main):
                 region_name = region,
             )
             functions = [func for func in dir(client) if valid_func(func)]
-            index = 50
             for func in functions[index:]:
                 print('*************************NEW FUNCTION({})*************************'.format(index))
                 index += 1
-                kwargs = special_types[func] if func in special_types else {'DryRun':True}
+                kwargs = special_types[func] if func in special_types else {}
+                kwargs['DryRun'] = True
                 while True:
                     try:                        
                         print('---------------------------------------------------------')
@@ -265,14 +288,20 @@ def main(args, pacu_main):
                         caller = getattr(client, func)
                         result = caller(**kwargs)
                         allow_permissions[service].append(func)
+                        print('Authorization exists for: {}'.format(func))
                         break
                     except ParamValidationError as error:
                         if 'Unknown parameter in input: "DryRun"' in str(error):
                             print('DryRun failed. Retrying without DryRun parameter')
-                            kwargs = {}
+                            del kwargs['DryRun']
                         else:
                             kwargs = {**kwargs, **error_delegator(error)}
                     except ClientError as error:
+                        if error.response['Error']['Code'] == 'DryRunOperation':
+                            allow_permissions[service].append(func)
+                            print('Authorization exists for: {}'.format(func))
+                            break
+
                         print(f'ClientError: {error}')
                         code = error.response['Error']['Code']
                         if code == 'AccessDeniedException' or 'UnauthorizedOperation' in str(error):
@@ -283,20 +312,18 @@ def main(args, pacu_main):
                             param = str(error).split()[-1]
                             param = param[0].upper() + param[1:]
                             kwargs = {**kwargs, **missing_param(param)}
-                        elif 'Malformed' in error.response['Error']['Code']:
-                            print('Unable to determine authorization')
-                            maybe_permissions[service].append(func)
-                            break
+                        #elif 'Malformed' in error.response['Error']['Code']:
+                        #    print('Unable to determine authorization')
+                        #    maybe_permissions[service].append(func)
+                        #    break
                         elif code == 'UnsupportedOperation':
-                            break
-                        elif code == 'DryRunOperation':
-                            allow_permissions[service].append(func)
                             break
                         else:
                             print('Unknown error:')
                             print(error)
                             maybe_permissions[service].append(func)                            
                             print('*************************END FUNCTION*************************\n')
+                            return
             break
         break
 

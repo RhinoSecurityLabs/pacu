@@ -39,10 +39,6 @@ deny_permissions = {}
 possible_permissions = {}
 bugged_permissions = []
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def build_service_list():
     try:
         client = boto3.client(

@@ -54,7 +54,7 @@ If you're interested in writing your own modules for Pacu, check out our [Module
 * 0.1 - Beta release (June 26th, 2018)
 * 0.2 - 0.X - Beta releases
   * ~~Proxy+Stager for routing Pacu activity through a compromised host.~~
-  * Easy-install script
+  * ~~Easy-install script~~
   * Improved command syntax
   * Filter available modules by category and required permissions/data
   * Improve interface formatting
@@ -73,7 +73,7 @@ If you're interested in writing your own modules for Pacu, check out our [Module
 * ~~Systems Manager EC2 root/SYSTEM RCE~~
 * PinPoint SMS/Email/Mobile Push Abuse
 * S3 Item Interception
-* Download CloudWatch Logs
+* ~~Download CloudWatch Logs~~
 * ~~Enumerate Lambda Functions~~
 * Create API Gateway Keys
 * And many more.
@@ -120,6 +120,7 @@ Pacu's capabilities will increase dramatically as the number of modules grows, a
 - `enum_elb_logging` - Collects a list of Elastic Load Balancers without access logging.
 - `enum_glue` - Enumerates Glue connections, crawlers, databases, development endpoints, and jobs.
 - `enum_lambda` - Pulls data related to Lambda Functions, source code, aliases, event source mappings, versions, tags, and policies.
+- `enum_lightsail` - Examines Lightsail data fields and automatically enumerates them for all available regions.
 - `enum_monitoring` - Detects monitoring and logging capabilities.
 - `enum_users_roles_policies_groups` - Enumerates users, roles, customer-managed policies, and groups.
 - `get_credential_report` - Generates and downloads an IAM credential report.
@@ -143,6 +144,7 @@ Pacu's capabilities will increase dramatically as the number of modules grows, a
 
 ##### Logging Modules
 - `dl_cloudtrail_event_history` - Downloads CloudTrail event history to JSON files.
+- `dl_cloudwatch_logs` - Downloads CloudWatch logs within a specific time period to the session downloads directory.
 
 ## Wiki
 

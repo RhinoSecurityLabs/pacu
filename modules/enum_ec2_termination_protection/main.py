@@ -36,10 +36,6 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 parser.add_argument('--instances', required=False, default=None, help='A comma separated list of EC2 instances and their regions in the format instanceid@region. The default is to target all instances.')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
@@ -68,7 +64,7 @@ def main(args, pacu_main):
             return
 
     now = time.time()
-    csv_file_path = f'sessions/{session.name}/downloads/termination_protection_disabled_{now}.csv'
+    csv_file_path = 'sessions/{}/downloads/termination_protection_disabled_{}.csv'.format(session.name, now)
 
     with open(csv_file_path, 'w+') as csv_file:
         csv_file.write('Instance Name,Instance ID,Region\n')
@@ -87,14 +83,14 @@ def main(args, pacu_main):
                             if tag['Key'] == 'Name':
                                 name = tag['Value']
                                 break
-                    csv_file.write(f"{name},{instance['InstanceId']},{instance['Region']}\n")
+                    csv_file.write('{},{},{}\n'.format(name, instance['InstanceId'], instance['Region']))
             except Exception as error:
-                print(f"Failed to retrieve info for instance ID {instance['InstanceId']}: {error}")
+                print('Failed to retrieve info for instance ID {}: {}'.format(instance['InstanceId'], error))
 
     ec2_data = deepcopy(session.EC2)
     ec2_data['Instances'] = instances
     session.update(pacu_main.database, EC2=ec2_data)
 
-    print(f'Instances with Termination Protection disabled have been written to ./{csv_file_path}')
-    print(f"{module_info['name']} completed.\n")
+    print('Instances with Termination Protection disabled have been written to ./{}'.format(csv_file_path))
+    print('{} completed.\n'.format(module_info['name']))
     return

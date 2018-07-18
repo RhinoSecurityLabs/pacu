@@ -81,10 +81,6 @@ R = '\033[91m'  # red
 W = '\033[0m'   # white
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
@@ -129,7 +125,7 @@ def main(args, pacu_main):
         for bucket in buckets:
             bucket_q.put((region, bucket))
 
-    print(f'Generated {len(buckets)} bucket permutations. Beginning search across {len(regions)} regions.')
+    print('Generated {} bucket permutations. Beginning search across {} regions.'.format(len(buckets), len(regions)))
 
     global bucket_q_size
     bucket_q_size = bucket_q.qsize()
@@ -143,25 +139,25 @@ def main(args, pacu_main):
 
     print('')
     print('[+] Results:')
-    print(f"    {Y}Number of Buckets that Exist: {len(bucketlist['exists'])}{W}")
-    print(f"    {G}Number of Buckets that are Listable: {len(bucketlist['listable'])}{W}")
+    print('    {}Number of Buckets that Exist: {}{}'.format(Y, len(bucketlist['exists']), W))
+    print('    {}Number of Buckets that are Listable: {}{}'.format(G, len(bucketlist['listable']), W))
 
     if args.grep and bucketlist['listable']:
-        print(f'[.] Grepping for keywords in listable buckets from {args.grep}')
+        print('[.] Grepping for keywords in listable buckets from {}'.format(args.grep))
 
         with open(args.grep, 'r') as file:
             keywords = [x.strip().lower() for x in file.readlines() if x.strip()]
 
         for domain, region in bucketlist['listable']:
-            command = f'aws s3 ls s3://{domain}/ --region {region} --recursive'
+            command = 'aws s3 ls s3://{}/ --region {} --recursive'.format(domain, region)
             command = command.split(' ')
             # with open(os.devnull, 'w') as FNULL:
             output = subprocess.run(command, shell=True, stderr=None)
             output = output.lower()
             if any(x in output for x in keywords):
-                print(f'[!] Found sensitive file on bucket {domain} in region {region}')
+                print('[!] Found sensitive file on bucket {} in region {}'.format(domain, region))
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return
 
 
@@ -192,19 +188,19 @@ def create_bucket_list(domain, affixes=[]):
     perms.add(rootword)
     for affix in affixes:
         # affix.domain
-        perms.add(f'{affix}.{domain}')
+        perms.add('{}.{}'.format(affix, domain))
         # affix.rootword
-        perms.add(f'{affix}.{rootword}')
+        perms.add('{}.{}'.format(affix, rootword))
         # affix-rootword
-        perms.add(f'{affix}-{rootword}')
+        perms.add('{}-{}'.format(affix, rootword))
         # affixdomain
-        perms.add(f'{affix}{domain}')
+        perms.add('{}{}'.format(affix, domain))
         # affixrootword
-        perms.add(f'{affix}{rootword}')
+        perms.add('{}{}'.format(affix, rootword))
         # rootword-affix
-        perms.add(f'{rootword}-{affix}')
+        perms.add('{}-{}'.format(rootword, affix))
         # rootwordaffix
-        perms.add(f'{rootword}{affix}')
+        perms.add('{}{}'.format(rootword, affix))
     return perms
 
 
@@ -217,7 +213,7 @@ def bucket_worker():
         currcount = bucket_q_size - bucket_q.qsize()
         percentile = round((float(currcount) / float(bucket_q_size)) * 100, 2)
 
-        print(f'Buckets searched: {percentile}% ({currcount}/{bucket_q_size})', end='\r')
+        print('Buckets searched: {}% ({}/{})'.format(percentile, currcount, bucket_q_size), end='\r')
 
         try:
             ls_s3(region, bucket)
@@ -243,21 +239,21 @@ def ls_s3(region, domain):
     fails = ['InvalidBucketName', 'NoSuchBucket', 'PermanentRedirect', 'InvalidURI']
     exists = ['AllAccessDisabled', 'AccessDenied', 'InvalidAccessKeyId', 'NoSuchBucketPolicy']
 
-    command = f'aws s3 ls s3://{domain}/ --region {region}'
+    command = 'aws s3 ls s3://{}/ --region {}'.format(domain, region)
 
     output = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT).decode('utf-8')
 
-    logging.debug(f'Running command: {command}')
-    logging.debug(f'Output was:\n{output}')
+    logging.debug('Running command: {}'.format(command))
+    logging.debug('Output was:\n{}'.format(output))
 
     if not any(x in output for x in fails):
         info = (domain, region)
         if any(x in output for x in exists):
             bucketlist['exists'].append(info)
-            print(f'[E] {Y}{domain} {W}on {Y}{region} {W}exists.\n')
-            logging.info(f"[EXISTS] {command}\n{output}\n{'-' * 10}\n")
+            print('[E] {}{} {}on {}{} {}exists.\n'.format(Y, domain, W, Y, region, W))
+            logging.info('[EXISTS] {}\n{}\n{}\n'.format(command, output, '-' * 10))
         else:
             bucketlist['exists'].append(info)
             bucketlist['listable'].append(info)
-            print(f'[L] {G}{domain} {W}on {G}{region} {W}is listable.\n')
-            logging.info(f"[LISTABLE] {command}\n{output}\n{'-' * 10}\n")
+            print('[L] {}{} {}on {}{} {}is listable.\n'.format(G, domain, W, G, region, W))
+            logging.info('[LISTABLE] {}\n{}\n{}\n'.format(command, output, '-' * 10))

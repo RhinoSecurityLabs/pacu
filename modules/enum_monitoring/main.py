@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import argparse
 from copy import deepcopy
+from botocore.exceptions import ClientError
 
 
 module_info = {
     # Name of the module (should be the same as the filename)
-    'name': 'enum_logging_monitoring',
+    'name': 'enum_monitoring',
 
     # Name and any other notes about the author
     'author': 'Spencer Gietzen of Rhino Security Labs',
@@ -36,10 +37,6 @@ parser.add_argument('--shield', required=False, default=False, action='store_tru
 parser.add_argument('--guard-duty', required=False, default=False, action='store_true', help='Enumerate GuardDuty security implementations.')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
@@ -55,24 +52,29 @@ def main(args, pacu_main):
 
     if all is True or args.shield is True:
         print('Starting Shield...')
-        client = pacu_main.get_boto3_client('shield', 'us-east-1')
 
-        subscription = client.get_subscription_state()
+        try:
+            client = pacu_main.get_boto3_client('shield', 'us-east-1')
 
-        if subscription == 'ACTIVE':
-            time_period = client.describe_subscription()
-            shield_data = deepcopy(session.Shield)
-            shield_data['AdvancedProtection'] = True
-            shield_data['StartTime'] = time_period['Subscription']['StartTime']
-            shield_data['TimeCommitmentInDays'] = time_period['Subscription']['TimeCommitmentInSeconds'] / 60 / 60 / 24
-            session.update(pacu_main.database, Shield=shield_data)
-            print(f"    Advanced (paid) DDoS protection enabled through AWS Shield.\n      Subscription Started: {session.Shield['StartTime']}\nSubscription Commitment: {session.Shield['TimeCommitmentInDays']} days")
+            subscription = client.get_subscription_state()
 
-        else:
-            shield_data = deepcopy(session.Shield)
-            shield_data['AdvancedProtection'] = False
-            session.update(pacu_main.database, Shield=shield_data)
-            print('    Standard (default/free) DDoS protection enabled through AWS Shield.')
+            if subscription == 'ACTIVE':
+                time_period = client.describe_subscription()
+                shield_data = deepcopy(session.Shield)
+                shield_data['AdvancedProtection'] = True
+                shield_data['StartTime'] = time_period['Subscription']['StartTime']
+                shield_data['TimeCommitmentInDays'] = time_period['Subscription']['TimeCommitmentInSeconds'] / 60 / 60 / 24
+                session.update(pacu_main.database, Shield=shield_data)
+                print('    Advanced (paid) DDoS protection enabled through AWS Shield.\n      Subscription Started: {}\nSubscription Commitment: {} days'.format(session.Shield['StartTime'], session.Shield['TimeCommitmentInDays']))
+
+            else:
+                shield_data = deepcopy(session.Shield)
+                shield_data['AdvancedProtection'] = False
+                session.update(pacu_main.database, Shield=shield_data)
+                print('    Standard (default/free) DDoS protection enabled through AWS Shield.')
+
+        except ClientError as error:
+            print('Error {} getting Shield Info'.format(error))
 
     if all is True or args.cloud_trail is True:
         print('Starting CloudTrail...')
@@ -80,14 +82,14 @@ def main(args, pacu_main):
         all_trails = []
 
         for region in cloudtrail_regions:
-            print(f'  Starting region {region}...')
+            print('  Starting region {}...'.format(region))
 
             client = pacu_main.get_boto3_client('cloudtrail', region)
 
             trails = client.describe_trails(
                 includeShadowTrails=False
             )
-            print(f"    {len(trails['trailList'])} trails found.")
+            print('    {} trails found.'.format(len(trails['trailList'])))
 
             for trail in trails['trailList']:
                 trail['Region'] = region
@@ -96,7 +98,7 @@ def main(args, pacu_main):
         cloudtrail_data = deepcopy(session.CloudTrail)
         cloudtrail_data['Trails'] = all_trails
         session.update(pacu_main.database, CloudTrail=cloudtrail_data)
-        print(f"  {len(session.CloudTrail['Trails'])} total CloudTrail trails found.\n")
+        print('  {} total CloudTrail trails found.\n'.format(len(session.CloudTrail['Trails'])))
 
     if all is True or args.guard_duty is True:
         print('Starting GuardDuty...')
@@ -105,16 +107,19 @@ def main(args, pacu_main):
 
         for region in guard_duty_regions:
             detectors = []
-            print(f'  Starting region {region}...')
+            print('  Starting region {}...'.format(region))
 
             client = pacu_main.get_boto3_client('guardduty', region)
 
             response = client.list_detectors()
 
             for detector in response['DetectorIds']:
+                status, master = get_detector_master(detector, client)
                 detectors.append({
                     'Id': detector,
-                    'Region': region
+                    'Region': region,
+                    'MasterStatus': status,
+                    'MasterAccountId': master
                 })
 
             while 'NextToken' in response:
@@ -123,18 +128,42 @@ def main(args, pacu_main):
                 )
 
                 for detector in response['DetectorIds']:
+                    status, master = get_detector_master(detector, client)
                     detectors.append({
                         'Id': detector,
-                        'Region': region
+                        'Region': region,
+                        'MasterStatus': status,
+                        'MasterAccountId': master
                     })
 
-            print(f'    {len(detectors)} GuardDuty Detectors found.')
+            print('    {} GuardDuty Detectors found.'.format(len(detectors)))
             all_detectors.extend(detectors)
 
         guardduty_data = deepcopy(session.GuardDuty)
         guardduty_data['Detectors'] = all_detectors
         session.update(pacu_main.database, GuardDuty=guardduty_data)
-        print(f"  {len(session.GuardDuty['Detectors'])} total GuardDuty Detectors found.\n")
+        print('  {} total GuardDuty Detectors found.\n'.format(len(session.GuardDuty['Detectors'])))
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return
+
+
+def get_detector_master(detector_id, client):
+
+    response = client.get_master_account(
+        DetectorId=detector_id
+    )
+    if 'Master' not in response:
+        return(None, None)
+
+    status = None
+    master = None
+
+    if 'RelationshipStatus' in response['Master']:
+        status = response['Master']['RelationshipStatus']
+
+    if 'AccountId' in response['Master']:
+        master = response['Master']['AccountId']
+
+    return(status, master)
+

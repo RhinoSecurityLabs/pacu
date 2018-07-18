@@ -38,10 +38,6 @@ parser.add_argument('--policies', required=False, action='store_true', help='Enu
 parser.add_argument('--groups', required=False, action='store_true', help='Enumerate info for groups in the account')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
@@ -175,5 +171,5 @@ def main(args, pacu_main):
 
         print(str(groups))
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

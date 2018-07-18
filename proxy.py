@@ -74,7 +74,7 @@ class PacuProxy(object):
                 client_hostname = conn.recv(1024).decode('utf-8')
                 address = address + (client_hostname,)
             except Exception as error:
-                if 'not a socket' in str(error):
+                if 'not a socket' in str(error) or 'Invalid argument' in str(error):
                     break
                 print('** Error accepting connections: {} **'.format(str(error)))
                 continue
@@ -96,7 +96,7 @@ class PacuProxy(object):
                     print(client_response, end='')
                 return client_response
         except Exception as error:
-            print(f'** Connection was lost {str(error)} **')
+            print('** Connection was lost {} **'.format(str(error)))
             del self.all_connections[target]
             del self.all_addresses[target]
         return

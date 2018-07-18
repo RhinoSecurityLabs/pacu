@@ -36,10 +36,6 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 parser.add_argument('--instance-ids', required=False, default=None, help='One or more (comma separated) EC2 instance IDs with their regions in the format instance_id@region. Defaults to all EC2 instances.')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
@@ -76,8 +72,8 @@ def main(args, pacu_main):
             return
         instances = session.EC2['Instances']
 
-    if not os.path.exists(f'sessions/{session.name}/downloads/'):
-        os.makedirs(f'sessions/{session.name}/downloads/')
+    if not os.path.exists('sessions/{}/downloads/'.format(session.name)):
+        os.makedirs('sessions/{}/downloads/'.format(session.name))
 
     for instance in instances:
         client = pacu_main.get_boto3_client('ec2', instance['Region'])
@@ -96,11 +92,11 @@ def main(args, pacu_main):
 
             print(formatted_user_data)
 
-            with open(f'sessions/{session.name}/downloads/user_data.txt', 'a+') as data_file:
+            with open('sessions/{}/downloads/user_data.txt'.format(session.name), 'a+') as data_file:
                 data_file.write(formatted_user_data)
 
         else:
-            print(f"{instance['InstanceId']}@{instance['Region']}: No user data")
+            print('{}@{}: No user data'.format(instance['InstanceId'], instance['Region']))
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

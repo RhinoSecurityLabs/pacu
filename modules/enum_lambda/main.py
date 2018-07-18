@@ -36,11 +36,6 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 parser.add_argument('--versions-all', required=False, default=False, action='store_true', help='Grab all versions instead of just the latest')
 
 
-# For when "help module_name" is called, don't modify this
-def help():
-    return [module_info, parser.format_help()]
-
-
 # Main is the first function that is called when this module is executed
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -56,7 +51,7 @@ def main(args, pacu_main):
     lambda_data = {}
     lambda_data['Functions'] = []
     for region in regions:
-        print(f'Starting region {region}...')
+        print('Starting region {}...'.format(region))
 
         client = pacu_main.get_boto3_client('lambda', region)
 
@@ -139,5 +134,5 @@ def main(args, pacu_main):
 
     session.update(pacu_main.database, Lambda=lambda_data)
 
-    print(f"{module_info['name']} completed.\n")
+    print('{} completed.\n'.format(module_info['name']))
     return

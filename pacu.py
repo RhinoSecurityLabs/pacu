@@ -45,6 +45,7 @@ class Main:
         self.server = None
         self.proxy = None
         self.queue = None
+        self.running_module = None
 
     # Utility methods
 
@@ -110,62 +111,80 @@ class Main:
             raise
 
     # @message: String - message to print and/or write to file
-    # @module: String - name of the log file that is being written to
     # @output: String - where to output the message: both, file, or screen
     # @output_type: String - format for message when written to file: plain or xml
     # @is_cmd: boolean - Is the log the initial command that was run (True) or output (False)? Devs won't touch this most likely
-    def print(self, message, module='cmd_log', output='both', output_type='plain', is_cmd=False, session_name=''):
+    def print(self, message, output='both', output_type='plain', is_cmd=False, session_name=''):
         session = self.get_active_session()
 
         if session_name == '':
             session_name = session.name
+
         # Indent output from a command
         if is_cmd is False:
             # Add some recursion here to go through the entire dict for
             # 'SecretAccessKey'. This is to not print the full secret access
             # key into the logs, although this should get most cases currently.
-            if type(message) is dict:
+            if isinstance(message, dict) or isinstance(message, list):
                 if 'SecretAccessKey' in message:
                     message = copy.deepcopy(message)
                     message['SecretAccessKey'] = '{}{}'.format(message['SecretAccessKey'][0:int(len(message['SecretAccessKey']) / 2)], '*' * int(len(message['SecretAccessKey']) / 2))
                 message = json.dumps(message, indent=2, default=str)
-            else:
-                message = '  {}'.format(message)
+
+        # The next section prepends the module's name in square brackets in
+        # front of the first line in the message containing non-whitespace
+        # characters.
+        if self.running_module and isinstance(message, str):
+            split_message = message.split('\n')
+            for index, fragment in enumerate(split_message):
+                if re.sub(r'\s', '', fragment):
+                    split_message[index] = '[{}] {}'.format(self.running_module, fragment)
+                    break
+            message = '\n'.join(split_message)
+
         if output == 'both' or output == 'file':
             if output_type == 'plain':
-                with open('sessions/{}/{}.txt'.format(session_name, module), 'a+') as text_file:
+                with open('sessions/{}/cmd_log.txt'.format(session_name), 'a+') as text_file:
                     text_file.write('{}\n'.format(message))
             elif output_type == 'xml':
                 # TODO: Implement actual XML output
-                with open('sessions/{}/{}.xml'.format(session_name, module), 'a+') as xml_file:
+                with open('sessions/{}/cmd_log.xml'.format(session_name), 'a+') as xml_file:
                     xml_file.write('{}\n'.format(message))
                 pass
             else:
                 print('  Unrecognized output type: {}'.format(output_type))
+
         if output == 'both' or output == 'screen':
             print(message)
+
         return True
 
     # @message: String - input question to ask and/or write to file
-    # @module: String - name of the log file that is being written to
     # @output: String - where to output the message: both or screen (can't write a question to a file only)
     # @output_type: String - format for message when written to file: plain or xml
-    def input(self, message, module='cmd_log', output='both', output_type='plain', session_name=''):
+    def input(self, message, output='both', output_type='plain', session_name=''):
         session = self.get_active_session()
 
         if session_name == '':
             session_name = session.name
 
-        message = '  {}'.format(message)
+        if self.running_module and isinstance(message, str):
+            split_message = message.split('\n')
+            for index, fragment in enumerate(split_message):
+                if re.sub(r'\s', '', fragment):
+                    split_message[index] = '[{}] {}'.format(self.running_module, fragment)
+                    break
+            message = '\n'.join(split_message)
+
         res = input(message)
         if output == 'both':
             if output_type == 'plain':
-                with open('sessions/{}/{}.txt'.format(session_name, module), 'a+') as file:
+                with open('sessions/{}/cmd_log.txt'.format(session_name), 'a+') as file:
                     file.write('{} {}\n'.format(message, res))
             elif output_type == 'xml':
                 # TODO: Implement actual XML output
                 # now = time.time()
-                with open('sessions/{}/{}.xml'.format(session_name, module), 'a+') as file:
+                with open('sessions/{}/cmd_log.xml'.format(session_name), 'a+') as file:
                     file.write('{} {}\n'.format(message, res))\
 
             else:
@@ -926,11 +945,15 @@ class Main:
                 self.print('  Running module {}...'.format(module_name))
             else:
                 self.print('  Running module {} on agent at {}...'.format(module_name, proxy_settings.target_agent[0]))
-            self.print('    {}\n'.format(module.module_info['description']))
+
+            self.running_module = module.module_info['name']
+            self.print('\n    {}\n'.format(module.module_info['description']))
 
             try:
                 module.main(command[2:], self)
+
             except SystemExit as error:
+                self.running_module = None
                 exception_type, exception_value, tb = sys.exc_info()
                 if 'SIGINT called' in exception_value.args:
                     self.print('^C\nExiting the currently running module.')
@@ -944,6 +967,11 @@ class Main:
                         local_data=local_data,
                         global_data=global_data
                     )
+
+            except Exception as error:
+                self.running_module = None
+                raise
+
             return
 
         elif module_name in self.COMMANDS:

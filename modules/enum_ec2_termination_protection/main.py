@@ -36,10 +36,6 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 parser.add_argument('--instances', required=False, default=None, help='A comma separated list of EC2 instances and their regions in the format instanceid@region. The default is to target all instances.')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 

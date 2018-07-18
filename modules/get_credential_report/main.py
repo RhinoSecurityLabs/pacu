@@ -34,10 +34,6 @@ module_info = {
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 

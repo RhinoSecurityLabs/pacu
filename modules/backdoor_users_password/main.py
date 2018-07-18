@@ -36,10 +36,6 @@ parser.add_argument('--usernames', required=False, default=None, help='A comma-s
 parser.add_argument('--update', required=False, default=False, action='store_true', help='Try to update login profiles instead of creating a new one. This can be used to change other users passwords who already have a login profile.')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 

@@ -34,10 +34,6 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 parser.add_argument('--usernames', required=False, default=None, help='A comma-separated list of usernames of the users in the AWS account to backdoor. If not supplied, it defaults to every user in the account')
 
 
-def help():
-    return [module_info, parser.format_help()]
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 

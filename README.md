@@ -17,7 +17,7 @@ Pacu is a fairly lightweight program, as it requires only [Python3.6+](https://w
 ```
   > git clone https://github.com/RhinoSecurityLabs/pacu
   > cd pacu
-  > bash install.sh
+  > sh install.sh
   > python3 pacu.py
 ```
 

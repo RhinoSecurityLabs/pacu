@@ -125,10 +125,12 @@ class Main:
             # Add some recursion here to go through the entire dict for
             # 'SecretAccessKey'. This is to not print the full secret access
             # key into the logs, although this should get most cases currently.
-            if isinstance(message, dict) or isinstance(message, list):
+            if isinstance(message, dict):
                 if 'SecretAccessKey' in message:
                     message = copy.deepcopy(message)
                     message['SecretAccessKey'] = '{}{}'.format(message['SecretAccessKey'][0:int(len(message['SecretAccessKey']) / 2)], '*' * int(len(message['SecretAccessKey']) / 2))
+                message = json.dumps(message, indent=2, default=str)
+            elif isinstance(message, list):
                 message = json.dumps(message, indent=2, default=str)
 
         # The next section prepends the module's name in square brackets in

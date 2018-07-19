@@ -972,6 +972,7 @@ class Main:
                 self.running_module = None
                 raise
 
+            self.running_module = None
             return
 
         elif module_name in self.COMMANDS:

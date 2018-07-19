@@ -28,11 +28,8 @@ def main(args, pacu_main):
     print = pacu_main.print
     get_regions = pacu_main.get_regions
 
-    all = False
-    if args.builds is False and args.projects is False:
-        all = True
-
-    regions = get_regions('CodeBuild')
+    all = args.builds == args.projects == False
+    regions = args.regions.split(',') if args.regions else get_regions('CodeBuild') 
 
     all_projects = []
     all_builds = []
@@ -99,19 +96,34 @@ def main(args, pacu_main):
 
     # Store in session
     session.CodeBuild['EnvironmentVariables'] = environment_variables
+    
+    summary_data = {'EnvironmentVariables': environment_variables}
 
     if len(all_projects) > 0:
         session.CodeBuild['Projects'] = all_projects
+        summary_data['Projects'] = all_projects
 
     if len(all_builds) > 0:
         session.CodeBuild['Builds'] = all_builds
+        summary_data['Builds'] = all_builds
 
     print('All environment variables found (duplicates removed):\n')
-    print(environment_variables)
 
     print('{} completed.\n'.format(module_info['name']))
-    return
+    summary_data = {
+        'EnvironmentVariables': [
+            {'name': 'a', 'value': 5, 'type': 'PLAINTEXT'},
+            {'name': 'b', 'value': 7},
+            {'name': 'c', 'value': 8, 'type': 'PARAMETER_STORE'}
+        ],
+        'Builds': [1, 2, 3, 4, 5],
+        'Projects': [1, 2, 3, 4]
+    }
+    return summary_data
 
 
 def summary(data, pacu_main):
-    raise NotImplementedError
+    out = ''
+    for item in data:
+        out += '    {} total {} found.\n'.format(len(data[item]), item)
+    return out

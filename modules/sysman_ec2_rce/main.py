@@ -475,3 +475,7 @@ def main(args, pacu_main):
 
     print('{} completed.'.format(os.path.basename(__file__)))
     return
+
+
+def summary(data, pacu_main):
+    raise NotImplementedError

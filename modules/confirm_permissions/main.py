@@ -263,6 +263,10 @@ def main(args, pacu_main):
     return
 
 
+def summary(data, pacu_main):
+    raise NotImplementedError
+
+
 def parse_attached_policies(client, attached_policies, user):
     """ Pull permissions from each policy document. """
     for policy in attached_policies:

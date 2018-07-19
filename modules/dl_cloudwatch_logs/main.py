@@ -155,3 +155,7 @@ def main(args, pacu_main):
     print('\nLogs downloaded to pacu/sessions/{}/downloads/cloud_watch_logs/{}'.format(session.name, scan_time))
     print("{} completed.\n".format(module_info['name']))
     return
+
+
+def summary(data, pacu_main):
+    raise NotImplementedError

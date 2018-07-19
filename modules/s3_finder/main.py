@@ -161,6 +161,10 @@ def main(args, pacu_main):
     return
 
 
+def summary(data, pacu_main):
+    raise NotImplementedError
+
+
 def create_bucket_list(domain, affixes=[]):
     """
     Create a set of buckets based on a domain name and a list of affixes.

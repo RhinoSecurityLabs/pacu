@@ -148,6 +148,10 @@ def main(args, pacu_main):
     return
 
 
+def summary(data, pacu_main):
+    raise NotImplementedError
+
+
 def get_detector_master(detector_id, client):
 
     response = client.get_master_account(
@@ -166,4 +170,3 @@ def get_detector_master(detector_id, client):
         master = response['Master']['AccountId']
 
     return(status, master)
-

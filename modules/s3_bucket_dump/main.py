@@ -229,3 +229,7 @@ def main(args, pacu_main):
     print('All buckets have been analyzed.')
     print('{} completed.\n'.format(module_info['name']))
     return
+
+
+def summary(data, pacu_main):
+    raise NotImplementedError

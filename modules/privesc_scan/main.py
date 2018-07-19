@@ -466,6 +466,10 @@ def main(args, pacu_main):
     return
 
 
+def summary(data, pacu_main):
+    raise NotImplementedError
+
+
 # https://stackoverflow.com/a/24893252
 def remove_empty_from_dict(d):
     if type(d) is dict:

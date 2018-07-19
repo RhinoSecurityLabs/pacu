@@ -121,6 +121,10 @@ def main(args, pacu_main):
     return
 
 
+def summary(data, pacu_main):
+    raise NotImplementedError
+
+
 def create_valid_password(password_policy):
     symbols = '!@#$%^&*()_+=-\][{}|;:",./?><`~'
     password = ''.join(choice(string.ascii_lowercase) for _ in range(3))

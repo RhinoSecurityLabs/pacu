@@ -228,3 +228,7 @@ def main(args, pacu_main):
 
     print('{} completed.\n'.format(module_info['name']))
     return
+
+
+def summary(data, pacu_main):
+    raise NotImplementedError

@@ -88,3 +88,7 @@ def main(args, pacu_main):
     session.update(pacu_main.database, Inspector=complete_data)
     print('{} completed.\n'.format(module_info['name']))
     return
+
+
+def summary(data, pacu_main):
+    raise NotImplementedError

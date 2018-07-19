@@ -109,6 +109,10 @@ def main(args, pacu_main):
     return
 
 
+def summary(data, pacu_main):
+    raise NotImplementedError
+
+
 def stop_instance(client, instance_id):
     print('Stopping instance id {}'.format(instance_id))
 

@@ -94,3 +94,7 @@ def main(args, pacu_main):
     print('Instances with Termination Protection disabled have been written to ./{}'.format(csv_file_path))
     print('{} completed.\n'.format(module_info['name']))
     return
+
+
+def summary(data, pacu_main):
+    raise NotImplementedError

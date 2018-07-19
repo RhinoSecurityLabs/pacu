@@ -115,6 +115,10 @@ def main(args, pacu_main):
     return
 
 
+def summary(data, pacu_main):
+    raise NotImplementedError
+
+
 def modify_assume_role_policy(original_policy, user_arns, no_random):
     if 'Statement' in original_policy:
         statements = original_policy['Statement']

@@ -934,7 +934,7 @@ class Main:
             return
 
         module_name = command[1]
-        module = self.import_module_by_name(module_name, include=['main', 'module_info'])
+        module = self.import_module_by_name(module_name, include=['main', 'module_info', 'summary'])
 
         if module is not None:
             # Plaintext Command Log
@@ -952,7 +952,7 @@ class Main:
             self.print('\n    {}\n'.format(module.module_info['description']))
 
             try:
-                module.main(command[2:], self)
+                summary_data = module.main(command[2:], self)
 
             except SystemExit as error:
                 self.running_module = None
@@ -969,10 +969,18 @@ class Main:
                         local_data=local_data,
                         global_data=global_data
                     )
+                return
 
             except Exception as error:
                 self.running_module = None
                 raise
+
+            summary = module.summary(summary_data, self)
+            if len(summary) > 1000:
+                raise ValueError('The {} module\'s summary is too long ({} characters). Reduce it to 1000 characters or fewer.'.format(module.module_info['name'], len(summary)))
+            if not isinstance(summary, str):
+                raise TypeError(' The {} module\'s summary is {}-type instead of str. Make summary return a string.'.format(module.module_info['name'], type(summary)))
+            self.print('MODULE SUMMARY:\n\n{}\n'.format(summary))
 
             self.running_module = None
             return

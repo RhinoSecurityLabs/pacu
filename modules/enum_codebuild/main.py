@@ -110,15 +110,6 @@ def main(args, pacu_main):
     print('All environment variables found (duplicates removed):\n')
 
     print('{} completed.\n'.format(module_info['name']))
-    summary_data = {
-        'EnvironmentVariables': [
-            {'name': 'a', 'value': 5, 'type': 'PLAINTEXT'},
-            {'name': 'b', 'value': 7},
-            {'name': 'c', 'value': 8, 'type': 'PARAMETER_STORE'}
-        ],
-        'Builds': [1, 2, 3, 4, 5],
-        'Projects': [1, 2, 3, 4]
-    }
     return summary_data
 
 

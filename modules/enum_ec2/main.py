@@ -7,7 +7,7 @@ from random import choice
 
 module_info = {
     # Name of the module (should be the same as the filename)
-    'name': 'enum_ec2_instances',
+    'name': 'enum_ec2',
 
     # Name and any other notes about the author
     'author': 'Spencer Gietzen of Rhino Security Labs',

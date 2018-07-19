@@ -99,6 +99,7 @@ class PacuSession(Base, ModelUpdateMixin):
     __tablename__ = 'pacu_session'
     aws_data_field_names = (
         'CloudTrail',
+        'CloudWatch',
         'CodeBuild',
         'Config',
         'DataPipeline',
@@ -128,6 +129,7 @@ class PacuSession(Base, ModelUpdateMixin):
     session_regions = Column(JSONType, nullable=False, default=['all'])
 
     CloudTrail = Column(JSONType, nullable=False, default=dict)
+    CloudWatch = Column(JSONType, nullable=False, default=dict)
     CodeBuild = Column(JSONType, nullable=False, default=dict)
     Config = Column(JSONType, nullable=False, default=dict)
     DataPipeline = Column(JSONType, nullable=False, default=dict)

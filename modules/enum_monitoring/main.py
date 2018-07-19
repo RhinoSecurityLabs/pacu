@@ -33,6 +33,7 @@ module_info = {
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 parser.add_argument('--cloud-trail', required=False, default=False, action='store_true', help='Enumerate CloudTrail logging implementations.')
+parser.add_argument('--cloud-watch', required=False, default=False, action='store_true', help='Enumerate CloudWatch alarms.')
 parser.add_argument('--shield', required=False, default=False, action='store_true', help='Enumerate the Shield DDoS plan.')
 parser.add_argument('--guard-duty', required=False, default=False, action='store_true', help='Enumerate GuardDuty security implementations.')
 parser.add_argument('--config', required=False, default=False, action='store_true', help='Enumerate Config rules.')
@@ -48,7 +49,7 @@ def main(args, pacu_main):
     ######
 
     all = False
-    if args.cloud_trail is False and args.shield is False and args.guard_duty is False and args.config is False:
+    if args.cloud_trail is False and args.shield is False and args.guard_duty is False and args.config is False and args.cloud_watch is False:
         all = True
 
     if all is True or args.shield is True:
@@ -173,6 +174,35 @@ def main(args, pacu_main):
         config_data['Rules'] = all_rules
         session.update(pacu_main.database, Config=config_data)
         print('  {} total Config rules found.\n'.format(len(session.Config['Rules'])))
+
+    if all is True or args.cloud_watch is True:
+        print('Starting CloudWatch...')
+        cw_regions = get_regions('cloudwatch')
+        all_alarms = []
+
+        for region in cw_regions:
+            print('  Starting region {}...'.format(region))
+
+            client = pacu_main.get_boto3_client('cloudwatch', region)
+
+            response = client.describe_alarms()
+            alarms = response['MetricAlarms']
+            while 'NextToken' in response:
+                response = client.describe_alarms(
+                    NextToken=response['NextToken']
+                )
+                alarms.extend(response['MetricAlarms'])
+            print('    {} alarms found.'.format(len(alarms)))
+
+            for alarm in alarms:
+                alarm['Region'] = region
+
+            all_alarms.extend(alarms)
+
+        cw_data = deepcopy(session.CloudWatch)
+        cw_data['Alarms'] = all_alarms
+        session.update(pacu_main.database, CloudWatch=cw_data)
+        print('  {} total CloudWatch alarms found.\n'.format(len(session.CloudWatch['Alarms'])))
 
     print('{} completed.\n'.format(module_info['name']))
     return

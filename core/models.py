@@ -100,6 +100,7 @@ class PacuSession(Base, ModelUpdateMixin):
     aws_data_field_names = (
         'CloudTrail',
         'CodeBuild',
+        'Config',
         'DataPipeline',
         'DynamoDB',
         'EC2',
@@ -128,6 +129,7 @@ class PacuSession(Base, ModelUpdateMixin):
 
     CloudTrail = Column(JSONType, nullable=False, default=dict)
     CodeBuild = Column(JSONType, nullable=False, default=dict)
+    Config = Column(JSONType, nullable=False, default=dict)
     DataPipeline = Column(JSONType, nullable=False, default=dict)
     DynamoDB = Column(JSONType, nullable=False, default=dict)
     EC2 = Column(JSONType, nullable=False, default=dict)

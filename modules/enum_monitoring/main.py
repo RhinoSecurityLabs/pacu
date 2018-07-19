@@ -33,8 +33,9 @@ module_info = {
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 parser.add_argument('--cloud-trail', required=False, default=False, action='store_true', help='Enumerate CloudTrail logging implementations.')
-parser.add_argument('--shield', required=False, default=False, action='store_true', help='Enumerate Shield DDoS rules.')
+parser.add_argument('--shield', required=False, default=False, action='store_true', help='Enumerate the Shield DDoS plan.')
 parser.add_argument('--guard-duty', required=False, default=False, action='store_true', help='Enumerate GuardDuty security implementations.')
+parser.add_argument('--config', required=False, default=False, action='store_true', help='Enumerate Config rules.')
 
 
 def main(args, pacu_main):
@@ -47,7 +48,7 @@ def main(args, pacu_main):
     ######
 
     all = False
-    if args.cloud_trail is False and args.shield is False and args.guard_duty is False:
+    if args.cloud_trail is False and args.shield is False and args.guard_duty is False and args.config is False:
         all = True
 
     if all is True or args.shield is True:
@@ -143,6 +144,35 @@ def main(args, pacu_main):
         guardduty_data['Detectors'] = all_detectors
         session.update(pacu_main.database, GuardDuty=guardduty_data)
         print('  {} total GuardDuty Detectors found.\n'.format(len(session.GuardDuty['Detectors'])))
+
+    if all is True or args.config is True:
+        print('Starting Config...')
+        config_regions = get_regions('config')
+        all_rules = []
+
+        for region in config_regions:
+            print('  Starting region {}...'.format(region))
+
+            client = pacu_main.get_boto3_client('config', region)
+
+            response = client.describe_config_rules()
+            rules = response['ConfigRules']
+            while 'NextToken' in response:
+                response = client.describe_config_rules(
+                    NextToken=response['NextToken']
+                )
+                rules.extend(response['ConfigRules'])
+            print('    {} rules found.'.format(len(rules)))
+
+            for rule in rules:
+                rule['Region'] = region
+
+            all_rules.extend(rules)
+
+        config_data = deepcopy(session.Config)
+        config_data['Rules'] = all_rules
+        session.update(pacu_main.database, Config=config_data)
+        print('  {} total Config rules found.\n'.format(len(session.Config['Rules'])))
 
     print('{} completed.\n'.format(module_info['name']))
     return

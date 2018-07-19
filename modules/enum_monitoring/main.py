@@ -18,10 +18,10 @@ module_info = {
     'one_liner': 'Detects monitoring and logging capabilities.',
 
     # Description about what the module does and how it works
-    'description': 'This module will enumerate the different logging and monitoring capabilities that have been implemented in the current AWS account. By default the module will enumerate all services that it supports, but by specifying the individual parameters, it is possible to target specific services. The supported services include CloudTrail, Shield, and GuardDuty.',
+    'description': 'This module will enumerate the different logging and monitoring capabilities that have been implemented in the current AWS account. By default the module will enumerate all services that it supports, but by specifying the individual arguments, it is possible to target specific services. The supported services include CloudTrail, CloudWatch, Config, Shield, WAF, VPC, and GuardDuty.',
 
     # A list of AWS services that the module utilizes during its execution
-    'services': ['GuardDuty', 'CloudTrail', 'Shield'],
+    'services': ['GuardDuty', 'CloudTrail', 'Shield', 'CloudWatch', 'WAF', 'Config', 'VPC'],
 
     # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
     'prerequisite_modules': [],
@@ -203,6 +203,12 @@ def main(args, pacu_main):
         cw_data['Alarms'] = all_alarms
         session.update(pacu_main.database, CloudWatch=cw_data)
         print('  {} total CloudWatch alarms found.\n'.format(len(session.CloudWatch['Alarms'])))
+
+    # WAF
+    # rules, rule_groups, activated_rules_in_rule_group, ip_sets, web_acls, all of the match_sets (xss, sqli, etc)
+
+    # VPC
+    # Flow logs
 
     print('{} completed.\n'.format(module_info['name']))
     return

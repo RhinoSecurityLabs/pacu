@@ -28,15 +28,17 @@ def main(args, pacu_main):
     print = pacu_main.print
     get_regions = pacu_main.get_regions
 
-    all = args.builds == args.projects == False
-    regions = args.regions.split(',') if args.regions else get_regions('CodeBuild') 
+    all = args.builds is args.projects is False
+    regions = args.regions.split(',') if args.regions else get_regions('CodeBuild')
 
     all_projects = []
     all_builds = []
     environment_variables = []
+    summary_data = {}
     for region in regions:
         region_projects = []
         region_builds = []
+        summary_data[region] = {}
 
         print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('codebuild', region)
@@ -59,6 +61,7 @@ def main(args, pacu_main):
                     names=project_names
                 )['projects']
                 print('  Found {} projects.'.format(len(region_projects)))
+                summary_data[region]['Projects'] = len(region_projects)
                 all_projects.extend(region_projects)
 
         # Builds
@@ -77,6 +80,7 @@ def main(args, pacu_main):
                     ids=build_ids
                 )['builds']
                 print('  Found {} builds.\n'.format(len(region_builds)))
+                summary_data[region]['Builds'] = len(region_builds)
                 all_builds.extend(region_builds)
 
     # Begin environment variable dump
@@ -92,22 +96,20 @@ def main(args, pacu_main):
             environment_variables.extend(build['environment']['environmentVariables'])
 
     # Kill duplicates
-    environment_variables = list(set(environment_variables))
+    # environment_variables = list(set(environment_variables))
 
     # Store in session
+
     session.CodeBuild['EnvironmentVariables'] = environment_variables
-    
-    summary_data = {'EnvironmentVariables': environment_variables}
+    summary_data['All'] = {'EnvironmentVariables': len(environment_variables)}
 
     if len(all_projects) > 0:
         session.CodeBuild['Projects'] = all_projects
-        summary_data['Projects'] = all_projects
+        summary_data['All']['Projects'] = len(all_projects)
 
     if len(all_builds) > 0:
         session.CodeBuild['Builds'] = all_builds
-        summary_data['Builds'] = all_builds
-
-    print('All environment variables found (duplicates removed):\n')
+        summary_data['All']['Builds'] = len(all_builds)
 
     print('{} completed.\n'.format(module_info['name']))
     return summary_data
@@ -115,6 +117,8 @@ def main(args, pacu_main):
 
 def summary(data, pacu_main):
     out = ''
-    for item in data:
-        out += '    {} total {} found.\n'.format(len(data[item]), item)
+    for region in data:
+        out += '    {}\n'.format(region)
+        for val in data[region]:
+            out += '        {} total {} found.\n'.format(data[region][val], val)
     return out

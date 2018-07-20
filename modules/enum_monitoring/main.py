@@ -18,16 +18,16 @@ module_info = {
     'one_liner': 'Detects monitoring and logging capabilities.',
 
     # Description about what the module does and how it works
-    'description': 'This module will enumerate the different logging and monitoring capabilities that have been implemented in the current AWS account. By default the module will enumerate all services that it supports, but by specifying the individual arguments, it is possible to target specific services. The supported services include CloudTrail, CloudWatch, Config, Shield, WAF, VPC, and GuardDuty.',
+    'description': 'This module will enumerate the different logging and monitoring capabilities that have been implemented in the current AWS account. By default the module will enumerate all services that it supports, but by specifying the individual arguments, it is possible to target specific services. The supported services include CloudTrail, CloudWatch, Config, Shield, VPC, and GuardDuty.',
 
     # A list of AWS services that the module utilizes during its execution
-    'services': ['GuardDuty', 'CloudTrail', 'Shield', 'CloudWatch', 'WAF', 'Config', 'VPC'],
+    'services': ['GuardDuty', 'CloudTrail', 'Shield', 'CloudWatch', 'Config', 'VPC'],
 
     # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
     'prerequisite_modules': [],
 
     # Module arguments to autocomplete when the user hits tab
-    'arguments_to_autocomplete': ['--vpc', '--config', '--cloud-trail', '--cloud-watch', '--waf', '--shield', '--guard-duty'],
+    'arguments_to_autocomplete': ['--vpc', '--config', '--cloud-trail', '--cloud-watch', '--shield', '--guard-duty'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
@@ -236,9 +236,6 @@ def main(args, pacu_main):
         vpc_data['FlowLogs'] = all_flow_logs
         session.update(pacu_main.database, VPC=vpc_data)
         print('  {} total VPC flow logs found.\n'.format(len(session.VPC['FlowLogs'])))
-
-    # WAF
-    # rules, rule_groups, activated_rules_in_rule_group, ip_sets, web_acls, all of the match_sets (xss, sqli, etc)
 
     print('{} completed.\n'.format(module_info['name']))
     return

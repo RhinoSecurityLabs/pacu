@@ -69,13 +69,11 @@ def main(args, pacu_main):
                 shield_data['TimeCommitmentInDays'] = time_period['Subscription']['TimeCommitmentInSeconds'] / 60 / 60 / 24
                 session.update(pacu_main.database, Shield=shield_data)
                 print('    Advanced (paid) DDoS protection enabled through AWS Shield.\n      Subscription Started: {}\nSubscription Commitment: {} days'.format(session.Shield['StartTime'], session.Shield['TimeCommitmentInDays']))
-
             else:
                 shield_data = deepcopy(session.Shield)
                 shield_data['AdvancedProtection'] = False
                 session.update(pacu_main.database, Shield=shield_data)
                 print('    Standard (default/free) DDoS protection enabled through AWS Shield.')
-
         except ClientError as error:
             print('Error {} getting Shield Info'.format(error))
 
@@ -139,7 +137,7 @@ def main(args, pacu_main):
                         'MasterAccountId': master
                     })
 
-            print('    {} GuardDuty Detectors found.'.format(len(detectors)))
+            print('    {} detectors found.'.format(len(detectors)))
             all_detectors.extend(detectors)
 
         guardduty_data = deepcopy(session.GuardDuty)
@@ -178,7 +176,7 @@ def main(args, pacu_main):
 
     if all is True or args.cloud_watch is True:
         print('Starting CloudWatch...')
-        cw_regions = get_regions('cloudwatch')
+        cw_regions = get_regions('monitoring')
         all_alarms = []
 
         for region in cw_regions:

@@ -25,13 +25,14 @@ module_info = {
     'prerequisite_modules': ['enum_monitoring'],
 
     # Module arguments to autocomplete when the user hits tab
-    'arguments_to_autocomplete': ['--trails', '--detectors'],
+    'arguments_to_autocomplete': ['--trails', '--detectors', '--config-rules'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 parser.add_argument('--trails', required=False, default=None, help='Comma-separated list of CloudTrail trail names and regions to target instead of enumerating them. They should be formatted like trail_name@region.')
 parser.add_argument('--detectors', required=False, default=None, help='Comma-separated list of GuardDuty detector IDs and regions to target, instead of enumerating them. They should be formatted like detector_id@region.')
+parser.add_argument('--config-rules', required=False, default=None, help='Comma-separated list of Config rules and regions to target, instead of enumerating them. They should be formatted like rule_name@region.')
 
 
 def main(args, pacu_main):

@@ -37,6 +37,7 @@ parser.add_argument('--cloud-watch', required=False, default=False, action='stor
 parser.add_argument('--shield', required=False, default=False, action='store_true', help='Enumerate the Shield DDoS plan.')
 parser.add_argument('--guard-duty', required=False, default=False, action='store_true', help='Enumerate GuardDuty security implementations.')
 parser.add_argument('--config', required=False, default=False, action='store_true', help='Enumerate Config rules.')
+parser.add_argument('--vpc', required=False, default=False, action='store_true', help='Enumerate VPC flow logs.')
 
 
 def main(args, pacu_main):
@@ -49,7 +50,7 @@ def main(args, pacu_main):
     ######
 
     all = False
-    if args.cloud_trail is False and args.shield is False and args.guard_duty is False and args.config is False and args.cloud_watch is False:
+    if args.cloud_trail is False and args.shield is False and args.guard_duty is False and args.config is False and args.cloud_watch is False and args.vpc is False:
         all = True
 
     if all is True or args.shield is True:
@@ -204,11 +205,40 @@ def main(args, pacu_main):
         session.update(pacu_main.database, CloudWatch=cw_data)
         print('  {} total CloudWatch alarms found.\n'.format(len(session.CloudWatch['Alarms'])))
 
+    if all is True or args.vpc is True:
+        print('Starting VPC...')
+        vpc_regions = get_regions('ec2')
+        all_flow_logs = []
+
+        for region in vpc_regions:
+            print('  Starting region {}...'.format(region))
+
+            client = pacu_main.get_boto3_client('ec2', region)
+
+            response = client.describe_flow_logs(
+                MaxResults=1000
+            )
+            flow_logs = response['FlowLogs']
+            while 'NextToken' in response:
+                response = client.describe_flow_logs(
+                    MaxResults=1000,
+                    NextToken=response['NextToken']
+                )
+                flow_logs.extend(response['FlowLogs'])
+            print('    {} flow logs found.'.format(len(flow_logs)))
+
+            for flow_log in flow_logs:
+                flow_log['Region'] = region
+
+            all_flow_logs.extend(flow_logs)
+
+        vpc_data = deepcopy(session.VPC)
+        vpc_data['FlowLogs'] = all_flow_logs
+        session.update(pacu_main.database, VPC=vpc_data)
+        print('  {} total VPC flow logs found.\n'.format(len(session.VPC['FlowLogs'])))
+
     # WAF
     # rules, rule_groups, activated_rules_in_rule_group, ip_sets, web_acls, all of the match_sets (xss, sqli, etc)
-
-    # VPC
-    # Flow logs
 
     print('{} completed.\n'.format(module_info['name']))
     return

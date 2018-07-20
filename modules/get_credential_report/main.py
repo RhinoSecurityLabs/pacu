@@ -52,8 +52,9 @@ def main(args, pacu_main):
             break
         except ClientError as error:
             code = error.response['Error']['Code']
-            if code == 'ReportNotPresent':
-                if generated:
+            if code == 'ReportNotPresent' or code == 'ReportInProgress':
+                if generated or code == 'ReportInProgress':
+                    generated = True
                     print('waiting...')
                     time.sleep(20)
                 else:

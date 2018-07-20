@@ -21,7 +21,7 @@ module_info = {
     'description': 'This module will enumerate the different logging and monitoring capabilities that have been implemented in the current AWS account. By default the module will enumerate all services that it supports, but by specifying the individual arguments, it is possible to target specific services. The supported services include CloudTrail, CloudWatch, Config, Shield, VPC, and GuardDuty.',
 
     # A list of AWS services that the module utilizes during its execution
-    'services': ['GuardDuty', 'CloudTrail', 'Shield', 'monitoring', 'Config', 'EC2'], # CloudWatch needs to be "monitoring" and VPC needs to be "EC2" here for "ls" to work
+    'services': ['GuardDuty', 'CloudTrail', 'Shield', 'monitoring', 'Config', 'EC2'],  # CloudWatch needs to be "monitoring" and VPC needs to be "EC2" here for "ls" to work
 
     # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
     'prerequisite_modules': [],
@@ -49,11 +49,11 @@ def main(args, pacu_main):
     get_regions = pacu_main.get_regions
     ######
 
-    all = False
-    if args.cloud_trail is False and args.shield is False and args.guard_duty is False and args.config is False and args.cloud_watch is False and args.vpc is False:
-        all = True
+    enum_all = False
+    if not any([args.cloud_trail, args.cloud_watch, args.shield, args.guard_duty, args.config, args.vpc]):
+        enum_all = True
 
-    if all is True or args.shield is True:
+    if enum_all is True or args.shield is True:
         print('Starting Shield...')
 
         try:
@@ -77,7 +77,7 @@ def main(args, pacu_main):
         except ClientError as error:
             print('Error {} getting Shield Info'.format(error))
 
-    if all is True or args.cloud_trail is True:
+    if enum_all is True or args.cloud_trail is True:
         print('Starting CloudTrail...')
         cloudtrail_regions = get_regions('cloudtrail')
         all_trails = []
@@ -101,7 +101,7 @@ def main(args, pacu_main):
         session.update(pacu_main.database, CloudTrail=cloudtrail_data)
         print('  {} total CloudTrail trails found.\n'.format(len(session.CloudTrail['Trails'])))
 
-    if all is True or args.guard_duty is True:
+    if enum_all is True or args.guard_duty is True:
         print('Starting GuardDuty...')
         guard_duty_regions = get_regions('guardduty')
         all_detectors = []
@@ -145,7 +145,7 @@ def main(args, pacu_main):
         session.update(pacu_main.database, GuardDuty=guardduty_data)
         print('  {} total GuardDuty Detectors found.\n'.format(len(session.GuardDuty['Detectors'])))
 
-    if all is True or args.config is True:
+    if enum_all is True or args.config is True:
         print('Starting Config...')
         config_regions = get_regions('config')
         all_rules = []
@@ -174,7 +174,7 @@ def main(args, pacu_main):
         session.update(pacu_main.database, Config=config_data)
         print('  {} total Config rules found.\n'.format(len(session.Config['Rules'])))
 
-    if all is True or args.cloud_watch is True:
+    if enum_all is True or args.cloud_watch is True:
         print('Starting CloudWatch...')
         cw_regions = get_regions('monitoring')
         all_alarms = []
@@ -203,7 +203,7 @@ def main(args, pacu_main):
         session.update(pacu_main.database, CloudWatch=cw_data)
         print('  {} total CloudWatch alarms found.\n'.format(len(session.CloudWatch['Alarms'])))
 
-    if all is True or args.vpc is True:
+    if enum_all is True or args.vpc is True:
         print('Starting VPC...')
         vpc_regions = get_regions('ec2')
         all_flow_logs = []
@@ -257,4 +257,3 @@ def get_detector_master(detector_id, client):
         master = response['Master']['AccountId']
 
     return(status, master)
-

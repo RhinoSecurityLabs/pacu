@@ -36,7 +36,7 @@ parser.add_argument('--cloud-trail', required=False, default=False, action='stor
 parser.add_argument('--cloud-watch', required=False, default=False, action='store_true', help='Enumerate CloudWatch alarms.')
 parser.add_argument('--shield', required=False, default=False, action='store_true', help='Enumerate the Shield DDoS plan.')
 parser.add_argument('--guard-duty', required=False, default=False, action='store_true', help='Enumerate GuardDuty security implementations.')
-parser.add_argument('--config', required=False, default=False, action='store_true', help='Enumerate Config rules.')
+parser.add_argument('--config', required=False, default=False, action='store_true', help='Enumerate Config configurations and resources.')
 parser.add_argument('--vpc', required=False, default=False, action='store_true', help='Enumerate VPC flow logs.')
 
 

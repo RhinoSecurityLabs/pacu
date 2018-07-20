@@ -19,20 +19,25 @@ module_info = {
     'description': 'This module will take enumerated CloudTrail trails and GuardDuty detectors and present you with the option of disabling or deleting each one. For CloudTrail, you also have the option of minimizing it. Minimizing a trail leaves it enabled, but changes all the settings to their very basic level. These changes include: removing the associated SNS topic, disabling global service event logging, disabling multi-regional log collection, disabling log file validation, and removing the associated CloudWatch log group/role. The idea of this is to minimize the amount of logging in the environment without calling dangerous APIs like disable or delete.',
 
     # A list of AWS services that the module utilizes during its execution
-    'services': ['GuardDuty', 'CloudTrail'],
+    'services': ['GuardDuty', 'CloudTrail', 'EC2', 'Config', 'monitoring'],  # CloudWatch needs to be "monitoring" and VPC needs to be "EC2" here for "ls" to work
 
     # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
     'prerequisite_modules': ['enum_monitoring'],
 
     # Module arguments to autocomplete when the user hits tab
-    'arguments_to_autocomplete': ['--trails', '--detectors', '--config-rules'],
+    'arguments_to_autocomplete': ['--trails', '--detectors', '--config-rules', '--config-recorders', '--config-delivery-channels', '--config-aggregators', '--alarms', '--flow-logs'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 parser.add_argument('--trails', required=False, default=None, help='Comma-separated list of CloudTrail trail names and regions to target instead of enumerating them. They should be formatted like trail_name@region.')
 parser.add_argument('--detectors', required=False, default=None, help='Comma-separated list of GuardDuty detector IDs and regions to target, instead of enumerating them. They should be formatted like detector_id@region.')
-parser.add_argument('--config-rules', required=False, default=None, help='Comma-separated list of Config rules and regions to target, instead of enumerating them. They should be formatted like rule_name@region.')
+parser.add_argument('--config-rules', required=False, default=None, help='Comma-separated list of Config rule names and regions to target, instead of enumerating them. They should be formatted like rule_name@region.')
+parser.add_argument('--config-recorders', required=False, default=None, help='Comma-separated list of Config configuration recorder names and regions to target, instead of enumerating them. They should be formatted like recorder_name@region.')
+parser.add_argument('--config-delivery-channels', required=False, default=None, help='Comma-separated list of Config delivery channel names and regions to target, instead of enumerating them. They should be formatted like channel_name@region.')
+parser.add_argument('--config-aggregators', required=False, default=None, help='Comma-separated list of Config configuration aggregator names and regions to target, instead of enumerating them. They should be formatted like aggregator_name@region.')
+parser.add_argument('--alarms', required=False, default=None, help='Comma-separated list of CloudWatch alarm names and regions to target, instead of enumerating them. They should be formatted like alarm_name@region.')
+parser.add_argument('--flow-logs', required=False, default=None, help='Comma-separated list of VPC Flow Log IDs and regions to target, instead of enumerating them. They should be formatted like log_id@region.')
 
 
 def main(args, pacu_main):

@@ -257,6 +257,7 @@ def main(args, pacu_main):
                     snapshot['Region'] = region
 
                     if args.snapshot_permissions:
+                        print('Starting enumeration for Snapshot Permissions...')
                         snapshot['CreateVolumePermissions'] = client.describe_snapshot_attribute(
                             Attribute='createVolumePermission',
                             SnapshotId=snapshot['SnapshotId']
@@ -283,28 +284,37 @@ def main(args, pacu_main):
 
             print('  {} total snapshot(s) found in {}.'.format(count, region))
 
-    summary_data = []
+    summary_data = {}
     if args.vols is True:
         ec2_data['Volumes'] = all_vols
         unencrypted_volumes_csv_path = 'sessions/{}/downloads/unencrypted_ebs_volumes_{}.csv'.format(session.name, now)
         with open(unencrypted_volumes_csv_path, 'w+') as unencrypted_volumes_csv:
             unencrypted_volumes_csv.write('Volume Name,Volume ID,Region\n')
+            print('Writing data for {} volumes...'.format(len(volumes_csv_data)))
             for line in volumes_csv_data:
                 unencrypted_volumes_csv.write(line)
-        summary_data.append('{} total volume(s) found.'.format(len(ec2_data['Volumes'])))
-        summary_data.append('  A list of unencrypted volumes has been saved to ./{}'.format(unencrypted_volumes_csv_path))
+        summary_data['Volumes'] = len(ec2_data['Volumes'])
+        summary_data['volumes-csv-path'] = unencrypted_volumes_csv_path
 
     if args.snaps is True:
         ec2_data['Snapshots'] = all_snaps
         unencrypted_snapshots_csv_path = 'sessions/{}/downloads/unencrypted_ebs_snapshots_{}.csv'.format(session.name, now)
         with open(unencrypted_snapshots_csv_path, 'w+') as unencrypted_snapshots_csv:
             unencrypted_snapshots_csv.write('Snapshot Name,Snapshot ID,Region\n')
+            print('Writing data for {} snapshots...'.format(len(snapshots_csv_data)))
             for line in snapshots_csv_data:
                 unencrypted_snapshots_csv.write(line)
-        summary_data.append('{} total snapshot(s) found.'.format(len(ec2_data['Snapshots'])))
-        summary_data.append('  A list of unencrypted volumes has been saved to ./{}'.format(unencrypted_snapshots_csv_path))
+        summary_data['Snapshots'] = len(ec2_data['Snapshots'])
+        summary_data['snapshots-csv-path'] = unencrypted_snapshots_csv_path
 
     if args.snapshot_permissions:
+        permission_data = {
+            'Public': len(snapshot_permissions['Public']),
+            'Shared': len(snapshot_permissions['Shared']),
+            'Private': len(snapshot_permissions['Private']),
+        }
+        temp = permission_data.copy()
+        summary_data.update(temp)
         path = os.path.join(os.getcwd(), 'sessions', session.name, 'downloads', 'snapshot_permissions_' + str(now) + '.txt')
         with open(path, 'w') as out_file:
             out_file.write('Public:\n')
@@ -318,7 +328,7 @@ def main(args, pacu_main):
             out_file.write('Private:\n')
             for private in snapshot_permissions['Private']:
                 out_file.write('    {}\n'.format(private))
-            summary_data.append('Found Permissions written to: {}'.format(path))
+            summary_data['snapshot-permissions-path'] = path
     session.update(pacu_main.database, EC2=ec2_data)
     print('All data has been saved to the current session.')
 
@@ -327,7 +337,17 @@ def main(args, pacu_main):
 
 
 def summary(data, pacu_main):
+    OUT_FORMAT = {
+        'Volumes': 'Total Volumes Found: ',
+        'volumes-csv-path': '  Unencrypted Volume Information written to: ',
+        'Snapshots': 'Total Snapshots Found: ',
+        'snapshots-csv-path': '  Unencrypted Snapshots Information written to: ',
+        'Public': '  Total Public Snapshots: ',
+        'Shared': '  Total Shared Snapshots: ',
+        'Private': '  Total Private Snapshots: ',
+        'snapshot-permissions-path': '    Snapshot Permissions written to: '
+    }
     out = ''
-    for line in data:
-        out += '    ' + line + '\n'
+    for key in data:
+        out += '{}{}\n'.format(OUT_FORMAT[key], data[key])
     return out

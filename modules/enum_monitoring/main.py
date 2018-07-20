@@ -149,6 +149,9 @@ def main(args, pacu_main):
         print('Starting Config...')
         config_regions = get_regions('config')
         all_rules = []
+        all_delivery_channels = []
+        all_configuration_recorders = []
+        all_configuration_aggregators = []
 
         for region in config_regions:
             print('  Starting region {}...'.format(region))
@@ -163,14 +166,46 @@ def main(args, pacu_main):
                 )
                 rules.extend(response['ConfigRules'])
             print('    {} rules found.'.format(len(rules)))
-
             for rule in rules:
                 rule['Region'] = region
-
             all_rules.extend(rules)
+
+            delivery_channels = client.describe_delivery_channels()['DeliveryChannels']
+            delivery_channels_status = client.describe_delivery_channel_status()['DeliveryChannelsStatus']
+            for channel in delivery_channels:
+                channel['Region'] = region
+                for status in delivery_channels_status:
+                    if channel['name'] == status['name']:
+                        channel.update(status)  # Merge the channel "status" fields into the actual channel for the DB
+                        break
+            all_delivery_channels.extend(delivery_channels)
+
+            configuration_recorders = client.describe_configuration_recorders()['ConfigurationRecorders']
+            configuration_recorders_status = client.describe_configuration_recorder_status()['ConfigurationRecordersStatus']
+            for recorder in configuration_recorders:
+                recorder['Region'] = region
+                for status in configuration_recorders_status:
+                    if recorder['name'] == status['name']:
+                        recorder.update(status)  # Merge the recorder "status" fields into the actual recorder for the DB
+                        break
+            all_configuration_recorders.extend(configuration_recorders)
+
+            response = client.describe_configuration_aggregators()
+            configuration_aggregators = response['ConfigurationAggregators']
+            while 'NextToken' in response:
+                response = client.describe_configuration_aggregators(
+                    NextToken=response['NextToken']    
+                )
+                configuration_aggregators.extend(response['ConfigurationAggregators'])
+            for aggregator in configuration_aggregators:
+                aggregator['Region'] = region
+            all_configuration_aggregators.extend(configuration_aggregators)
 
         config_data = deepcopy(session.Config)
         config_data['Rules'] = all_rules
+        config_data['ConfigurationRecorders'] = all_configuration_recorders
+        config_data['DeliveryChannels'] = all_delivery_channels
+        config_data['ConfigurationAggregators'] = all_configuration_aggregators
         session.update(pacu_main.database, Config=config_data)
         print('  {} total Config rules found.\n'.format(len(session.Config['Rules'])))
 

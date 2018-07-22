@@ -123,6 +123,7 @@ class PacuSession(Base, ModelUpdateMixin):
     created = Column(DateTime, default=datetime.datetime.utcnow)
     is_active = Column(Boolean, nullable=False, default=False)
     name = Column(Text)
+    boto_user_agent = Column(Text)
     key_alias = Column(Text)
     access_key_id = Column(Text)
     secret_access_key = Column(Text)

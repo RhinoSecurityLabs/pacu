@@ -1,0 +1,21 @@
+Boto3/1.7.62 Python/3.7.0 Windows/10 Botocore/1.10.62
+Boto3/1.7.48 Python/3.6.5 Windows/10 Botocore/1.10.48
+Boto3/1.7.24 Python/3.6.5 Windows/10 Botocore/1.10.24
+signin.amazonaws.com
+aws-cli/1.15.10 Python/2.7.9 Windows/8 botocore/1.10.10
+Boto3/1.7.24 Python/3.6.5 Windows/10 Botocore/1.10.24 Resource
+Boto3/1.7.24 Python/3.6.5 Darwin/16.7.0 Botocore/1.10.24
+aws-cli/1.15.10 Python/2.7.9 Windows/8 botocore/1.10.10
+Boto3/1.7.45 Python/3.6.5 Windows/10 Botocore/1.10.45
+Boto3/1.4.7 Python/2.7.0 Java/1.8.0_112 Botocore/1.7.21
+Boto3/1.7.30 Python/3.6.1 Linux/4.9.93-41.60.amzn1.x86_64 Botocore/1.10.30
+Boto3/1.7.14 Python/3.6.1 Linux/4.9.93-41.60.amzn1.x86_64 Botocore/1.10.14
+Boto3/1.5.8 Python/3.6.5 Windows/10 Botocore/1.10.4
+Boto3/1.5.8 Python/3.6.3 Windows/10 Botocore/1.8.22
+console.amazonaws.com
+aws-sdk-go/1.4.22 (go1.7.4; linux; amd64)
+aws-sdk-go/1.4.10 (go1.7.4; linux; amd64)
+aws-sdk-go/1.4.10 (go1.8.3; linux; amd64)
+aws-sdk-go/1.13.32 (go1.9.2; darwin; amd64) APN/1.0 HashiCorp/1.0 Terraform/0.11.7
+aws-sdk-java/2.0.0-preview-9-SNAPSHOT Mac_OS_X/10.11.6 Java_HotSpot_TM__64-Bit_Server_VM/25.151-b12 Java/1.8.0_151
+Boto3/1.7.62 Python/3.5.2 Linux/4.4.0-130-generic Botocore/1.10.62

@@ -1295,9 +1295,37 @@ class Main:
 
         return session, global_data_in_all_frames, local_data_in_all_frames
 
+    def check_user_agent(self):
+        session = self.get_active_session()
+        
+        if session.boto_user_agent is None:  # If there is no user agent set for this session already
+            boto3_session = boto3.session.Session()
+            ua = boto3_session._session.user_agent()
+            if 'kali' in ua:  # If the local OS is Kali Linux
+                # GuardDuty triggers a finding around API calls made from Kali Linux, so let's avoid that...
+                self.print('Detected the current operating system as Kali Linux. Modifying user agent to hide that from GuardDuty...')
+                with open('./user_agents.txt', 'r') as f:
+                    user_agents = f.read_lines()
+                user_agents = [x.strip() for x in user_agents]  # Remove random \n's and spaces
+                print(user_agents)
+                new_ua = random.choice(user_agents)
+                session.boto_user_agent = new_ua
+                self.database.add(session)
+                self.database.commit()
+                self.print('  The user agent for this Pacu session has been set to:')
+                self.print('    {}'.format(new_ua))
+
     def get_boto3_client(self, service, region=None, user_agent=None, socks_port=8001, parameter_validation=True):
         session = self.get_active_session()
         proxy_settings = self.get_proxy_settings()
+
+        # If there is not a custom user_agent passed into this function
+        # and session.boto_user_agent is set, use that as the user agent
+        # for this client. If both are set, the incoming user_agent will
+        # override the session.boto_user_agent. If niether are set, it
+        # will be None, and will default to the OS's regular user agent
+        if user_agent is None and session.boto_user_agent is not None:
+            user_agent = session.boto_user_agent
 
         boto_config = botocore.config.Config(
             proxies={'https': 'socks5://127.0.0.1:{}'.format(socks_port), 'http': 'socks5://127.0.0.1:{}'.format(socks_port)} if not proxy_settings.target_agent == [] else None,
@@ -1318,6 +1346,9 @@ class Main:
         # All the comments from get_boto3_client apply here too
         session = self.get_active_session()
         proxy_settings = self.get_proxy_settings()
+
+        if user_agent is None and session.boto_user_agent is not None:
+            user_agent = session.boto_user_agent
 
         boto_config = botocore.config.Config(
             proxies={'https': 'socks5://127.0.0.1:{}'.format(socks_port), 'http': 'socks5://127.0.0.1:{}'.format(socks_port)} if not proxy_settings.target_agent == [] else None,
@@ -1530,6 +1561,7 @@ class Main:
 
                     idle_ready = True
 
+                self.check_user_agent()
                 self.idle()
 
             except (Exception, SystemExit) as error:

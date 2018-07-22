@@ -19,3 +19,6 @@ aws-sdk-go/1.4.10 (go1.8.3; linux; amd64)
 aws-sdk-go/1.13.32 (go1.9.2; darwin; amd64) APN/1.0 HashiCorp/1.0 Terraform/0.11.7
 aws-sdk-java/2.0.0-preview-9-SNAPSHOT Mac_OS_X/10.11.6 Java_HotSpot_TM__64-Bit_Server_VM/25.151-b12 Java/1.8.0_151
 Boto3/1.7.62 Python/3.5.2 Linux/4.4.0-130-generic Botocore/1.10.62
+aws-sdk-go/1.1.0 (go1.5.2; darwin; amd64)
+aws-sdk-go/1.1.2 (go1.6; darwin; amd64) terraform/0.6.13
+APN/1.0 HashiCorp/1.0 Terraform/0.7.9

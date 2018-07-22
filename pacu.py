@@ -1305,9 +1305,8 @@ class Main:
                 # GuardDuty triggers a finding around API calls made from Kali Linux, so let's avoid that...
                 self.print('Detected the current operating system as Kali Linux. Modifying user agent to hide that from GuardDuty...')
                 with open('./user_agents.txt', 'r') as f:
-                    user_agents = f.read_lines()
+                    user_agents = f.readlines()
                 user_agents = [x.strip() for x in user_agents]  # Remove random \n's and spaces
-                print(user_agents)
                 new_ua = random.choice(user_agents)
                 session.boto_user_agent = new_ua
                 self.database.add(session)

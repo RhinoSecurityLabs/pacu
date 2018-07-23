@@ -34,7 +34,34 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 parser.add_argument('--versions-all', required=False, default=False, action='store_true', help='Grab all versions instead of just the latest')
+parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all session regions.')
 
+
+def fetch_data(client, func, key, **kwargs):
+    caller = getattr(client, func)
+    try:
+        print('  Starting enumeration of {}'.format(key))
+        response = caller(**kwargs)
+        data = response[key]
+        if isinstance(data, dict) or isinstance(data, str):
+            print('    Found {} data'.format(key))
+            print('  Finished enumeration of {}'.format(key))
+            return data
+        while 'nextMarker' in response:
+            response = caller({**kwargs, **{'NextMarker': response['nextMarker']}})
+            data.extend(response[key])
+        print('    Found {} {}'.format(len(data), key))
+        print('  Finished enumeration of {}'.format(key))
+        return data
+    except client.exceptions.ResourceNotFoundException:
+        print('    No valid {} found'.format(key))
+        print('  Finished enumeration of {}'.format(key))
+    except ClientError as error:
+        if error.response['Error']['Code'] == 'AccessDeniedException':
+            print('AccessDenied for: {}'.format(func))
+        else:
+            print('Unknown Error:\n{}'.format(error))
+    return []
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -45,9 +72,10 @@ def main(args, pacu_main):
     get_regions = pacu_main.get_regions
     ######
 
-    regions = get_regions('Lambda')
+    regions = args.regions.split(',') if args.regions else get_regions('Lambda')
 
     lambda_data = {}
+    summary_data = {}
     lambda_data['Functions'] = []
     for region in regions:
         print('Starting region {}...'.format(region))
@@ -66,76 +94,29 @@ def main(args, pacu_main):
             else:
                 print(error)
 
-        lambda_functions = []
-        try:
-            response = client.list_functions()
-            lambda_functions = response['Functions']
-            while 'NextMarker' in response:
-                response = client.list_functions(Marker=response['NextMarker'])
-                lambda_functions += response['Functions']
-        except ClientError as error:
-            if error.response['Error']['Code'] == 'AccessDeniedException':
-                print('Access Denied for list_functions')
+        lambda_functions = fetch_data(client, 'list_functions', 'Functions')
 
         for func in lambda_functions:
-            try:
-                func['Code'] = client.get_function(FunctionName=func['FunctionArn'])['Code']
-            except ClientError as error:
-                if error.response['Error']['Code'] == 'AccessDeniedException':
-                    print('Access Denied for get-function')
-
-            try:
-                response = client.list_aliases(FunctionName=func['FunctionArn'])
-                func['Aliases'] = response['Aliases']
-                while 'NextMarker' in response:
-                    response = client.list_aliases(FunctionName=func['FunctionArn'], Marker=response['NextMarker'])
-                    func['Aliases'] += response['Aliases']
-            except ClientError as error:
-                if error.response['Error']['Code'] == 'AccessDeniedException':
-                    print('Access Denied for list-aliases')
-
-            try:
-                response = client.list_event_source_mappings(FunctionName=func['FunctionArn'])
-                func['EventSourceMappings'] = response['EventSourceMappings']
-                while 'NextMarker' in response:
-                    response = client.list_event_source_mappings(FunctionName=func['FunctionArn'], Marker=response['NextMarker'])
-                    func['EventSourceMappings'] += response['EventSourceMappings']
-            except ClientError as error:
-                if error.response['Error']['Code'] == 'AccessDeniedException':
-                    print('Access Denied for list-event-source-mappings')
-
+            print('  Enumerating data for {}'.format(func['FunctionName']))
+            func_arn = func['FunctionArn']
+            func['Code'] = fetch_data(client, 'get_function', 'Code', **{'FunctionName': func_arn})
+            func['Aliases'] = fetch_data(client, 'list_aliases', 'Aliases', **{'FunctionName': func_arn})
+            func['EventSourceMappings'] = fetch_data(client, 'list_event_source_mappings', 'EventSourceMappings', **{'FunctionName': func_arn})
+            func['Tags'] = fetch_data(client, 'list_tags', 'Tags', **{'Resource': func_arn})
+            func['Policy'] = fetch_data(client, 'get_policy', 'Policy', **{'FunctionName': func_arn})
             if args.versions_all:
-                try:
-                    response = client.list_versions_by_function(FunctionName=func['FunctionArn'])
-                    func['Versions'] = response['Versions']
-                    while 'NextMarker' in response:
-                        response = client.list_versions_by_function(FunctionName=func['FunctionArn'], Marker=response['NextMarker'])
-                        func['Versions'] += response['Versions']
-                except ClientError as error:
-                    if error.response['Error']['Code'] == 'AccessDeniedException':
-                        print('Access Denied for list-versions-by-function')
-
-            try:
-                func['Tags'] = client.list_tags(Resource=func['FunctionArn'])['Tags']
-            except ClientError as error:
-                if error.response['Error']['Code'] == 'AccessDeniedException':
-                    print('Access Denied for list-tags')
-
-            try:
-                func['Policy'] = client.get_policy(FunctionName=func['FunctionArn'])['Policy']
-            except client.exceptions.ResourceNotFoundException:
-                print('No valid Policy found for ' + func['FunctionName'])
-            except ClientError as error:
-                if error.response['Error']['Code'] == 'AccessDeniedException':
-                    print('Access Denied for get-policy')
-
+                func['Versions'] = fetch_data(client, 'list_versions_by_function', 'Versions', **{'FunctionName': func_arn})
         lambda_data['Functions'] += lambda_functions
-
+        if len(lambda_functions) > 0:
+            summary_data[region] = len(lambda_functions)
     session.update(pacu_main.database, Lambda=lambda_data)
 
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
 
 
 def summary(data, pacu_main):
-    raise NotImplementedError
+    out = ''
+    for region in sorted(data):
+        out += '  {} functions found in {}.\n'.format(data[region], region)
+    return out

@@ -52,6 +52,7 @@ def main(args, pacu_main):
     ######
 
     client = pacu_main.get_boto3_client('iam')
+    summary_data = {'users_confirmed': 0}
 
     users = []
     if args.all_users is True:
@@ -77,6 +78,7 @@ def main(args, pacu_main):
                 'Deny': {}
             }
         })
+        summary_data['single_user'] = args.user_name
     else:
         user = client.get_user()
         active_aws_key = session.get_active_aws_key(pacu_main.database)
@@ -91,6 +93,7 @@ def main(args, pacu_main):
         if 'Permissions' not in user:
             user['Permissions'] = {'Allow': {}, 'Deny': {}}
         users.append(user)
+        summary_data['single_user'] = user['UserName']
 
     # list-groups-for-user
     # list-user-policies
@@ -234,6 +237,8 @@ def main(args, pacu_main):
                 user['PermissionsConfirmed'] = False
 
             user = parse_attached_policies(client, attached_policies, user)
+            
+            summary_data['users_confirmed'] += 1
 
             if args.user_name is None and args.all_users is False:  # TODO: If this runs and gets all permissions, replace the current set under user['Permissions'] rather than add to it in this module
                 active_aws_key.update(
@@ -255,16 +260,20 @@ def main(args, pacu_main):
                     json.dump(user, user_permissions_file, indent=2, default=str)
 
                 print('User details stored in ./sessions/{}/downloads/confirmed_permissions/{}.json'.format(session.name, user['UserName']))
-
         except Exception as error:
             print('Error, skipping user {}:\n{}'.format(user['UserName'], error))
 
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
 
 
 def summary(data, pacu_main):
-    raise NotImplementedError
+    out = ''
+    if data['users_confirmed'] == 1:
+        out += '  Confirmed Permissions for: {}.\n'.format(data['single_user'])
+    else:
+        out += '  Confirmed Permissions for {} User(s).\n'.format(data['users_confirmed'])
+    return out
 
 
 def parse_attached_policies(client, attached_policies, user):

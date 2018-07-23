@@ -26,7 +26,7 @@ module_info = {
     'prerequisite_modules': ['enum_monitoring'],
 
     # Module arguments to autocomplete when the user hits tab
-    'arguments_to_autocomplete': ['--trails', '--detectors', '--config-rules', '--config-recorders', '--config-delivery-channels', '--config-aggregators', '--alarms', '--flow-logs'],
+    'arguments_to_autocomplete': ['--trails', '--detectors', '--config-rules', '--config-recorders', '--config-aggregators', '--alarms', '--flow-logs'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
@@ -35,7 +35,6 @@ parser.add_argument('--trails', required=False, default=None, help='Comma-separa
 parser.add_argument('--detectors', required=False, default=None, help='Comma-separated list of GuardDuty detector IDs and regions to target, instead of enumerating them. They should be formatted like detector_id@region.')
 parser.add_argument('--config-rules', required=False, default=None, help='Comma-separated list of Config rule names and regions to target, instead of enumerating them. They should be formatted like rule_name@region.')
 parser.add_argument('--config-recorders', required=False, default=None, help='Comma-separated list of Config configuration recorder names and regions to target, instead of enumerating them. They should be formatted like recorder_name@region.')
-parser.add_argument('--config-delivery-channels', required=False, default=None, help='Comma-separated list of Config delivery channel names and regions to target, instead of enumerating them. They should be formatted like channel_name@region.')
 parser.add_argument('--config-aggregators', required=False, default=None, help='Comma-separated list of Config configuration aggregator names and regions to target, instead of enumerating them. They should be formatted like aggregator_name@region.')
 parser.add_argument('--alarms', required=False, default=None, help='Comma-separated list of CloudWatch alarm names and regions to target, instead of enumerating them. They should be formatted like alarm_name@region.')
 parser.add_argument('--flow-logs', required=False, default=None, help='Comma-separated list of VPC Flow Log IDs and regions to target, instead of enumerating them. They should be formatted like log_id@region.')
@@ -62,7 +61,6 @@ def main(args, pacu_main):
     detectors = []
     rules = []
     recorders = []
-    delivery_channels = []
     aggregators = []
     alarms = []
     flow_logs = []
@@ -76,8 +74,7 @@ def main(args, pacu_main):
         args.detectors,
         args.config_rules,
         args.config_recorders,
-        args.config_aggregators,
-        args.config_delivery_channels
+        args.config_aggregators
     ]):
         if args.trails is not None:
             ct_regions = []
@@ -115,15 +112,6 @@ def main(args, pacu_main):
             for recorder in args.config_records.split(','):
                 name, region = recorder.split('@')
                 recorders.append({
-                    'name': name,
-                    'Region': region
-                })
-                tmp_config_regions.append(region)
-
-        if args.config_delivery_channels is not None:
-            for channel in args.config_delivery_channels.split(','):
-                name, region = channel.split('@')
-                delivery_channels.append({
                     'name': name,
                     'Region': region
                 })
@@ -190,7 +178,6 @@ def main(args, pacu_main):
         else:
             rules = config_data['Rules']
             recorders = config_data['Recorders']
-            delivery_channels = config_data['DeliveryChannels']
             aggregators = config_data['Aggregators']
 
         if 'Alarms' not in cloudwatch_data:
@@ -212,7 +199,6 @@ def main(args, pacu_main):
                 detectors = deepcopy(session.GuardDuty['Detectors'])
                 rules = deepcopy(session.Config['Rules'])
                 recorders = deepcopy(session.Config['Recorders'])
-                delivery_channels = deepcopy(session.Config['DeliveryChannels'])
                 aggregators = deepcopy(session.Config['Aggregators'])
                 alarms = deepcopy(session.CloudWatch['Alarms'])
                 flow_logs = deepcopy(session.VPC['FlowLogs'])
@@ -307,19 +293,60 @@ def main(args, pacu_main):
         print('No trails found. Skipping CloudTrail...\n')
 
     if len(rules) > 0:
-        pass
+        print('Starting Config rules...\n')
+        for region in config_regions:
+            print('  Starting region {}...\n'.format(region))
+
+            client = pacu_main.get_boto3_client('config', region)
+
+            for rule in rules:
+                if rule['Region'] == region:
+                    action = input('    Rule Name: {}\n      Do you want to delete this rule? (y/n)'.format(rule['ConfigRuleName']))
+                    if action == 'y':
+                        try:
+                            client.delete_config_rule(
+                                ConfigRuleName=rule['ConfigRuleName']
+                            )
+                            print('        Successfully deleted rule {}!'.format(rule['ConfigRuleName']))
+                        except Exception as error:
+                            print('        Could not delete rule {}:\n          {}'.format(rule['ConfigRuleName'], error))
+                    else:
+                        print('        Skipping rule {}...\n'.format(rule['ConfigRuleName']))
+        print('Config rules finished.\n')
     else:
         print('No rules found. Skipping Config rules...\n')
 
     if len(recorders) > 0:
-        pass
+        print('Starting Config recorders...\n')
+        for region in config_regions:
+            print('  Starting region {}...\n'.format(region))
+
+            client = pacu_main.get_boto3_client('config', region)
+
+            for recorder in recorders:
+                if recorder['Region'] == region:
+                    action = input('    Recorder Name: {}\n      Do you want to stop (stop), delete (del), or skip (skip) this recorder? (stop/del/skip)'.format(recorder['name']))
+                    if action == 'del':
+                        try:
+                            client.delete_configuration_recorder(
+                                ConfigurationRecorderName=recorder['name']
+                            )
+                            print('        Successfully deleted recorder {}!'.format(recorder['name']))
+                        except Exception as error:
+                            print('        Could not delete recorder {}:\n          {}'.format(recorder['name'], error))
+                    elif action == 'stop':
+                        try:
+                            client.stop_configuration_recorder(
+                                ConfigurationRecorderName=recorder['name']
+                            )
+                            print('        Successfully stopped recorder {}!'.format(recorder['name']))
+                        except Exception as error:
+                            print('        Could not stop recorder {}!'.format(recorder['name']))
+                    else:
+                        print('        Skipping recorder {}...\n'.format(recorder['name']))
+        print('Config recorders finished.\n')
     else:
         print('No recorders found. Skipping Config recorders...\n')
-
-    if len(delivery_channels) > 0:
-        pass
-    else:
-        print('No delivery channels found. Skipping Config delivery channels...\n')
 
     if len(aggregators) > 0:
         pass

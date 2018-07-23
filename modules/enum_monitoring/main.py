@@ -178,6 +178,7 @@ def main(args, pacu_main):
                     if channel['name'] == status['name']:
                         channel.update(status)  # Merge the channel "status" fields into the actual channel for the DB
                         break
+            print('    {} delivery channels found.'.format(len(delivery_channels)))
             all_delivery_channels.extend(delivery_channels)
 
             configuration_recorders = client.describe_configuration_recorders()['ConfigurationRecorders']
@@ -188,6 +189,7 @@ def main(args, pacu_main):
                     if recorder['name'] == status['name']:
                         recorder.update(status)  # Merge the recorder "status" fields into the actual recorder for the DB
                         break
+            print('    {} configuration recorders found.'.format(len(configuration_recorders)))
             all_configuration_recorders.extend(configuration_recorders)
 
             response = client.describe_configuration_aggregators()
@@ -199,13 +201,14 @@ def main(args, pacu_main):
                 configuration_aggregators.extend(response['ConfigurationAggregators'])
             for aggregator in configuration_aggregators:
                 aggregator['Region'] = region
+            print('    {} configuration aggregators found.'.format(len(configuration_aggregators)))
             all_configuration_aggregators.extend(configuration_aggregators)
 
         config_data = deepcopy(session.Config)
         config_data['Rules'] = all_rules
-        config_data['ConfigurationRecorders'] = all_configuration_recorders
+        config_data['Recorders'] = all_configuration_recorders
         config_data['DeliveryChannels'] = all_delivery_channels
-        config_data['ConfigurationAggregators'] = all_configuration_aggregators
+        config_data['Aggregators'] = all_configuration_aggregators
         session.update(pacu_main.database, Config=config_data)
         print('  {} total Config rules found.\n'.format(len(session.Config['Rules'])))
 

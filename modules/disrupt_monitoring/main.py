@@ -14,7 +14,7 @@ module_info = {
     'category': 'logging_monitoring',
 
     # One liner description of the module functionality. This shows up when a user searches for modules.
-    'one_liner': 'Disables, deletes, or minimizes CloudTrail trails and GuardDuty detectors.',
+    'one_liner': 'Disables, deletes, or minimizes various logging/monitoring services.',
 
     # Full description about what the module does and how it works
     'description': 'This module will take enumerated CloudTrail trails, GuardDuty detectors, Config settings, CloudWatch alarms, and VPC flow logs and present you with the option of disabling or deleting each one. For CloudTrail, you also have the option of minimizing it. Minimizing a trail leaves it enabled, but changes all the settings to their very basic level. These changes include: removing the associated SNS topic, disabling global service event logging, disabling multi-regional log collection, disabling log file validation, and removing the associated CloudWatch log group/role. The idea of this is to minimize the amount of logging in the environment without calling dangerous APIs like disable or delete.',
@@ -192,8 +192,8 @@ def main(args, pacu_main):
 
         # If there is missing data, run enum_monitoring
         if len(arguments) > 0:
-            if fetch_data(None, 'enum_monitoring', ' '.join(arguments)) is False:
-                print('Pre-req module not run successfully. Only targeting services that currently have valid data...')
+            if fetch_data(['Logging/Monitoring Data'], 'enum_monitoring', ' '.join(arguments)) is False:
+                print('Pre-req module not run successfully. Only targeting services that currently have valid data...\n')
             else:
                 trails = deepcopy(session.CloudTrail['Trails'])
                 detectors = deepcopy(session.GuardDuty['Detectors'])
@@ -301,15 +301,15 @@ def main(args, pacu_main):
 
             for rule in rules:
                 if rule['Region'] == region:
-                    action = input('    Rule Name: {}\n      Do you want to delete this rule? (y/n)'.format(rule['ConfigRuleName']))
+                    action = input('    Rule Name: {}\n      Do you want to delete this rule? (y/n) '.format(rule['ConfigRuleName']))
                     if action == 'y':
                         try:
                             client.delete_config_rule(
                                 ConfigRuleName=rule['ConfigRuleName']
                             )
-                            print('        Successfully deleted rule {}!'.format(rule['ConfigRuleName']))
+                            print('        Successfully deleted rule {}!\n'.format(rule['ConfigRuleName']))
                         except Exception as error:
-                            print('        Could not delete rule {}:\n          {}'.format(rule['ConfigRuleName'], error))
+                            print('        Could not delete rule {}:\n          {}\n'.format(rule['ConfigRuleName'], error))
                     else:
                         print('        Skipping rule {}...\n'.format(rule['ConfigRuleName']))
         print('Config rules finished.\n')
@@ -325,23 +325,23 @@ def main(args, pacu_main):
 
             for recorder in recorders:
                 if recorder['Region'] == region:
-                    action = input('    Recorder Name: {}\n      Do you want to stop (stop), delete (del), or skip (skip) this recorder? (stop/del/skip)'.format(recorder['name']))
+                    action = input('    Recorder Name: {}\n      Do you want to stop (stop), delete (del), or skip (skip) this recorder? (stop/del/skip) '.format(recorder['name']))
                     if action == 'del':
                         try:
                             client.delete_configuration_recorder(
                                 ConfigurationRecorderName=recorder['name']
                             )
-                            print('        Successfully deleted recorder {}!'.format(recorder['name']))
+                            print('        Successfully deleted recorder {}!\n'.format(recorder['name']))
                         except Exception as error:
-                            print('        Could not delete recorder {}:\n          {}'.format(recorder['name'], error))
+                            print('        Could not delete recorder {}:\n          {}\n'.format(recorder['name'], error))
                     elif action == 'stop':
                         try:
                             client.stop_configuration_recorder(
                                 ConfigurationRecorderName=recorder['name']
                             )
-                            print('        Successfully stopped recorder {}!'.format(recorder['name']))
+                            print('        Successfully stopped recorder {}!\n'.format(recorder['name']))
                         except Exception as error:
-                            print('        Could not stop recorder {}!'.format(recorder['name']))
+                            print('        Could not stop recorder {}:\n          {}\n'.format(recorder['name'], error))
                     else:
                         print('        Skipping recorder {}...\n'.format(recorder['name']))
         print('Config recorders finished.\n')
@@ -349,17 +349,93 @@ def main(args, pacu_main):
         print('No recorders found. Skipping Config recorders...\n')
 
     if len(aggregators) > 0:
-        pass
+        print('Starting Config aggregators...\n')
+        for region in config_regions:
+            print('  Starting region {}...\n'.format(region))
+
+            client = pacu_main.get_boto3_client('config', region)
+
+            for aggregator in aggregators:
+                if aggregator['Region'] == region:
+                    action = input('    Aggregator Name: {}\n      Do you want to delete this aggregator? (y/n) '.format(aggregator['ConfigurationAggregatorName']))
+                    if action == 'y':
+                        try:
+                            client.delete_configuration_aggregator(
+                                ConfigurationAggregatorName=aggregator['ConfigurationAggregatorName']
+                            )
+                            print('        Successfully deleted aggregator {}!\n'.format(aggregator['ConfigurationAggregatorName']))
+                        except Exception as error:
+                            print('        Could not delete aggregator {}:\n          {}\n'.format(aggregator['ConfigurationAggregatorName'], error))
+                    else:
+                        print('        Skipping aggregator {}...\n'.format(aggregator['ConfigurationAggregatorName']))
+        print('Config aggregators finished.\n')
     else:
         print('No aggregators found. Skipping Config aggregators...\n')
 
     if len(alarms) > 0:
-        pass
+        print('Starting CloudWatch alarms...\n')
+        for region in cw_regions:
+            print('  Starting region {}...\n'.format(region))
+
+            client = pacu_main.get_boto3_client('cloudwatch', region)
+
+            for alarm in alarms:
+                if alarm['Region'] == region:
+                    action = input('    Alarm Name: {}\n      Do you want to disable the associated actions (dis), delete (del), or skip (s) this alarm? (dis/del/s) '.format(alarm['AlarmName']))
+                    if action == 'del':
+                        try:
+                            # delete_alarms can take multiple alarm names in one request,
+                            # but if there are ANY errors, no alarms are deleted, so I
+                            # chose to do one at a time here
+                            client.delete_alarms(
+                                AlarmNames=[
+                                    alarm['AlarmName']
+                                ]
+                            )
+                            print('        Successfully deleted alarm {}!\n'.format(alarm['AlarmName']))
+                        except Exception as error:
+                            print('        Could not delete alarm {}:\n          {}\n'.format(alarm['AlarmName'], error))
+                    elif action == 'dis':
+                        try:
+                            client.disable_alarm_actions(
+                                AlarmNames=[
+                                    alarm['AlarmName']
+                                ]
+                            )
+                            print('        Successfully disabled actions for alarm {}!\n'.format(alarm['AlarmName']))
+                        except Exception as error:
+                            print('        Could not disable actions for alarm {}:\n          {}\n'.format(alarm['AlarmName'], error))
+                    else:
+                        print('        Skipping alarm {}...\n'.format(alarm['AlarmName']))
+        print('CloudWatch alarms finished.\n')
     else:
         print('No alarms found. Skipping CloudWatch...\n')
 
     if len(flow_logs) > 0:
-        pass
+        print('Starting VPC flow logs...\n')
+        for region in vpc_regions:
+            print('  Starting region {}...\n'.format(region))
+
+            client = pacu_main.get_boto3_client('ec2', region)
+
+            logs_to_delete = []
+            for log in flow_logs:
+                if log['Region'] == region:
+                    action = input('    Flow Log ID: {}\n      Do you want to delete this flow log? (y/n) '.format(log['FlowLogId']))
+                    if action == 'y':
+                        logs_to_delete.append(log['FlowLogId'])
+                        print('        Added flow log {} to list of logs to delete.'.format(log['FlowLogId']))
+                    else:
+                        print('        Skipping flow log {}...\n'.format(log['FlowLogId']))
+            # We can batch delete these and not worry about any fails, as it will do as much as it can, unlike above
+            try:
+                response = client.delete_flow_logs(
+                    FlowLogIds=logs_to_delete
+                )
+                print('        Attempt to delete all flow logs succeeded. Read the output for more information on any fails:\n          {}\n'.format(response))
+            except Exception as error:
+                print('        Attempt to delete flow logs failed:\n          {}\n'.format(error))
+        print('VPC flow logs finished.\n')
     else:
         print('No flow logs found. Skipping VPC...\n')
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+from copy import deepcopy
 
 
 module_info = {
@@ -51,52 +52,173 @@ def main(args, pacu_main):
     get_regions = pacu_main.get_regions
     ######
 
-    detectors = []
+    gd_regions = get_regions('guardduty')
+    ct_regions = get_regions('cloudtrail')
+    config_regions = get_regions('config')
+    cw_regions = get_regions('monitoring')
+    vpc_regions = get_regions('ec2')
+
     trails = []
+    detectors = []
+    rules = []
+    recorders = []
+    delivery_channels = []
+    aggregators = []
+    alarms = []
+    flow_logs = []
 
-    if args.detectors is None:
-        if fetch_data(['GuardDuty', 'Detectors'], 'enum_monitoring', '--guard-duty') is False:
-            print('Pre-req module not run successfully. Skipping GuardDuty...')
-            detectors = []
-        else:
-            try:
-                detectors = session.GuardDuty['Detectors']
-            except:
-                detectors = []  # They probably said no to enumerating detectors
-    else:
-        for detector in args.detectors.split(','):
-            split = detector.split('@')
-            try:
-                detectors.append({
-                    'Id': split[0],
-                    'Region': split[1]
-                })
-            except:
-                print('  Could not parse the supplied GuardDuty detectors and their regions. Use the format detector_id@region. Skipping detector {}...'.format(detector))
-
-    if args.trails is None:
-        if fetch_data(['CloudTrail', 'Trails'], 'enum_monitoring', '--cloud-trail') is False:
-            print('Pre-req module not run successfully. Skipping CloudTrail...')
-            trails = []
-        else:
-            try:
-                trails = session.CloudTrail['Trails']
-            except:
-                trails = []  # They probably said no to enumerating trails
-    else:
-        for trail in args.trails.split(','):
-            split = trail.split('@')
-            try:
+    # If any arguments are passed in, that that means to not check the database
+    # to see if we need to enumerate stuff
+    if any([
+        args.alarms,
+        args.trails,
+        args.flow_logs,
+        args.detectors,
+        args.config_rules,
+        args.config_recorders,
+        args.config_aggregators,
+        args.config_delivery_channels
+    ]):
+        if args.trails is not None:
+            ct_regions = []
+            for trail in args.trails.split(','):
+                name, region = trail.split('@')
                 trails.append({
-                    'Name': split[0],
-                    'Region': split[1]
+                    'Name': name,
+                    'Region': region
                 })
-            except:
-                print('  Could not parse the supplied CloudTrail trail and region. Use the format trail_name@region. Skipping trail {}...'.format(trail))
+                ct_regions.append(region)
+            ct_regions = list(set(ct_regions))
+
+        if args.detectors is not None:
+            gd_regions = []
+            for detector in args.detectors.split(','):
+                id, region = detector.split('@')
+                detectors.append({
+                    'Id': id,
+                    'Region': region
+                })
+                gd_regions.append(region)
+            gd_regions = list(set(gd_regions))
+
+        tmp_config_regions = []
+        if args.config_rules is not None:
+            for rule in args.config_rules.split(','):
+                name, region = rule.split('@')
+                rules.append({
+                    'ConfigRuleName': name,
+                    'Region': region
+                })
+                tmp_config_regions.append(region)
+
+        if args.config_recorders is not None:
+            for recorder in args.config_records.split(','):
+                name, region = recorder.split('@')
+                recorders.append({
+                    'name': name,
+                    'Region': region
+                })
+                tmp_config_regions.append(region)
+
+        if args.config_delivery_channels is not None:
+            for channel in args.config_delivery_channels.split(','):
+                name, region = channel.split('@')
+                delivery_channels.append({
+                    'name': name,
+                    'Region': region
+                })
+                tmp_config_regions.append(region)
+
+        if args.config_aggregators is not None:
+            for aggregator in args.config_aggregators.split(','):
+                name, region = aggregator.split('@')
+                aggregators.append({
+                    'ConfigurationAggregatorName': name,
+                    'Region': region
+                })
+                tmp_config_regions.append(region)
+
+        if len(tmp_config_regions) > 0:
+            config_regions = list(set(tmp_config_regions))
+
+        if args.alarms is not None:
+            cw_regions = []
+            for alarm in args.alarms.split(','):
+                name, region = alarm.split('@')
+                alarms.append({
+                    'AlarmName': name,
+                    'Region': region
+                })
+                cw_regions.append(region)
+            cw_regions = list(set(cw_regions))
+
+        if args.flow_logs is not None:
+            vpc_regions = []
+            for log in args.flow_logs.split(','):
+                id, region = log.split('@')
+                flow_logs.append({
+                    'FlowLogId': id,
+                    'Region': region
+                })
+                vpc_regions.append(region)
+            vpc_regions = list(set(vpc_regions))
+    else:
+        # No arguments passed in, so disrupt everything. We need to
+        # figure out what data from enum_monitoring is missing, so
+        # that multiple calls are not required. This is done by
+        # building an argument string after checking the DB.
+        arguments = []
+        cloudtrail_data = deepcopy(session.CloudTrail)
+        guardduty_data = deepcopy(session.GuardDuty)
+        config_data = deepcopy(session.Config)
+        vpc_data = deepcopy(session.VPC)
+        cloudwatch_data = deepcopy(session.CloudWatch)
+
+        if 'Trails' not in cloudtrail_data:
+            arguments.append('--cloud-trail')
+        else:
+            trails = cloudtrail_data['Trails']
+
+        if 'Detectors' not in guardduty_data:
+            arguments.append('--guard-duty')
+        else:
+            detectors = guardduty_data['Detectors']
+
+        # If Rules isn't in there, then none of the other stuff has been enumerated either
+        if 'Rules' not in config_data:
+            arguments.append('--config')
+        else:
+            rules = config_data['Rules']
+            recorders = config_data['Recorders']
+            delivery_channels = config_data['DeliveryChannels']
+            aggregators = config_data['Aggregators']
+
+        if 'Alarms' not in cloudwatch_data:
+            arguments.append('--cloud-watch')
+        else:
+            alarms = cloudwatch_data['Alarms']
+
+        if 'FlowLogs' not in vpc_data:
+            arguments.append('--vpc')
+        else:
+            flow_logs = vpc_data['FlowLogs']
+
+        # If there is missing data, run enum_monitoring
+        if len(arguments) > 0:
+            if fetch_data(None, 'enum_monitoring', ' '.join(arguments)) is False:
+                print('Pre-req module not run successfully. Only targeting services that currently have valid data...')
+            else:
+                trails = deepcopy(session.CloudTrail['Trails'])
+                detectors = deepcopy(session.GuardDuty['Detectors'])
+                rules = deepcopy(session.Config['Rules'])
+                recorders = deepcopy(session.Config['Recorders'])
+                delivery_channels = deepcopy(session.Config['DeliveryChannels'])
+                aggregators = deepcopy(session.Config['Aggregators'])
+                alarms = deepcopy(session.CloudWatch['Alarms'])
+                flow_logs = deepcopy(session.VPC['FlowLogs'])
 
     if len(detectors) > 0:
         print('Starting GuardDuty...\n')
-        gd_regions = get_regions('guardduty')
         for region in gd_regions:
             print('  Starting region {}...\n'.format(region))
 
@@ -135,7 +257,6 @@ def main(args, pacu_main):
 
     if len(trails) > 0:
         print('Starting CloudTrail...\n')
-        ct_regions = get_regions('cloudtrail')
         for region in ct_regions:
             print('  Starting region {}...\n'.format(region))
 
@@ -184,6 +305,36 @@ def main(args, pacu_main):
         print('CloudTrail finished.\n')
     else:
         print('No trails found. Skipping CloudTrail...\n')
+
+    if len(rules) > 0:
+        pass
+    else:
+        print('No rules found. Skipping Config rules...\n')
+
+    if len(recorders) > 0:
+        pass
+    else:
+        print('No recorders found. Skipping Config recorders...\n')
+
+    if len(delivery_channels) > 0:
+        pass
+    else:
+        print('No delivery channels found. Skipping Config delivery channels...\n')
+
+    if len(aggregators) > 0:
+        pass
+    else:
+        print('No aggregators found. Skipping Config aggregators...\n')
+
+    if len(alarms) > 0:
+        pass
+    else:
+        print('No alarms found. Skipping CloudWatch...\n')
+
+    if len(flow_logs) > 0:
+        pass
+    else:
+        print('No flow logs found. Skipping VPC...\n')
 
     print('{} completed.\n'.format(module_info['name']))
     return

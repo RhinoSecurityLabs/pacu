@@ -196,7 +196,7 @@ def main(args, pacu_main):
             configuration_aggregators = response['ConfigurationAggregators']
             while 'NextToken' in response:
                 response = client.describe_configuration_aggregators(
-                    NextToken=response['NextToken']    
+                    NextToken=response['NextToken']
                 )
                 configuration_aggregators.extend(response['ConfigurationAggregators'])
             for aggregator in configuration_aggregators:

@@ -46,7 +46,7 @@ def main(args, pacu_main):
     ######
 
     instances = []
-
+    summary_data = {'userdata_downloads': 0}
     # Check permissions before doing anything
     try:
         client = pacu_main.get_boto3_client('ec2', 'us-east-1')
@@ -94,13 +94,15 @@ def main(args, pacu_main):
 
             with open('sessions/{}/downloads/user_data.txt'.format(session.name), 'a+') as data_file:
                 data_file.write(formatted_user_data)
+            summary_data['userdata_downloads'] += 1
 
         else:
             print('{}@{}: No user data'.format(instance['InstanceId'], instance['Region']))
 
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
 
 
 def summary(data, pacu_main):
-    raise NotImplementedError
+    out = '  Downloaded EC2 userdata from {} instance(s).\n'.format(data['userdata_downloads'])
+    return out

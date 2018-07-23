@@ -44,6 +44,7 @@ def main(args, pacu_main):
     ######
 
     usernames = []
+    summary_data = {}
     client = pacu_main.get_boto3_client('iam')
 
     if args.usernames is not None:
@@ -65,6 +66,7 @@ def main(args, pacu_main):
             usernames.append(user['UserName'])
 
     add_key = ''
+    summary_data['Backdoored_Users_Count'] = 0
     for username in usernames:
         if args.usernames is None:
             add_key = input('  Do you want to add an access key pair to the user {} (y/n)? '.format(username))
@@ -76,12 +78,18 @@ def main(args, pacu_main):
                 )
                 print('    Access Key ID: {}\n'.format(response['AccessKey']['AccessKeyId']))
                 print('    Secret Access Key: {}\n'.format(response['AccessKey']['SecretAccessKey']))
+
+                summary_data['Backdoored_Users_Count'] += 1
+
             except ClientError as e:
                 print('    Error: {}\n'.format(e.response['Error']['Message']))
 
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
 
 
 def summary(data, pacu_main):
-    raise NotImplementedError
+    out = ''
+    if 'Backdoored_Users_Count' in data:
+        out += '  {} Users Backdoored\n'.format(data['Backdoored_Users_Count'])
+    return out

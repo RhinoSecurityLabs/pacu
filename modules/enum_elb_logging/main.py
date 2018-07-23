@@ -43,7 +43,7 @@ def main(args, pacu_main):
     get_regions = pacu_main.get_regions
 
     regions = get_regions('elasticloadbalancing')
-
+    summary_data = {'load_balancers': 0}
     if 'LoadBalancers' not in session.EC2.keys():
         ec2_data = deepcopy(session.EC2)
         ec2_data['LoadBalancers'] = []
@@ -75,7 +75,7 @@ def main(args, pacu_main):
                 load_balancers.append(load_balancer)
 
             count += len(response['LoadBalancers'])
-
+        summary_data['load_balancers'] += count
         print('  {} total load balancer(s) found in {}.'.format(count, region))
 
     ec2_data = deepcopy(session.EC2)
@@ -86,6 +86,7 @@ def main(args, pacu_main):
 
     now = time.time()
     csv_file_path = 'sessions/{}/downloads/elbs_no_logs_{}.csv'.format(session.name, now)
+    summary_data['csv_file_path'] = csv_file_path
 
     with open(csv_file_path, 'w+') as csv_file:
         csv_file.write('Load Balancer Name,Load Balancer ARN,Region\n')
@@ -100,8 +101,11 @@ def main(args, pacu_main):
     print('All data has been saved to the current session.')
 
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
 
 
 def summary(data, pacu_main):
-    raise NotImplementedError
+    out = '  {} Load balancer(s) have been found\n'.format(data['load_balancers'])
+    if data['load_balancers'] > 0:
+        out += '    Load balancer information has been saved to: {}\n'.format(data['csv_file_path'])
+    return out

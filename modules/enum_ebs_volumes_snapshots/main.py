@@ -257,7 +257,7 @@ def main(args, pacu_main):
                     snapshot['Region'] = region
 
                     if args.snapshot_permissions:
-                        print('Starting enumeration for Snapshot Permissions...')
+                        print('    Starting enumeration for Snapshot Permissions...')
                         snapshot['CreateVolumePermissions'] = client.describe_snapshot_attribute(
                             Attribute='createVolumePermission',
                             SnapshotId=snapshot['SnapshotId']
@@ -284,7 +284,7 @@ def main(args, pacu_main):
 
             print('  {} total snapshot(s) found in {}.'.format(count, region))
 
-    summary_data = {}
+    summary_data = {'snapshot_permissions': args.snapshot_permissions}
     if args.vols is True:
         ec2_data['Volumes'] = all_vols
         unencrypted_volumes_csv_path = 'sessions/{}/downloads/unencrypted_ebs_volumes_{}.csv'.format(session.name, now)
@@ -337,17 +337,19 @@ def main(args, pacu_main):
 
 
 def summary(data, pacu_main):
-    OUT_FORMAT = {
-        'Volumes': 'Total Volumes Found: ',
-        'volumes-csv-path': '  Unencrypted Volume Information written to: ',
-        'Snapshots': 'Total Snapshots Found: ',
-        'snapshots-csv-path': '  Unencrypted Snapshots Information written to: ',
-        'Public': '  Total Public Snapshots: ',
-        'Shared': '  Total Shared Snapshots: ',
-        'Private': '  Total Private Snapshots: ',
-        'snapshot-permissions-path': '    Snapshot Permissions written to: '
-    }
     out = ''
-    for key in data:
-        out += '{}{}\n'.format(OUT_FORMAT[key], data[key])
+    if 'Volumes' in data:
+        out += '  {} Volumes found\n'.format(data['Volumes'])
+    if 'volumes-csv-path' in data:
+        out += '    Unencrypted volume information written to: {}\n'.format(data['volumes-csv-path'])
+    if 'Snapshots' in data:
+        out += '  {} Snapshots found\n'.format(data['Snapshots'])
+    if 'snapshots-csv-path' in data:
+        out += '    Unencrypted snapshot information written to: {}\n'.format(data['snapshots-csv-path'])
+    if data['snapshot_permissions']:
+        out += '  Snapshot Permissions: \n'
+        out += '    {} Public snapshots found\n'.format(data['Public'])
+        out += '    {} Private snapshots found\n'.format(data['Private'])
+        out += '    {} Shared snapshots found\n'.format(data['Shared'])
+        out += '      Snapshot permissions information written to: {}\n'.format(data['snapshot-permissions-path'])
     return out

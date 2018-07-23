@@ -82,6 +82,8 @@ def main(args, pacu_main):
                 print('  Found {} builds.\n'.format(len(region_builds)))
                 summary_data[region]['Builds'] = len(region_builds)
                 all_builds.extend(region_builds)
+        if not summary_data[region]:
+            del summary_data[region]
 
     # Begin environment variable dump
 
@@ -117,8 +119,8 @@ def main(args, pacu_main):
 
 def summary(data, pacu_main):
     out = ''
-    for region in data:
+    for region in sorted(data):
         out += '    {}\n'.format(region)
         for val in data[region]:
-            out += '        {} total {} found.\n'.format(data[region][val], val)
+            out += '        {} {} found.\n'.format(data[region][val], val[:-1] + '(' + val[-1] + ')')
     return out

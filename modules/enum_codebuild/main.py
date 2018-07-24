@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+from copy import deepcopy
 
 
 module_info = {
@@ -100,21 +101,20 @@ def main(args, pacu_main):
         if 'environment' in build and 'environmentVariables' in build['environment']:
             environment_variables.extend(build['environment']['environmentVariables'])
 
-    # Kill duplicates
-    # environment_variables = list(set(environment_variables))
-
     # Store in session
-
-    session.CodeBuild['EnvironmentVariables'] = environment_variables
+    codebuild_data = deepcopy(session.CodeBuild)
+    codebuild_data['EnvironmentVariables'] = environment_variables
     summary_data['All'] = {'EnvironmentVariables': len(environment_variables)}
 
     if len(all_projects) > 0:
-        session.CodeBuild['Projects'] = all_projects
+        codebuild_data['Projects'] = all_projects
         summary_data['All']['Projects'] = len(all_projects)
 
     if len(all_builds) > 0:
-        session.CodeBuild['Builds'] = all_builds
+        codebuild_data['Builds'] = all_builds
         summary_data['All']['Builds'] = len(all_builds)
+
+    session.update(pacu_main.database, CodeBuild=codebuild_data)
 
     print('{} completed.\n'.format(module_info['name']))
     return summary_data

@@ -802,7 +802,7 @@ class Main:
                                                     them as the active key pair
                 stager sh|ps                      Generate a PacuProxy stager. The "sh" format is
                                                     for *sh shells in Unix (like bash), and the "ps"
-                                                    format is for PowerShell on Windows.
+                                                    format is for PowerShell on Windows
             list/ls                             List all modules
             search [cat[egory]] <search term>   Search the list of available modules by name or category
             help                                Display this page of information
@@ -816,7 +816,7 @@ class Main:
                                                   current session to use with the "data" command
             regions                             Display a list of all valid AWS regions
             update_regions                      Run a script to update the regions database to the newest
-                                                  version.
+                                                  version
             set_regions <region> [<region>...]  Set the default regions for this session. These space-separated
                                                   regions will be used for modules where regions are required,
                                                   but not supplied by the user. The default set of regions is
@@ -827,7 +827,7 @@ class Main:
             set_keys                            Add a set of AWS keys to the session and set them as the
                                                   default
             swap_keys                           Change the currently active AWS key to another key that has
-                                                  previously been set for this session.
+                                                  previously been set for this session
             exit/quit                           Exit Pacu
         """)
 
@@ -1144,7 +1144,7 @@ class Main:
 
         # Secret access key (should not be entered in log files)
         if key_alias is None:
-            new_value = input('  Secret access key [{}]: '.format(session.secret_access_key))
+            new_value = input('Secret access key [{}]: '.format(session.secret_access_key))
         else:
             new_value = secret_access_key
         self.print('Secret access key [******]: ****** (Censored)', output='file')
@@ -1295,9 +1295,34 @@ class Main:
 
         return session, global_data_in_all_frames, local_data_in_all_frames
 
+    def check_user_agent(self):
+        session = self.get_active_session()
+        
+        if session.boto_user_agent is None:  # If there is no user agent set for this session already
+            boto3_session = boto3.session.Session()
+            ua = boto3_session._session.user_agent()
+            if 'kali' not in ua.lower():  # If the local OS is Kali Linux
+                # GuardDuty triggers a finding around API calls made from Kali Linux, so let's avoid that...
+                self.print('Detected the current operating system as Kali Linux. Modifying user agent to hide that from GuardDuty...')
+                with open('./user_agents.txt', 'r') as file:
+                    user_agents = file.readlines()
+                user_agents = [agent.strip() for agent in user_agents]  # Remove random \n's and spaces
+                new_ua = random.choice(user_agents)
+                session.update(self.database, boto_user_agent=new_ua)
+                self.print('  The user agent for this Pacu session has been set to:')
+                self.print('    {}'.format(new_ua))
+
     def get_boto3_client(self, service, region=None, user_agent=None, socks_port=8001, parameter_validation=True):
         session = self.get_active_session()
         proxy_settings = self.get_proxy_settings()
+
+        # If there is not a custom user_agent passed into this function
+        # and session.boto_user_agent is set, use that as the user agent
+        # for this client. If both are set, the incoming user_agent will
+        # override the session.boto_user_agent. If niether are set, it
+        # will be None, and will default to the OS's regular user agent
+        if user_agent is None and session.boto_user_agent is not None:
+            user_agent = session.boto_user_agent
 
         boto_config = botocore.config.Config(
             proxies={'https': 'socks5://127.0.0.1:{}'.format(socks_port), 'http': 'socks5://127.0.0.1:{}'.format(socks_port)} if not proxy_settings.target_agent == [] else None,
@@ -1318,6 +1343,9 @@ class Main:
         # All the comments from get_boto3_client apply here too
         session = self.get_active_session()
         proxy_settings = self.get_proxy_settings()
+
+        if user_agent is None and session.boto_user_agent is not None:
+            user_agent = session.boto_user_agent
 
         boto_config = botocore.config.Config(
             proxies={'https': 'socks5://127.0.0.1:{}'.format(socks_port), 'http': 'socks5://127.0.0.1:{}'.format(socks_port)} if not proxy_settings.target_agent == [] else None,
@@ -1530,6 +1558,7 @@ class Main:
 
                     idle_ready = True
 
+                self.check_user_agent()
                 self.idle()
 
             except (Exception, SystemExit) as error:

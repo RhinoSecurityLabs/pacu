@@ -293,8 +293,8 @@ def main(args, pacu_main):
             print('Writing data for {} volumes...'.format(len(volumes_csv_data)))
             for line in volumes_csv_data:
                 unencrypted_volumes_csv.write(line)
-        summary_data['Volumes'] = len(ec2_data['Volumes'])
-        summary_data['volumes-csv-path'] = unencrypted_volumes_csv_path
+        summary_data['volumes'] = len(ec2_data['Volumes'])
+        summary_data['volumes_csv_path'] = unencrypted_volumes_csv_path
 
     if args.snaps is True:
         ec2_data['Snapshots'] = all_snaps
@@ -304,8 +304,8 @@ def main(args, pacu_main):
             print('Writing data for {} snapshots...'.format(len(snapshots_csv_data)))
             for line in snapshots_csv_data:
                 unencrypted_snapshots_csv.write(line)
-        summary_data['Snapshots'] = len(ec2_data['Snapshots'])
-        summary_data['snapshots-csv-path'] = unencrypted_snapshots_csv_path
+        summary_data['snapshots'] = len(ec2_data['Snapshots'])
+        summary_data['snapshots_csv_path'] = unencrypted_snapshots_csv_path
 
     if args.snapshot_permissions:
         permission_data = {
@@ -338,14 +338,14 @@ def main(args, pacu_main):
 
 def summary(data, pacu_main):
     out = ''
-    if 'Volumes' in data:
-        out += '  {} Volumes found\n'.format(data['Volumes'])
-    if 'volumes-csv-path' in data:
-        out += '    Unencrypted volume information written to: {}\n'.format(data['volumes-csv-path'])
-    if 'Snapshots' in data:
-        out += '  {} Snapshots found\n'.format(data['Snapshots'])
-    if 'snapshots-csv-path' in data:
-        out += '    Unencrypted snapshot information written to: {}\n'.format(data['snapshots-csv-path'])
+    if 'volumes' in data:
+        out += '  {} Volumes found\n'.format(data['volumes'])
+    if 'volumes_csv_path' in data:
+        out += '    Unencrypted volume information written to: {}\n'.format(data['volumes_csv_path'])
+    if 'snapshots' in data:
+        out += '  {} Snapshots found\n'.format(data['snapshots'])
+    if 'snapshots_csv_path' in data:
+        out += '    Unencrypted snapshot information written to: {}\n'.format(data['snapshots_csv_path'])
     if data['snapshot_permissions']:
         out += '  Snapshot Permissions: \n'
         out += '    {} Public snapshots found\n'.format(data['Public'])

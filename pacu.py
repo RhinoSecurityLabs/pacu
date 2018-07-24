@@ -974,13 +974,13 @@ class Main:
             except Exception as error:
                 self.running_module = None
                 raise
-
-            summary = module.summary(summary_data, self)
-            if len(summary) > 1000:
-                raise ValueError('The {} module\'s summary is too long ({} characters). Reduce it to 1000 characters or fewer.'.format(module.module_info['name'], len(summary)))
-            if not isinstance(summary, str):
-                raise TypeError(' The {} module\'s summary is {}-type instead of str. Make summary return a string.'.format(module.module_info['name'], type(summary)))
-            self.print('MODULE SUMMARY:\n\n{}\n'.format(summary))
+            if summary_data is not None:
+                summary = module.summary(summary_data, self)
+                if len(summary) > 1000:
+                    raise ValueError('The {} module\'s summary is too long ({} characters). Reduce it to 1000 characters or fewer.'.format(module.module_info['name'], len(summary)))
+                if not isinstance(summary, str):
+                    raise TypeError(' The {} module\'s summary is {}-type instead of str. Make summary return a string.'.format(module.module_info['name'], type(summary)))
+                self.print('MODULE SUMMARY:\n\n{}\n'.format(summary))
 
             self.running_module = None
             return

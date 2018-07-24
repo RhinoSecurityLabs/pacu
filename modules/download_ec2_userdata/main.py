@@ -25,7 +25,7 @@ module_info = {
     'services': ['EC2'],
 
     # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
-    'prerequisite_modules': ['enum_ec2_instances'],
+    'prerequisite_modules': ['enum_ec2'],
 
     # Module arguments to autocomplete when the user hits tab
     'arguments_to_autocomplete': ['--instance-ids'],

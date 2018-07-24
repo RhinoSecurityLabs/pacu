@@ -28,7 +28,10 @@ def main(args, pacu_main):
     print = pacu_main.print
     get_regions = pacu_main.get_regions
 
-    all = args.builds is args.projects is False
+    if args.builds is False and args.projects is False:
+        enum_all = True
+    else:
+        enum_all = False
     regions = args.regions.split(',') if args.regions else get_regions('CodeBuild')
 
     all_projects = []
@@ -46,7 +49,7 @@ def main(args, pacu_main):
         # Begin enumeration
 
         # Projects
-        if all is True or args.projects is True:
+        if enum_all is True or args.projects is True:
             project_names = []
             response = client.list_projects()
             project_names.extend(response['projects'])
@@ -65,7 +68,7 @@ def main(args, pacu_main):
                 all_projects.extend(region_projects)
 
         # Builds
-        if all is True or args.builds is True:
+        if enum_all is True or args.builds is True:
             build_ids = []
             response = client.list_builds()
             build_ids.extend(response['ids'])

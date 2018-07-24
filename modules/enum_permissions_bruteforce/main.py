@@ -320,20 +320,36 @@ def main(args, pacu_main):
     print('Bugged Actions')
     print(bugged_permissions)
 
-    summary_data['allow'] = len(allow_permissions)
-    summary_data['deny'] = len(deny_permissions)
-    summary_data['possible'] = len(possible_permissions)
+    full_allow = [service + ':' + camel_case(perm) for perm in allow_permissions[service] for service in allow_permissions]
+    full_deny = [service + ':' + camel_case(perm) for perm in deny_permissions[service] for service in deny_permissions]
+    active_aws_key = session.get_active_aws_key(pacu_main.database)
+    active_aws_key.update(
+        pacu_main.database,
+        allow_permissions=full_allow,
+        deny_permissions=full_deny
+    )
+
+    summary_data['allow'] = sum([len(allow_permissions[region]) for region in allow_permissions])
+    summary_data['deny'] = sum([len(deny_permissions[region]) for region in deny_permissions])
+    summary_data['possible'] = sum([len(possible_permissions[region]) for region in possible_permissions])
 
     print('{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
+def camel_case(name):
+    split_name = name.split('_')
+    return ''.join([name[0].upper() + name[1:] for name in split_name])
+
+
 def summary(data, pacu_main):
     out = 'Services: \n'
     out += '  Supported: {}.\n'.format(data['services'])
-    out += '  Unsupported: {}.\n'.format(data['unsupported'])
-    out += '  Unknown: {}.\n'.format(data['unknown'])
-    out += '{} allowed permissions found.\n'.format(data['allow'])
+    if 'unsupported' in data:
+        out += '  Unsupported: {}.\n'.format(data['unsupported'])
+    if 'unknown' in data:
+        out += '  Unknown: {}.\n'.format(data['unknown'])
+    out += '{} allow permissions found.\n'.format(data['allow'])
     out += '{} deny permissions found.\n'.format(data['deny'])
     out += '{} possible permissions found.\n'.format(data['possible'])
     return out

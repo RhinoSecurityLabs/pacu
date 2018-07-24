@@ -77,28 +77,26 @@ def main(args, pacu_main):
         args.config_aggregators
     ]):
         if args.trails is not None:
-            ct_regions = []
+            ct_regions = set()
             for trail in args.trails.split(','):
                 name, region = trail.split('@')
                 trails.append({
                     'Name': name,
                     'Region': region
                 })
-                ct_regions.append(region)
-            ct_regions = list(set(ct_regions))
+                ct_regions.add(region)
 
         if args.detectors is not None:
-            gd_regions = []
+            gd_regions = set()
             for detector in args.detectors.split(','):
                 id, region = detector.split('@')
                 detectors.append({
                     'Id': id,
                     'Region': region
                 })
-                gd_regions.append(region)
-            gd_regions = list(set(gd_regions))
+                gd_regions.add(region)
 
-        tmp_config_regions = []
+        tmp_config_regions = set()
         if args.config_rules is not None:
             for rule in args.config_rules.split(','):
                 name, region = rule.split('@')
@@ -106,7 +104,7 @@ def main(args, pacu_main):
                     'ConfigRuleName': name,
                     'Region': region
                 })
-                tmp_config_regions.append(region)
+                tmp_config_regions.add(region)
 
         if args.config_recorders is not None:
             for recorder in args.config_records.split(','):
@@ -115,7 +113,7 @@ def main(args, pacu_main):
                     'name': name,
                     'Region': region
                 })
-                tmp_config_regions.append(region)
+                tmp_config_regions.add(region)
 
         if args.config_aggregators is not None:
             for aggregator in args.config_aggregators.split(','):
@@ -124,32 +122,30 @@ def main(args, pacu_main):
                     'ConfigurationAggregatorName': name,
                     'Region': region
                 })
-                tmp_config_regions.append(region)
+                tmp_config_regions.add(region)
 
         if len(tmp_config_regions) > 0:
-            config_regions = list(set(tmp_config_regions))
+            config_regions = tmp_config_regions
 
         if args.alarms is not None:
-            cw_regions = []
+            cw_regions = set()
             for alarm in args.alarms.split(','):
                 name, region = alarm.split('@')
                 alarms.append({
                     'AlarmName': name,
                     'Region': region
                 })
-                cw_regions.append(region)
-            cw_regions = list(set(cw_regions))
+                cw_regions.add(region)
 
         if args.flow_logs is not None:
-            vpc_regions = []
+            vpc_regions = set()
             for log in args.flow_logs.split(','):
                 id, region = log.split('@')
                 flow_logs.append({
                     'FlowLogId': id,
                     'Region': region
                 })
-                vpc_regions.append(region)
-            vpc_regions = list(set(vpc_regions))
+                vpc_regions.add(region)
     else:
         # No arguments passed in, so disrupt everything. We need to
         # figure out what data from enum_monitoring is missing, so
@@ -212,7 +208,7 @@ def main(args, pacu_main):
 
             for detector in detectors:
                 if detector['Region'] == region:
-                    action = input('    GuardDuty detector ID: {}\n        Do you want to disable (dis), delete (del), or skip (s) it? (dis/del/s) '.format(detector['Id']))
+                    action = input('    GuardDuty detector ID: {}\n        Do you want to disable (dis), delete (del), or skip (s) it? (dis/del/s) '.format(detector['Id'])).strip().lower()
 
                     if action == 'dis':
                         try:
@@ -250,7 +246,7 @@ def main(args, pacu_main):
 
             for trail in trails:
                 if trail['Region'] == region:
-                    action = input('    CloudTrail trail name: {}\n        Do you want to disable (dis), delete (del), minimize (m), or skip (s) it? (dis/del/m/s) '.format(trail['Name']))
+                    action = input('    CloudTrail trail name: {}\n        Do you want to disable (dis), delete (del), minimize (m), or skip (s) it? (dis/del/m/s) '.format(trail['Name'])).strip().lower()
 
                     if action == 'dis':
                         try:
@@ -301,7 +297,7 @@ def main(args, pacu_main):
 
             for rule in rules:
                 if rule['Region'] == region:
-                    action = input('    Rule Name: {}\n      Do you want to delete this rule? (y/n) '.format(rule['ConfigRuleName']))
+                    action = input('    Rule Name: {}\n      Do you want to delete this rule? (y/n) '.format(rule['ConfigRuleName'])).strip().lower()
                     if action == 'y':
                         try:
                             client.delete_config_rule(
@@ -325,7 +321,7 @@ def main(args, pacu_main):
 
             for recorder in recorders:
                 if recorder['Region'] == region:
-                    action = input('    Recorder Name: {}\n      Do you want to stop (stop), delete (del), or skip (skip) this recorder? (stop/del/skip) '.format(recorder['name']))
+                    action = input('    Recorder Name: {}\n      Do you want to stop (stop), delete (del), or skip (skip) this recorder? (stop/del/skip) '.format(recorder['name'])).strip().lower()
                     if action == 'del':
                         try:
                             client.delete_configuration_recorder(
@@ -357,7 +353,7 @@ def main(args, pacu_main):
 
             for aggregator in aggregators:
                 if aggregator['Region'] == region:
-                    action = input('    Aggregator Name: {}\n      Do you want to delete this aggregator? (y/n) '.format(aggregator['ConfigurationAggregatorName']))
+                    action = input('    Aggregator Name: {}\n      Do you want to delete this aggregator? (y/n) '.format(aggregator['ConfigurationAggregatorName'])).strip().lower()
                     if action == 'y':
                         try:
                             client.delete_configuration_aggregator(
@@ -381,7 +377,7 @@ def main(args, pacu_main):
 
             for alarm in alarms:
                 if alarm['Region'] == region:
-                    action = input('    Alarm Name: {}\n      Do you want to disable the associated actions (dis), delete (del), or skip (s) this alarm? (dis/del/s) '.format(alarm['AlarmName']))
+                    action = input('    Alarm Name: {}\n      Do you want to disable the associated actions (dis), delete (del), or skip (s) this alarm? (dis/del/s) '.format(alarm['AlarmName'])).strip().lower()
                     if action == 'del':
                         try:
                             # delete_alarms can take multiple alarm names in one request,
@@ -421,7 +417,7 @@ def main(args, pacu_main):
             logs_to_delete = []
             for log in flow_logs:
                 if log['Region'] == region:
-                    action = input('    Flow Log ID: {}\n      Do you want to delete this flow log? (y/n) '.format(log['FlowLogId']))
+                    action = input('    Flow Log ID: {}\n      Do you want to delete this flow log? (y/n) '.format(log['FlowLogId'])).strip().lower()
                     if action == 'y':
                         logs_to_delete.append(log['FlowLogId'])
                         print('        Added flow log {} to list of logs to delete.'.format(log['FlowLogId']))

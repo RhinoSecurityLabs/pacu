@@ -802,7 +802,7 @@ class Main:
                                                     them as the active key pair
                 stager sh|ps                      Generate a PacuProxy stager. The "sh" format is
                                                     for *sh shells in Unix (like bash), and the "ps"
-                                                    format is for PowerShell on Windows.
+                                                    format is for PowerShell on Windows
             list/ls                             List all modules
             search [cat[egory]] <search term>   Search the list of available modules by name or category
             help                                Display this page of information
@@ -816,7 +816,7 @@ class Main:
                                                   current session to use with the "data" command
             regions                             Display a list of all valid AWS regions
             update_regions                      Run a script to update the regions database to the newest
-                                                  version.
+                                                  version
             set_regions <region> [<region>...]  Set the default regions for this session. These space-separated
                                                   regions will be used for modules where regions are required,
                                                   but not supplied by the user. The default set of regions is
@@ -827,7 +827,7 @@ class Main:
             set_keys                            Add a set of AWS keys to the session and set them as the
                                                   default
             swap_keys                           Change the currently active AWS key to another key that has
-                                                  previously been set for this session.
+                                                  previously been set for this session
             exit/quit                           Exit Pacu
         """)
 
@@ -1301,16 +1301,14 @@ class Main:
         if session.boto_user_agent is None:  # If there is no user agent set for this session already
             boto3_session = boto3.session.Session()
             ua = boto3_session._session.user_agent()
-            if 'kali' in ua:  # If the local OS is Kali Linux
+            if 'kali' in ua.lower():  # If the local OS is Kali Linux
                 # GuardDuty triggers a finding around API calls made from Kali Linux, so let's avoid that...
                 self.print('Detected the current operating system as Kali Linux. Modifying user agent to hide that from GuardDuty...')
                 with open('./user_agents.txt', 'r') as f:
                     user_agents = f.readlines()
                 user_agents = [x.strip() for x in user_agents]  # Remove random \n's and spaces
                 new_ua = random.choice(user_agents)
-                session.boto_user_agent = new_ua
-                self.database.add(session)
-                self.database.commit()
+                session.update(self.database, boto_user_agent=new_ua)
                 self.print('  The user agent for this Pacu session has been set to:')
                 self.print('    {}'.format(new_ua))
 

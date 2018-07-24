@@ -34,12 +34,19 @@ parser.add_argument(
     help='A comma separated list of services to brute force permissions'
 )
 
+SUPPORTED_SERVICES = [
+    'ec2'
+]
+
 allow_permissions = {}
 deny_permissions = {}
 possible_permissions = {}
 bugged_permissions = []
+summary_data = {}
 
-def build_service_list():
+
+def complete_service_list():
+    """Returns a list of all supported boto3 services"""
     try:
         client = boto3.client(
             'bad_dummy_service_name',
@@ -160,7 +167,7 @@ def valid_func(func):
     """Returns False for service functions that don't correspond to an AWS API action"""
     if func[0] == '_':
         return False
-    bad_functions = [
+    BAD_FUNCTIONS = [
         'can_paginate',
         'get_waiter',
         'waiter_names',
@@ -169,7 +176,7 @@ def valid_func(func):
         'exceptions',
         'meta',
     ]
-    if func in bad_functions:
+    if func in BAD_FUNCTIONS:
         return False
     return True
 
@@ -182,7 +189,7 @@ def convert_special_params(func, kwargs):
     TODO: Go through and actually make sure that when a parameter is requested, it can be programatically
     returned. If you need a valid InstanceID and you have the permission to get one, you should be able to
     fill that valid data and determine authorization.
-    
+
     """
     special_params = {
         'reset_image_attribute': {'Attribute': 'launchPermission'},
@@ -200,6 +207,20 @@ def convert_special_params(func, kwargs):
         return False
 
 
+def build_service_list(services=None):
+    """Returns a list of valid services. """
+    if not services:
+        return SUPPORTED_SERVICES
+
+    unsupported_services = [service for service in services if service not in SUPPORTED_SERVICES]
+    summary_data['unsupported'] = unsupported_services
+
+    unknown_services = [service for service in unsupported_services if service not in complete_service_list()]
+    summary_data['unknown'] = unknown_services
+    service_list = [service for service in services if service in SUPPORTED_SERVICES]
+    return service_list
+
+
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
     args = parser.parse_args(args)
@@ -207,12 +228,8 @@ def main(args, pacu_main):
     get_regions = pacu_main.get_regions
 
     preload_actions = generate_preload_actions()
-
-    service_list = []
-    if args.services:
-        service_list = args.services.split(',')
-    else:
-        service_list = build_service_list()
+    service_list = build_service_list(args.services.split(',')) if args.services else build_service_list()
+    summary_data['services'] = service_list
 
     for service in service_list:
         allow_permissions[service] = []
@@ -303,5 +320,20 @@ def main(args, pacu_main):
     print('Bugged Actions')
     print(bugged_permissions)
 
-    print(f"{module_info['name']} completed.\n")
-    return
+    summary_data['allow'] = len(allow_permissions)
+    summary_data['deny'] = len(deny_permissions)
+    summary_data['possible'] = len(possible_permissions)
+
+    print('{} completed.\n'.format(module_info['name']))
+    return summary_data
+
+
+def summary(data, pacu_main):
+    out = 'Services: \n'
+    out += '  Supported: {}.\n'.format(data['services'])
+    out += '  Unsupported: {}.\n'.format(data['unsupported'])
+    out += '  Unknown: {}.\n'.format(data['unknown'])
+    out += '{} allowed permissions found.\n'.format(data['allow'])
+    out += '{} deny permissions found.\n'.format(data['deny'])
+    out += '{} possible permissions found.\n'.format(data['possible'])
+    return out

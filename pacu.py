@@ -1144,7 +1144,7 @@ class Main:
 
         # Secret access key (should not be entered in log files)
         if key_alias is None:
-            new_value = input('  Secret access key [{}]: '.format(session.secret_access_key))
+            new_value = input('Secret access key [{}]: '.format(session.secret_access_key))
         else:
             new_value = secret_access_key
         self.print('Secret access key [******]: ****** (Censored)', output='file')

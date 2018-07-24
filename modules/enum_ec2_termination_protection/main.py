@@ -46,7 +46,7 @@ def main(args, pacu_main):
     ######
 
     # fetch_data is used when there is a prerequisite module to the current module. The example below shows how to fetch all EC2 security group data to use in this module.
-    if fetch_data(['EC2', 'Instances'], 'enum_ec2_instances', '') is False:
+    if fetch_data(['EC2', 'Instances'], 'enum_ec2', '--instances') is False:
         print('Pre-req module not run successfully. Exiting...')
         return
     instances = session.EC2['Instances']

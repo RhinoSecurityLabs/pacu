@@ -37,7 +37,7 @@ parser.add_argument('--versions-all', required=False, default=False, action='sto
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all session regions.')
 
 
-def fetch_data(client, func, key, **kwargs):
+def fetch_lambda_data(client, func, key, **kwargs):
     caller = getattr(client, func)
     try:
         print('  Starting enumeration of {}'.format(key))
@@ -99,13 +99,13 @@ def main(args, pacu_main):
         for func in lambda_functions:
             print('  Enumerating data for {}'.format(func['FunctionName']))
             func_arn = func['FunctionArn']
-            func['Code'] = fetch_data(client, 'get_function', 'Code', **{'FunctionName': func_arn})
-            func['Aliases'] = fetch_data(client, 'list_aliases', 'Aliases', **{'FunctionName': func_arn})
-            func['EventSourceMappings'] = fetch_data(client, 'list_event_source_mappings', 'EventSourceMappings', **{'FunctionName': func_arn})
-            func['Tags'] = fetch_data(client, 'list_tags', 'Tags', **{'Resource': func_arn})
-            func['Policy'] = fetch_data(client, 'get_policy', 'Policy', **{'FunctionName': func_arn})
+            func['Code'] = fetch_lambda_data(client, 'get_function', 'Code', FunctionName=func_arn)
+            func['Aliases'] = fetch_lambda_data(client, 'list_aliases', 'Aliases', FunctionName=func_arn)
+            func['EventSourceMappings'] = fetch_lambda_data(client, 'list_event_source_mappings', 'EventSourceMappings', FunctionName=func_arn)
+            func['Tags'] = fetch_lambda_data(client, 'list_tags', 'Tags', Resource=func_arn)
+            func['Policy'] = fetch_lambda_data(client, 'get_policy', 'Policy', FunctionName=func_arn)
             if args.versions_all:
-                func['Versions'] = fetch_data(client, 'list_versions_by_function', 'Versions', **{'FunctionName': func_arn})
+                func['Versions'] = fetch_lambda_data(client, 'list_versions_by_function', 'Versions', FunctionName=func_arn)
         lambda_data['Functions'] += lambda_functions
         if len(lambda_functions) > 0:
             summary_data[region] = len(lambda_functions)

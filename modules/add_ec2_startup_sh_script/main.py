@@ -95,8 +95,7 @@ def main(args, pacu_main):
     instance_count = 0
     for region in regions:
         client = pacu_main.get_boto3_client('ec2', region)
-       
-        
+
         for instance in instances:
             if instance['Region'] == region:
                 result = stop_instance(client, instance['InstanceId'])

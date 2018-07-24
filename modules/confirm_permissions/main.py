@@ -237,7 +237,7 @@ def main(args, pacu_main):
                 user['PermissionsConfirmed'] = False
 
             user = parse_attached_policies(client, attached_policies, user)
-            
+
             summary_data['users_confirmed'] += 1
 
             if args.user_name is None and args.all_users is False:  # TODO: If this runs and gets all permissions, replace the current set under user['Permissions'] rather than add to it in this module

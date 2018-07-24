@@ -63,6 +63,7 @@ def fetch_lambda_data(client, func, key, **kwargs):
             print('Unknown Error:\n{}'.format(error))
     return []
 
+
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
@@ -94,7 +95,7 @@ def main(args, pacu_main):
             else:
                 print(error)
 
-        lambda_functions = fetch_data(client, 'list_functions', 'Functions')
+        lambda_functions = fetch_lambda_data(client, 'list_functions', 'Functions')
 
         for func in lambda_functions:
             print('  Enumerating data for {}'.format(func['FunctionName']))

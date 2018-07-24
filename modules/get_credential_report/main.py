@@ -46,13 +46,14 @@ def main(args, pacu_main):
     client = pacu_main.get_boto3_client('iam')
     report = None
     generated = False
+    summary_data = {'generated': False}
     while True:
         try:
             report = client.get_credential_report()
             break
         except ClientError as error:
             code = error.response['Error']['Code']
-            if code == 'ReportNotPresent':
+            if code == 'ReportNotPresent' or code == 'ReportInProgress':
                 if generated:
                     print('waiting...')
                     time.sleep(20)
@@ -63,6 +64,7 @@ def main(args, pacu_main):
                             client.generate_credential_report()
                             print('Credential report generation started, this may take up to a couple minutes. Checking if it is ready every 20 seconds...')
                             generated = True
+                            summary_data['generated'] = True
                         except ClientError as error:
                             if error.response['Error']['Code'] == 'AccessDenied':
                                 print('Unauthorized to generate_credential_report')
@@ -86,6 +88,7 @@ def main(args, pacu_main):
         filename = 'sessions/{}/downloads/get_credential_report_{}.csv'.format(session.name, time.time())
         with open(filename, 'w+') as csv_file:
             csv_file.write(report['Content'].decode())
+        summary_data['report_location'] = filename
 
         print('Credential report saved to {}'.format(filename))
 
@@ -93,8 +96,13 @@ def main(args, pacu_main):
         print('\n  Unable to generate report.\n')
 
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
 
 
 def summary(data, pacu_main):
-    raise NotImplementedError
+    out = ''
+    if data['generated']:
+        out += '  Report was generated\n'
+    if 'report_location' in data:
+        out += '    Report saved to: {}\n'.format(data['report_location'])
+    return out

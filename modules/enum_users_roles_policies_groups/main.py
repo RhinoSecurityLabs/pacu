@@ -45,7 +45,7 @@ def main(args, pacu_main):
     args = parser.parse_args(args)
     print = pacu_main.print
     ######
-
+    summary_data = {}
     client = pacu_main.get_boto3_client('iam')
 
     if args.users is False and args.roles is False and args.policies is False and args.groups is False:
@@ -77,7 +77,7 @@ def main(args, pacu_main):
         iam_data = deepcopy(session.IAM)
         iam_data['Users'] = users
         session.update(pacu_main.database, IAM=iam_data)
-
+        summary_data['Users'] = len(users)
         print(str(users))
 
     if args.roles is True:
@@ -106,7 +106,7 @@ def main(args, pacu_main):
         iam_data = deepcopy(session.IAM)
         iam_data['Roles'] = roles
         session.update(pacu_main.database, IAM=iam_data)
-
+        summary_data['Roles'] = len(roles)
         print(str(roles))
 
     if args.policies is True:
@@ -138,7 +138,7 @@ def main(args, pacu_main):
         iam_data = deepcopy(session.IAM)
         iam_data['Policies'] = policies
         session.update(pacu_main.database, IAM=iam_data)
-
+        summary_data['Policies'] = len(policies)
         print(str(policies))
 
     if args.groups is True:
@@ -168,12 +168,15 @@ def main(args, pacu_main):
         iam_data = deepcopy(session.IAM)
         iam_data['Groups'] = groups
         session.update(pacu_main.database, IAM=iam_data)
-
+        summary_data['Groups'] = len(groups)
         print(str(groups))
 
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
 
 
 def summary(data, pacu_main):
-    raise NotImplementedError
+    out = ''
+    for key in data:
+        out += '{} {} Enumerated\n'.format(data[key], key)
+    return out

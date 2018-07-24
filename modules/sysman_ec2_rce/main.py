@@ -54,6 +54,8 @@ def main(args, pacu_main):
     get_regions = pacu_main.get_regions
     ######
 
+    summary_data = {}
+
     # Make sure args.target_os equals one of All, Windows, or Linux
     if not (args.target_os.lower() == 'all' or args.target_os.lower() == 'windows' or args.target_os.lower() == 'linux'):
         print('Invalid option specified for the --target-os argument. Valid options include: All, Windows, or Linux. If --target-os is not specified, the default is All.\n')
@@ -464,18 +466,29 @@ def main(args, pacu_main):
             print('Waiting 30 seconds...\n')
             time.sleep(30)
 
+    summary_data = {'instances': len(attacked_instances)}
+
     if i == 20:
         # We are here because it has been 10 minutes
         print('It has been 10 minutes, if any target instances were not successfully attacked, then that most likely means they are not vulnerable to this attack (most likely the SSM Agent is not installed on the instances).\n')
         print('Successfully attacked the following instances: {}\n'.format(attacked_instances))
+        summary_data['all'] = False
     else:
         # We are here because all targeted instances have been attacked
         print('All targeted instances showed up and were attacked.\n')
         print('Successfully attacked the following instances: {}\n'.format(attacked_instances))
+        summary_data['all'] = True
 
     print('{} completed.'.format(os.path.basename(__file__)))
     return
 
 
 def summary(data, pacu_main):
-    raise NotImplementedError
+    if isinstance(data, None):
+        return '  Module did not complete successfully'
+    if data['all']:
+        out = '  All instances were successfully attacked.\n'
+    else:
+        out = '  Not all instances responded in time.\n'
+    out += '    {} instances were successfully attacked'.format(data['instances'])
+    return out

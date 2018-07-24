@@ -49,7 +49,7 @@ def main(args, pacu_main):
     all = False
     if args.cloud_trail is False and args.shield is False and args.guard_duty is False:
         all = True
-
+    summary_data = {}
     if all is True or args.shield is True:
         print('Starting Shield...')
 
@@ -65,13 +65,17 @@ def main(args, pacu_main):
                 shield_data['StartTime'] = time_period['Subscription']['StartTime']
                 shield_data['TimeCommitmentInDays'] = time_period['Subscription']['TimeCommitmentInSeconds'] / 60 / 60 / 24
                 session.update(pacu_main.database, Shield=shield_data)
-                print('    Advanced (paid) DDoS protection enabled through AWS Shield.\n      Subscription Started: {}\nSubscription Commitment: {} days'.format(session.Shield['StartTime'], session.Shield['TimeCommitmentInDays']))
-
+                print('    Advanced (paid) DDoS protection enabled through AWS Shield.')
+                print('      Subscription Started: {}\nSubscription Commitment: {} days'.format(session.Shield['StartTime'], session.Shield['TimeCommitmentInDays']))
+                summary_data['ShieldSubscription'] = 'Active'
+                summary_data['ShieldSubscriptionStart'] = session.Shield['StarTime']
+                summary_data['ShieldSubscriptionLength'] = session.Shield['TimeCommitmentInDays']
             else:
                 shield_data = deepcopy(session.Shield)
                 shield_data['AdvancedProtection'] = False
                 session.update(pacu_main.database, Shield=shield_data)
                 print('    Standard (default/free) DDoS protection enabled through AWS Shield.')
+                summary_data['ShieldSubscription'] = 'Inactive'
 
         except ClientError as error:
             print('Error {} getting Shield Info'.format(error))
@@ -99,9 +103,11 @@ def main(args, pacu_main):
         cloudtrail_data['Trails'] = all_trails
         session.update(pacu_main.database, CloudTrail=cloudtrail_data)
         print('  {} total CloudTrail trails found.\n'.format(len(session.CloudTrail['Trails'])))
+        summary_data['CloudTrails'] = len(session.CloudTrail['Trails'])
 
     if all is True or args.guard_duty is True:
         print('Starting GuardDuty...')
+        master_count = 0
         guard_duty_regions = get_regions('guardduty')
         all_detectors = []
 
@@ -121,6 +127,8 @@ def main(args, pacu_main):
                     'MasterStatus': status,
                     'MasterAccountId': master
                 })
+                if not master:
+                    master_count += 1
 
             while 'NextToken' in response:
                 response = client.list_detectors(
@@ -135,25 +143,41 @@ def main(args, pacu_main):
                         'MasterStatus': status,
                         'MasterAccountId': master
                     })
-
+                    if not master:
+                        master_count += 1
+                    print(master_count)
             print('    {} GuardDuty Detectors found.'.format(len(detectors)))
             all_detectors.extend(detectors)
 
+        summary_data['MasterDetectors'] = master_count
         guardduty_data = deepcopy(session.GuardDuty)
         guardduty_data['Detectors'] = all_detectors
         session.update(pacu_main.database, GuardDuty=guardduty_data)
         print('  {} total GuardDuty Detectors found.\n'.format(len(session.GuardDuty['Detectors'])))
+        summary_data['Detectors'] = len(session.GuardDuty['Detectors'])
 
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
 
 
 def summary(data, pacu_main):
-    raise NotImplementedError
+    out = ''
+    if 'ShieldSubscription' in data:
+        out += 'Shield Subscription Status: {}\n'.format(data['ShieldSubscription'])
+        if data['ShieldSubscription'] == 'Active':
+            out += '  Shield Subscription Start: {}\n'.format(data['ShieldSubscriptionStart'])
+            out += '  Shield Subscription Length: {} day(s(\n'.format(data['ShieldSubscriptionLength'])
+    if 'CloudTrails' in data:
+        out += '{} CloudTrail Trail(s) found.\n'.format(data['CloudTrails'])
+    if 'Detectors' in data:
+        out += '{} GuardDuty Detector(s) found.\n'.format(data['Detectors'])
+    if 'MasterDetectors' in data:
+        out += '  {} Master GuardDuty Detector(s) found.\n'.format(data['MasterDetectors'])
+    return out
 
 
 def get_detector_master(detector_id, client):
-
+    print('Checking for master')
     response = client.get_master_account(
         DetectorId=detector_id
     )

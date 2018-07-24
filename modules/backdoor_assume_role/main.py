@@ -53,6 +53,7 @@ def main(args, pacu_main):
 
     rolenames = []
     user_arns = []
+    summary_data = {}
 
     if args.role_names is None:
         all = input('No role names were passed in as arguments, do you want to enumerate all roles and get a prompt for each one (y) or exit (n)? (y/n) ')
@@ -87,7 +88,7 @@ def main(args, pacu_main):
             user_arns.append(args.user_arns)  # Only one ARN was passed in
 
     iam = pacu_main.get_boto3_resource('iam')
-
+    backdoored_role_count = 0
     for rolename in rolenames:
         target_role = 'n'
         if args.role_names is None:
@@ -105,18 +106,22 @@ def main(args, pacu_main):
                     PolicyDocument=json.dumps(hacked_policy)
                 )
                 print('  Backdoor successful!\n')
+                backdoored_role_count += 1
             except Exception as error:
                 if 'UnmodifiableEntity' in str(error):
                     print('  Failed to update the assume role policy document for role {}: This is a protected service role that is only modifiable by AWS.\n'.format(rolename))
                 else:
                     print('  Failed to update the assume role policy document for role {}: {}\n'.format(rolename, error))
-
+    summary_data['RoleCount'] = backdoored_role_count
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
 
 
 def summary(data, pacu_main):
-    raise NotImplementedError
+    out = ''
+    if 'RoleCount' in data:
+        out += '  {} Role(s) were successfully backdoored\n'.format(data['RoleCount'])
+    return out
 
 
 def modify_assume_role_policy(original_policy, user_arns, no_random):

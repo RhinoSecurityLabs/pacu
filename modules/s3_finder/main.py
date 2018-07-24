@@ -94,7 +94,7 @@ def main(args, pacu_main):
 
     # Attempt to install the required external dependencies, exit this module if that fails
     if not install_dependencies(module_info['external_dependencies']):
-        return
+        return {'buckets': 0, 'listable': 0}
 
     # List of affixes to append to domain.com and domain in the form of affix.domain.com and affix-domain
     affixes = []
@@ -142,6 +142,11 @@ def main(args, pacu_main):
     print('    {}Number of Buckets that Exist: {}{}'.format(Y, len(bucketlist['exists']), W))
     print('    {}Number of Buckets that are Listable: {}{}'.format(G, len(bucketlist['listable']), W))
 
+    summary_data = {
+        'buckets': len(bucketlist['exists']),
+        'listable': len(bucketlist['listable'])
+    }
+
     if args.grep and bucketlist['listable']:
         print('[.] Grepping for keywords in listable buckets from {}'.format(args.grep))
 
@@ -158,11 +163,13 @@ def main(args, pacu_main):
                 print('[!] Found sensitive file on bucket {} in region {}'.format(domain, region))
 
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
 
 
 def summary(data, pacu_main):
-    raise NotImplementedError
+    out = '  {} total buckets were found.\n'.format(data['buckets'])
+    out += '  {} buckets were found with viewable contents.\n'.format(data['listable'])
+    return out
 
 
 def create_bucket_list(domain, affixes=[]):

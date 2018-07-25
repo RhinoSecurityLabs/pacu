@@ -1311,7 +1311,7 @@ class Main:
         if session.boto_user_agent is None:  # If there is no user agent set for this session already
             boto3_session = boto3.session.Session()
             ua = boto3_session._session.user_agent()
-            if 'kali' not in ua.lower():  # If the local OS is Kali Linux
+            if 'kali' in ua.lower():  # If the local OS is Kali Linux
                 # GuardDuty triggers a finding around API calls made from Kali Linux, so let's avoid that...
                 self.print('Detected the current operating system as Kali Linux. Modifying user agent to hide that from GuardDuty...')
                 with open('./user_agents.txt', 'r') as file:

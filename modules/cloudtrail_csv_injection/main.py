@@ -41,6 +41,10 @@ def main(args, pacu_main):
     get_regions = pacu_main.get_regions
     ######
 
+    summary_data = {
+        'create_trail_attack_status': False,
+        'run_instances_attack-status': False
+    }
     if 'regions' in args and args.regions is not None:
         if len(args.regions) == 1:
             regions = [args.regions]
@@ -66,6 +70,7 @@ def main(args, pacu_main):
         except Exception as error:
             if 'InvalidTrailNameException' in str(error):
                 print('Attack succeeded.')
+                summary_data['create_trail_attack_status'] = True
             else:
                 print('  CreateTrail attack failed.')
                 print(error)
@@ -83,6 +88,7 @@ def main(args, pacu_main):
         except Exception as error:
             if 'InvalidAMIID' in str(error):
                 print('Attack succeeded.')
+                summary_data['run_instances_attack_status'] = True
             else:
                 print('  RunInstances attack failed.')
                 print(error)
@@ -90,4 +96,13 @@ def main(args, pacu_main):
         print('  {} finished.'.format(region))
 
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
+
+
+def summary(data, pacu_main):
+    out = ''
+    create_trail_status = 'succeeded' if data['create_trail_attack_status'] else 'failed'
+    out += '  CreateTrail attack {}.\n'.format(create_trail_status)
+    run_instances_status = 'succeeded' if data['run_instances_attack_status'] else 'failed'
+    out += '  RunInstances attack {}.\n'.format(run_instances_status)
+    return out

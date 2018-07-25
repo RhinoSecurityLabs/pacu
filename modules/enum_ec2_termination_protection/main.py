@@ -44,11 +44,11 @@ def main(args, pacu_main):
     print = pacu_main.print
     fetch_data = pacu_main.fetch_data
     ######
-
+    summary_data = {'instance_count': 0}
     # fetch_data is used when there is a prerequisite module to the current module. The example below shows how to fetch all EC2 security group data to use in this module.
     if fetch_data(['EC2', 'Instances'], 'enum_ec2', '--instances') is False:
         print('Pre-req module not run successfully. Exiting...')
-        return
+        return summary_data
     instances = session.EC2['Instances']
 
     try:
@@ -61,11 +61,11 @@ def main(args, pacu_main):
     except ClientError as error:
         if not str(error).find('UnauthorizedOperation') == -1:
             print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_instance_attribute".\nExiting module.')
-            return
+            return summary_data
 
     now = time.time()
     csv_file_path = 'sessions/{}/downloads/termination_protection_disabled_{}.csv'.format(session.name, now)
-
+    summary_data['csv_file_path'] = csv_file_path
     with open(csv_file_path, 'w+') as csv_file:
         csv_file.write('Instance Name,Instance ID,Region\n')
         for instance in instances:
@@ -84,6 +84,7 @@ def main(args, pacu_main):
                                 name = tag['Value']
                                 break
                     csv_file.write('{},{},{}\n'.format(name, instance['InstanceId'], instance['Region']))
+                    summary_data['instance_count'] += 1
             except Exception as error:
                 print('Failed to retrieve info for instance ID {}: {}'.format(instance['InstanceId'], error))
 
@@ -93,4 +94,11 @@ def main(args, pacu_main):
 
     print('Instances with Termination Protection disabled have been written to ./{}'.format(csv_file_path))
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
+
+
+def summary(data, pacu_main):
+    out = '  {} instances have termination protection enabled\n'.format(data['instance_count'])
+    if data['instance_count'] > 0:
+        out += '    Instances without termination protection have been written to: {}\n'.format(data['csv_file_path'])
+    return out

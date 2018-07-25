@@ -125,7 +125,7 @@ def main(args, pacu_main):
     fetch_data = pacu_main.fetch_data
     ######
 
-    summary_data = {}
+    summary_data = {'success': False}
 
     all_perms = [
         'iam:AddRoleToInstanceProfile',
@@ -441,6 +441,7 @@ def main(args, pacu_main):
                     print('  Method failed. Trying next potential method...')
                 else:
                     escalated = True
+                    summary_data['success'] = escalated
                     break
 
             if escalated is False:
@@ -459,11 +460,11 @@ def main(args, pacu_main):
                     print('  Method failed. Trying next potential method...')
                 else:
                     escalated = True
+                    summary_data['success'] = escalated
                     break
 
             if escalated is False:
                 print('No potential privilege escalation methods worked.')
-    summary_data['success'] = escalated
     print('{} completed.\n'.format(module_info['name']))
     return summary_data
 

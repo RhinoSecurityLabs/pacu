@@ -66,12 +66,15 @@ def camelCase(name):
 def fetch_lightsail_data(client, func):
     # Adding 'get_' portion to each field to build command.
     caller = getattr(client, 'get_' + func)
+    print('  Attempting to enumerate {}'.format(func))
     try:
         response = caller()
         data = response[camelCase(func)]
         while 'nextPageToken' in response:
             response = caller(pageToken=response['nextPageToken'])
             data.extend(response[camelCase(func)])
+        print('    Found {} {}'.format(len(data), func))
+        print('  Finished enumerating for {}'.format(func))
         return data
     except ClientError as error:
         if error.response['Error']['Code'] == 'AccessDeniedException':
@@ -92,15 +95,29 @@ def main(args, pacu_main):
         # Converts kebab-case to snake_case to match expected Boto3 function names.
         fields = [field.replace('-', '_') for field in MASTER_FIELDS]
 
-    lightsail_data = setup_storage(fields)
+    lightsail_data = {}
     regions = get_regions('lightsail')
 
     for region in regions:
+        lightsail_data[region] = setup_storage(fields)
         print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('lightsail', region)
         for field in fields:
-            lightsail_data[field] = fetch_lightsail_data(client, field)
+            lightsail_data[region][field] = fetch_lightsail_data(client, field)
+
+    summary_data = {}
+    for field in fields:
+        summary_data[field] = 0
+        for region in lightsail_data:
+            summary_data[field] += len(lightsail_data[region][field])
 
     session.update(pacu_main.database, Lightsail=lightsail_data)
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
+
+
+def summary(data, pacu_main):
+    out = ''
+    for field in data:
+        out += '  {} {} enumerated\n'.format(data[field], field[:-1] + '(s)')
+    return out

@@ -7,7 +7,7 @@ from random import choice
 
 module_info = {
     # Name of the module (should be the same as the filename)
-    'name': 'enum_ec2_instances',
+    'name': 'enum_ec2',
 
     # Name and any other notes about the author
     'author': 'Spencer Gietzen of Rhino Security Labs',
@@ -404,36 +404,46 @@ def main(args, pacu_main):
 
         print('')  # Break the line after each region. This isn't on the end of another print because they won't always be all used and isn't before the region print because it would double break lines at the beginning
 
+    gathered_data = {
+        'Instances': all_instances,
+        'SecurityGroups': all_security_groups,
+        'ElasticIPs': all_elastic_ips,
+        'VPNCustomerGateways': all_vpn_customer_gateways,
+        'DedicatedHosts': all_dedicated_hosts,
+        'NetworkACLs': all_network_acls,
+        'NATGateways': all_nat_gateways,
+        'NetworkInterfaces': all_network_interfaces,
+        'RouteTables': all_route_tables,
+        'Subnets': all_subnets,
+        'VPCs': all_vpcs,
+        'VPCEndpoints': all_vpc_endpoints,
+    }
+
     ec2_data = deepcopy(session.EC2)
-    ec2_data['Instances'] = all_instances
-    ec2_data['SecurityGroups'] = all_security_groups
-    ec2_data['ElasticIPs'] = all_elastic_ips
-    ec2_data['VPNCustomerGateways'] = all_vpn_customer_gateways
-    ec2_data['DedicatedHosts'] = all_dedicated_hosts
-    ec2_data['NetworkACLs'] = all_network_acls
-    ec2_data['NATGateways'] = all_nat_gateways
-    ec2_data['NetworkInterfaces'] = all_network_interfaces
-    ec2_data['RouteTables'] = all_route_tables
-    ec2_data['Subnets'] = all_subnets
-    ec2_data['VPCs'] = all_vpcs
-    ec2_data['VPCEndpoints'] = all_vpc_endpoints
+    for key, value in gathered_data.items():
+        ec2_data[key] = value
     session.update(pacu_main.database, EC2=ec2_data)
 
-    print('{} total instance(s) found.'.format(len(all_instances)))
-    print('{} total security group(s) found.'.format(len(all_security_groups)))
-    print('{} total elastic IP address(es) found.'.format(len(all_elastic_ips)))
-    print('{} total VPN customer gateway(s) found.'.format(len(all_vpn_customer_gateways)))
-    print('{} total dedicated hosts(s) found.'.format(len(all_dedicated_hosts)))
-    print('{} total network ACL(s) found.'.format(len(all_network_acls)))
-    print('{} total NAT gateway(s) found.'.format(len(all_nat_gateways)))
-    print('{} total network interface(s) found.'.format(len(all_network_interfaces)))
-    print('{} total route table(s) found.'.format(len(all_route_tables)))
-    print('{} total subnets(s) found.'.format(len(all_subnets)))
-    print('{} total VPC(s) found.'.format(len(all_vpcs)))
-    print('{} total VPC endpoint(s) found.'.format(len(all_vpc_endpoints)))
-
-    print('')  # Same line break as above
-
     print('All data has been saved to the current session.\n')
+
     print('{} completed.\n'.format(module_info['name']))
-    return
+
+    return gathered_data
+
+
+def summary(data, pacu_main):
+    results = [
+        '    {} total instance(s) found.'.format(len(data['Instances'])),
+        '    {} total security group(s) found.'.format(len(data['SecurityGroups'])),
+        '    {} total elastic IP address(es) found.'.format(len(data['ElasticIPs'])),
+        '    {} total VPN customer gateway(s) found.'.format(len(data['VPNCustomerGateways'])),
+        '    {} total dedicated hosts(s) found.'.format(len(data['DedicatedHosts'])),
+        '    {} total network ACL(s) found.'.format(len(data['NetworkACLs'])),
+        '    {} total NAT gateway(s) found.'.format(len(data['NATGateways'])),
+        '    {} total network interface(s) found.'.format(len(data['NetworkInterfaces'])),
+        '    {} total route table(s) found.'.format(len(data['RouteTables'])),
+        '    {} total subnets(s) found.'.format(len(data['Subnets'])),
+        '    {} total VPC(s) found.'.format(len(data['VPCs'])),
+        '    {} total VPC endpoint(s) found.'.format(len(data['VPCEndpoints'])),
+    ]
+    return '\n'.join(results)

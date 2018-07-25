@@ -125,6 +125,8 @@ def main(args, pacu_main):
     fetch_data = pacu_main.fetch_data
     ######
 
+    summary_data = {}
+
     all_perms = [
         'iam:AddRoleToInstanceProfile',
         'iam:AddUserToGroup',
@@ -461,9 +463,14 @@ def main(args, pacu_main):
 
             if escalated is False:
                 print('No potential privilege escalation methods worked.')
-
+    summary_data['success'] = escalated
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
+
+
+def summary(data, pacu_main):
+    out = '  Privilege escalation was successful' if data['success'] else 'Privilege escalation was not successful'
+    return out
 
 
 # https://stackoverflow.com/a/24893252

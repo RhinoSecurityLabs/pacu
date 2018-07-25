@@ -48,6 +48,8 @@ def main(args, pacu_main):
 
     groups = []
 
+    summary_data = {}
+
     client = pacu_main.get_boto3_client('ec2', 'us-east-1')
 
     # Check permissions before hammering through each region
@@ -72,7 +74,7 @@ def main(args, pacu_main):
             print('Pre-req module not run successfully. Exiting...')
             return
         groups = session.EC2['SecurityGroups']
-
+    summary_data['BackdooredCount'] = 0
     for group in groups:
         print('Group: {}'.format(group['GroupName']))
 
@@ -89,8 +91,16 @@ def main(args, pacu_main):
             )
             print('  Success.')
             print('Port range {} opened for IP {}.'.format(args.port_range, args.ip))
+            summary_data['BackdooredCount'] += 1
         except ClientError as error:
             print('  Error: {}'.format(error.response['Error']['Message']))
 
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
+
+
+def summary(data, pacu_main):
+    out = ''
+    if 'BackdooredCount' in data:
+        out += '  {} security group(s) were successfully backdoored.\n'.format(data['BackdooredCount'])
+    return out

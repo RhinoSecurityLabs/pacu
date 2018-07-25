@@ -74,7 +74,7 @@ def main(args, pacu_main):
         if not str(error).find('UnauthorizedOperation') == -1:
             print('Dry run failed, the current AWS account does not have the necessary permissions to run this module.\nExiting...')
             return
-
+    summary_data = {}
     instances = []
     if args.instance_ids is not None:  # need to update this to include the regions of these IDs
         for instance in args.instance_ids.split(','):
@@ -92,7 +92,7 @@ def main(args, pacu_main):
                 'InstanceId': instance['InstanceId'],
                 'Region': instance['Region']
             })
-
+    instance_count = 0
     for region in regions:
         client = pacu_main.get_boto3_client('ec2', region)
 
@@ -102,15 +102,17 @@ def main(args, pacu_main):
                 if result:
                     update_userdata(client, instance['InstanceId'], prepare_user_data(client, instance['InstanceId'], args.script))
                     start_instance(client, instance['InstanceId'])
+                    instance_count += 1
                 else:
                     print('Failed to stop instance {}@{}, skipping.'.format(instance['InstanceId'], instance['Region']))
-
+    summary_data['Instances'] = instance_count
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
 
 
 def summary(data, pacu_main):
-    raise NotImplementedError
+    out = '{} Instance(s) Modified'.format(data['Instances']) if 'Instances' in data else 'No Instances Modified'
+    return out
 
 
 def stop_instance(client, instance_id):

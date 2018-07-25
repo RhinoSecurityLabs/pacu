@@ -975,12 +975,14 @@ class Main:
                 self.running_module = None
                 raise
 
-            summary = module.summary(summary_data, self)
-            if len(summary) > 1000:
-                raise ValueError('The {} module\'s summary is too long ({} characters). Reduce it to 1000 characters or fewer.'.format(module.module_info['name'], len(summary)))
-            if not isinstance(summary, str):
-                raise TypeError(' The {} module\'s summary is {}-type instead of str. Make summary return a string.'.format(module.module_info['name'], type(summary)))
-            self.print('MODULE SUMMARY:\n\n{}\n'.format(summary))
+            # If the module's return value is None, it exited early.
+            if summary_data is not None:
+                summary = module.summary(summary_data, self)
+                if len(summary) > 1000:
+                    raise ValueError('The {} module\'s summary is too long ({} characters). Reduce it to 1000 characters or fewer.'.format(module.module_info['name'], len(summary)))
+                if not isinstance(summary, str):
+                    raise TypeError(' The {} module\'s summary is {}-type instead of str. Make summary return a string.'.format(module.module_info['name'], type(summary)))
+                self.print('MODULE SUMMARY:\n\n{}\n'.format(summary))
 
             self.running_module = None
             return
@@ -1305,11 +1307,11 @@ class Main:
 
     def check_user_agent(self):
         session = self.get_active_session()
-        
+
         if session.boto_user_agent is None:  # If there is no user agent set for this session already
             boto3_session = boto3.session.Session()
             ua = boto3_session._session.user_agent()
-            if 'kali' not in ua.lower():  # If the local OS is Kali Linux
+            if 'kali' in ua.lower():  # If the local OS is Kali Linux
                 # GuardDuty triggers a finding around API calls made from Kali Linux, so let's avoid that...
                 self.print('Detected the current operating system as Kali Linux. Modifying user agent to hide that from GuardDuty...')
                 with open('./user_agents.txt', 'r') as file:

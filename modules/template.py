@@ -120,11 +120,13 @@ def main(args, pacu_main):
     return data
 
 
-# The summary function will be called by Pacu after running main. It should
-# return a single string containing a curated summary of every significant
-# thing that the module did, whether successful or not. The data parameter can
+# The summary function will be called by Pacu after running main, and will be
+# passed the data returned from main. It should return a single string
+# containing a curated summary of every significant thing that the module did,
+# whether successful or not; or None if the module exited early and made no
+# changes that warrant a summary being displayed. The data parameter can
 # contain whatever data is needed in any structure desired. A length limit of
-# 1000 characters is enforced on strings returned by summary.
+# 1000 characters is enforced on strings returned by module summary functions.
 def summary(data, pacu_main):
     if 'some_relevant_key' in data.keys():
         return 'This module compromised {} instances in the SomeRelevantKey service.'.format(len(data['some_relevant_key']))

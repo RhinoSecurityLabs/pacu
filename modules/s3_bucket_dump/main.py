@@ -47,6 +47,11 @@ def main(args, pacu_main):
     input = pacu_main.input
     ######
 
+    summary_data = {
+        'readable_buckets': 0,
+        'downloaded_files': 0
+    }
+
     if (args.names_only is True and args.dl_names is True) or (args.names_only is True and args.dl_all is True) or (args.dl_names is True and args.dl_all is True):
         print('Only zero or one options of --dl-all, --names-only, and --dl-names may be specified. Exiting...')
         return
@@ -65,7 +70,7 @@ def main(args, pacu_main):
         s3_data = deepcopy(session.S3)
         s3_data['Buckets'] = deepcopy(response['Buckets'])
         session.update(pacu_main.database, S3=s3_data)
-
+        summary_data['buckets'] = len(response['Buckets'])
         for bucket in response['Buckets']:
             buckets.append(bucket['Name'])
             print('  Found bucket "{bucket_name}".'.format(bucket_name=bucket['Name']))
@@ -100,6 +105,7 @@ def main(args, pacu_main):
             )
 
             if args.dl_all is False and args.names_only is False and args.dl_names is False:
+                summary_data['readable_buckets'] += 1
                 try_to_dl = input('      You have permission to read files in bucket {}, do you want to attempt to download all files in it? (y/n) '.format(bucket))
                 if try_to_dl == 'n':
                     print('      Skipping to next bucket.')
@@ -128,6 +134,7 @@ def main(args, pacu_main):
                     os.makedirs('tmp/{}'.format(os.path.dirname(first_obj_key)))
 
                 s3.meta.client.download_file(bucket, first_obj_key, 'tmp/{}'.format(first_obj_key))
+                summary_data['download_files'] += 1
 
                 with open('tmp/{}'.format(first_obj_key), 'rb') as test_file:
                     test_file.read()
@@ -217,6 +224,7 @@ def main(args, pacu_main):
 
                         key_file_path = os.path.join(key_directory_path, file_name)
                         s3.meta.client.download_file(bucket, key, key_file_path)
+                        summary_data['downloaded_files'] += 1
 
                         print('        Successful.')
                         failed_dl = 0
@@ -228,8 +236,15 @@ def main(args, pacu_main):
 
     print('All buckets have been analyzed.')
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
 
 
 def summary(data, pacu_main):
-    raise NotImplementedError
+    out = ''
+    if 'buckets' in data:
+        out += '  {} total buckets found.\n'.format(data['buckets'])
+    if 'readable_buckets' in data:
+        out += '  {} buckets found with read permissions.\n'.format(data['readable_buckets'])
+    if 'downloaded_files' in data:
+        out += '  {} files downloaded.\n'.format(data['downloaded_files'])
+    return out

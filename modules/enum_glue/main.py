@@ -211,12 +211,13 @@ def main(args, pacu_main):
 
             except Exception as error:
                 print('Error while running client.get_jobs: {}'.format(error))
-
-    print('{} total connection(s) found.'.format(len(all_connections)))
-    print('{} total crawler(s) found.'.format(len(all_crawlers)))
-    print('{} total database(s) found.'.format(len(all_databases)))
-    print('{} total development endpoint(s) found.'.format(len(all_dev_endpoints)))
-    print('{} total job(s) found.'.format(len(all_jobs)))
+    summary_data = {
+        'connections': len(all_connections),
+        'crawlers': len(all_crawlers),
+        'databases': len(all_databases),
+        'dev_endpoints': len(all_dev_endpoints),
+        'jobs': len(all_jobs),
+    }
 
     glue_data = deepcopy(session.Glue)
     glue_data['Connections'] = all_connections
@@ -227,8 +228,13 @@ def main(args, pacu_main):
     session.update(pacu_main.database, Glue=glue_data)
 
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
 
 
 def summary(data, pacu_main):
-    raise NotImplementedError
+    out = '  {} total connection(s) found.\n'.format(data['connections'])
+    out += '  {} total crawler(s) found.\n'.format(data['crawlers'])
+    out += '  {} total database(s) found.\n'.format(data['databases'])
+    out += '  {} total development endpoint(s) found.\n'.format(data['dev_endpoints'])
+    out += '  {} total job(s) found.\n'.format(data['jobs'])
+    return out

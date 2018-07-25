@@ -38,7 +38,7 @@ def main(args, pacu_main):
     print = pacu_main.print
     get_regions = pacu_main.get_regions
     ######
-
+    summary_data = {'region_key_pairs': []}
     regions = get_regions('lightsail')
 
     for region in regions:
@@ -49,10 +49,14 @@ def main(args, pacu_main):
             'privateKey': downloaded_keys['privateKeyBase64']
         }
         print('Region: {}\n{}\n'.format(region, json.dumps(restructured_keys)))
+        summary_data['region_key_pairs'].append(region)
 
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
 
 
 def summary(data, pacu_main):
-    raise NotImplementedError
+    out = '  Downloaded Key Pairs for the following regions: \n'
+    for region in sorted(data['region_key_pairs']):
+        out += '    {}\n'.format(region)
+    return out

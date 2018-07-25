@@ -17,7 +17,7 @@ Pacu is a fairly lightweight program, as it requires only [Python3.6+](https://w
 ```
   > git clone https://github.com/RhinoSecurityLabs/pacu
   > cd pacu
-  > sh install.sh
+  > bash install.sh
   > python3 pacu.py
 ```
 
@@ -106,7 +106,7 @@ Pacu's capabilities will increase dramatically as the number of modules grows, a
 
 #### Unauthenticated Modules
 
-- `s3_finder` - Enumerates/bruteforces S3 buckets based on different parameters.
+- `s3_enum` - Enumerates/bruteforces S3 buckets based on different parameters.
 
 #### Authenticated Modules
 
@@ -145,6 +145,7 @@ Pacu's capabilities will increase dramatically as the number of modules grows, a
 ##### Logging Modules
 - `dl_cloudtrail_event_history` - Downloads CloudTrail event history to JSON files.
 - `dl_cloudwatch_logs` - Downloads CloudWatch logs within a specific time period to the session downloads directory.
+- `disrupt_monitoring` - Disables, deletes, or minimizes various logging/monitoring services.
 
 ## Wiki
 

@@ -45,6 +45,7 @@ class Main:
         self.server = None
         self.proxy = None
         self.queue = None
+        self.running_module = None
 
     # Utility methods
 
@@ -110,62 +111,82 @@ class Main:
             raise
 
     # @message: String - message to print and/or write to file
-    # @module: String - name of the log file that is being written to
     # @output: String - where to output the message: both, file, or screen
     # @output_type: String - format for message when written to file: plain or xml
     # @is_cmd: boolean - Is the log the initial command that was run (True) or output (False)? Devs won't touch this most likely
-    def print(self, message, module='cmd_log', output='both', output_type='plain', is_cmd=False, session_name=''):
+    def print(self, message, output='both', output_type='plain', is_cmd=False, session_name=''):
         session = self.get_active_session()
 
         if session_name == '':
             session_name = session.name
+
         # Indent output from a command
         if is_cmd is False:
             # Add some recursion here to go through the entire dict for
             # 'SecretAccessKey'. This is to not print the full secret access
             # key into the logs, although this should get most cases currently.
-            if type(message) is dict:
+            if isinstance(message, dict):
                 if 'SecretAccessKey' in message:
                     message = copy.deepcopy(message)
                     message['SecretAccessKey'] = '{}{}'.format(message['SecretAccessKey'][0:int(len(message['SecretAccessKey']) / 2)], '*' * int(len(message['SecretAccessKey']) / 2))
                 message = json.dumps(message, indent=2, default=str)
-            else:
-                message = '  {}'.format(message)
+            elif isinstance(message, list):
+                message = json.dumps(message, indent=2, default=str)
+
+        # The next section prepends the module's name in square brackets in
+        # front of the first line in the message containing non-whitespace
+        # characters.
+        if self.running_module and isinstance(message, str):
+            split_message = message.split('\n')
+            for index, fragment in enumerate(split_message):
+                if re.sub(r'\s', '', fragment):
+                    split_message[index] = '[{}] {}'.format(self.running_module, fragment)
+                    break
+            message = '\n'.join(split_message)
+
         if output == 'both' or output == 'file':
             if output_type == 'plain':
-                with open('sessions/{}/{}.txt'.format(session_name, module), 'a+') as text_file:
+                with open('sessions/{}/cmd_log.txt'.format(session_name), 'a+') as text_file:
                     text_file.write('{}\n'.format(message))
             elif output_type == 'xml':
                 # TODO: Implement actual XML output
-                with open('sessions/{}/{}.xml'.format(session_name, module), 'a+') as xml_file:
+                with open('sessions/{}/cmd_log.xml'.format(session_name), 'a+') as xml_file:
                     xml_file.write('{}\n'.format(message))
                 pass
             else:
                 print('  Unrecognized output type: {}'.format(output_type))
+
         if output == 'both' or output == 'screen':
             print(message)
+
         return True
 
     # @message: String - input question to ask and/or write to file
-    # @module: String - name of the log file that is being written to
     # @output: String - where to output the message: both or screen (can't write a question to a file only)
     # @output_type: String - format for message when written to file: plain or xml
-    def input(self, message, module='cmd_log', output='both', output_type='plain', session_name=''):
+    def input(self, message, output='both', output_type='plain', session_name=''):
         session = self.get_active_session()
 
         if session_name == '':
             session_name = session.name
 
-        message = '  {}'.format(message)
+        if self.running_module and isinstance(message, str):
+            split_message = message.split('\n')
+            for index, fragment in enumerate(split_message):
+                if re.sub(r'\s', '', fragment):
+                    split_message[index] = '[{}] {}'.format(self.running_module, fragment)
+                    break
+            message = '\n'.join(split_message)
+
         res = input(message)
         if output == 'both':
             if output_type == 'plain':
-                with open('sessions/{}/{}.txt'.format(session_name, module), 'a+') as file:
+                with open('sessions/{}/cmd_log.txt'.format(session_name), 'a+') as file:
                     file.write('{} {}\n'.format(message, res))
             elif output_type == 'xml':
                 # TODO: Implement actual XML output
                 # now = time.time()
-                with open('sessions/{}/{}.xml'.format(session_name, module), 'a+') as file:
+                with open('sessions/{}/cmd_log.xml'.format(session_name), 'a+') as file:
                     file.write('{} {}\n'.format(message, res))\
 
             else:
@@ -781,7 +802,7 @@ class Main:
                                                     them as the active key pair
                 stager sh|ps                      Generate a PacuProxy stager. The "sh" format is
                                                     for *sh shells in Unix (like bash), and the "ps"
-                                                    format is for PowerShell on Windows.
+                                                    format is for PowerShell on Windows
             list/ls                             List all modules
             search [cat[egory]] <search term>   Search the list of available modules by name or category
             help                                Display this page of information
@@ -795,7 +816,7 @@ class Main:
                                                   current session to use with the "data" command
             regions                             Display a list of all valid AWS regions
             update_regions                      Run a script to update the regions database to the newest
-                                                  version.
+                                                  version
             set_regions <region> [<region>...]  Set the default regions for this session. These space-separated
                                                   regions will be used for modules where regions are required,
                                                   but not supplied by the user. The default set of regions is
@@ -806,7 +827,7 @@ class Main:
             set_keys                            Add a set of AWS keys to the session and set them as the
                                                   default
             swap_keys                           Change the currently active AWS key to another key that has
-                                                  previously been set for this session.
+                                                  previously been set for this session
             exit/quit                           Exit Pacu
         """)
 
@@ -913,7 +934,7 @@ class Main:
             return
 
         module_name = command[1]
-        module = self.import_module_by_name(module_name, include=['main', 'module_info'])
+        module = self.import_module_by_name(module_name, include=['main', 'module_info', 'summary'])
 
         if module is not None:
             # Plaintext Command Log
@@ -926,11 +947,15 @@ class Main:
                 self.print('  Running module {}...'.format(module_name))
             else:
                 self.print('  Running module {} on agent at {}...'.format(module_name, proxy_settings.target_agent[0]))
-            self.print('    {}\n'.format(module.module_info['description']))
+
+            self.running_module = module.module_info['name']
+            self.print('\n    {}\n'.format(module.module_info['description']))
 
             try:
-                module.main(command[2:], self)
+                summary_data = module.main(command[2:], self)
+
             except SystemExit as error:
+                self.running_module = None
                 exception_type, exception_value, tb = sys.exc_info()
                 if 'SIGINT called' in exception_value.args:
                     self.print('^C\nExiting the currently running module.')
@@ -944,6 +969,22 @@ class Main:
                         local_data=local_data,
                         global_data=global_data
                     )
+                return
+
+            except Exception as error:
+                self.running_module = None
+                raise
+
+            # If the module's return value is None, it exited early.
+            if summary_data is not None:
+                summary = module.summary(summary_data, self)
+                if len(summary) > 1000:
+                    raise ValueError('The {} module\'s summary is too long ({} characters). Reduce it to 1000 characters or fewer.'.format(module.module_info['name'], len(summary)))
+                if not isinstance(summary, str):
+                    raise TypeError(' The {} module\'s summary is {}-type instead of str. Make summary return a string.'.format(module.module_info['name'], type(summary)))
+                self.print('MODULE SUMMARY:\n\n{}\n'.format(summary))
+
+            self.running_module = None
             return
 
         elif module_name in self.COMMANDS:
@@ -1113,7 +1154,7 @@ class Main:
 
         # Secret access key (should not be entered in log files)
         if key_alias is None:
-            new_value = input('  Secret access key [{}]: '.format(session.secret_access_key))
+            new_value = input('Secret access key [{}]: '.format(session.secret_access_key))
         else:
             new_value = secret_access_key
         self.print('Secret access key [******]: ****** (Censored)', output='file')
@@ -1264,9 +1305,34 @@ class Main:
 
         return session, global_data_in_all_frames, local_data_in_all_frames
 
+    def check_user_agent(self):
+        session = self.get_active_session()
+
+        if session.boto_user_agent is None:  # If there is no user agent set for this session already
+            boto3_session = boto3.session.Session()
+            ua = boto3_session._session.user_agent()
+            if 'kali' in ua.lower():  # If the local OS is Kali Linux
+                # GuardDuty triggers a finding around API calls made from Kali Linux, so let's avoid that...
+                self.print('Detected the current operating system as Kali Linux. Modifying user agent to hide that from GuardDuty...')
+                with open('./user_agents.txt', 'r') as file:
+                    user_agents = file.readlines()
+                user_agents = [agent.strip() for agent in user_agents]  # Remove random \n's and spaces
+                new_ua = random.choice(user_agents)
+                session.update(self.database, boto_user_agent=new_ua)
+                self.print('  The user agent for this Pacu session has been set to:')
+                self.print('    {}'.format(new_ua))
+
     def get_boto3_client(self, service, region=None, user_agent=None, socks_port=8001, parameter_validation=True):
         session = self.get_active_session()
         proxy_settings = self.get_proxy_settings()
+
+        # If there is not a custom user_agent passed into this function
+        # and session.boto_user_agent is set, use that as the user agent
+        # for this client. If both are set, the incoming user_agent will
+        # override the session.boto_user_agent. If niether are set, it
+        # will be None, and will default to the OS's regular user agent
+        if user_agent is None and session.boto_user_agent is not None:
+            user_agent = session.boto_user_agent
 
         boto_config = botocore.config.Config(
             proxies={'https': 'socks5://127.0.0.1:{}'.format(socks_port), 'http': 'socks5://127.0.0.1:{}'.format(socks_port)} if not proxy_settings.target_agent == [] else None,
@@ -1287,6 +1353,9 @@ class Main:
         # All the comments from get_boto3_client apply here too
         session = self.get_active_session()
         proxy_settings = self.get_proxy_settings()
+
+        if user_agent is None and session.boto_user_agent is not None:
+            user_agent = session.boto_user_agent
 
         boto_config = botocore.config.Config(
             proxies={'https': 'socks5://127.0.0.1:{}'.format(socks_port), 'http': 'socks5://127.0.0.1:{}'.format(socks_port)} if not proxy_settings.target_agent == [] else None,
@@ -1499,6 +1568,7 @@ class Main:
 
                     idle_ready = True
 
+                self.check_user_agent()
                 self.idle()
 
             except (Exception, SystemExit) as error:

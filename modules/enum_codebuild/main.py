@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+from copy import deepcopy
 
 
 module_info = {
@@ -28,18 +29,20 @@ def main(args, pacu_main):
     print = pacu_main.print
     get_regions = pacu_main.get_regions
 
-    all = False
     if args.builds is False and args.projects is False:
-        all = True
-
-    regions = get_regions('CodeBuild')
+        enum_all = True
+    else:
+        enum_all = False
+    regions = args.regions.split(',') if args.regions else get_regions('CodeBuild')
 
     all_projects = []
     all_builds = []
     environment_variables = []
+    summary_data = {}
     for region in regions:
         region_projects = []
         region_builds = []
+        summary_data[region] = {}
 
         print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('codebuild', region)
@@ -47,7 +50,7 @@ def main(args, pacu_main):
         # Begin enumeration
 
         # Projects
-        if all is True or args.projects is True:
+        if enum_all is True or args.projects is True:
             project_names = []
             response = client.list_projects()
             project_names.extend(response['projects'])
@@ -62,10 +65,11 @@ def main(args, pacu_main):
                     names=project_names
                 )['projects']
                 print('  Found {} projects.'.format(len(region_projects)))
+                summary_data[region]['Projects'] = len(region_projects)
                 all_projects.extend(region_projects)
 
         # Builds
-        if all is True or args.builds is True:
+        if enum_all is True or args.builds is True:
             build_ids = []
             response = client.list_builds()
             build_ids.extend(response['ids'])
@@ -80,7 +84,10 @@ def main(args, pacu_main):
                     ids=build_ids
                 )['builds']
                 print('  Found {} builds.\n'.format(len(region_builds)))
+                summary_data[region]['Builds'] = len(region_builds)
                 all_builds.extend(region_builds)
+        if not summary_data[region]:
+            del summary_data[region]
 
     # Begin environment variable dump
 
@@ -94,20 +101,29 @@ def main(args, pacu_main):
         if 'environment' in build and 'environmentVariables' in build['environment']:
             environment_variables.extend(build['environment']['environmentVariables'])
 
-    # Kill duplicates
-    environment_variables = list(set(environment_variables))
-
     # Store in session
-    session.CodeBuild['EnvironmentVariables'] = environment_variables
+    codebuild_data = deepcopy(session.CodeBuild)
+    codebuild_data['EnvironmentVariables'] = environment_variables
+    summary_data['All'] = {'EnvironmentVariables': len(environment_variables)}
 
     if len(all_projects) > 0:
-        session.CodeBuild['Projects'] = all_projects
+        codebuild_data['Projects'] = all_projects
+        summary_data['All']['Projects'] = len(all_projects)
 
     if len(all_builds) > 0:
-        session.CodeBuild['Builds'] = all_builds
+        codebuild_data['Builds'] = all_builds
+        summary_data['All']['Builds'] = len(all_builds)
 
-    print('All environment variables found (duplicates removed):\n')
-    print(environment_variables)
+    session.update(pacu_main.database, CodeBuild=codebuild_data)
 
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
+
+
+def summary(data, pacu_main):
+    out = ''
+    for region in sorted(data):
+        out += '    {}\n'.format(region)
+        for val in data[region]:
+            out += '        {} {} found.\n'.format(data[region][val], val[:-1] + '(' + val[-1] + ')')
+    return out

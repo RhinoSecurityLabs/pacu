@@ -37,6 +37,12 @@ def main(args, pacu_main):
 
     regions = get_regions('Inspector')
     complete_data = {}
+    summary_data = {
+        'reports': 0,
+        'findings': 0
+    }
+    if args.download_reports:
+        summary_data['reports_location'] = 'sessions/{}/downloads/inspector_assessments/'.format(session.name)
     for region in regions:
         print('Starting region {}...'.format(region))
 
@@ -54,6 +60,10 @@ def main(args, pacu_main):
             except ClientError as error:
                     if error.response['Error']['Code'] == 'AccessDeniedException':
                         print('Access Denied for list-assessment-runs')
+            if not assessment_runs:
+                print('  No assessment runs found for {}'.format(region))
+            else:
+                summary_data['reports'] += len(assessment_runs)
             for run in assessment_runs:
                 response = client.get_assessment_report(
                     assessmentRunArn=run,
@@ -63,7 +73,7 @@ def main(args, pacu_main):
                 if not os.path.exists('sessions/{}/downloads/inspector_assessments/'.format(session.name)):
                     os.makedirs('sessions/{}/downloads/inspector_assessments/'.format(session.name))
                 file_name = 'sessions/{}/downloads/inspector_assessments/'.format(session.name) + str(run)[-10:] + '.html'
-                print('Report saved to: ' + file_name)
+                print('  Report saved to: ' + file_name)
                 with urllib.request.urlopen(response['url']) as response, open(file_name, 'a') as out_file:
                     out_file.write(str(response.read()))
         findings = []
@@ -79,7 +89,10 @@ def main(args, pacu_main):
                 continue
         try:
             if len(findings) < 1:
+                print('  No findings found for {}.'.format(region))
                 continue
+            else:
+                summary_data['findings'] += len(findings)
             descriptions = client.describe_findings(findingArns=findings)['findings']
             complete_data[region] = descriptions
         except ClientError as error:
@@ -87,4 +100,13 @@ def main(args, pacu_main):
                 print('Access Denied for describe-findings')
     session.update(pacu_main.database, Inspector=complete_data)
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
+
+
+def summary(data, pacu_main):
+    out = ''
+    if 'reports_location' in data:
+        out += '  Reports saved to: {}\n'.format(data['reports_location'])
+    out += '  {} reports found.\n'.format(data['reports'])
+    out += '  {} findings found.\n'.format(data['findings'])
+    return out

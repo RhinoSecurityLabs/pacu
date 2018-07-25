@@ -99,7 +99,9 @@ class PacuSession(Base, ModelUpdateMixin):
     __tablename__ = 'pacu_session'
     aws_data_field_names = (
         'CloudTrail',
+        'CloudWatch',
         'CodeBuild',
+        'Config',
         'DataPipeline',
         'DynamoDB',
         'EC2',
@@ -111,7 +113,8 @@ class PacuSession(Base, ModelUpdateMixin):
         'Lightsail',
         'S3',
         'Shield',
-        'VPC'
+        'VPC',
+        'WAF'
     )
 
     aws_keys = relationship('AWSKey', backref='session', cascade='all, delete-orphan', lazy='dynamic')
@@ -120,6 +123,7 @@ class PacuSession(Base, ModelUpdateMixin):
     created = Column(DateTime, default=datetime.datetime.utcnow)
     is_active = Column(Boolean, nullable=False, default=False)
     name = Column(Text)
+    boto_user_agent = Column(Text)
     key_alias = Column(Text)
     access_key_id = Column(Text)
     secret_access_key = Column(Text)
@@ -127,7 +131,9 @@ class PacuSession(Base, ModelUpdateMixin):
     session_regions = Column(JSONType, nullable=False, default=['all'])
 
     CloudTrail = Column(JSONType, nullable=False, default=dict)
+    CloudWatch = Column(JSONType, nullable=False, default=dict)
     CodeBuild = Column(JSONType, nullable=False, default=dict)
+    Config = Column(JSONType, nullable=False, default=dict)
     DataPipeline = Column(JSONType, nullable=False, default=dict)
     DynamoDB = Column(JSONType, nullable=False, default=dict)
     EC2 = Column(JSONType, nullable=False, default=dict)
@@ -140,6 +146,7 @@ class PacuSession(Base, ModelUpdateMixin):
     S3 = Column(JSONType, nullable=False, default=dict)
     Shield = Column(JSONType, nullable=False, default=dict)
     VPC = Column(JSONType, nullable=False, default=dict)
+    WAF = Column(JSONType, nullable=False, default=dict)
 
     def __repr__(self):
         if self.key_alias:

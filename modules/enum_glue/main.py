@@ -39,11 +39,11 @@ module_info = {
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all session regions.')
-parser.add_argument('--connections', required=False, default=False, help='Enumerate Glue connections.')
-parser.add_argument('--crawlers', required=False, default=False, help='Enumerate Glue crawlers.')
-parser.add_argument('--databases', required=False, default=False, help='Enumerate Glue databases.')
-parser.add_argument('--dev-endpoints', required=False, default=False, help='Enumerate Glue development endpoints.')
-parser.add_argument('--jobs', required=False, default=False, help='Enumerate Glue jobs.')
+parser.add_argument('--connections', required=False, default=False, action='store_true', help='Enumerate Glue connections.')
+parser.add_argument('--crawlers', required=False, default=False, action='store_true', help='Enumerate Glue crawlers.')
+parser.add_argument('--databases', required=False, default=False, action='store_true', help='Enumerate Glue databases.')
+parser.add_argument('--dev-endpoints', required=False, default=False, action='store_true', help='Enumerate Glue development endpoints.')
+parser.add_argument('--jobs', required=False, default=False, action='store_true', help='Enumerate Glue jobs.')
 
 
 def main(args, pacu_main):

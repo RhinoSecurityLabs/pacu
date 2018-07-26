@@ -111,8 +111,8 @@ def main(args, pacu_main):
 
 
 def summary(data, pacu_main):
-    out = '{} Instance(s) Modified'.format(data['Instances']) if 'Instances' in data else 'No Instances Modified'
-    return out
+    out = '  {} Instance(s) Modified'.format(data['Instances']) if 'Instances' in data else 'No Instances Modified'
+    return out.rstrip()
 
 
 def stop_instance(client, instance_id):

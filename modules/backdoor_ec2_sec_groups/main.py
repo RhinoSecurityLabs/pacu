@@ -102,5 +102,5 @@ def main(args, pacu_main):
 def summary(data, pacu_main):
     out = ''
     if 'BackdooredCount' in data:
-        out += '  {} security group(s) were successfully backdoored.\n'.format(data['BackdooredCount'])
-    return out
+        out += '  {} security group(s) successfully backdoored.\n'.format(data['BackdooredCount'])
+    return out.rstrip()

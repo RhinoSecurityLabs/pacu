@@ -643,7 +643,7 @@ def CreateAccessKey(pacu_main, print, input, fetch_data):
         again = input('    Do you want to try another user (y) or continue to the next privilege escalation method (n)? ')
         if again.strip().lower() == 'y':
             print('      Re-running CreateAccessKey privilege escalation attempt...')
-            return CreateLoginProfile(pacu_main, print, input, fetch_data)
+            return CreateAccessKey(pacu_main, print, input, fetch_data)
         else:
             return False
     return True
@@ -668,7 +668,7 @@ def CreateLoginProfile(pacu_main, print, input, fetch_data):
     if int(choice) == 0:
         username = input('    Enter a user name: ')
     else:
-        username = users[int(choice) - 1]['UserName']
+        username = users[int(choice) - 2]['UserName']
 
     # Use the backdoor_users_keys module to do the login profile creating
     try:
@@ -710,7 +710,7 @@ def UpdateLoginProfile(pacu_main, print, input, fetch_data):
     if int(choice) == 0:
         username = input('    Enter a user name: ')
     else:
-        username = users[int(choice) - 1]['UserName']
+        username = users[int(choice) - 2]['UserName']
 
     try:
         if int(choice) == 1:

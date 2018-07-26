@@ -22,6 +22,7 @@ try:
     import configure_settings
     import settings
 
+    from client_builder import Client_Builder
     from core.models import AWSKey, PacuSession, ProxySettings
     from proxy import PacuProxy
     from setup_database import setup_database_if_not_present
@@ -1322,6 +1323,9 @@ class Main:
                 self.print('  The user agent for this Pacu session has been set to:')
                 self.print('    {}'.format(new_ua))
 
+    def get_recon_status(self):
+        return True
+
     def get_boto3_client(self, service, region=None, user_agent=None, socks_port=8001, parameter_validation=True):
         session = self.get_active_session()
         proxy_settings = self.get_proxy_settings()
@@ -1340,7 +1344,7 @@ class Main:
             parameter_validation=parameter_validation
         )
 
-        return boto3.client(
+        client = boto3.client(
             service,
             region_name=region,  # Whether region has a value or is None, it will work here
             aws_access_key_id=session.access_key_id,
@@ -1348,6 +1352,10 @@ class Main:
             aws_session_token=session.session_token,
             config=boto_config
         )
+        if self.get_recon_status():
+           return Client_Builder(client)
+        else:
+            return client
 
     def get_boto3_resource(self, service, region=None, user_agent=None, socks_port=8001, parameter_validation=True):
         # All the comments from get_boto3_client apply here too

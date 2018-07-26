@@ -230,6 +230,14 @@ def main(args, pacu_main):
         config_data['Aggregators'] = all_configuration_aggregators
         session.update(pacu_main.database, Config=config_data)
         print('  {} total Config rules found.\n'.format(len(session.Config['Rules'])))
+        summary_data.update({
+            'config': {
+                'rules': len(all_rules),
+                'recorders': len(all_configuration_recorders),
+                'delivery_channels': len(all_delivery_channels),
+                'aggregators': len(all_configuration_aggregators),
+            }
+        })
 
     if enum_all is True or args.cloud_watch is True:
         print('Starting CloudWatch...')
@@ -259,6 +267,7 @@ def main(args, pacu_main):
         cw_data['Alarms'] = all_alarms
         session.update(pacu_main.database, CloudWatch=cw_data)
         print('  {} total CloudWatch alarms found.\n'.format(len(session.CloudWatch['Alarms'])))
+        summary_data['alarms'] = len(all_alarms)
 
     if enum_all is True or args.vpc is True:
         print('Starting VPC...')
@@ -291,9 +300,10 @@ def main(args, pacu_main):
         vpc_data['FlowLogs'] = all_flow_logs
         session.update(pacu_main.database, VPC=vpc_data)
         print('  {} total VPC flow logs found.\n'.format(len(session.VPC['FlowLogs'])))
+        summary_data['flowlogs'] = len(all_flow_logs)
 
     print('{} completed.\n'.format(module_info['name']))
-    return summary_data
+    return summary_data.rstrip()
 
 
 def summary(data, pacu_main):
@@ -309,6 +319,16 @@ def summary(data, pacu_main):
         out += '{} GuardDuty Detector(s) found.\n'.format(data['Detectors'])
     if 'MasterDetectors' in data:
         out += '  {} Master GuardDuty Detector(s) found.\n'.format(data['MasterDetectors'])
+    if 'config' in data:
+        out += '  AWS Config Data:\n'
+        out += '    {} Rules found.\n'.format(data['config']['rules'])
+        out += '    {} Recorders found.\n'.format(data['config']['recorders'])
+        out += '    {} Delivery Channels found.\n'.format(data['config']['delivery_channels'])
+        out += '    {} Aggregators found.\n'.format(data['config']['aggregators'])
+    if 'alarms' in data:
+        out += '  {} CloudWatch Alarm(s) found.\n'.format(data['alarms'])
+    if 'flowlogs' in data:
+        out += '  {} VPC flow logs found.\n'.format(data['flowlogs'])
     return out
 
 

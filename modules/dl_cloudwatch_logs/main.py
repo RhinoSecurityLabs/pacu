@@ -179,4 +179,4 @@ def summary(data, pacu_main):
         out += '  {}:\n'.format(region)
         for key in data[region]:
             out += '    {}:{}\n'.format(key, data[region][key])
-    return out
+    return out.rstrip()

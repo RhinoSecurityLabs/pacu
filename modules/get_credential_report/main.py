@@ -106,4 +106,4 @@ def summary(data, pacu_main):
         out += '  Report was generated\n'
     if 'report_location' in data:
         out += '    Report saved to: {}\n'.format(data['report_location'])
-    return out
+    return out.rstrip()

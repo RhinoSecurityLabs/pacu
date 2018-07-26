@@ -237,4 +237,4 @@ def summary(data, pacu_main):
     out += '  {} total database(s) found.\n'.format(data['databases'])
     out += '  {} total development endpoint(s) found.\n'.format(data['dev_endpoints'])
     out += '  {} total job(s) found.\n'.format(data['jobs'])
-    return out
+    return out.rstrip()

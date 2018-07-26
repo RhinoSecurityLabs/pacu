@@ -470,7 +470,7 @@ def main(args, pacu_main):
 
 def summary(data, pacu_main):
     out = '  Privilege escalation was successful' if data['success'] else 'Privilege escalation was not successful'
-    return out
+    return out.rstrip()
 
 
 # https://stackoverflow.com/a/24893252

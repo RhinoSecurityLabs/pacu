@@ -101,4 +101,4 @@ def summary(data, pacu_main):
     out = '  {} instances have termination protection enabled\n'.format(data['instance_count'])
     if data['instance_count'] > 0:
         out += '    Instances without termination protection have been written to: {}\n'.format(data['csv_file_path'])
-    return out
+    return out.rstrip()

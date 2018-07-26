@@ -643,7 +643,7 @@ def CreateAccessKey(pacu_main, print, input, fetch_data):
         again = input('    Do you want to try another user (y) or continue to the next privilege escalation method (n)? ')
         if again.strip().lower() == 'y':
             print('      Re-running CreateAccessKey privilege escalation attempt...')
-            return CreateLoginProfile(pacu_main, print, input, fetch_data)
+            return CreateAccessKey(pacu_main, print, input, fetch_data)
         else:
             return False
     return True

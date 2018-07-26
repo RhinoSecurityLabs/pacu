@@ -274,7 +274,7 @@ class Main:
             return False
 
     def print_key_info(self):
-        print(json.dumps(self.key_info(), indent=2, default=str))
+        self.print(self.key_info())
 
     def print_all_service_data(self, command):
         session = self.get_active_session()
@@ -507,7 +507,15 @@ class Main:
 
     def parse_command(self, command):
         command = command.strip()
-        command = command.split(' ')
+        pattern = re.compile(r"""((?:\').*?(?:\'))|((?:\").*?(?:\"))|([\w-]+)""")
+        searched_command = pattern.findall(command)
+        args_to_use = []
+        for result in searched_command:
+            cleaned = list(filter(None, result))
+            if (cleaned[0].startswith('"') and cleaned[0].endswith('"')) or (cleaned[0].startswith("'") and cleaned[0].endswith("'")):
+                cleaned[0] = cleaned[0][1:-1]
+            args_to_use.append(cleaned[0])
+        command = args_to_use
 
         if command[0] == '':
             return

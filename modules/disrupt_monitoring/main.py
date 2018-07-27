@@ -65,6 +65,8 @@ def main(args, pacu_main):
     alarms = []
     flow_logs = []
 
+    summary_data = {}
+
     # If any arguments are passed in, that that means to not check the database
     # to see if we need to enumerate stuff
     if any([
@@ -201,6 +203,10 @@ def main(args, pacu_main):
 
     if len(detectors) > 0:
         print('Starting GuardDuty...\n')
+        summary_data['guardduty'] = {
+            'disabled': 0,
+            'deleted': 0,
+        }
         for region in gd_regions:
             print('  Starting region {}...\n'.format(region))
 
@@ -217,6 +223,7 @@ def main(args, pacu_main):
                                 Enable=False
                             )
                             print('        Successfully disabled detector {}!\n'.format(detector['Id']))
+                            summary_data['guardduty']['disabled'] += 1
                         except Exception as error:
                             print('        Could not disable detector {}:\n      {}\n'.format(detector['Id'], error))
 
@@ -226,6 +233,7 @@ def main(args, pacu_main):
                                 DetectorId=detector['Id']
                             )
                             print('        Successfully deleted detector {}!\n'.format(detector['Id']))
+                            summary_data['guardduty']['deleted'] += 1
                         except Exception as error:
                             print('        Could not delete detector {}:\n      {}\n'.format(detector['Id'], error))
 
@@ -239,6 +247,11 @@ def main(args, pacu_main):
 
     if len(trails) > 0:
         print('Starting CloudTrail...\n')
+        summary_data['cloudtrail'] = {
+            'disabled': 0,
+            'deleted': 0,
+            'minimized': 0,
+        }
         for region in ct_regions:
             print('  Starting region {}...\n'.format(region))
 
@@ -254,6 +267,7 @@ def main(args, pacu_main):
                                 Name=trail['Name']
                             )
                             print('        Successfully disabled trail {}!\n'.format(trail['Name']))
+                            summary_data['cloudtrail']['disabled'] += 1
                         except Exception as error:
                             print('        Could not disable trail {}:\n      {}\n'.format(trail['Name'], error))
 
@@ -263,6 +277,7 @@ def main(args, pacu_main):
                                 Name=trail['Name']
                             )
                             print('        Successfully deleted trail {}!\n'.format(trail['Name']))
+                            summary_data['cloudtrail']['deleted'] += 1
                         except Exception as error:
                             print('        Could not delete trail {}:\n      {}\n'.format(trail['Name'], error))
 
@@ -278,6 +293,7 @@ def main(args, pacu_main):
                                 CloudWatchLogsRoleArn=''
                             )
                             print('        Successfully minimized trail {}!\n'.format(trail['Name']))
+                            summary_data['cloudtrail']['minimized'] += 1
                         except Exception as error:
                             print('        Could not minimize trail {}:\n      {}\n'.format(trail['Name'], error))
 
@@ -290,6 +306,19 @@ def main(args, pacu_main):
 
     if len(rules) > 0:
         print('Starting Config rules...\n')
+        summary_data['awsconfig'] = {
+            'rules': {
+                'deleted': 0,
+            },
+            'recorders': {
+                'deleted': 0,
+                'stopped': 0,
+            },
+            'aggregators': {
+                'deleted': 0,
+            }
+
+        }
         for region in config_regions:
             print('  Starting region {}...\n'.format(region))
 
@@ -304,6 +333,7 @@ def main(args, pacu_main):
                                 ConfigRuleName=rule['ConfigRuleName']
                             )
                             print('        Successfully deleted rule {}!\n'.format(rule['ConfigRuleName']))
+                            summary_data['awsconfig']['rules']['deleted'] += 1
                         except Exception as error:
                             print('        Could not delete rule {}:\n          {}\n'.format(rule['ConfigRuleName'], error))
                     else:
@@ -328,6 +358,7 @@ def main(args, pacu_main):
                                 ConfigurationRecorderName=recorder['name']
                             )
                             print('        Successfully deleted recorder {}!\n'.format(recorder['name']))
+                            summary_data['awsconfig']['recorders']['deleted'] += 1
                         except Exception as error:
                             print('        Could not delete recorder {}:\n          {}\n'.format(recorder['name'], error))
                     elif action == 'stop':
@@ -336,6 +367,7 @@ def main(args, pacu_main):
                                 ConfigurationRecorderName=recorder['name']
                             )
                             print('        Successfully stopped recorder {}!\n'.format(recorder['name']))
+                            summary_data['awsconfig']['recorders']['stopped'] += 1
                         except Exception as error:
                             print('        Could not stop recorder {}:\n          {}\n'.format(recorder['name'], error))
                     else:
@@ -360,6 +392,7 @@ def main(args, pacu_main):
                                 ConfigurationAggregatorName=aggregator['ConfigurationAggregatorName']
                             )
                             print('        Successfully deleted aggregator {}!\n'.format(aggregator['ConfigurationAggregatorName']))
+                            summary_data['awsconfig']['aggregators']['deleted'] += 1
                         except Exception as error:
                             print('        Could not delete aggregator {}:\n          {}\n'.format(aggregator['ConfigurationAggregatorName'], error))
                     else:
@@ -370,6 +403,10 @@ def main(args, pacu_main):
 
     if len(alarms) > 0:
         print('Starting CloudWatch alarms...\n')
+        summary_data['cloudwatch'] = {
+            'deleted': 0,
+            'disabled': 0,
+        }
         for region in cw_regions:
             print('  Starting region {}...\n'.format(region))
 
@@ -389,6 +426,7 @@ def main(args, pacu_main):
                                 ]
                             )
                             print('        Successfully deleted alarm {}!\n'.format(alarm['AlarmName']))
+                            summary_data['cloudwatch']['deleted'] += 1
                         except Exception as error:
                             print('        Could not delete alarm {}:\n          {}\n'.format(alarm['AlarmName'], error))
                     elif action == 'dis':
@@ -399,6 +437,7 @@ def main(args, pacu_main):
                                 ]
                             )
                             print('        Successfully disabled actions for alarm {}!\n'.format(alarm['AlarmName']))
+                            summary_data['cloudwatch']['disabled'] += 1
                         except Exception as error:
                             print('        Could not disable actions for alarm {}:\n          {}\n'.format(alarm['AlarmName'], error))
                     else:
@@ -409,6 +448,9 @@ def main(args, pacu_main):
 
     if len(flow_logs) > 0:
         print('Starting VPC flow logs...\n')
+        summary_data['vpc'] = {
+            'deleted': 0
+        }
         for region in vpc_regions:
             print('  Starting region {}...\n'.format(region))
 
@@ -429,6 +471,7 @@ def main(args, pacu_main):
                     FlowLogIds=logs_to_delete
                 )
                 print('        Attempt to delete all flow logs succeeded. Read the output for more information on any fails:\n          {}\n'.format(response))
+                summary_data['vpc']['deleted'] += len(logs_to_delete) - len(response['Unsuccessful'])
             except Exception as error:
                 print('        Attempt to delete flow logs failed:\n          {}\n'.format(error))
         print('VPC flow logs finished.\n')
@@ -436,8 +479,30 @@ def main(args, pacu_main):
         print('No flow logs found. Skipping VPC...\n')
 
     print('{} completed.\n'.format(module_info['name']))
-    return
+    return summary_data
 
 
 def summary(data, pacu_main):
-    raise NotImplementedError
+    out = ''
+    if 'guardduty' in data:
+        out += '  GuardDuty:\n'
+        out += '    {} detector(s) disabled.\n'.format(data['guardduty']['disabled'])
+        out += '    {} detector(s) deleted.\n'.format(data['guardduty']['deleted'])
+    if 'cloudtrail' in data:
+        out += '  CloudTrail:\n'
+        out += '    {} trail(s) disabled.\n'.format(data['cloudtrail']['disabled'])
+        out += '    {} trail(s) deleted.\n'.format(data['cloudtrail']['deleted'])
+        out += '    {} trail(s) minimized.\n'.format(data['cloudtrail']['minimized'])
+    if 'awsconfig' in data:
+        out += '  AWSConfig:\n'
+        out += '    Rules:\n'
+        out += '      {} rule(s) deleted.\n'.format(data['awsconfig']['rules']['deleted'])
+        out += '    Recorders:\n'
+        out += '      {} recorder(s) deleted.\n'.format(data['awsconfig']['recorders']['deleted'])
+        out += '      {} recorder(s) stopped.\n'.format(data['awsconfig']['recorders']['stopped'])
+        out += '    Aggregators:\n'
+        out += '      {} aggregator(s) deleted.\n'.format(data['awsconfig']['aggregators']['deleted'])
+    if 'vpc' in data:
+        out += '  VPC:\n'
+        out += '    {} flow log(s) deleted.\n'.format(data['vpc']['deleted'])
+    return out

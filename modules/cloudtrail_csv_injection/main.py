@@ -42,8 +42,10 @@ def main(args, pacu_main):
     ######
 
     summary_data = {
-        'create_trail_attack_status': False,
-        'run_instances_attack-status': False
+        'trail_attacks': 0,
+        'trail_fails': 0,
+        'instance_attacks': 0,
+        'instance_fails': 0
     }
     if 'regions' in args and args.regions is not None:
         if len(args.regions) == 1:
@@ -70,9 +72,10 @@ def main(args, pacu_main):
         except Exception as error:
             if 'InvalidTrailNameException' in str(error):
                 print('Attack succeeded.')
-                summary_data['create_trail_attack_status'] = True
+                summary_data['trail_attacks'] += 1
             else:
                 print('  CreateTrail attack failed.')
+                summary_data['trail_fails'] += 1
                 print(error)
 
         print('  Starting RunInstances attack...')
@@ -88,9 +91,10 @@ def main(args, pacu_main):
         except Exception as error:
             if 'InvalidAMIID' in str(error):
                 print('Attack succeeded.')
-                summary_data['run_instances_attack_status'] = True
+                summary_data['instance_attacks'] += 1
             else:
                 print('  RunInstances attack failed.')
+                summary_data['instance_fails'] += 1
                 print(error)
 
         print('  {} finished.'.format(region))
@@ -100,9 +104,9 @@ def main(args, pacu_main):
 
 
 def summary(data, pacu_main):
-    out = ''
-    create_trail_status = 'succeeded' if data['create_trail_attack_status'] else 'failed'
-    out += '  CreateTrail attack {}.\n'.format(create_trail_status)
-    run_instances_status = 'succeeded' if data['run_instances_attack_status'] else 'failed'
-    out += '  RunInstances attack {}.\n'.format(run_instances_status)
+    out = '  {} total trails found.\n'.format(data['trail_attacks'] + data['trail_fails'])
+    out += '  {} trails attacked.\n'.format(data['trail_attacks'])
+    out += '  {} trails failed to be attacked.\n'.format(data['trail_fails'])
+    out += '  {} instances attacked.\n'.format(data['instance_attacks'])
+    out += '  {} instances failed to be attacked.'.format(data['instance_fails'])
     return out

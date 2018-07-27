@@ -983,7 +983,7 @@ class Main:
                     raise ValueError('The {} module\'s summary is too long ({} characters). Reduce it to 1000 characters or fewer.'.format(module.module_info['name'], len(summary)))
                 if not isinstance(summary, str):
                     raise TypeError(' The {} module\'s summary is {}-type instead of str. Make summary return a string.'.format(module.module_info['name'], type(summary)))
-                self.print('MODULE SUMMARY:\n\n{}\n'.format(summary))
+                self.print('MODULE SUMMARY:\n\n{}\n'.format(summary.strip('\n')))
 
             self.running_module = None
             return

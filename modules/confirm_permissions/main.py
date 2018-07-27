@@ -90,8 +90,7 @@ def main(args, pacu_main):
         )
         user = key_info(alias=session.key_alias)
         user['PermissionsConfirmed'] = True
-        if 'Permissions' not in user:
-            user['Permissions'] = {'Allow': {}, 'Deny': {}}
+        user['Permissions'] = {'Allow': {}, 'Deny': {}}
         users.append(user)
         summary_data['single_user'] = user['UserName']
 

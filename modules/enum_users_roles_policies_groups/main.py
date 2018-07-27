@@ -78,7 +78,7 @@ def main(args, pacu_main):
         iam_data['Users'] = users
         session.update(pacu_main.database, IAM=iam_data)
         summary_data['Users'] = len(users)
-        print(str(users))
+        print('Found {} users.\n'.format(len(users)))
 
     if args.roles is True:
         roles = []
@@ -107,7 +107,7 @@ def main(args, pacu_main):
         iam_data['Roles'] = roles
         session.update(pacu_main.database, IAM=iam_data)
         summary_data['Roles'] = len(roles)
-        print(str(roles))
+        print('Found {} roles.\n'.format(len(roles)))
 
     if args.policies is True:
         policies = []
@@ -139,7 +139,7 @@ def main(args, pacu_main):
         iam_data['Policies'] = policies
         session.update(pacu_main.database, IAM=iam_data)
         summary_data['Policies'] = len(policies)
-        print(str(policies))
+        print('Found {} policies.\n'.format(len(policies)))
 
     if args.groups is True:
         groups = []
@@ -169,7 +169,7 @@ def main(args, pacu_main):
         iam_data['Groups'] = groups
         session.update(pacu_main.database, IAM=iam_data)
         summary_data['Groups'] = len(groups)
-        print(str(groups))
+        print('Found {} groups.\n'.format(len(groups)))
 
     print('{} completed.\n'.format(module_info['name']))
     return summary_data

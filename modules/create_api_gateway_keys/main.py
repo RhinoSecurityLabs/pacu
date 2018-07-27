@@ -73,10 +73,11 @@ def main(args, pacu_main):
         if cleanup(pacu_main, regions):
             print('  Successfully cleaned up old Pacu keys.')
             summary_data['cleanup'] = True
-            session.update(pacu_main.database, APIGateway={})
         else:
             print('  Keys were not successfully cleaned up.')
             summary_data['cleanup'] = False
+        # Either way assume database has been cleared, it if failed it's out of sync
+        session.update(pacu_main.database, APIGateway={})
         user_input = input('  Do you want to continue key creation? (y/n)')
         if user_input != 'y':
             return summary_data

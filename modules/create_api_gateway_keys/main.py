@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+from copy import deepcopy
 from botocore.exceptions import ClientError
 
 
@@ -16,7 +17,7 @@ module_info = {
     'one_liner': 'Attempts to create an API gateway key for a (or all) rest APIs that are defined.',
 
     # Full description about what the module does and how it works
-    'description': 'This module pulls data related to Lambda Functions, source code, aliases, event source mappings, versions, tags, and policies.',
+    'description': 'This module automatically creates API keys for every available region. There is an included cleanup feature to remove old "Pacu" keys that are referenced by name.',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['apigateway'],
@@ -65,12 +66,14 @@ def main(args, pacu_main):
     print = pacu_main.print
     get_regions = pacu_main.get_regions
     regions = args.regions.split(',') if args.regions else get_regions('apigateway')
-    summary_data = {}
 
+    summary_data = {'keys_created': 0}
+    api_keys = {}
     if args.cleanup:
         if cleanup(pacu_main, regions):
             print('  Successfully cleaned up old Pacu keys.')
             summary_data['cleanup'] = True
+            session.update(pacu_main.database, APIGateway={})
         else:
             print('  Keys were not successfully cleaned up.')
             summary_data['cleanup'] = False
@@ -79,14 +82,26 @@ def main(args, pacu_main):
             return summary_data
 
     for region in regions:
+        api_keys[region] = []
         print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('apigateway', region)
         try:
             response = client.create_api_key(name='Pacu')
             print('  Successfully created API key for: {}'.format(region))
+            api_keys[region].append(response['id'])
+            summary_data['keys_created'] += 1
         except ClientError as error:
             if error.response['Error']['Code'] == 'AccessDeniedException':
                 print('Unable to add key due to lack of authorization')
+
+    api_gateway_data = deepcopy(session.APIGateway)
+    for region in api_keys:
+        if region in api_gateway_data:
+            api_gateway_data[region].extend(api_keys[region])
+        else:
+            api_gateway_data[region] = api_keys[region]
+    session.update(pacu_main.database, APIGateway=api_gateway_data)
+
     return summary_data
 
 
@@ -97,4 +112,8 @@ def summary(data, pacu_main):
             out += '  Old keys were successfully removed\n'
         else:
             out += '  Old keys were not successfully removed\n'
+    if 'keys_created' == 0:
+        out += '  No keys were created.\n'
+    else:
+        out += '  {} keys were created.\n'.format(data['keys_created'])
     return out

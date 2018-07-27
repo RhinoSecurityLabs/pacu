@@ -51,7 +51,7 @@ def main(args, pacu_main):
     for region in regions:
         print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('apigateway', region)
-        print('Test')
+        response = client.create_api_key()
     return summary_data
 
 

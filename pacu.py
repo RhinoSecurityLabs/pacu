@@ -506,17 +506,8 @@ class Main:
     # Pacu commands and execution
 
     def parse_command(self, command):
-        # Temporary
         command = command.strip()
-        pattern = re.compile(r"""((?:(?<!\\)\').*?(?:(?<!\\)\'))|((?:(?<!\\)\").*?(?:(?<!\\)\"))|([\w-]+)""")
-        searched_command = pattern.findall(command)
-        args_to_use = []
-        for result in searched_command:
-            cleaned = list(filter(None, result))
-            if (cleaned[0].startswith('"') and cleaned[0].endswith('"')) or (cleaned[0].startswith("'") and cleaned[0].endswith("'")):
-                cleaned[0] = cleaned[0][1:-1]
-            args_to_use.append(cleaned[0])
-        command = args_to_use
+        command = command.split(' ')
 
         if command[0] == '':
             return

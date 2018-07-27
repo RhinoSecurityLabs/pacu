@@ -206,7 +206,7 @@ def main(args, pacu_main):
                         break
             print('    {} configuration recorders found.'.format(len(configuration_recorders)))
             all_configuration_recorders.extend(configuration_recorders)
-            
+
             # The following regions lack support for configuration aggregators.
             BAD_AGGREGATION_REGIONS = ['eu-west-2', 'ca-central-1', 'eu-west-3', 'sa-east-1', 'ap-south-1', 'ap-northeast-2']
             if region in BAD_AGGREGATION_REGIONS:

@@ -28,7 +28,7 @@ module_info = {
     'external_dependencies': [],
 
     # Module arguments to autocomplete when the user hits tab
-    'arguments_to_autocomplete': ['--regions'],
+    'arguments_to_autocomplete': ['--regions', '--cleanup'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])

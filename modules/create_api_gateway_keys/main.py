@@ -108,13 +108,9 @@ def main(args, pacu_main):
 
 def summary(data, pacu_main):
     out = ''
-    if 'cleanup' in data:
-        if data['cleanup']:
-            out += '  Old keys were successfully removed\n'
-        else:
-            out += '  Old keys were not successfully removed\n'
-    if 'keys_created' == 0:
-        out += '  No keys were created.\n'
+    if data.get('cleanup'):
+        out += '  Old keys were successfully removed\n'
     else:
-        out += '  {} keys were created.\n'.format(data['keys_created'])
+        out += '  Old keys were not successfully removed\n'
+    out += '  {} key(s) were created.\n'.format(data['keys_created'])
     return out

@@ -45,7 +45,7 @@ def main(args, pacu_main):
         'trail_attacks': 0,
         'trail_fails': 0,
         'instance_attacks': 0,
-        'instance_fails':0
+        'instance_fails': 0
     }
     if 'regions' in args and args.regions is not None:
         if len(args.regions) == 1:

@@ -329,7 +329,7 @@ def summary(data, pacu_main):
         out += '  {} CloudWatch Alarm(s) found.\n'.format(data['alarms'])
     if 'flowlogs' in data:
         out += '  {} VPC flow logs found.\n'.format(data['flowlogs'])
-    return out.strip()
+    return out.rstrip()
 
 
 def get_detector_master(detector_id, client):

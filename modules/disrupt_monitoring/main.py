@@ -471,7 +471,7 @@ def main(args, pacu_main):
                     FlowLogIds=logs_to_delete
                 )
                 print('        Attempt to delete all flow logs succeeded. Read the output for more information on any fails:\n          {}\n'.format(response))
-                summary_data['vpc']['deleted'] = len(logs_to_delete) - len(response['Unsuccessful'])
+                summary_data['vpc']['deleted'] += len(logs_to_delete) - len(response['Unsuccessful'])
             except Exception as error:
                 print('        Attempt to delete flow logs failed:\n          {}\n'.format(error))
         print('VPC flow logs finished.\n')

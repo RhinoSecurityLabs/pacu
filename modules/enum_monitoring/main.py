@@ -303,7 +303,7 @@ def main(args, pacu_main):
         summary_data['flowlogs'] = len(all_flow_logs)
 
     print('{} completed.\n'.format(module_info['name']))
-    return summary_data.rstrip()
+    return summary_data
 
 
 def summary(data, pacu_main):

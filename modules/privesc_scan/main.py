@@ -472,7 +472,7 @@ def summary(data, pacu_main):
     if data['scan_only']:
         return '  Scan Complete'
     else:
-        if data['success']:
+        if 'success' in data and data['success']:
             out = '  Privilege escalation was successful'
         else:
             out = '  Privilege escalation was not successful'
@@ -647,12 +647,12 @@ def SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data):
         if not policy_arn and active_aws_key.allow_permissions == {}:
             fetch = input('    It looks like the current users confirmed permissions have not been enumerated yet, so no valid policy can be found, enter "y" to run the confirm_permissions module to enumerate the required information, enter the ARN of a policy to create a new version for, or "n" to skip this privilege escalation module ([policy_arn]/y/n): ')
             if fetch.strip().lower() == 'n':
-                print('    Cancelling SetExistingDefaultPolicyVersion...')
+                print('    Cancelling SetExistingDefaultPolicyVersion...\n')
                 return False
 
             elif fetch.strip().lower() == 'y':
                 if fetch_data(None, 'confirm_permissions', '', force=True) is False:
-                    print('Pre-req module not run successfully. Skipping method...')
+                    print('Pre-req module not run successfully. Skipping method...\n')
                     return False
                 return SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data)
 
@@ -661,7 +661,9 @@ def SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data):
 
     if not policy_arn:  # If no policy_arn yet, check potential group and user policies
         policies_with_versions = []
-        all_potential_policies.extend(potential_user_policies).extend(potential_group_policies)
+        all_potential_policies.extend(potential_user_policies)
+        all_potential_policies.extend(potential_group_policies)
+
         for policy in all_potential_policies:
             response = client.list_policy_versions(
                 PolicyArn=policy['PolicyArn']
@@ -677,7 +679,7 @@ def SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data):
                 policy['Versions'] = versions
                 policies_with_versions.append(policy)
         if len(policies_with_versions) > 1:
-            print('Found {} policy(ies) with multiple versions. Choose one below.'.format(len(policies_with_versions)))
+            print('Found {} policy(ies) with multiple versions. Choose one below.\n'.format(len(policies_with_versions)))
             for i in range(0, len(policies_with_versions)):
                 print('  [{}] {}: {} versions'.format(i, policies_with_versions[i]['PolicyName'], len(policies_with_versions[i]['Versions'])))
             choice = input('Choose an option: ')
@@ -686,23 +688,27 @@ def SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data):
             target_policy = policies_with_versions[0]
     else:
         while policy_arn:  # Run until we get a policy with multiple versions or they cancel
+            target_policy['PolicyArn'] = policy_arn
             response = client.list_policy_versions(
                 PolicyArn=policy_arn
             )
             versions = response['Versions']
-            while response['IsTruncated']:
+            while 'IsTruncated' in response and response['IsTruncated'] is True:
                 response = client.list_policy_versions(
                     PolicyArn=policy_arn,
                     Marker=response['Marker']
                 )
                 versions.extend(response['Versions'])
+            target_policy['Versions'] = versions
             if len(versions) == 1:
                 policy_arn = input('  The policy ARN you supplied only has one valid version. Enter another policy ARN to try again, or press enter to skip to the next privilege escalation method: ')
                 if not policy_arn:
                     return False
+            else:
+                break
 
     if not target_policy:  # If even after everything else, there is still no policy: exit
-        print('  All methods of enumerating a valid policy have failed. Skipping to the next privilege escalation method...')
+        print('  All methods of enumerating a valid policy have failed. Skipping to the next privilege escalation method...\n')
         return False
     
     print('Now printing the policy document for each version of the target policy...\n')
@@ -716,10 +722,11 @@ def SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data):
         else:
             print('Version: {}\n'.format(version['VersionId']))
 
-        print(version)
+        print(version_document)
+        print('')
     new_version = input('What version would you like to switch to (example: v1)? Just press enter to keep it as the default: ')
     if not new_version:
-        print('  Keeping the default version as is.')
+        print('  Keeping the default version as is.\n')
         return False
 
     try:
@@ -727,10 +734,10 @@ def SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data):
             PolicyArn=target_policy['PolicyArn'],
             VersionId=new_version
         )
-        print('  Successfully set the default policy version to {}!'.format(new_version))
+        print('  Successfully set the default policy version to {}!\n'.format(new_version))
         return True
     except Exception as error:
-        print('  Failed to set a new default policy version: {}'.format(error))
+        print('  Failed to set a new default policy version: {}\n'.format(error))
         return False
 
 

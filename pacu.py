@@ -274,7 +274,7 @@ class Main:
             return False
 
     def print_key_info(self):
-        print(json.dumps(self.key_info(), indent=2, default=str))
+        self.print(self.key_info())
 
     def print_all_service_data(self, command):
         session = self.get_active_session()
@@ -779,30 +779,7 @@ class Main:
         executed before its pre-reqs have been filled, it will prompt you to run that module then continue
         once that is finished, so you have the necessary data for the module you want to run.
 
-        Command info:
-            proxy [help]                        Control PacuProxy/display help
-                start <ip> [port]                 Start the PacuProxy listener - port 80 by default.
-                                                    The listener will attempt to start on the IP
-                                                    supplied, but some hosts don't allow this. In
-                                                    this case, PacuProxy will listen on 0.0.0.0 and
-                                                    use the supplied IP to stage agents and it should
-                                                    work the same
-                stop                              Stop the PacuProxy listener
-                kill <agent_id>                   Kill an agent (stop it from running on the host)
-                list/ls                           List info on remote agent(s)
-                use none|<agent_id>               Use a remote agent, identified by unique integers
-                                                    (use "proxy list" to see them). Choose "none" to
-                                                    no longer use any proxy (route from the local
-                                                    host instead)
-                shell <agent_id> <command>        Run a shell command on the remote agent
-                fetch_ec2_keys <agent_id>         Try to read the meta-data of the target agent to
-                                                    request a set of temporary credentials for the
-                                                    attached instance profile (if there is one),
-                                                    then save them to the Pacu database and set
-                                                    them as the active key pair
-                stager sh|ps                      Generate a PacuProxy stager. The "sh" format is
-                                                    for *sh shells in Unix (like bash), and the "ps"
-                                                    format is for PowerShell on Windows
+        Pacu command info:
             list/ls                             List all modules
             search [cat[egory]] <search term>   Search the list of available modules by name or category
             help                                Display this page of information
@@ -829,6 +806,31 @@ class Main:
             swap_keys                           Change the currently active AWS key to another key that has
                                                   previously been set for this session
             exit/quit                           Exit Pacu
+
+        [ADVANCED] PacuProxy command info:
+            proxy [help]                        Control PacuProxy/display help
+                start <ip> [port]                 Start the PacuProxy listener - port 80 by default.
+                                                    The listener will attempt to start on the IP
+                                                    supplied, but some hosts don't allow this. In
+                                                    this case, PacuProxy will listen on 0.0.0.0 and
+                                                    use the supplied IP to stage agents and it should
+                                                    work the same
+                stop                              Stop the PacuProxy listener
+                kill <agent_id>                   Kill an agent (stop it from running on the host)
+                list/ls                           List info on remote agent(s)
+                use none|<agent_id>               Use a remote agent, identified by unique integers
+                                                    (use "proxy list" to see them). Choose "none" to
+                                                    no longer use any proxy (route from the local
+                                                    host instead)
+                shell <agent_id> <command>        Run a shell command on the remote agent
+                fetch_ec2_keys <agent_id>         Try to read the meta-data of the target agent to
+                                                    request a set of temporary credentials for the
+                                                    attached instance profile (if there is one),
+                                                    then save them to the Pacu database and set
+                                                    them as the active key pair
+                stager sh|ps                      Generate a PacuProxy stager. The "sh" format is
+                                                    for *sh shells in Unix (like bash), and the "ps"
+                                                    format is for PowerShell on Windows
         """)
 
     def display_proxy_help(self):
@@ -949,7 +951,6 @@ class Main:
                 self.print('  Running module {} on agent at {}...'.format(module_name, proxy_settings.target_agent[0]))
 
             self.running_module = module.module_info['name']
-            self.print('\n    {}\n'.format(module.module_info['description']))
 
             try:
                 summary_data = module.main(command[2:], self)
@@ -1154,7 +1155,10 @@ class Main:
 
         # Secret access key (should not be entered in log files)
         if key_alias is None:
-            new_value = input('Secret access key [{}]: '.format(session.secret_access_key))
+            if session.secret_access_key is None:
+                new_value = input('Secret access key [None]: ')
+            else:
+                new_value = input('Secret access key [{}{}]: '.format(session.secret_access_key[0:int(len(session.secret_access_key) / 2)], '*' * int(len(session.secret_access_key) / 2)))
         else:
             new_value = secret_access_key
         self.print('Secret access key [******]: ****** (Censored)', output='file')

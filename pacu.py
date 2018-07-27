@@ -959,7 +959,6 @@ class Main:
                 self.print('  Running module {} on agent at {}...'.format(module_name, proxy_settings.target_agent[0]))
 
             self.running_module = module.module_info['name']
-            self.print('\n    {}\n'.format(module.module_info['description']))
 
             try:
                 summary_data = module.main(command[2:], self)

@@ -86,4 +86,4 @@ def summary(data, pacu_main):
     out = ''
     for region in data:
         out += '  {} Event(s) found for {}.\n'.format(data[region], region)
-    return out.rstrip()
+    return out

@@ -128,7 +128,7 @@ def summary(data, pacu_main):
     out = ''
     if 'backdoored_password_count' in data:
         out += '  {} user(s) successfully backdoored.\n'.format(data['backdoored_password_count'])
-    return out.rstrip()
+    return out
 
 
 def create_valid_password(password_policy):

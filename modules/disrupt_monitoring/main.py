@@ -505,4 +505,4 @@ def summary(data, pacu_main):
     if 'vpc' in data:
         out += '  VPC:\n'
         out += '    {} flow log(s) deleted.\n'.format(data['vpc']['deleted'])
-    return out.rstrip()
+    return out

@@ -92,4 +92,4 @@ def summary(data, pacu_main):
     out = ''
     if 'Backdoored_Users_Count' in data:
         out += '  {} user key(s) successfully backdoored.\n'.format(data['Backdoored_Users_Count'])
-    return out.rstrip()
+    return out

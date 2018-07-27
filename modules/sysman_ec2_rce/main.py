@@ -491,4 +491,4 @@ def summary(data, pacu_main):
     else:
         out = '  Not all instances responded in time.\n'
     out += '    {} instances were successfully attacked'.format(data['instances'])
-    return out.rstrip()
+    return out

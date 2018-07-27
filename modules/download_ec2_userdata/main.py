@@ -105,4 +105,4 @@ def main(args, pacu_main):
 
 def summary(data, pacu_main):
     out = '  Downloaded EC2 userdata from {} instance(s).\n'.format(data['userdata_downloads'])
-    return out.rstrip()
+    return out

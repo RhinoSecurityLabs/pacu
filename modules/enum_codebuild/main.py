@@ -126,4 +126,4 @@ def summary(data, pacu_main):
         out += '    {}\n'.format(region)
         for val in data[region]:
             out += '        {} {} found.\n'.format(data[region][val], val[:-1] + '(' + val[-1] + ')')
-    return out.rstrip()
+    return out

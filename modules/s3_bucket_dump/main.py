@@ -247,4 +247,4 @@ def summary(data, pacu_main):
         out += '  {} buckets found with read permissions.\n'.format(data['readable_buckets'])
     if 'downloaded_files' in data:
         out += '  {} files downloaded.\n'.format(data['downloaded_files'])
-    return out.rstrip()
+    return out

@@ -169,7 +169,7 @@ def main(args, pacu_main):
 def summary(data, pacu_main):
     out = '  {} total buckets were found.\n'.format(data['buckets'])
     out += '  {} buckets were found with viewable contents.\n'.format(data['listable'])
-    return out.rstrip()
+    return out
 
 
 def create_bucket_list(domain, affixes=[]):

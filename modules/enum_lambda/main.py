@@ -120,4 +120,4 @@ def summary(data, pacu_main):
     out = ''
     for region in sorted(data):
         out += '  {} functions found in {}.\n'.format(data[region], region)
-    return out.rstrip()
+    return out

@@ -109,4 +109,4 @@ def summary(data, pacu_main):
     out += '  {} trails failed to be attacked.\n'.format(data['trail_fails'])
     out += '  {} instances attacked.\n'.format(data['instance_attacks'])
     out += '  {} instances failed to be attacked.'.format(data['instance_fails'])
-    return out.rstrip()
+    return out

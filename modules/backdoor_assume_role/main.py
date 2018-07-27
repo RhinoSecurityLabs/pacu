@@ -121,7 +121,7 @@ def summary(data, pacu_main):
     out = ''
     if 'RoleCount' in data:
         out += '  {} Role(s) successfully backdoored\n'.format(data['RoleCount'])
-    return out.rstrip()
+    return out
 
 
 def modify_assume_role_policy(original_policy, user_arns, no_random):

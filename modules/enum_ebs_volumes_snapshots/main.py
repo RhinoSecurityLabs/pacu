@@ -352,4 +352,4 @@ def summary(data, pacu_main):
         out += '    {} Private snapshots found\n'.format(data['Private'])
         out += '    {} Shared snapshots found\n'.format(data['Shared'])
         out += '      Snapshot permissions information written to: {}\n'.format(data['snapshot-permissions-path'])
-    return out.rstrip()
+    return out

@@ -109,4 +109,4 @@ def summary(data, pacu_main):
         out += '  Reports saved to: {}\n'.format(data['reports_location'])
     out += '  {} reports found.\n'.format(data['reports'])
     out += '  {} findings found.\n'.format(data['findings'])
-    return out.rstrip()
+    return out

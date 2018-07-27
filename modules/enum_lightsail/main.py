@@ -120,4 +120,4 @@ def summary(data, pacu_main):
     out = ''
     for field in data:
         out += '  {} {} enumerated\n'.format(data[field], field[:-1] + '(s)')
-    return out.rstrip()
+    return out

@@ -273,7 +273,7 @@ def summary(data, pacu_main):
         out += '  Confirmed Permissions for: {}.\n'.format(data['single_user'])
     else:
         out += '  Confirmed Permissions for {} User(s).\n'.format(data['users_confirmed'])
-    return out.rstrip()
+    return out
 
 
 def parse_attached_policies(client, attached_policies, user):

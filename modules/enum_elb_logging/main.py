@@ -108,4 +108,4 @@ def summary(data, pacu_main):
     out = '  {} Load balancer(s) have been found\n'.format(data['load_balancers'])
     if data['load_balancers'] > 0:
         out += '    Load balancer information has been saved to: {}\n'.format(data['csv_file_path'])
-    return out.rstrip()
+    return out

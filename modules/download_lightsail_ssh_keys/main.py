@@ -59,4 +59,4 @@ def summary(data, pacu_main):
     out = '  Downloaded Key Pairs for the following regions: \n'
     for region in sorted(data['region_key_pairs']):
         out += '    {}\n'.format(region)
-    return out.rstrip()
+    return out

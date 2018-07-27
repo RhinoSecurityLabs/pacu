@@ -179,4 +179,4 @@ def summary(data, pacu_main):
     out = ''
     for key in data:
         out += '{} {} Enumerated\n'.format(data[key], key)
-    return out.rstrip()
+    return out

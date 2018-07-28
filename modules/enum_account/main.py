@@ -104,8 +104,14 @@ def main(args, pacu_main):
         for k in org_data.keys():
             print("\t\t{}: {}".format(k, org_data[k]))
 
+    account_data = {
+        'account_id': account_id,
+        'account_iam_alias': account_iam_alias,
+        'account_total_spend': account_spend,
+        'org_data': org_data
+    }
 
-    # session.update(pacu_main.database, Lambda=lambda_data)
+    session.update(pacu_main.database, Account=account_data)
 
     print(f"{module_info['name']} completed.\n")
     return

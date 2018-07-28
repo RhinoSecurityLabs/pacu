@@ -111,7 +111,9 @@ class PacuSession(Base, ModelUpdateMixin):
         'Lightsail',
         'S3',
         'Shield',
-        'VPC'
+        'VPC',
+        'Account',
+        'AccountSpend'
     )
 
     aws_keys = relationship('AWSKey', backref='session', cascade='all, delete-orphan', lazy='dynamic')
@@ -140,6 +142,8 @@ class PacuSession(Base, ModelUpdateMixin):
     S3 = Column(JSONType, nullable=False, default=dict)
     Shield = Column(JSONType, nullable=False, default=dict)
     VPC = Column(JSONType, nullable=False, default=dict)
+    Account = Column(JSONType, nullable=False, default=dict)
+    AccountSpend = Column(JSONType, nullable=False, default=dict)
 
     def __repr__(self):
         if self.key_alias:

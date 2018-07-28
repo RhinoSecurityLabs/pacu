@@ -742,13 +742,62 @@ def SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data):
 
 
 def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
-    return
+    session = pacu_main.get_active_session()
+
+    print('  Starting method CreateEC2WithExistingIP...\n')
+
+    regions = pacu_main.get_regions('ec2')
+    region = None
+
+    if len(regions) > 1:
+        print('  Found multiple valid regions. Choose one below.\n')
+        for i in range(0, len(regions)):
+            print('  [{}] {}'.format(i, regions[i]))
+        choice = input('What region do you want to launch the EC2 instance in? ')
+        region = regions[int(choice)]
+    elif len(regions) == 1:
+        region = regions[0]
+    else:
+        while not region:
+            all_ec2_regions = pacumain.get_regions('ec2', check_session=False)
+            region = input('  No valid regions found that the current set of session regions supports. Enter in a region (example: us-west-2) or press enter to skip to the next privilege escalation method: ')
+            if not region:
+                return False
+            elif region not in all_ec2_regions:
+                print('    Region {} is not a valid EC2 region. Please choose a valid region. Valid EC2 regions include:\n'.format(region))
+                print(all_ec2_regions)
+                region = None
+
+    amis_by_region = {
+        'us-east-2': 'ami-8c122be9',
+        'us-east-1': 'ami-b70554c8',
+        'us-west-1': 'ami-e0ba5c83',
+        'us-west-2': 'ami-a9d09ed1',
+        'ap-northeast-1': 'ami-e99f4896',
+        'ap-northeast-2': 'ami-afd86dc1',
+        'ap-south-1': 'ami-d783a9b8',
+        'ap-southeast-1': 'ami-05868579',
+        'ap-southeast-2': 'ami-39f8215b',
+        'ca-central-1': 'ami-0ee86a6a',
+        'eu-central-1': 'ami-7c4f7097',
+        'eu-west-1': 'ami-466768ac',
+        'eu-west-2': 'ami-b8b45ddf',
+        'eu-west-3': 'ami-2cf54551',
+        'sa-east-1': 'ami-6dca9001'
+    }
+    ami = amis_by_region[region]
+
+    print('    Targeting region {}...'.format(region))
+
+
+
+
 
 
 def CreateAccessKey(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
 
-    print('  Starting method CreateAccessKey...')
+    print('  Starting method CreateAccessKey...\n')
 
     username = input('    Is there a specific user you want to target? They must not already have two sets of access keys created for their user. Enter their user name now or just hit enter to enumerate users and view a list of options: ')
     if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies_groups', '--users') is False:
@@ -782,7 +831,7 @@ def CreateAccessKey(pacu_main, print, input, fetch_data):
 def CreateLoginProfile(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
 
-    print('  Starting method CreatingLoginProfile...')
+    print('  Starting method CreatingLoginProfile...\n')
 
     username = input('    Is there a specific user you want to target? They must not already have a login profile (password for logging into the AWS Console). Enter their user name now or just hit enter to enumerate users and view a list of options: ')
     if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies_groups', '--users') is False:
@@ -824,7 +873,7 @@ def CreateLoginProfile(pacu_main, print, input, fetch_data):
 def UpdateLoginProfile(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
 
-    print('  Starting method UpdateLoginProfile...')
+    print('  Starting method UpdateLoginProfile...\n')
 
     username = input('    Is there a specific user you want to target? They must already have a login profile (password for logging into the AWS Console). Enter their user name now or just hit enter to enumerate users and view a list of options: ')
     if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies_groups', '--users') is False:
@@ -865,7 +914,7 @@ def UpdateLoginProfile(pacu_main, print, input, fetch_data):
 def AttachUserPolicy(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
 
-    print('  Starting method AttachUserPolicy...')
+    print('  Starting method AttachUserPolicy...\n')
 
     client = pacu_main.get_boto3_client('iam')
 
@@ -889,7 +938,7 @@ def AttachUserPolicy(pacu_main, print, input, fetch_data):
 def AttachGroupPolicy(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
 
-    print('  Starting method AttachGroupPolicy...')
+    print('  Starting method AttachGroupPolicy...\n')
 
     active_aws_key = session.get_active_aws_key(pacu_main.database)
     client = pacu_main.get_boto3_client('iam')
@@ -950,7 +999,7 @@ def PutRolePolicy(pacu_main, print, input, fetch_data):
 def AddUserToGroup(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
 
-    print('  Starting method AddUserToGroup...')
+    print('  Starting method AddUserToGroup...\n')
 
     client = pacu_main.get_boto3_client('iam')
 
@@ -1011,7 +1060,7 @@ def PassExistingRoleToNewGlueDevEndpoint(pacu_main, print, input, fetch_data):
 def UpdateExistingGlueDevEndpoint(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
 
-    print('  Starting method UpdateExistingGlueDevEndpoint...')
+    print('  Starting method UpdateExistingGlueDevEndpoint...\n')
 
     endpoint_name = input('    Is there a specific Glue Development Endpoint you want to target? Enter the name of it now or just hit enter to enumerate development endpoints and view a list of options: ')
     pub_ssh_key = input('    Enter your personal SSH public key to access the development endpoint (in the format of an authorized_keys file: ssh-rsa AAASDJHSKH....AAAAA== name) or just hit enter to skip this privilege escalation attempt: ')

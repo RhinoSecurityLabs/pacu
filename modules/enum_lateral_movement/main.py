@@ -20,7 +20,7 @@ module_info = {
     'description': 'Looks for DirectConnect, VPN or VPC Peering to understand where you can go once you compromise an instance inside a VPC',
 
     # A list of AWS services that the module utilizes during its execution
-    'services': ['EC2'],
+    'services': ['EC2', 'DirectConnect'],
 
     # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
     'prerequisite_modules': [],
@@ -36,11 +36,6 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 parser.add_argument('--versions-all', required=False, default=False, action='store_true', help='Grab all versions instead of just the latest')
 
 
-# For when "help module_name" is called, don't modify this
-def help():
-    return [module_info, parser.format_help()]
-
-
 # Main is the first function that is called when this module is executed
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -52,9 +47,8 @@ def main(args, pacu_main):
     ######
 
     regions = get_regions('DirectConnect')
-    regions = ['us-east-1']
 
-    dx_vpcs = {}
+    dx_vpcs = copy.deepcopy(session.VPC)
     vgw_assoc = {}
     for region in regions:
         print(f'Starting region {region}...')
@@ -148,5 +142,5 @@ def get_vpc_by_id(pacu_main, vpc_id, region):
         vpc_response = ec2_client.describe_vpcs(VpcIds=[vpc_id])
         return(vpc_response['Vpcs'][0])
     except ClientError as e:
-        print("Cannot find {} in {} for this account".format(vpc_id, region))
+        print("Cannot find {} in {} for this account: {}".format(vpc_id, region, e))
         return(None)

@@ -35,7 +35,8 @@ parser.add_argument(
 )
 
 SUPPORTED_SERVICES = [
-    'ec2'
+    'ec2',
+    's3'
 ]
 
 allow_permissions = {}
@@ -220,6 +221,50 @@ def build_service_list(services=None):
     service_list = [service for service in services if service in SUPPORTED_SERVICES]
     return service_list
 
+def exception_handler(func, kwargs, error):
+    if isinstance(error, ParamValidationError):
+        if 'Unknown parameter in input: "DryRun"' in str(error):
+            print('DryRun failed. Retrying without DryRun parameter')
+            del kwargs['DryRun']
+        else:
+            if 'AvailabilityZone' not in kwargs and 'AvailabilityZone' in str(error):
+                print("Adding Availability Zone")
+                kwargs['AvailabilityZone'] = region + 'a'
+            else:
+                print('Parameter Validation Error: {}'.format(error))
+                kwargs.update(**error_delegator(error))
+    if isinstance(error, ClientError):
+        # DryRun returned true, adding to allowed permissions
+        if error.response['Error']['Code'] == 'DryRunOperation':
+            allow_permissions[service].append(func)
+            print('Authorization exists for: {}'.format(func))
+            return True
+
+        # Error with request raised.
+        print('ClientError: {}'.format(error))
+        code = error.response['Error']['Code']
+        if code == 'AccessDeniedException' or code == 'OptInRequired' or 'Unauthorized' in str(error):
+            print('Unauthorized for permission: {}:{}'.format(service, func))
+            deny_permissions[service].append(func)
+            return True
+        elif code == 'MissingParameter':
+            param = str(error).split()[-1]
+            param = param[0].upper() + param[1:]
+            kwargs.update(**missing_param(param))
+        # If action is not supported, skip.
+        elif code == 'UnsupportedOperation':
+            return True
+        elif code == 'InvalidRequest' or code == 'InvalidParameterValue' or 'Malformed' in code or 'NotFound' in code or 'Unknown' in code:
+            print('Special Parameter Found')
+            if not convert_special_params(func, kwargs):
+                print('No suitable valid data could be found')
+                return True
+        else:
+            print('Unknown error:')
+            print(error)
+            return True
+    return False
+
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -251,60 +296,25 @@ def main(args, pacu_main):
                 kwargs = preload_actions[func] if func in preload_actions else {}
                 kwargs['DryRun'] = True
                 while True:
+                    print('---------------------------------------------------------')
+                    print('Trying {}...'.format(func))
+                    print('Kwargs: {}'.format(kwargs))
+                    caller = getattr(client, func)
                     try:
-                        print('---------------------------------------------------------')
-                        print('Trying {}...'.format(func))
-                        print('Kwargs: {}'.format(kwargs))
-                        caller = getattr(client, func)
                         caller(**kwargs)
                         allow_permissions[service].append(func)
                         print('Authorization exists for: {}'.format(func))
                         break
-                    except ParamValidationError as error:
-                        if 'Unknown parameter in input: "DryRun"' in str(error):
-                            print('DryRun failed. Retrying without DryRun parameter')
-                            del kwargs['DryRun']
-                        else:
-                            if 'AvailabilityZone' not in kwargs and 'AvailabilityZone' in str(error):
-                                print("Adding Availability Zone")
-                                kwargs['AvailabilityZone'] = region + 'a'
-                            else:
-                                print('Parameter Validation Error: {}'.format(error))
-                                kwargs = {**kwargs, **error_delegator(error)}
-                    except ClientError as error:
-                        # DryRun returned true, adding to allowed permissions
-                        if error.response['Error']['Code'] == 'DryRunOperation':
+                    except Exception as error:
+                        # Special Exception for exception that returns a DryRunOperation
+                        if 'DryRunOperation' in str(error):
                             allow_permissions[service].append(func)
                             print('Authorization exists for: {}'.format(func))
                             break
-
-                        # Error with request raised.
-                        print('ClientError: {}'.format(error))
-                        code = error.response['Error']['Code']
-                        if code == 'AccessDeniedException' or code == 'OptInRequired' or 'Unauthorized' in str(error):
-                            print('Unauthorized for permission: {}:{}'.format(service, func))
+                        elif exception_handler(func, kwargs, error):
                             deny_permissions[service].append(func)
                             break
-                        elif code == 'MissingParameter':
-                            param = str(error).split()[-1]
-                            param = param[0].upper() + param[1:]
-                            kwargs = {**kwargs, **missing_param(param)}
-                        # If action is not supported, skip.
-                        elif code == 'UnsupportedOperation':
-                            break
-                        elif code == 'InvalidRequest' or code == 'InvalidParameterValue' or 'Malformed' in code or 'NotFound' in code or 'Unknown' in code:
-                            print('Special Parameter Found')
-                            if not convert_special_params(func, kwargs):
-                                print('No suitable valid data could be found')
-                                possible_permissions[service].append(func)
-                                break
-
-                        else:
-                            print('Unknown error:')
-                            print(error)
-                            bugged_permissions.append('{}:{}'.format(service, func))
-                            print('*************************END FUNCTION*************************\n')
-                            break
+                print('*************************END FUNCTION*************************\n')
             break
         break
 
@@ -320,8 +330,10 @@ def main(args, pacu_main):
     print('Bugged Actions')
     print(bugged_permissions)
 
-    full_allow = [service + ':' + camel_case(perm) for perm in allow_permissions[service] for service in allow_permissions]
-    full_deny = [service + ':' + camel_case(perm) for perm in deny_permissions[service] for service in deny_permissions]
+    if allow_permissions:
+        full_allow = [service + ':' + camel_case(perm) for perm in allow_permissions[service] for service in allow_permissions]
+    if deny_permissions:
+        full_deny = [service + ':' + camel_case(perm) for perm in deny_permissions[service] for service in deny_permissions]
     active_aws_key = session.get_active_aws_key(pacu_main.database)
     active_aws_key.update(
         pacu_main.database,

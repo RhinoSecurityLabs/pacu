@@ -198,7 +198,7 @@ class Main:
             return True
         return False
 
-    def get_regions(self, service):
+    def get_regions(self, service, check_session=True):
         session = self.get_active_session()
 
         service = str.lower(service)
@@ -216,12 +216,10 @@ class Main:
             return list(regions[service]['endpoints'].keys())
         else:
             valid_regions = list(regions[service]['endpoints'].keys())
-            return [region for region in valid_regions if region in session.session_regions]
-
-        if 'all' in session.session_regions:
-            return regions
-        else:
-            return [region for region in valid_regions if region in session.session_regions]
+            if check_session is True:
+                return [region for region in valid_regions if region in session.session_regions]
+            else:
+                return valid_regions
 
     def display_all_regions(self, command):
         for region in sorted(self.get_regions('all')):

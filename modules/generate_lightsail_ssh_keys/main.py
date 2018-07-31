@@ -86,7 +86,7 @@ def main(args, pacu_main):
             print('Invalid key format provided.')
             break
     for region in created_keys:
-        ssh_key_dir = os.path.join(os.getcwd(), 'sessions', session.name, 'downloads', 'generated_keys', region)
+        ssh_key_dir = os.path.join(os.getcwd(), 'sessions', session.name, 'downloads', 'generate_lightsail_ssh_keys', region)
         if not os.path.exists(ssh_key_dir):
             os.makedirs(ssh_key_dir)
         private_key_file_dir = os.path.join(ssh_key_dir, created_keys[region]['name'])

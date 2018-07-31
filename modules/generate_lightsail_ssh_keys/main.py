@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 from botocore.exceptions import ClientError
-import csv
 import os
 
 
@@ -48,6 +47,7 @@ def main(args, pacu_main):
 
     args = parser.parse_args(args)
     created_keys = {}
+    imported_keys = 0
     name = args.key_name
     regions = args.regions.split(',') if args.regions else get_regions('lightsail')
 
@@ -72,11 +72,8 @@ def main(args, pacu_main):
                     print('Error opening key file.')
                     break
                 response = client.import_key_pair(keyPairName=name, publicKeyBase64=key)
-                created_keys[region] = {
-                    'name': name,
-                    'private': 'IMPORTED',
-                    'public': key
-                }
+                print('    Key successfully imported for {}'.format(region))
+                imported_keys += 1
         except ClientError as error:
             code = error.response['Error']['Code']
             if code == 'AccessDeniedException':
@@ -88,24 +85,32 @@ def main(args, pacu_main):
         except client.exceptions.InvalidInputException as error:
             print('Invalid key format provided.')
             break
-
-    ssh_key_dir = os.path.join(os.getcwd(), 'sessions', session.name, 'downloads', 'ssh')
-    if not os.path.exists(ssh_key_dir):
-        os.makedirs(ssh_key_dir)
-    file_name = os.path.join(ssh_key_dir, 'keys.csv')
-
-    with open(file_name, 'w') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(['region', 'key_name', 'public_key', 'private_key'])
-        for region in created_keys:
-            key = created_keys[region]
-            writer.writerow([region, key['name'], key['public'], key['private']])
+    for region in created_keys:
+        ssh_key_dir = os.path.join(os.getcwd(), 'sessions', session.name, 'downloads', 'generated_keys', region)
+        if not os.path.exists(ssh_key_dir):
+            os.makedirs(ssh_key_dir)
+        private_key_file_dir = os.path.join(ssh_key_dir, created_keys[region]['name'])
+        public_key_file_dir = os.path.join(ssh_key_dir, created_keys[region]['name'] + '.pub')
+        try:
+            with open(private_key_file_dir, 'w') as private_key_file:
+                private_key_file.write(created_keys[region]['private'])
+            with open(public_key_file_dir, 'w') as public_key_file:
+                public_key_file.write(created_keys[region]['public'])
+        except IOError:
+            print('Error writing to file')
+            continue
     print('{} completed.\n'.format(module_info['name']))
 
-    summary_data = {'keys': len(created_keys.keys())}
+    summary_data = {
+        'keys': len(created_keys.keys()),
+        'imports': imported_keys
+    }
     return summary_data
 
 
 def summary(data, pacu_main):
-    out = '  {} keys created'.format(data['keys'])
+    if data['imports'] > 0:
+        out = '  {} keys imported'.format(data['imports'])
+    else:
+        out = '  {} keys created'.format(data['keys'])
     return out

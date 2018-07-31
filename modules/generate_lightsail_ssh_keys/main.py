@@ -66,7 +66,7 @@ def main(args, pacu_main):
                     with open(args.import_key_file, 'r') as key_file:
                         key = key_file.read()
                 except IOError:
-                    print('Error opening key file')
+                    print('Error opening key file.')
                     break
                 response = client.import_key_pair(keyPairName=name, publicKeyBase64=key)
                 created_keys[region] = {
@@ -77,9 +77,9 @@ def main(args, pacu_main):
         except ClientError as error:
             code = error.response['Error']['Code']
             if code == 'AccessDeniedException':
-                print('Unauthorized to add key pair to Lightsail')
+                print('Unauthorized to add key pair to Lightsail.')
             elif 'already in use' in str(error):
-                print('Key name already in use')
+                print('Key name already in use.')
                 continue
             break
         except client.exceptions.InvalidInputException as error:

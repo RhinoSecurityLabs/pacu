@@ -35,59 +35,126 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--instances', required=False, help='Import a key if specified, otherwise, create one.')
+parser.add_argument('--instances', required=False, help='One or more (comma separated) EC2 instance IDs and their regions in the format instanceid@region. Defaults to all instances..')
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all session regions.')
 
+def write_keys_to_file(created_keys, session):
+    for region in created_keys:
+        ssh_key_dir = os.path.join(os.getcwd(), 'sessions', session.name, 'downloads', 'generate_temp_lightsail_access', region)
+        if not os.path.exists(ssh_key_dir):
+            os.makedirs(ssh_key_dir)
+        for credential in created_keys[region]:
+            if credential['protocol'] == 'rdp':
+                windows_file_dir = os.path.join(ssh_key_dir, credential['instanceName'])
+                try:
+                    with open(windows_file_dir, 'w') as windows_file:
+                        windows_file.write('instanceName,ipAddress,username,password\n')
+
+                        windows_file.write(credential['instanceName'] + ',')
+                        windows_file.write(credential['ipAddress'] + ',')
+                        windows_file.write(credential['username'] + ',')
+                        windows_file.write(credential['password'] + '\n')
+                except IOError:
+                    print('Error writing credential file for {}.'.format(credential['instanceName']))
+                    continue
+            else:
+                private_key_file_dir = os.path.join(ssh_key_dir, credential['instanceName'])
+                cert_key_file_dir = os.path.join(ssh_key_dir, credential['instanceName'] + '-cert.pub')
+                try:
+                    with open(private_key_file_dir, 'w') as private_key_file:
+                        private_key_file.write(credential['privateKey'])
+                    with open(cert_key_file_dir, 'w') as cert_key_file:
+                        cert_key_file.write(credential['certKey'])
+                except IOError:
+                    print('Error writing credential file for {}.'.format(credential['instanceName']))
+                    continue
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
     print = pacu_main.print
     get_regions = pacu_main.get_regions
+    fetch_data = pacu_main.fetch_data
 
     args = parser.parse_args(args)
     regions = args.regions.split(',') if args.regions else get_regions('lightsail')
-
-    instances = []
-
+    instances = {}
     for region in regions:
+        instances[region] = []
+
+    if args.instances is not None:  # need to update this to include the regions of these IDs
+        for instance in args.instances.split(','):
+            instance_name = instance.split('@')[0]
+            region = instance.split('@')[1]
+            protocol = instance.split('@')[2]
+            if region not in regions:
+                print('  {} is not a valid region'.format(region))
+                continue
+            else:
+                instances[region].append({
+                    'name': instance_name,
+                    'protocol': protocol
+                })
+    else:
+        print('Targeting all Lightsail instances...')
+        if fetch_data(['Lightsail'], 'enum_lightsail', '--instances') is False:
+            print('Pre-req module not run successfully. Exiting...')
+            return
+        for region in session.Lightsail:
+            if region in regions:
+                for instance in session.Lightsail[region]['instances']:
+                    protocol = 'rdp' if 'Windows' in instance['blueprintName'] else 'ssh'
+                    instances[region].append({
+                        'name':instance['name'],
+                        'protocol': protocol
+                    })
+
+    temp_keys = {}
+    for region in instances:
+        temp_keys[region] = []
         print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('lightsail', region)
-        for instance in instances:
+        for instance in instances[region]:
+            print('  Processing instance {}'.format(instance['name']))
             try:
-                print('do something')
-        
+                name = instance['name']
+                protocol = instance['protocol']
+                response = client.get_instance_access_details(
+                    instanceName=name,
+                    protocol=protocol
+                )
+                temp_keys[region].append(response['accessDetails'])
+                print('  Successfully created temporary access for {}'.format(name))
             except ClientError as error:
                 code = error.response['Error']['Code']
                 if code == 'AccessDeniedException':
-                    print('Unauthorized to add key pair to Lightsail.')
-                elif 'already in use' in str(error):
-                    print('Key name already in use.')
+                    print('Unauthorized to generate temporary access.')
+                    return
+                elif code == 'OperationFailureException':
+                    print(error.response['Error']['Message'])
                     continue
-                break
-            except client.exceptions.InvalidInputException as error:
-                print('Invalid key format provided.')
+                else:
+                    print(error)
                 break
 
-    for region in created_keys:
-        ssh_key_dir = os.path.join(os.getcwd(), 'sessions', session.name, 'downloads', 'generated_keys', region)
-        if not os.path.exists(ssh_key_dir):
-            os.makedirs(ssh_key_dir)
-        private_key_file_dir = os.path.join(ssh_key_dir, created_keys[region]['name'])
-        public_key_file_dir = os.path.join(ssh_key_dir, created_keys[region]['name'] + '.pub')
-        try:
-            with open(private_key_file_dir, 'w') as private_key_file:
-                private_key_file.write(created_keys[region]['private'])
-            with open(public_key_file_dir, 'w') as public_key_file:
-                public_key_file.write(created_keys[region]['public'])
-        except IOError:
-            print('Error writing to file')
-            continue
+    write_keys_to_file(temp_keys, session)
     print('{} completed.\n'.format(module_info['name']))
 
-    summary_data = {}
+    windows_count = 0
+    ssh_count = 0
+    for region in temp_keys:
+        for credential in temp_keys[region]:
+            if credential['protocol'] == 'rdp':
+                windows_count += 1
+            else:
+                ssh_count += 1
+    summary_data = {
+        'windows': windows_count,
+        'linux': ssh_count
+    }
     return summary_data
 
 
 def summary(data, pacu_main):
-    out = ''
+    out = '  Created temporary access for {} Windows instances.\n'.format(data['windows'])
+    out += '  Created temporary access for {} Linux instances.\n'.format(data['linux'])
     return out

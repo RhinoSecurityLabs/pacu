@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-import os
-import csv
 import argparse
 from botocore.exceptions import ClientError
+import csv
+import os
+
+
 module_info = {
     # Name of the module (should be the same as the filename)
     'name': 'generate_lightsail_ssh_keys',
@@ -33,6 +35,7 @@ module_info = {
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
+
 parser.add_argument('--key-name', default='Pacu', required=False, help='Alias for imported/created key pair. Defaults to Pacu.')
 parser.add_argument('--import-key-file', required=False, help='Import a key if specified, otherwise, create one.')
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all session regions.')
@@ -93,6 +96,7 @@ def main(args, pacu_main):
 
     with open(file_name, 'w') as csvfile:
         writer = csv.writer(csvfile)
+        writer.writerow(['region', 'key_name', 'public_key', 'private_key'])
         for region in created_keys:
             key = created_keys[region]
             writer.writerow([region, key['name'], key['public'], key['private']])

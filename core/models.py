@@ -98,6 +98,7 @@ class ProxySettings(Base, ModelUpdateMixin):
 class PacuSession(Base, ModelUpdateMixin):
     __tablename__ = 'pacu_session'
     aws_data_field_names = (
+        'APIGateway',
         'CloudTrail',
         'CloudWatch',
         'CodeBuild',
@@ -130,6 +131,7 @@ class PacuSession(Base, ModelUpdateMixin):
     session_token = Column(Text)
     session_regions = Column(JSONType, nullable=False, default=['all'])
 
+    APIGateway = Column(JSONType, nullable=False, default=dict)
     CloudTrail = Column(JSONType, nullable=False, default=dict)
     CloudWatch = Column(JSONType, nullable=False, default=dict)
     CodeBuild = Column(JSONType, nullable=False, default=dict)

@@ -30,11 +30,10 @@ module_info = {
     'external_dependencies': [],
 
     # Module arguments to autocomplete when the user hits tab
-    'arguments_to_autocomplete': ['--versions-all'],
+    'arguments_to_autocomplete': [],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
-parser.add_argument('--versions-all', required=False, default=False, action='store_true', help='Grab all versions instead of just the latest')
 
 
 # Main is the first function that is called when this module is executed

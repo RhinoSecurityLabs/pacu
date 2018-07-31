@@ -2,7 +2,7 @@
 import argparse
 from botocore.exceptions import ClientError
 import datetime
-from dateutil import tz
+
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -37,11 +37,6 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 parser.add_argument('--versions-all', required=False, default=False, action='store_true', help='Grab all versions instead of just the latest')
 
 
-# For when "help module_name" is called, don't modify this
-def help():
-    return [module_info, parser.format_help()]
-
-
 # Main is the first function that is called when this module is executed
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -49,9 +44,7 @@ def main(args, pacu_main):
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = pacu_main.print
-    get_regions = pacu_main.get_regions
     ######
-
 
     sts_client = pacu_main.get_boto3_client('sts')
     response = sts_client.get_caller_identity()
@@ -62,7 +55,8 @@ def main(args, pacu_main):
     response = iam_client.list_account_aliases()
     account_iam_alias = response['AccountAliases'][0]
 
-    cwm_client = pacu_main.get_boto3_client('cloudwatch')
+    # All the billing seems to be in us-east-1. YMMV
+    cwm_client = pacu_main.get_boto3_client('cloudwatch', "us-east-1")
     try:
         response = cwm_client.get_metric_statistics(
             Namespace='AWS/Billing',
@@ -73,9 +67,9 @@ def main(args, pacu_main):
                     'Value': 'USD'
                 },
             ],
-            StartTime=datetime.datetime.now() - datetime.timedelta(hours = 6),
+            StartTime=datetime.datetime.now() - datetime.timedelta(hours=6),
             EndTime=datetime.datetime.now(),
-            Period=21600, # 6 hours
+            Period=21600,  # 6 hours
             Statistics=['Maximum'],
             Unit='None'
         )
@@ -93,17 +87,6 @@ def main(args, pacu_main):
     org_response = org_client.describe_organization()
     org_data = org_response['Organization']
 
-
-    print("Account Information:")
-    print("\tAccount ID: {}".format(account_id))
-    print("\tAccount IAM Alias: {}".format(account_iam_alias))
-    print("\tKey Arn: {}".format(key_arn))
-    print("\tAccount Spend: {} (USD)".format(account_spend))
-    if org_data is not None:
-        print("\tParent Account:")
-        for k in org_data.keys():
-            print("\t\t{}: {}".format(k, org_data[k]))
-
     account_data = {
         'account_id': account_id,
         'account_iam_alias': account_iam_alias,
@@ -113,5 +96,23 @@ def main(args, pacu_main):
 
     session.update(pacu_main.database, Account=account_data)
 
-    print(f"{module_info['name']} completed.\n")
-    return
+    print('{} completed.\n'.format(module_info['name']))
+
+    summary_data = {
+        'key_arn': key_arn,
+        **account_data
+    }
+    return summary_data
+
+
+def summary(data, pacu_main):
+    out = "Account Information:\n"
+    out += "    Account ID: {}\n".format(data['account_id'])
+    out += "    Account IAM Alias: {}\n".format(data['account_iam_alias'])
+    out += "    Key Arn: {}\n".format(data['key_arn'])
+    out += "    Account Spend: {} (USD)\n".format(data['account_total_spend'])
+    if data.get('org_data', None) is not None:
+        out += "    Parent Account:\n"
+        for key in data['org_data'].keys():
+            out += "        {}: {}\n".format(key, data['org_data'][key])
+    return out

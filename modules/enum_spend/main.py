@@ -2,7 +2,7 @@
 import argparse
 from botocore.exceptions import ClientError
 import datetime
-from dateutil import tz
+
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -37,11 +37,6 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 parser.add_argument('--versions-all', required=False, default=False, action='store_true', help='Grab all versions instead of just the latest')
 
 
-# For when "help module_name" is called, don't modify this
-def help():
-    return [module_info, parser.format_help()]
-
-
 # Main is the first function that is called when this module is executed
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -49,7 +44,6 @@ def main(args, pacu_main):
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = pacu_main.print
-    get_regions = pacu_main.get_regions
     ######
 
     # All the billing seems to be in us-east-1. YMMV
@@ -62,22 +56,21 @@ def main(args, pacu_main):
         response = cwm_client.list_metrics(
             Namespace='AWS/Billing',
             MetricName='EstimatedCharges'
-            )
+        )
         metrics = response['Metrics']
         for m in metrics:
             for d in m['Dimensions']:
                 if d['Name'] == "ServiceName":
                     services.append(d['Value'])
-
-
-        # print("Services used: {}".format(services))
+        if len(services) == 0:
+            print('\nNo services found. Unable to determine account spend.\n')
+            return
     except ClientError as e:
         print("ClientError getting spend: {}".format(e))
 
-    # return
-
     for s in services:
         try:
+            print("Retrieving metrics for service {}...".format(s))
             response = cwm_client.get_metric_statistics(
                 Namespace='AWS/Billing',
                 MetricName='EstimatedCharges',
@@ -91,13 +84,12 @@ def main(args, pacu_main):
                         'Value': 'USD'
                     },
                 ],
-                StartTime=datetime.datetime.now() - datetime.timedelta(hours = 6),
+                StartTime=datetime.datetime.now() - datetime.timedelta(hours=6),
                 EndTime=datetime.datetime.now(),
-                Period=21600, # 6 hours
+                Period=21600,  # 6 hours
                 Statistics=['Maximum'],
                 Unit='None'
             )
-            # print(response)
             if len(response['Datapoints']) == 0:
                 service_spend[s] = 0
             else:
@@ -109,15 +101,14 @@ def main(args, pacu_main):
         except ClientError as e:
             print("ClientError getting spend: {}".format(e))
 
-
-
-
-    print("Account Spend:")
-    for k in service_spend.keys():
-        print("\t\t{}: {} (USD)".format(k, service_spend[k]))
-
-
     session.update(pacu_main.database, AccountSpend=service_spend)
 
-    print(f"{module_info['name']} completed.\n")
-    return
+    print('{} completed.\n'.format(module_info['name']))
+    return service_spend
+
+
+def summary(data, pacu_main):
+    out = "Account Spend:\n"
+    for key in data.keys():
+        out += "        {}: {} (USD)\n".format(key, data[key])
+    return out

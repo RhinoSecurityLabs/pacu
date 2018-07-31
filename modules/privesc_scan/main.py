@@ -819,6 +819,7 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
         return False
 
     while True:
+        client = pacu_main.get_boto3_client('ec2', region)
         print('Ready to start the new EC2 instance. What would you like to do?')
         print('  1) Open a reverse shell on the instance back to a server you control. Note: Restart the instance to resend the reverse shell connection (will not trigger GuardDuty, requires outbound internet).')
         print('  2) Run an AWS CLI command using the instance profile credentials on startup. Note: Restart the instance to run the command again (will not trigger GuardDuty, requires outbound internet).')
@@ -900,7 +901,6 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
         elif method == 4:
             # Create SSH key
             ssh_key_name = ''.join(choice(string.ascii_lowercase + string.digits) for _ in range(10))
-            client = pacu_main.get_boto3_client('ec2', region)
             try:
                 response = client.create_key_pair(
                     KeyName=ssh_key_name,

@@ -810,7 +810,7 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
         print('  Found multiple instance profiles. Choose one below. Only instance profiles with roles attached are shown.\n')
         for i in range(0, len(instance_profiles_with_roles)):
             print('  [{}] {}'.format(i, instance_profiles_with_roles[i]['InstanceProfileName']))
-        choice = input('What region do you want to launch the EC2 instance in? ')
+        choice = input('What instance profile do you want to use? ')
         instance_profile = instance_profiles_with_roles[int(choice)]
     elif len(instance_profiles_with_roles) == 1:
         instance_profile = instance_profiles[0]

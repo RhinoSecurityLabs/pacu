@@ -130,7 +130,7 @@ class PacuSession(Base, ModelUpdateMixin):
     secret_access_key = Column(Text)
     session_token = Column(Text)
     session_regions = Column(JSONType, nullable=False, default=['all'])
-    
+
     APIGateway = Column(JSONType, nullable=False, default=dict)
     CloudTrail = Column(JSONType, nullable=False, default=dict)
     CloudWatch = Column(JSONType, nullable=False, default=dict)

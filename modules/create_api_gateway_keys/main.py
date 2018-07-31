@@ -13,6 +13,7 @@ module_info = {
 
     # Category of the module. Make sure the name matches an existing category.
     'category': 'post_exploitation',
+
     # One liner description of the module functionality. This shows up when a user searches for modules.
     'one_liner': 'Attempts to create an API gateway key for a (or all) rest APIs that are defined.',
 
@@ -38,6 +39,7 @@ parser.add_argument('--cleanup', required=False, default=None, action='store_tru
 
 
 def cleanup(pacu_main, regions):
+    print = pacu_main.print
     for region in regions:
         client = pacu_main.get_boto3_client('apigateway', region)
         try:
@@ -48,14 +50,14 @@ def cleanup(pacu_main, regions):
                 if key['name'] == 'Pacu':
                     try:
                         client.delete_api_key(apiKey=key['id'])
-                        print('  Key deletion successul for: {}'.format(region))
+                        print('  Key deletion successful for: {}'.format(region))
                     except ClientError as error:
                         if error.response['Error']['Code'] == 'AccessDeniedException':
-                            print('The current credentials lacks the authorization to delete API keys.')
+                            print('The current credentials lack the authorization to delete API keys.')
                             return False
         except ClientError as error:
             if error.response['Error']['Code'] == 'AccessDeniedException':
-                print('The current credentials lacks the authorization to list API keys.')
+                print('The current credentials lack the authorization to list API keys.')
                 return False
     return True
 
@@ -109,8 +111,8 @@ def main(args, pacu_main):
 def summary(data, pacu_main):
     out = ''
     if data.get('cleanup'):
-        out += '  Old keys were removed\n'
+        out += '  Old keys were removed.\n'
     else:
-        out += '  Old keys were not removed\n'
+        out += '  Old keys were not removed.\n'
     out += '  {} key(s) were created.\n'.format(data['keys_created'])
     return out

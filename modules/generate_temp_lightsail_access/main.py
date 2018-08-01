@@ -150,9 +150,16 @@ def main(args, pacu_main):
                 windows_count += 1
             else:
                 ssh_count += 1
+
+    if windows_count or ssh_count:
+        written_file_path = os.path.join('sessions', session.name, 'downloads', 'generate_temp_lightsail_access')
+    else:
+        written_file_path = None
+
     summary_data = {
         'windows': windows_count,
-        'linux': ssh_count
+        'linux': ssh_count,
+        'written_file_path': written_file_path,
     }
     return summary_data
 
@@ -160,4 +167,6 @@ def main(args, pacu_main):
 def summary(data, pacu_main):
     out = '  Created temporary access for {} Windows instances.\n'.format(data['windows'])
     out += '  Created temporary access for {} Linux instances.\n'.format(data['linux'])
+    if data['written_file_path'] is not None:
+        out += '\n  Credential files written to directory {}{}.'.format(data['written_file_path'], os.path.sep)
     return out

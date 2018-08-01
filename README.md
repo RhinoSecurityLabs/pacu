@@ -56,7 +56,7 @@ If you're interested in writing your own modules for Pacu, check out our [Module
   * ~~Proxy+Stager for routing Pacu activity through a compromised host.~~
   * ~~Easy-install script~~
   * Improved command syntax
-  * Filter available modules by category and required permissions/data
+  * Filter available modules ~~by category~~ and required permissions/data
   * Improve interface formatting
   * Database forward-migrations and version tracking
   * "Attack Playbooks" to allow for easier use of complex module execution chains
@@ -75,7 +75,7 @@ If you're interested in writing your own modules for Pacu, check out our [Module
 * S3 Item Interception
 * ~~Download CloudWatch Logs~~
 * ~~Enumerate Lambda Functions~~
-* Create API Gateway Keys
+* ~~Create API Gateway Keys~~
 * And many more.
 
 ## Notes

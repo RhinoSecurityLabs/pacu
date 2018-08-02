@@ -17,7 +17,7 @@ module_info = {
     'one_liner': 'Detects rules and rule groups for WAF.',
 
     # Description about what the module does and how it works
-    'description': 'This module will enumerate WAF.',
+    'description': 'This module will enumerate WAF. The enumerated data includes the rule groups, rules and matching sets for those rules. Global WAF settings are enumerated the same as each individually-configured region, but they are stored separately in the Pacu database.',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['waf', 'waf-regional'],

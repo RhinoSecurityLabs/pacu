@@ -119,25 +119,23 @@ def main(args, pacu_main):
 
             elif current_account == 'y':
                 try:
-                    client = pacu_main.get_boto3_client('iam')
+                    client = pacu_main.get_boto3_client('sts')
 
-                    user = client.get_user()['User']
+                    identity = client.get_caller_identity()
 
                     # Might as well fill current key data while it is here
-                    current_account = user['Arn'].split('rn:aws:iam::')[1].split(':user/')[0]
                     account_ids = [current_account]
 
                     session_aws_key = session.get_active_aws_key(pacu_main.database)
                     session_aws_key.update(
                         pacu_main.database,
-                        account_id=current_account,
-                        user_name=user['UserName'],
-                        user_arn=user['Arn'],
-                        user_id=user['UserId'],
+                        account_id=identity['Account'],
+                        user_arn=identity['Arn'],
+                        user_id=identity['UserId'],
                     )
 
                 except Exception as error:
-                    print('Error running get_user. It is possible that the account ID has been returned in this error: {}'.format(error))
+                    print('Error running sts.get_caller_identity. It is possible that the account ID has been returned in this error: {}'.format(error))
                     current_account = input('If the AWS account ID was returned in the previous error, enter it now to continue, or enter n to skip EBS snapshot enumeration. ([account_id]/n) ')
                     if current_account == 'n':
                         account_ids = []

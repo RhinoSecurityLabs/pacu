@@ -106,13 +106,14 @@ Pacu's capabilities will increase dramatically as the number of modules grows, a
 
 #### Unauthenticated Modules
 
-- `s3_enum` - Enumerates/bruteforces S3 buckets based on different parameters.
+- `s3_finder` - Enumerates/bruteforces S3 buckets based on different parameters.
 
 #### Authenticated Modules
 
 ##### Recon Modules
 - `confirm_permissions` - Tries to get a confirmed list of permissions for the current user.
 - `download_ec2_userdata` - Downloads user data from EC2 instances.
+- `enum_account` -  Enumerates concerning the account itself.
 - `enum_codebuild` - Enumerates CodeBuild builds and projects while looking for sensitive data.
 - `enum_ebs_volumes_snapshots` - Enumerates EBS volumes and snapshots and logs any without encryption.
 - `enum_ec2` - Enumerates a ton of relevant EC2 info.
@@ -122,6 +123,7 @@ Pacu's capabilities will increase dramatically as the number of modules grows, a
 - `enum_lambda` - Pulls data related to Lambda Functions, source code, aliases, event source mappings, versions, tags, and policies.
 - `enum_lightsail` - Examines Lightsail data fields and automatically enumerates them for all available regions.
 - `enum_monitoring` - Detects monitoring and logging capabilities.
+- `enum_spend` - Enumerates account spend by service.
 - `enum_users_roles_policies_groups` - Enumerates users, roles, customer-managed policies, and groups.
 - `get_credential_report` - Generates and downloads an IAM credential report.
 - `inspector_report_fetcher` - Captures vulnerabilties found when running a preconfigured inspector report.
@@ -131,7 +133,10 @@ Pacu's capabilities will increase dramatically as the number of modules grows, a
 - `add_ec2_startup_sh_script` - Stops and restarts EC2 instances to execute code.
 - `backdoor_ec2_sec_groups` - Adds backdoor rules to EC2 security groups.
 - `cloudtrail_csv_injection` - Inject malicious formulas/data into CloudTrail event history.
+- `create_api_gateway_keys` - Attempts to create an API gateway key for a (or all) rest APIs that are defined.
 - `download_lightsail_ssh_keys` - Downloads Lightsails default SSH key pairs.
+- `generate_lightsail_ssh_keys` - Creates SSH keys for available regions in AWS Lightsail.
+- `generate_temp_lightsail_access` - Creates temporary SSH keys for available instances in AWS Lightsail.
 - `sysman_ec2_rce` - Tries to execute code as root/SYSTEM on EC2 instances.
 
 ##### Escalation Modules

@@ -120,7 +120,7 @@ def main(args, pacu_main):
 def summary(data, pacu_main):
     out = ''
     if 'RoleCount' in data:
-        out += '  {} Role(s) were successfully backdoored\n'.format(data['RoleCount'])
+        out += '  {} Role(s) successfully backdoored\n'.format(data['RoleCount'])
     return out
 
 

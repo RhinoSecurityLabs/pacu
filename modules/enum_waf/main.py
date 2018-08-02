@@ -79,6 +79,7 @@ def grab_data(client, function, key, **kwargs):
         return []
     return out
 
+
 def grab_id_data(client, func, param):
     """Helper function to grab conditions and filters for WAF resources."""
     caller = getattr(client, func)
@@ -100,6 +101,7 @@ def consistentCase(name):
     out = ''.join([word[0].upper() + word[1:] for word in splitted])
     return out
 
+
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
     args = parser.parse_args(args)
@@ -115,7 +117,7 @@ def main(args, pacu_main):
 
     for region in regions:
         print('  Staring enumeration of region: {}...'.format(region))
-        client = pacu_main.get_boto3_client('waf-regional', region)   
+        client = pacu_main.get_boto3_client('waf-regional', region)
         for func, key in METHODS:
             items = grab_data(client, 'list_' + func, key)
             for index, item in enumerate(items):
@@ -125,14 +127,14 @@ def main(args, pacu_main):
                 new_data['region'] = region
                 items[index] = new_data
             waf_regional_data[key].extend(items)
-    
+
     # Grab additional data specifically for RuleGroups.
     for rule_group in waf_regional_data['RuleGroups']:
         region = rule_group['region']
         client = pacu_main.get_boto3_client('waf-regional', region)
         id = rule_group['RuleGroupId']
         rule_group['ActivatedRules'] = grab_data(
-            client, 
+            client,
             'list_activated_rules_in_rule_group',
             'ActivatedRules',
             RuleGroupId=id
@@ -157,7 +159,7 @@ def main(args, pacu_main):
         for rule_group in waf_global_data['RuleGroups']:
             id = rule_group['RuleGroupId']
             rule_group['ActivatedRules'] = grab_data(
-                client, 
+                client,
                 'list_activated_rules_in_rule_group',
                 'ActivatedRules',
                 RuleGroupId=id

@@ -1381,7 +1381,7 @@ def PassExistingRoleToNewLambdaThenTriggerWithNewDynamo(pacu_main, print, input,
                     'KeyType': 'HASH'
                 }
             ],
-            ProvisionedThroughPut={
+            ProvisionedThroughput={
                 'ReadCapacityUnits': 5,
                 'WriteCapacityUnits': 5
             },

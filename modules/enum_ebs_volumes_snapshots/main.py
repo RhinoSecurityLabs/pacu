@@ -133,7 +133,6 @@ def main(args, pacu_main):
                         user_arn=identity['Arn'],
                         user_id=identity['UserId'],
                     )
-
                 except Exception as error:
                     print('Error running sts.get_caller_identity. It is possible that the account ID has been returned in this error: {}'.format(error))
                     current_account = input('If the AWS account ID was returned in the previous error, enter it now to continue, or enter n to skip EBS snapshot enumeration. ([account_id]/n) ')

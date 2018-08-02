@@ -46,42 +46,51 @@ parser.add_argument(
 )
 
 METHODS = [
-            ('byte_match_sets', 'ByteMatchSets'),
-            ('geo_match_sets', 'GeoMatchSets'),
-            ('ip_sets', 'IPSets'),
-            ('rate_based_rules', 'Rules'),
-            ('regex_match_sets', 'RegexMatchSets'),
-            ('regex_pattern_sets', 'RegexPatternSets'),
-            ('rule_groups', 'RuleGroups'),
-            ('rules', 'Rules'),
-            ('size_constraint_sets', 'SizeConstraintSets'),
-            ('sql_injection_match_sets', 'SqlInjectionMatchSets'),
-            ('subscribed_rule_groups', 'RuleGroups'),
-            ('web_acls', 'WebACLs'),
-            ('xss_match_sets', 'XssMatchSets'),
-        ]
+    ('byte_match_sets', 'ByteMatchSets'),
+    ('geo_match_sets', 'GeoMatchSets'),
+    ('ip_sets', 'IPSets'),
+    ('rate_based_rules', 'Rules'),
+    ('regex_match_sets', 'RegexMatchSets'),
+    ('regex_pattern_sets', 'RegexPatternSets'),
+    ('rule_groups', 'RuleGroups'),
+    ('rules', 'Rules'),
+    ('size_constraint_sets', 'SizeConstraintSets'),
+    ('sql_injection_match_sets', 'SqlInjectionMatchSets'),
+    ('subscribed_rule_groups', 'RuleGroups'),
+    ('web_acls', 'WebACLs'),
+    ('xss_match_sets', 'XssMatchSets'),
+]
 
 
 def grab_data(client, function, key, **kwargs):
     """Grabs all data given a function and a key."""
     out = []
     caller = getattr(client, function)
-    response = caller(**kwargs)
-    out.extend(response[key])
-    while 'NextMarker' in response:
-        response = caller(**kwargs, NextMarker=response['NextMarker'])
+    try:
+        response = caller(**kwargs)
         out.extend(response[key])
-    print('   Found {} {}'.format(len(out), key))
+        while 'NextMarker' in response:
+            response = caller(**kwargs, NextMarker=response['NextMarker'])
+            out.extend(response[key])
+        print('   Found {} {}'.format(len(out), key))
+    except ClientError as error:
+        if error.response['Error']['Code'] == 'AccessDeniedException':
+            print('AccessDenied for: {}'.format(function))
+        return []
     return out
 
 def grab_id_data(client, func, param):
     """Helper function to grab conditions and filters for WAF resources."""
     caller = getattr(client, func)
-    response = caller(**param)
-    del response['ResponseMetadata']
-    # Pull out the actual fields from the response and return them.
-    for key in response:
-        return response[key]
+    try:
+        response = caller(**param)
+        del response['ResponseMetadata']
+        # Pull out the actual fields from the response and return them.
+        for key in response:
+            return response[key]
+    except ClientError as error:
+        if error.response['Error']['Code'] == 'AccessDeniedException':
+            print('AccessDenied for: {}'.format(func))
     return {}
 
 

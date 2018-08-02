@@ -20,7 +20,7 @@ module_info = {
     'description': 'This module will enumerate WAF.',
 
     # A list of AWS services that the module utilizes during its execution
-    'services': ['waf',],
+    'services': ['waf', 'waf-regional'],
 
     # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
     'prerequisite_modules': [],
@@ -31,8 +31,19 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format "us-east-1". Defaults to all session regions.')
-parser.add_argument('--global', required=False, default=True, action='store_true', help='Flag to enumerate WAF information for all regions.')
+parser.add_argument(
+    '--regions',
+    required=False,
+    default=None,
+    help='One or more (comma separated) AWS regions in the format "us-east-1". Defaults to all available regions.'
+)
+parser.add_argument(
+    '--global-region',
+    required=False,
+    default=False,
+    action='store_true',
+    help='Flag to enumerate WAF information for all regions.'
+)
 
 METHODS = [
             ('byte_match_sets', 'ByteMatchSets'),
@@ -52,6 +63,7 @@ METHODS = [
 
 
 def grab_data(client, function, key, **kwargs):
+    """Grabs all data given a function and a key."""
     out = []
     caller = getattr(client, function)
     response = caller(**kwargs)
@@ -63,6 +75,7 @@ def grab_data(client, function, key, **kwargs):
     return out
 
 def grab_id_data(client, func, param):
+    """Helper function to grab conditions and filters for WAF resources."""
     caller = getattr(client, func)
     response = caller(**param)
     del response['ResponseMetadata']
@@ -73,6 +86,7 @@ def grab_id_data(client, func, param):
 
 
 def consistentCase(name):
+    """Converts snake_case strings to CameCase"""
     splitted = name.split('_')
     out = ''.join([word[0].upper() + word[1:] for word in splitted])
     return out
@@ -114,8 +128,11 @@ def main(args, pacu_main):
             'ActivatedRules',
             RuleGroupId=id
         )
+    waf_region_data = deepcopy(session.WAFRegional)
+    waf_region_data.update(waf_regional_data)
+    session.update(pacu_main.database, WAFRegional=waf_region_data)
 
-    if args.regions is None:
+    if args.global_region:
         client = pacu_main.get_boto3_client('waf')
         print('  Starting enumeration for global WAF...')
         for func, key in METHODS:
@@ -136,9 +153,9 @@ def main(args, pacu_main):
                 'ActivatedRules',
                 RuleGroupId=id
             )
-
-    print(waf_regional_data)
-    print(waf_global_data)
+        waf_data = deepcopy(session.WAF)
+        waf_data.update(waf_global_data)
+        session.update(pacu_main.database, WAF=waf_data)
 
     print('{} completed.\n'.format(module_info['name']))
     summary_data = {}

@@ -149,6 +149,7 @@ class PacuSession(Base, ModelUpdateMixin):
     Shield = Column(JSONType, nullable=False, default=dict)
     VPC = Column(JSONType, nullable=False, default=dict)
     WAF = Column(JSONType, nullable=False, default=dict)
+    WAFRegional = Column(JSONType, nullable=False, default=dict)
 
     def __repr__(self):
         if self.key_alias:

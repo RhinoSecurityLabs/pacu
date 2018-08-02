@@ -32,13 +32,9 @@ module_info = {
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format "us-east-1". Defaults to all session regions.')
+parser.add_argument('--global', required=False, default=True, action='store_true', help='Flag to enumerate WAF information for all regions.')
 
-
-
-class DataCollector:
-
-    METHODS = [
-            #('activated_rules_in_rule_group', 'ActivatedRules'),
+METHODS = [
             ('byte_match_sets', 'ByteMatchSets'),
             ('geo_match_sets', 'GeoMatchSets'),
             ('ip_sets', 'IPSets'),
@@ -49,48 +45,31 @@ class DataCollector:
             ('rules', 'Rules'),
             ('size_constraint_sets', 'SizeConstraintSets'),
             ('sql_injection_match_sets', 'SqlInjectionMatchSets'),
-            #('subscribed_rule_groups', 'RuleGroups'),
+            ('subscribed_rule_groups', 'RuleGroups'),
             ('web_acls', 'WebACLs'),
             ('xss_match_sets', 'XssMatchSets'),
         ]
 
-    def __init__(self, client, region=None):
-        self.client = client
-        self.region = region
 
-    def collect(self):
-        all_data = {}
-        for func, key in DataCollector.METHODS:
-            items = self.grab_data('list_' + func, key)
-            for index, item in enumerate(items):
-                param_key = key[:-1] + 'Id'
-                param = {param_key: item[param_key]}
-                new_data = self.grab_id_data('get_' + func[:-1], param)
-                if self.region is not None:
-                    new_data['region'] = self.region
-                items[index] = new_data
-            all_data[key] = items   
-        return all_data
-
-    def grab_data(self, function, key):
-        out = []
-        caller = getattr(self.client, function)
-        response = caller()
+def grab_data(client, function, key, **kwargs):
+    out = []
+    caller = getattr(client, function)
+    response = caller(**kwargs)
+    out.extend(response[key])
+    while 'NextMarker' in response:
+        response = caller(**kwargs, NextMarker=response['NextMarker'])
         out.extend(response[key])
-        while 'NextMarker' in response:
-            response = caller(NextMarker=response['NextMarker'])
-            out.extend(response[key])
-        print('   Found {} {}'.format(len(out), key))
-        return out
+    print('   Found {} {}'.format(len(out), key))
+    return out
 
-    def grab_id_data(self, func, param):
-        caller = getattr(self.client, func)
-        response = caller(**param)
-        del response['ResponseMetadata']
-        # Pull out the actual fields from the response and return them.
-        for key in response:
-            return response[key]
-        return {}
+def grab_id_data(client, func, param):
+    caller = getattr(client, func)
+    response = caller(**param)
+    del response['ResponseMetadata']
+    # Pull out the actual fields from the response and return them.
+    for key in response:
+        return response[key]
+    return {}
 
 
 def consistentCase(name):
@@ -104,23 +83,59 @@ def main(args, pacu_main):
     print = pacu_main.print
     get_regions = pacu_main.get_regions
     regions = get_regions('waf-regional') if args.regions is None else args.regions.split(',')
+
     waf_regional_data = {}
     waf_global_data = {}
     for key, val in METHODS:
         waf_regional_data[val] = []
         waf_global_data[val] = []
+
     for region in regions:
         print('  Staring enumeration of region: {}...'.format(region))
+        client = pacu_main.get_boto3_client('waf-regional', region)   
+        for func, key in METHODS:
+            items = grab_data(client, 'list_' + func, key)
+            for index, item in enumerate(items):
+                param_key = key[:-1] + 'Id'
+                param = {param_key: item[param_key]}
+                new_data = grab_id_data(client, 'get_' + func[:-1], param)
+                new_data['region'] = region
+                items[index] = new_data
+            waf_regional_data[key].extend(items)
+    
+    # Grab additional data specifically for RuleGroups.
+    for rule_group in waf_regional_data['RuleGroups']:
+        region = rule_group['region']
         client = pacu_main.get_boto3_client('waf-regional', region)
-        collector = DataCollector(client, region)
-        collected_data = collector.collect()
-        waf_regional_data = {**waf_regional_data, **collected_data}
+        id = rule_group['RuleGroupId']
+        rule_group['ActivatedRules'] = grab_data(
+            client, 
+            'list_activated_rules_in_rule_group',
+            'ActivatedRules',
+            RuleGroupId=id
+        )
 
     if args.regions is None:
         client = pacu_main.get_boto3_client('waf')
         print('  Starting enumeration for global WAF...')
-        collector = DataCollector(client)
-        waf_global_data = collector.collect()
+        for func, key in METHODS:
+            items = grab_data(client, 'list_' + func, key)
+            for index, item in enumerate(items):
+                param_key = key[:-1] + 'Id'
+                param = {param_key: item[param_key]}
+                new_data = grab_id_data(client, 'get_' + func[:-1], param)
+                items[index] = new_data
+            waf_global_data[key].extend(items)
+
+        # Grab additional data specifically for RuleGroups.
+        for rule_group in waf_global_data['RuleGroups']:
+            id = rule_group['RuleGroupId']
+            rule_group['ActivatedRules'] = grab_data(
+                client, 
+                'list_activated_rules_in_rule_group',
+                'ActivatedRules',
+                RuleGroupId=id
+            )
 
     print(waf_regional_data)
     print(waf_global_data)

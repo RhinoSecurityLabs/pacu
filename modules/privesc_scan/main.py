@@ -283,16 +283,18 @@ def main(args, pacu_main):
         'PassExistingRoleToCloudFormation': {
             'iam:PassRole': True,
             'cloudformation:CreateStack': True,
+            'cloudformation:DescribeStacks': True,
             'iam:ListRoles': False
         },
         'PassExistingRoleToNewDataPipeline': {
             'iam:PassRole': True,
             'datapipeline:CreatePipeline': True,
+            'datapipeline:PutPipelineDefinition': True,
             'iam:ListRoles': False
         },
         'EditExistingLambdaFunctionWithRole': {
             'lambda:UpdateFunctionCode': True,
-            'lambda:ListFunctions': False,
+            'lambda:ListFunctions': True,
             'lambda:InvokeFunction': False
         }
     }

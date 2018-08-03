@@ -7,6 +7,7 @@ from botocore.exceptions import UnknownServiceError
 import os
 from datetime import datetime
 import json
+import re
 
 module_info = {
     'name': 'enum_permissions_bruteforce',
@@ -39,6 +40,9 @@ SUPPORTED_SERVICES = [
     's3'
 ]
 
+current_region = None
+current_service = None
+
 allow_permissions = {}
 deny_permissions = {}
 possible_permissions = {}
@@ -62,62 +66,7 @@ def complete_service_list():
 def missing_param(param):
     """Return a key/value dict in the expected formatting given a common parameter, or defaults to param=>'dummy_data'."""
     common_params = {
-        'Storage': {
-            'S3': {
-                'AWSAccessKeyId': '1',
-                'Bucket': 'DryRun',
-                'Prefix': 'DryRun',
-                'UploadPolicy': 'DryRun',
-                'UploadPolicySignature': 'DryRun'
-            }
-        },
-        'LaunchTemplateConfigs': [{'LaunchTemplateSpecification': {}}],
-        'TargetCapacitySpecification': {'TotalTargetCapacity': 1},
-        'DhcpConfigurations': [{'Key': 'val'}],
-        'InstanceId': 'i-07421c1ebf30c2070',
-        'NetworkInterfaceId': 'eni-1a2b3c4d',
-        'PriceSchedules': [{'CurrencyCode': 'USD'}],
-        'RouteTableId': 'rtb-e4ad488d',
-        'VolumeId': 'vol-0f0a1f7dd1e7704a0',
-        'Tags': [{'Key': 'Value'}],
-        'Resources': ['ami-78a54010'],
-        'DestinationCidrBlock': '11.12.0.0/16',
-        'VpcId': 'vpc-abcd1234',
-        'VpnConnectionId': 'vpn-83ad48ea',
-        'CustomerGatewayId': 'cgw-0e11f160',
-        'InputStorageLocation': {'Bucket': 'key'},
-        'LaunchTemplateData': {'ImageId': 'ami-aabbccdd'},
-        'PeerVpcId': 'vpc-abcd1235',
-        'InternetGatewayId': 'igw-12312312',
-        'NetworkAclId': 'acl-123123123',
-        'Attribute': 'productCodes',
-        'Recurrence': {'Frequency': 'string'},
-        'FirstSlotStartTimeRange': {'EarliestTime': datetime(2015, 1, 1), 'LatestTime': datetime(2015, 1, 1)},
-        'Volume': {'Size': 123},
-        'Image': {'Bytes': 123, 'Format': 'RAW', 'ImportManifestUrl': 'string'},
-        'InstanceCreditSpecifications': [{'InstanceId': 'val'}],
-        'InstanceIds': ['i-abc123'],
-        'HostIdSet': ['idset'],
-        'PurchaseRequests': [{'InstanceCount': 5, 'PurchaseToken': 'abc'}],
-        'VpcEndpointIds': ['vpcids'],
-        'HostIds': ['123'],
-        'Status': 'ok',
-        'ReasonCodes': ['unresponsive'],
-        'Instances': ['i-abc123'],
-        'SpotFleetRequestConfig': {'IamFleetRole': 'test', 'TargetCapacity': 1},
-        'ImageId': 'test',
-        'LaunchSpecification': {'ImageId': 'i-123'},
-        'Ipv6Addresses': ['aa:aa:aa:aa:aa:aa'],
-        'PrivateIpAddresses': ['1.1.1.1'],
-        'IpPermissions': [{'FromPort': 1}],
-        'SpotFleetRequestIds': ['test'],
-        'SpotInstanceRequestIds': ['test'],
-        'ResourceIds': ['test'],
-        'ConnectionEvents': ['test'],
-        'IamInstanceProfile': {'Name': 'test'},
-        'ReservedInstancesIds': ['dummydata'],
-        'TargetConfigurations': [{'AvailabilityZone': 'dummydata'}]
-
+        #'Fileobj': open('workfile', 'w'),
     }
     out = {param: common_params[param]} if param in common_params else {param: 'dummy_data'}
     return out
@@ -130,7 +79,7 @@ def invalid_param(valid_type):
         'datetime.datetime': datetime(2015, 1, 1),
         'list': ['test'],
         'int': 1,
-        'dict': {'DryRun': True},
+        'dict': {},
         'bool': True
     }
     return types[valid_type]
@@ -142,17 +91,51 @@ def error_delegator(error):
     # Ignore first line of error message and process in reverse order.
     for line in str(error).split('\n')[::-1][:-1]:
         print('    Processing Line: {}'.format(line))
-        if 'Missing required parameter' in line:
+        if 'Missing required parameter in input' in line:
             if line[line.find('"') + 1:-1] not in kwargs.keys():
                 kwargs = {**kwargs, **missing_param(line.split()[-1][1:-1])}
-        if 'Invalid type for parameter' in line:
-            param_name = line.split()[4][:-1]
-            # Convert list of strings to list of dicts of invalid list subtype found.
-            if param_name[:-3] == '[0]':
-                kwargs[param_name] = [{'DryRun': True}]
+        elif 'Missing required parameter in' in line:
+            # Grabs the parameter to build a dictionary of
+            dict_name = line.split(':')[0].split()[-1]
+            if '[' in dict_name:
+                # Need to populate missing parameters for a sub type
+                param = dict_name[:dict_name.find('.')]
+                sub_param = dict_name[dict_name.find('.') + 1:dict_name.find('[')]
+                missing_parameter = line[line.find('"') + 1:-1]
+                kwargs.update({param: {sub_param: [missing_param(missing_parameter)]}})
             else:
-                valid_type = line.split("'")[3]
-                kwargs[param_name] = invalid_param(valid_type)
+                param = line.split(':')[1].strip()[1:-1]
+                if dict_name not in kwargs:
+                    kwargs = {dict_name: {param: ''}}
+                else:
+                    kwargs[dict_name].update({param: ''})
+
+        elif 'Invalid type for parameter' in line:
+            param_name = line.split()[4][:-1]
+            if '.' in param_name:
+                # This invalid type is a sub type within a parameter
+                dict_name = param_name.split('.')[0]
+                param_name = param_name.split('.')[1]
+                if '[' in param_name:
+                    # The invalid parameter is a list within a dict within a dict
+                    param_name = param_name[:param_name.find('[')]
+                    valid_type = line.split("'")[3]
+                    temp_dict = {param_name: [invalid_param(valid_type)]}
+                else:
+                    # The invalid parameter is a basic key value
+                    valid_type = line.split("'")[-2]
+                    temp_dict = {param_name: invalid_param(valid_type)}
+                if dict_name not in kwargs:
+                    kwargs.update({dict_name: temp_dict})
+                else:
+                    kwargs[dict_name].update(temp_dict)
+            else:
+                # Convert list of strings to list of dicts of invalid list subtype found.
+                if param_name[:-3] == '[0]':
+                    kwargs[param_name] = [{'DryRun': True}]
+                else:
+                    valid_type = line.split("'")[3]
+                    kwargs[param_name] = invalid_param(valid_type)
     return kwargs
 
 
@@ -163,8 +146,19 @@ def generate_preload_actions():
     data = open(path).read()
     return json.loads(data)
 
+def read_only_function(service, func):
+    module_dir = os.path.dirname(__file__)
+    path = os.path.join(module_dir, 'ReadOnlyAccessPolicy.json')
+    with open(path) as file:
+        data = json.load(file)
+        formatted_func = service + ':' + camel_case(func)
+        for action in data['Statement'][0]['Action']:
+            if re.match(action, formatted_func) is not None:
+                return True
+    return False
 
-def valid_func(func):
+
+def valid_func(service, func):
     """Returns False for service functions that don't correspond to an AWS API action"""
     if func[0] == '_':
         return False
@@ -179,7 +173,27 @@ def valid_func(func):
     ]
     if func in BAD_FUNCTIONS:
         return False
-    return True
+    return read_only_function(service, func)
+
+
+def get_bucket():
+    return 'alextestcloudtrailbucket'
+
+def get_attribute(func):
+    FUNC_ATTRIBUTES = {
+        'reset_image_attribute': 'launchPermission',
+        'reset_instance_attribute': 'kernel',
+        'reset_snapshot_attribute': 'createVolumePermission',
+        'describe_instance_attribute': 'kernel'
+    }
+    return FUNC_ATTRIBUTES.get(func, None)
+
+def get_special_param(func, param):
+    FUNC_MAPPER = {
+        'Bucket': get_bucket(),
+        'Attribute': get_attribute(func)
+    }
+    return FUNC_MAPPER.get(param, None)
 
 
 def convert_special_params(func, kwargs):
@@ -192,20 +206,23 @@ def convert_special_params(func, kwargs):
     fill that valid data and determine authorization.
 
     """
-    special_params = {
-        'reset_image_attribute': {'Attribute': 'launchPermission'},
-        'reset_instance_attribute': {'Attribute': 'kernel'},
-        'reset_snapshot_attribute': {'Attribute': 'createVolumePermission'},
-    }
-    if func in special_params:
-        print('    Matching Function Found')
-        for param in special_params[func]:
-            kwargs[param] = special_params[func][param]
-        print('    Replaced Parameters')
-        return True
-    else:
-        print('    No special paramaters found for function: {}'.format(func))
-        return False
+    SPECIAL_PARAMS = [
+        'Bucket',
+        'Attribute'
+    ]
+    for param in [param for param in kwargs if kwargs[param] == 'dummy_data']:
+        if param in SPECIAL_PARAMS:
+            print('     Found special param')
+            kwargs[param] = get_special_param(func, param)
+            if kwargs[param] is None:
+                print('    Failed to fill in a valid special parameter.')
+                return False
+            else:
+                print('    Successfully filled in valid special parameter.')
+                return True
+
+    print('    No special paramaters found for function: {}'.format(func))
+    return False
 
 
 def build_service_list(services=None):
@@ -221,6 +238,22 @@ def build_service_list(services=None):
     service_list = [service for service in services if service in SUPPORTED_SERVICES]
     return service_list
 
+def error_code_special_parameter(code):
+    COMMON_CODE_AFFIXES = [
+        'Malformed',
+        'NotFound',
+        'Unknown',
+        'NoSuch'
+    ]
+    if code == 'InvalidRequest':
+        return True
+    elif code == 'InvalidParameterValue':
+        return True
+    elif any(word in code for word in COMMON_CODE_AFFIXES):
+        return True
+    else:
+        return False
+
 def exception_handler(func, kwargs, error):
     if isinstance(error, ParamValidationError):
         if 'Unknown parameter in input: "DryRun"' in str(error):
@@ -229,23 +262,16 @@ def exception_handler(func, kwargs, error):
         else:
             if 'AvailabilityZone' not in kwargs and 'AvailabilityZone' in str(error):
                 print("Adding Availability Zone")
-                kwargs['AvailabilityZone'] = region + 'a'
+                kwargs['AvailabilityZone'] = current_region + 'a'
             else:
                 print('Parameter Validation Error: {}'.format(error))
-                kwargs.update(**error_delegator(error))
-    if isinstance(error, ClientError):
-        # DryRun returned true, adding to allowed permissions
-        if error.response['Error']['Code'] == 'DryRunOperation':
-            allow_permissions[service].append(func)
-            print('Authorization exists for: {}'.format(func))
-            return True
-
+                kwargs.update(error_delegator(error))
+    elif isinstance(error, ClientError):
         # Error with request raised.
         print('ClientError: {}'.format(error))
         code = error.response['Error']['Code']
         if code == 'AccessDeniedException' or code == 'OptInRequired' or 'Unauthorized' in str(error):
-            print('Unauthorized for permission: {}:{}'.format(service, func))
-            deny_permissions[service].append(func)
+            print('Unauthorized for permission: {}:{}'.format(current_service, func))
             return True
         elif code == 'MissingParameter':
             param = str(error).split()[-1]
@@ -254,15 +280,27 @@ def exception_handler(func, kwargs, error):
         # If action is not supported, skip.
         elif code == 'UnsupportedOperation':
             return True
-        elif code == 'InvalidRequest' or code == 'InvalidParameterValue' or 'Malformed' in code or 'NotFound' in code or 'Unknown' in code:
-            print('Special Parameter Found')
+        elif error_code_special_parameter(code):
+            print('  Special Parameter Found')
             if not convert_special_params(func, kwargs):
-                print('No suitable valid data could be found')
+                print('    No suitable valid data could be found')
                 return True
         else:
             print('Unknown error:')
             print(error)
             return True
+    elif isinstance(error, TypeError):
+        if 'unexpected keyword argument \'DryRun\'' in str(error):
+            print('  DryRun failed. Retrying without DryRun parameter')
+            del kwargs['DryRun']
+        elif 'required positional argument' in str(error):
+            param = str(error).split()[-1]
+            param = param[1:-1]
+            kwargs.update(**missing_param(param))
+        else:
+            print('Unknown Error. Type: {} Full: {}'.format(type(error), str(error)))
+    else:
+        print('Unknown Error. Type: {} Full: {}'.format(type(error), str(error)))
     return False
 
 
@@ -277,6 +315,8 @@ def main(args, pacu_main):
     summary_data['services'] = service_list
 
     for service in service_list:
+        global current_service
+        current_service = service
         allow_permissions[service] = []
         deny_permissions[service] = []
         possible_permissions[service] = []
@@ -284,11 +324,13 @@ def main(args, pacu_main):
         regions = get_regions(service)
         regions = ['us-east-1']
         for region in regions:
+            global current_region 
+            current_region = region
             client = boto3.client(
                 service,
                 region_name=region,
             )
-            functions = [func for func in dir(client) if valid_func(func)]
+            functions = [func for func in dir(client) if valid_func(service, func)]
             index = 1
             for func in functions:
                 print('*************************NEW FUNCTION({}/{})*************************'.format(index, len(functions)))
@@ -306,7 +348,8 @@ def main(args, pacu_main):
                         print('Authorization exists for: {}'.format(func))
                         break
                     except Exception as error:
-                        # Special Exception for exception that returns a DryRunOperation
+                        # Special Exception for exception that returns a DryRunOperation.
+                        # Sometimes the execution will raise an Exception, others it won't for the same process. 
                         if 'DryRunOperation' in str(error):
                             allow_permissions[service].append(func)
                             print('Authorization exists for: {}'.format(func))
@@ -315,25 +358,19 @@ def main(args, pacu_main):
                             deny_permissions[service].append(func)
                             break
                 print('*************************END FUNCTION*************************\n')
-            break
-        break
 
     print('Allowed Permissions: ')
     print(allow_permissions)
 
     print('Denied Permissions: ')
     print(deny_permissions)
-
-    print('Possible Permissions: ')
-    print(possible_permissions)
-
-    print('Bugged Actions')
-    print(bugged_permissions)
-
+    
+    # Condenses the following dicts to a list that fits the standard service:action format.
     if allow_permissions:
         full_allow = [service + ':' + camel_case(perm) for perm in allow_permissions[service] for service in allow_permissions]
     if deny_permissions:
         full_deny = [service + ':' + camel_case(perm) for perm in deny_permissions[service] for service in deny_permissions]
+
     active_aws_key = session.get_active_aws_key(pacu_main.database)
     active_aws_key.update(
         pacu_main.database,
@@ -343,7 +380,6 @@ def main(args, pacu_main):
 
     summary_data['allow'] = sum([len(allow_permissions[region]) for region in allow_permissions])
     summary_data['deny'] = sum([len(deny_permissions[region]) for region in deny_permissions])
-    summary_data['possible'] = sum([len(possible_permissions[region]) for region in possible_permissions])
 
     print('{} completed.\n'.format(module_info['name']))
     return summary_data
@@ -363,5 +399,4 @@ def summary(data, pacu_main):
         out += '  Unknown: {}.\n'.format(data['unknown'])
     out += '{} allow permissions found.\n'.format(data['allow'])
     out += '{} deny permissions found.\n'.format(data['deny'])
-    out += '{} possible permissions found.\n'.format(data['possible'])
     return out

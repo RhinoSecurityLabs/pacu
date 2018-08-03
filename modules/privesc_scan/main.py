@@ -1768,14 +1768,17 @@ def PassExistingRoleToNewCloudFormation(pacu_main, print, input, fetch_data):
             template = None
             print('  Received invalid input. Enter in what kind of path you are using ("file" or "url"), then a space, then the path. Example: "file /home/me/my.template". Try again!')
     try:
-        # TODO: Add in IAM resource acknowledgement. Test if I
-        # can just specify a certain value no matter what and
-        # expect it to work https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-template.html#capabilities
+        # The capabilities parameter will take "CAPABILITY_NAMED_IAM"
+        # as valid input even if only "CAPABILITY_IAM" is required
+        # and even if niether is required
         if template[0] == 'url':
             response = client.create_stack(
                 StackName=stack_name,
                 RoleARN=target_role_arn,
-                TemplateURL=template[1]
+                TemplateURL=template[1],
+                Capabilities=[
+                    'CAPABILITY_NAMED_IAM'
+                ]
             )
         elif template[0] == 'file':
             with open(template[1], 'r') as f:
@@ -1783,10 +1786,28 @@ def PassExistingRoleToNewCloudFormation(pacu_main, print, input, fetch_data):
             response = client.create_stack(
                 StackName=stack_name,
                 RoleARN=target_role_arn,
-                TemplateBody=template_contents
+                TemplateBody=template_contents,
+                Capabilities=[
+                    'CAPABILITY_NAMED_IAM'
+                ]
             )
-        # TODO: Give some steps on what is next here to utilize these permissions
         print('Successfully started creation the CloudFormation stack {}! Here is the stack ID: {}\n'.format(stack_name, response['StackId']))
+        print('Now waiting for creation to finish to return you the results. Checking every 20 seconds...\n')
+        waiter = client.get_waiter('stack_create_complete')
+        waiter.wait(
+            StackName=response['StackId'],
+            WaiterConfig={
+                'Delay': 20
+            }
+        )
+        
+        response = client.describe_stacks(
+            StackName=stack_name
+        )
+        print('Stack finished creation. Here is the output:\n')
+        print(response['Stacks'])
+        
+        print('Your CloudFormation resources should have been created and you should have received the output from the stack creation.\n')
         return True
     except Exception as error:
         print('Failed to create the CloudFormation stack: {}\n'.format(error))

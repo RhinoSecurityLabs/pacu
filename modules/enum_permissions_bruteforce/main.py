@@ -9,6 +9,8 @@ from datetime import datetime
 import json
 import re
 
+from . import param_generator
+
 module_info = {
     'name': 'enum_permissions_bruteforce',
     'author': 'Alexander Morgenstern at RhinoSecurityLabs',
@@ -168,32 +170,13 @@ def valid_func(service, func):
         'waiter_names',
         'get_paginator',
         'generate_presigned_url',
+        'generate_presigned_post',
         'exceptions',
         'meta',
     ]
     if func in BAD_FUNCTIONS:
         return False
     return read_only_function(service, func)
-
-
-def get_bucket():
-    return 'alextestcloudtrailbucket'
-
-def get_attribute(func):
-    FUNC_ATTRIBUTES = {
-        'reset_image_attribute': 'launchPermission',
-        'reset_instance_attribute': 'kernel',
-        'reset_snapshot_attribute': 'createVolumePermission',
-        'describe_instance_attribute': 'kernel'
-    }
-    return FUNC_ATTRIBUTES.get(func, None)
-
-def get_special_param(func, param):
-    FUNC_MAPPER = {
-        'Bucket': get_bucket(),
-        'Attribute': get_attribute(func)
-    }
-    return FUNC_MAPPER.get(param, None)
 
 
 def convert_special_params(func, kwargs):
@@ -213,7 +196,7 @@ def convert_special_params(func, kwargs):
     for param in [param for param in kwargs if kwargs[param] == 'dummy_data']:
         if param in SPECIAL_PARAMS:
             print('     Found special param')
-            kwargs[param] = get_special_param(func, param)
+            kwargs[param] = param_generator.get_special_param(func, param)
             if kwargs[param] is None:
                 print('    Failed to fill in a valid special parameter.')
                 return False
@@ -284,6 +267,7 @@ def exception_handler(func, kwargs, error):
             print('  Special Parameter Found')
             if not convert_special_params(func, kwargs):
                 print('    No suitable valid data could be found')
+                bugged_permissions.append(func)
                 return True
         else:
             print('Unknown error:')
@@ -359,11 +343,9 @@ def main(args, pacu_main):
                             break
                 print('*************************END FUNCTION*************************\n')
 
-    print('Allowed Permissions: ')
-    print(allow_permissions)
-
-    print('Denied Permissions: ')
-    print(deny_permissions)
+    print('Allowed Permissions: \n{}'.format(allow_permissions))
+    print('Denied Permissions: \n{}'.format(deny_permissions))
+    print('Bugged Permissions: \n{}'.format(bugged_permissions))
     
     # Condenses the following dicts to a list that fits the standard service:action format.
     if allow_permissions:

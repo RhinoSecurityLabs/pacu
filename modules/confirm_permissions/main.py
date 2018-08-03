@@ -83,7 +83,7 @@ def main(args, pacu_main):
         client = pacu_main.get_boto3_client('sts')
         identity = client.get_caller_identity()
         active_aws_key = session.get_active_aws_key(pacu_main.database)
-        
+
         if re.match(r'arn:aws:iam::\d{12}:user/', identity['Arn']) is not None:
             client = pacu_main.get_boto3_client('iam')
             user = client.get_user()

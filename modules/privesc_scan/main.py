@@ -1819,4 +1819,8 @@ def PassExistingRoleToNewDataPipeline(pacu_main, print, input, fetch_data):
 
 
 def EditExistingLambdaFunctionWithRole(pacu_main, print, input, fetch_data):
-    return
+    session = pacu_main.get_active_session()
+
+    print('  Starting method EditExistingLambdaFunctionWithRole...\n')
+
+    client = pacu_main.get_boto3_client('iam')

@@ -1678,7 +1678,7 @@ def UpdateExistingGlueDevEndpoint(pacu_main, print, input, fetch_data):
 
     choice = 0
     if endpoint_name == '':
-        if fetch_data(['Glue', 'DevEndpoints'], 'enum_glue', '--dev-endpoints') is False:
+        if fetch_data(['Glue', 'DevEndpoints'], 'enum_glue', '--dev-endpoints', force=True) is False:
             print('Pre-req module not run successfully. Exiting...')
             return False
         dev_endpoints = session.Glue['DevEndpoints']
@@ -1823,4 +1823,11 @@ def EditExistingLambdaFunctionWithRole(pacu_main, print, input, fetch_data):
 
     print('  Starting method EditExistingLambdaFunctionWithRole...\n')
 
-    client = pacu_main.get_boto3_client('iam')
+    if fetch_data(['Lambda', 'Functions'], 'enum_lambda', '', force=True) is False:
+        print('Pre-req module not run successfully. Exiting...')
+        return False
+
+    print('Completed enumeration of Lambda functions in all session regions.\n')
+    print('It is suggested to access the functions through the AWS Web Console to determine how your code edits will affect the function. This module does not automatically modify functions due to the high risk of denial-of-service to the environment. Through the AWS API, you are required to first download the function code, modify it, then re-upload it, but through the web console, you can just edit it inline.\n')
+    print('Tips: Use the AWS SDK for the language that the function is running to contact the AWS API using the credentials associated with the function to expand your access.\n')
+    return True

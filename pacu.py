@@ -201,21 +201,26 @@ class Main:
     def get_regions(self, service, check_session=True):
         session = self.get_active_session()
 
-        service = str.lower(service)
+        service = service.lower()
 
         with open('./modules/service_regions.json', 'r+') as regions_file:
             regions = json.load(regions_file)
 
         # TODO: Add an option for GovCloud regions
 
-        if str.lower(service) == 'all':
+        if service == 'all':
             return regions['all']
         if 'aws-global' in regions[service]['endpoints']:
             return [None]
         if 'all' in session.session_regions:
-            return list(regions[service]['endpoints'].keys())
+            valid_regions = list(regions[service]['endpoints'].keys())
+            if 'local' in valid_regions:
+                valid_regions.remove('local')
+            return valid_regions
         else:
             valid_regions = list(regions[service]['endpoints'].keys())
+            if 'local' in valid_regions:
+                valid_regions.remove('local')
             if check_session is True:
                 return [region for region in valid_regions if region in session.session_regions]
             else:
@@ -933,7 +938,7 @@ class Main:
             print('  No secret key has been set. Not running module.')
             return
 
-        module_name = command[1]
+        module_name = command[1].lower()
         module = self.import_module_by_name(module_name, include=['main', 'module_info', 'summary'])
 
         if module is not None:

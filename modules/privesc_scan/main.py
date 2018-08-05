@@ -272,7 +272,7 @@ def main(args, pacu_main):
             'iam:PassRole': True,  # Pass the role to the Lambda function
             'lambda:CreateFunction': True,  # Create a new Lambda function
             'lambda:CreateEventSourceMapping': True,  # Create a trigger for the Lambda function
-            'dynamodb:ListStreams': False, # Find existing streams
+            'dynamodb:ListStreams': False,  # Find existing streams
             'dynamodb:PutItem': False,  # Put a new item into the table to trigger the trigger
             'dynamodb:DescribeTables': False,  # Find an existing DynamoDB table
             'iam:ListRoles': False  # Find a role to pass to the function
@@ -280,7 +280,7 @@ def main(args, pacu_main):
         'PassExistingRoleToNewGlueDevEndpoint': {
             'iam:PassRole': True,  # Pass the role to the Glue Dev Endpoint
             'glue:CreateDevEndpoint': True,  # Create the new Glue Dev Endpoint
-            'glue:GetDevEndpoint': True, # Get the public address of it after creation
+            'glue:GetDevEndpoint': True,  # Get the public address of it after creation
             'iam:ListRoles': False  # Find a role to pass to the endpoint
         },
         'UpdateExistingGlueDevEndpoint': {
@@ -291,7 +291,7 @@ def main(args, pacu_main):
             'iam:PassRole': True,  # Pass role to the new stack
             'cloudformation:CreateStack': True,  # Create the stack
             'cloudformation:DescribeStacks': False,  # Fetch the values returned from the stack. Most likely needed, but possibly not
-            'iam:ListRoles': False # Find roles to pass to the stack
+            'iam:ListRoles': False  # Find roles to pass to the stack
         },
         'PassExistingRoleToNewDataPipeline': {
             'iam:PassRole': True,  # Pass roles to the Pipeline

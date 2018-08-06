@@ -45,7 +45,7 @@ class Main:
         self.server = None
         self.proxy = None
         self.queue = None
-        self.running_module = None
+        self.running_module_names = []
 
     # Utility methods
 
@@ -133,14 +133,14 @@ class Main:
             elif isinstance(message, list):
                 message = json.dumps(message, indent=2, default=str)
 
-        # The next section prepends the module's name in square brackets in
-        # front of the first line in the message containing non-whitespace
-        # characters.
-        if self.running_module and isinstance(message, str):
+        # The next section prepends the running module's name in square
+        # brackets in front of the first line in the message containing
+        # non-whitespace characters.
+        if len(self.running_module_names) > 0 and isinstance(message, str):
             split_message = message.split('\n')
             for index, fragment in enumerate(split_message):
                 if re.sub(r'\s', '', fragment):
-                    split_message[index] = '[{}] {}'.format(self.running_module, fragment)
+                    split_message[index] = '[{}] {}'.format(self.running_module_names[-1], fragment)
                     break
             message = '\n'.join(split_message)
 
@@ -170,11 +170,11 @@ class Main:
         if session_name == '':
             session_name = session.name
 
-        if self.running_module and isinstance(message, str):
+        if len(self.running_module_names) > 0 and isinstance(message, str):
             split_message = message.split('\n')
             for index, fragment in enumerate(split_message):
                 if re.sub(r'\s', '', fragment):
-                    split_message[index] = '[{}] {}'.format(self.running_module, fragment)
+                    split_message[index] = '[{}] {}'.format(self.running_module_names[-1], fragment)
                     break
             message = '\n'.join(split_message)
 
@@ -948,13 +948,16 @@ class Main:
             else:
                 self.print('  Running module {} on agent at {}...'.format(module_name, proxy_settings.target_agent[0]))
 
-            self.running_module = module.module_info['name']
+            self.running_module_names.append(module.module_info['name'])
 
             try:
                 summary_data = module.main(command[2:], self)
 
             except SystemExit as error:
-                self.running_module = None
+                try:
+                    self.running_module_names.pop()
+                except IndexError:
+                    pass
                 exception_type, exception_value, tb = sys.exc_info()
                 if 'SIGINT called' in exception_value.args:
                     self.print('^C\nExiting the currently running module.')
@@ -971,7 +974,10 @@ class Main:
                 return
 
             except Exception as error:
-                self.running_module = None
+                try:
+                    self.running_module_names.pop()
+                except IndexError:
+                    pass
                 raise
 
             # If the module's return value is None, it exited early.
@@ -983,7 +989,10 @@ class Main:
                     raise TypeError(' The {} module\'s summary is {}-type instead of str. Make summary return a string.'.format(module.module_info['name'], type(summary)))
                 self.print('MODULE SUMMARY:\n\n{}\n'.format(summary.strip('\n')))
 
-            self.running_module = None
+            try:
+                self.running_module_names.pop()
+            except IndexError:
+                pass
             return
 
         elif module_name in self.COMMANDS:

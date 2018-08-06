@@ -22,8 +22,8 @@ class AWSKey(Base, ModelUpdateMixin):
 
     user_name = Column(Text)
     user_arn = Column(Text)
-    account_id = Column(Integer)
-    user_id = Column(Integer)
+    account_id = Column(Text)
+    user_id = Column(Text)
     roles = Column(JSONType)
     groups = Column(JSONType)
     policies = Column(JSONType)

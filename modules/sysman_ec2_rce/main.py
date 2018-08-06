@@ -316,7 +316,7 @@ def main(args, pacu_main):
                             else:
                                 print('  Instance ID {} already has an instance profile attached to it, skipping...'.format(instance['InstanceId']))
                                 pass
-                        else: 
+                        else:
                             # There is no instance profile attached yet, do it now
                             response = client.associate_iam_instance_profile(
                                 InstanceId=instance['InstanceId'],

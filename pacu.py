@@ -878,13 +878,9 @@ class Main:
 
         try:
             self.print('  Using pip3 to locate botocore on the operating system...\n')
-            output = subprocess.check_output('{} -m pip show botocore'.format(py_executable))
+            output = subprocess.check_output('{} -m pip show botocore'.format(py_executable), shell=True)
         except:
-            try:
-                self.print('  pip3 failed, trying pip...\n')
-                output = subprocess.check_output('{} -m pip show botocore'.format(py_executable))
-            except:
-                path = self.input('  Could not use pip to determine botocore\'s location. Enter the path to your Python "dist-packages" folder (example: /usr/local/bin/python3.6/lib/dist-packages) or press Ctrl+C to exit: ').strip()
+            path = self.input('  Could not use pip to determine botocore\'s location. Enter the path to your Python "dist-packages" folder (example: /usr/local/bin/python3.6/lib/dist-packages) or press Ctrl+C to exit: ').strip()
 
         if path == '':
             # Account for Windows \r and \\ in file path (Windows)

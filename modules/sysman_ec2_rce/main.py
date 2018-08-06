@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import copy
 import os
 import re
 import time
@@ -235,6 +236,7 @@ def main(args, pacu_main):
             if len(response['InstanceProfiles']) > 0:
                 ssm_instance_profile_name = response['InstanceProfiles'][0]['InstanceProfileName']
                 ssm_instance_profile_arn = response['InstanceProfiles'][0]['Arn']
+                ssm_instance_profile_id = response['InstanceProfiles'][0]['InstanceProfileId']
                 print('Found valid instance profile: {}.\n'.format(ssm_instance_profile_name))
             # Else, leave ssm_instance_profile_name == ''
 
@@ -249,6 +251,7 @@ def main(args, pacu_main):
 
                 ssm_instance_profile_name = response['InstanceProfileName']
                 ssm_instance_profile_arn = response['Arn']
+                ssm_instance_profile_id = response['InstanceProfileId']
 
                 # Attach our role to the new instance profile
                 client.add_role_to_instance_profile(
@@ -286,6 +289,9 @@ def main(args, pacu_main):
     # likely due to permissions, but I give the user a choice below in the
     # error handling section
     replace = args.replace
+
+    ec2_data = copy.deepcopy(session.EC2)
+
     for region in regions:
         client = pacu_main.get_boto3_client('ec2', region)
         # instances_to_replace will be filled up as each instance is checked for
@@ -316,6 +322,14 @@ def main(args, pacu_main):
                                 }
                             )
                             targeted_instances.append(instance['InstanceId'])
+                            for instance_in_db in ec2_data['Instances']:
+                                if 'IamInstanceProfile' not in instance_in_db:
+                                    instance_in_db['IamInstanceProfile'] = {}
+
+                                if instance_in_db['InstanceId'] == instance['InstanceId']:
+                                    instance_in_db['IamInstanceProfile']['Arn'] = ssm_instance_profile_arn
+                                    instance_in_db['IamInstanceProfile']['Id'] = ssm_instance_profile_id
+                                    break
                             print('  Instance profile attached to instance ID {}.'.format(instance['InstanceId']))
         if len(instances_to_replace) > 0 and replace is True:
             # There are instances that need their role replaced, so discover association IDs to make that possible
@@ -355,6 +369,11 @@ def main(args, pacu_main):
                         }
                     )
                     targeted_instances.append(instance_id)
+                    for instance_in_db in ec2_data['Instances']:
+                        if instance_in_db['InstanceId'] == instance['InstanceId']:
+                            instance_in_db['IamInstanceProfile']['Arn'] = ssm_instance_profile_arn
+                            instance_in_db['IamInstanceProfile']['Id'] = ssm_instance_profile_id
+                            break
                     print('  Instance profile replaced for instance ID {}.'.format(instance_id))
                 except Exception as error:
                     print('  Failed to run replace_iam_instance_profile_association on instance ID {}: {}\n'.format(instance_id, str(error)))
@@ -365,6 +384,7 @@ def main(args, pacu_main):
                         replace = False
                         break
 
+    session.update(pacu_main.database, EC2=ec2_data)
     print('\n  Done.\n')
 
     # Start polling SystemsManager/RunCommand to see if instances show up

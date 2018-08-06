@@ -42,13 +42,12 @@ SUPPORTED_SERVICES = [
     's3'
 ]
 
+current_client = None
 current_region = None
 current_service = None
 
 allow_permissions = {}
 deny_permissions = {}
-possible_permissions = {}
-bugged_permissions = []
 summary_data = {}
 
 
@@ -66,11 +65,8 @@ def complete_service_list():
 
 
 def missing_param(param):
-    """Return a key/value dict in the expected formatting given a common parameter, or defaults to param=>'dummy_data'."""
-    common_params = {
-        #'Fileobj': open('workfile', 'w'),
-    }
-    out = {param: common_params[param]} if param in common_params else {param: 'dummy_data'}
+    """Sets param to 'dummy_data'"""
+    out = {param: 'dummy_data'}
     return out
 
 
@@ -142,13 +138,18 @@ def error_delegator(error):
 
 
 def generate_preload_actions():
-    """Certain actions require parameters that cannot be easily discerned from the error message provided by preloading kwargs for those actions."""
+    """Certain actions require parameters that cannot be easily discerned from the
+    error message provided by preloading kwargs for those actions.
+    """
     module_dir = os.path.dirname(__file__)
     path = os.path.join(module_dir, 'preload_actions.json')
     data = open(path).read()
     return json.loads(data)
 
 def read_only_function(service, func):
+    """Verifies that actions being ran are ReadOnlyAccess to minimize unexpecteed
+    changes to the AWS enviornment.
+    """
     module_dir = os.path.dirname(__file__)
     path = os.path.join(module_dir, 'ReadOnlyAccessPolicy.json')
     with open(path) as file:
@@ -165,6 +166,7 @@ def valid_func(service, func):
     if func[0] == '_':
         return False
     BAD_FUNCTIONS = [
+        # Common boto3 methods.
         'can_paginate',
         'get_waiter',
         'waiter_names',
@@ -173,6 +175,9 @@ def valid_func(service, func):
         'generate_presigned_post',
         'exceptions',
         'meta',
+
+        # S3 Function to manage multipart uploads.
+        'list_parts',
     ]
     if func in BAD_FUNCTIONS:
         return False
@@ -186,12 +191,13 @@ def convert_special_params(func, kwargs):
     """
     SPECIAL_PARAMS = [
         'Bucket',
-        'Attribute'
+        'Attribute',
+        'Key',
     ]
     for param in [param for param in kwargs if kwargs[param] == 'dummy_data']:
         if param in SPECIAL_PARAMS:
-            print('     Found special param')
-            kwargs[param] = param_generator.get_special_param(func, param)
+            print('      Found special param')
+            kwargs[param] = param_generator.get_special_param(current_client, func, param)
             if kwargs[param] is None:
                 print('    Failed to fill in a valid special parameter.')
                 return False
@@ -221,7 +227,8 @@ def error_code_special_parameter(code):
         'Malformed',
         'NotFound',
         'Unknown',
-        'NoSuch'
+        'NoSuch',
+        '404',
     ]
     if code == 'InvalidRequest':
         return True
@@ -262,7 +269,6 @@ def exception_handler(func, kwargs, error):
             print('  Special Parameter Found')
             if not convert_special_params(func, kwargs):
                 print('    No suitable valid data could be found')
-                bugged_permissions.append(func)
                 return True
         else:
             print('Unknown error:')
@@ -288,7 +294,18 @@ def valid_exception(error):
     """
     VALID_EXCEPTIONS = [
         'DryRunOperation',
+        # S3
         'NoSuchCORSConfiguration',
+        'ServerSideEncryptionConfigurationNotFoundError',
+        'NoSuchConfiguration',
+        'NoSuchLifecycleConfiguration',
+        'ReplicationConfigurationNotFoundError',
+        'NoSuchTagSet',
+        'NoSuchWebsiteConfiguration',
+        'NoSuchKey',
+
+        # EC2
+        'InvalidTargetArn.Unknown',
     ]
     for exception in VALID_EXCEPTIONS:
         if exception in str(error):
@@ -311,37 +328,36 @@ def main(args, pacu_main):
         current_service = service
         allow_permissions[service] = []
         deny_permissions[service] = []
-        possible_permissions[service] = []
 
         regions = get_regions(service)
         regions = ['us-east-1']
         for region in regions:
             global current_region 
             current_region = region
-            client = boto3.client(
+            global current_client
+            current_client = boto3.client(
                 service,
                 region_name=region,
             )
-            functions = [func for func in dir(client) if valid_func(service, func)]
+            functions = [func for func in dir(current_client) if valid_func(service, func)]
             index = 1
             for func in functions:
                 print('*************************NEW FUNCTION({}/{})*************************'.format(index, len(functions)))
                 index += 1
                 kwargs = preload_actions[func] if func in preload_actions else {}
+                # TODO, prepend DryRun argument only when it is accepted.
                 kwargs['DryRun'] = True
                 while True:
                     print('---------------------------------------------------------')
                     print('Trying {}...'.format(func))
                     print('Kwargs: {}'.format(kwargs))
-                    caller = getattr(client, func)
+                    caller = getattr(current_client, func)
                     try:
                         caller(**kwargs)
                         allow_permissions[service].append(func)
                         print('Authorization exists for: {}'.format(func))
                         break
                     except Exception as error:
-                        # Special Exception for exception that returns a DryRunOperation.
-                        # Sometimes the execution will raise an Exception, others it won't for the same process. 
                         if valid_exception(error):
                             allow_permissions[service].append(func)
                             print('Authorization exists for: {}'.format(func))
@@ -351,9 +367,10 @@ def main(args, pacu_main):
                             break
                 print('*************************END FUNCTION*************************\n')
 
-    print('Allowed Permissions: \n{}\n'.format(allow_permissions))
-    print('Denied Permissions: \n{}\n'.format(deny_permissions))
-    print('Bugged Permissions: \n{}\n'.format(bugged_permissions))
+    print('Allowed Permissions: \n')
+    print_permissions(allow_permissions)
+    print('Denied Permissions: \n')
+    print_permissions(deny_permissions)
     
     # Condenses the following dicts to a list that fits the standard service:action format.
     if allow_permissions:
@@ -373,6 +390,13 @@ def main(args, pacu_main):
 
     print('{} completed.\n'.format(module_info['name']))
     return summary_data
+
+def print_permissions(permission_dict):
+    for service in permission_dict:
+        print('  {}:'.format(service))
+        for action in permission_dict[service]:
+            print('    {}'.format(action))
+        print('')
 
 
 def camel_case(name):

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 from botocore.exceptions import ClientError
+from copy import deepcopy
 
 
 module_info = {
@@ -14,10 +15,10 @@ module_info = {
     'category': 'recon_enum_with_keys',
 
     # One liner description of the module functionality. This shows up when a user searches for modules.
-    'one_liner': 'Looks for Network Plane lateral movement opportunities',
+    'one_liner': 'Looks for Network Plane lateral movement opportunities.',
 
     # Full description about what the module does and how it works
-    'description': 'Looks for DirectConnect, VPN or VPC Peering to understand where you can go once you compromise an instance inside a VPC',
+    'description': 'Looks for DirectConnect, VPN or VPC Peering to understand where you can go once you compromise an instance inside a VPC.',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['EC2', 'DirectConnect'],
@@ -36,6 +37,11 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 parser.add_argument('--versions-all', required=False, default=False, action='store_true', help='Grab all versions instead of just the latest')
 
 
+# For when "help module_name" is called, don't modify this
+def help():
+    return [module_info, parser.format_help()]
+
+
 # Main is the first function that is called when this module is executed
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -48,14 +54,19 @@ def main(args, pacu_main):
 
     regions = get_regions('DirectConnect')
 
-    dx_vpcs = copy.deepcopy(session.VPC)
+    # Insert all VPCs into a dict indexed by ID for deduplication.
+    vpcs_by_id = dict()
+    for vpc in session.VPC:
+        vpcs_by_id[vpc['VpcId']] = deepcopy(vpc)
+
+    vpcs_found = 0
     vgw_assoc = {}
     for region in regions:
-        print(f'Starting region {region}...')
+        print('Starting region {}...'.format(region))
 
         dx_client = pacu_main.get_boto3_client('directconnect', region)
 
-        print("Enumerating DirectConnect")
+        print("  Enumerating DirectConnect")
         try:
             gw_response = dx_client.describe_direct_connect_gateways()
             if 'directConnectGateways' in gw_response:
@@ -71,16 +82,17 @@ def main(args, pacu_main):
                             vpc_id = vpc_data['VpcId']
                             # Ok, if we get here, we have a active DX VPC and opportunities for more exploration
                             # for analysis, we bundle up all the data, and key it off the VPC_ID
-                            dx_vpcs[vpc_id] = {}
-                            dx_vpcs[vpc_id]['VPC'] = vpc_data
-                            dx_vpcs[vpc_id]['VGW'] = vgw_attachment
-                            dx_vpcs[vpc_id]['DirectConnectAssociation'] = dx_assoc
-                            dx_vpcs[vpc_id]['DirectConnectGateway'] = dx_gw
+                            vpcs_by_id[vpc_id] = {}
+                            vpcs_by_id[vpc_id]['VPC'] = vpc_data
+                            vpcs_by_id[vpc_id]['VGW'] = vgw_attachment
+                            vpcs_by_id[vpc_id]['DirectConnectAssociation'] = dx_assoc
+                            vpcs_by_id[vpc_id]['DirectConnectGateway'] = dx_gw
+                            vpcs_found += 1
                             vgw_assoc[vgw_id] = vpc_data
         except ClientError as e:
             print("ClientError mapping DirectConnect to VPCs: {}".format(e))
 
-        print("Enumerating VPNs")
+        print("  Enumerating VPNs")
         # Now we look for VPN Connections
         ec2_client = pacu_main.get_boto3_client('ec2', region)
         vpn_response = ec2_client.describe_vpn_connections()
@@ -93,38 +105,49 @@ def main(args, pacu_main):
                     vgw_attachment, vpc_data = get_vpc_by_vgw(pacu_main, vgw_id, region)
                 if vpc_data is not None:
                     vpc_id = vpc_data['VpcId']
-                    if vpc_id not in dx_vpcs:
-                        dx_vpcs[vpc_id] = {}
-                    dx_vpcs[vpc_id]['VPN'] = vpn
-                    dx_vpcs[vpc_id]['VPC'] = vpc_data
-                    dx_vpcs[vpc_id]['VGW'] = vgw_attachment
+                    if vpc_id not in vpcs_by_id:
+                        vpcs_by_id[vpc_id] = {}
+                    vpcs_by_id[vpc_id]['VPN'] = vpn
+                    vpcs_by_id[vpc_id]['VPC'] = vpc_data
+                    vpcs_by_id[vpc_id]['VGW'] = vgw_attachment
+                    vpcs_found += 1
 
-        print("Enumerating Peering")
+        print("  Enumerating Peering")
         # And now VPC Peering
         pcx_response = ec2_client.describe_vpc_peering_connections()
         if 'VpcPeeringConnections' in pcx_response:
             for pcx in pcx_response['VpcPeeringConnections']:
-                if pcx['AccepterVpcInfo']['VpcId'] not in dx_vpcs:
+                if pcx['AccepterVpcInfo']['VpcId'] not in vpcs_by_id:
                     # Go get the VPC data and put into results
                     vpc_data = get_vpc_by_id(pacu_main, pcx['AccepterVpcInfo']['VpcId'], pcx['AccepterVpcInfo']['Region'])
-                    dx_vpcs[pcx['AccepterVpcInfo']['VpcId']] = {}
-                    dx_vpcs[pcx['AccepterVpcInfo']['VpcId']]['VPC'] = vpc_data
-                dx_vpcs[pcx['AccepterVpcInfo']['VpcId']]['Peering'] = pcx
+                    vpcs_by_id[pcx['AccepterVpcInfo']['VpcId']] = {}
+                    vpcs_by_id[pcx['AccepterVpcInfo']['VpcId']]['VPC'] = vpc_data
+                vpcs_by_id[pcx['AccepterVpcInfo']['VpcId']]['Peering'] = pcx
+                vpcs_found += 1
 
-                if pcx['RequesterVpcInfo']['VpcId'] not in dx_vpcs:
+                if pcx['RequesterVpcInfo']['VpcId'] not in vpcs_by_id:
                     # Go get the VPC data and put into results
                     vpc_data = get_vpc_by_id(pacu_main, pcx['RequesterVpcInfo']['VpcId'], pcx['RequesterVpcInfo']['Region'])
-                    dx_vpcs[pcx['RequesterVpcInfo']['VpcId']] = {}
-                    dx_vpcs[pcx['RequesterVpcInfo']['VpcId']]['VPC'] = vpc_data
-                dx_vpcs[pcx['RequesterVpcInfo']['VpcId']]['Peering'] = pcx
+                    vpcs_by_id[pcx['RequesterVpcInfo']['VpcId']] = {}
+                    vpcs_by_id[pcx['RequesterVpcInfo']['VpcId']]['VPC'] = vpc_data
+                vpcs_by_id[pcx['RequesterVpcInfo']['VpcId']]['Peering'] = pcx
+                vpcs_found += 1
+
+    updated_dx_vpcs = list(vpcs_by_id.values())
+    session.update(pacu_main.database, VPC=updated_dx_vpcs)
+
+    summary_data = {
+        'vpcs_found': vpcs_found,
+        'updated_dx_vpcs': updated_dx_vpcs
+    }
+    print('{} completed.\n'.format(module_info['name']))
+    return summary_data
 
 
-
-    print(dx_vpcs)
-    session.update(pacu_main.database, VPC=dx_vpcs)
-
-    print(f"{module_info['name']} completed.\n")
-    return
+def summary(data, pacu_main):
+    out = '  {} VPCs were found and updated.\n'.format(data.get('vpcs_found', 0))
+    out += '  {} VPCs are now known.'.format(len(data.get('updated_dx_vpcs', [])))
+    return out
 
 
 def get_vpc_by_vgw(pacu_main, vgw_id, vgw_region):
@@ -135,6 +158,7 @@ def get_vpc_by_vgw(pacu_main, vgw_id, vgw_region):
             vpc_id = vgw_attachment['VpcId']
             vpc_response = ec2_client.describe_vpcs(VpcIds=[vpc_id])
             return(vgw_attachment, vpc_response['Vpcs'][0])
+
 
 def get_vpc_by_id(pacu_main, vpc_id, region):
     try:

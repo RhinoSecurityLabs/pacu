@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 import argparse
-from copy import deepcopy
-import time
-import random
-import os
-
 from botocore.exceptions import ClientError
+from copy import deepcopy
+import os
+import random
+import time
+from utils import convert_list_to_dict_by_key
 
 
 module_info = {
@@ -87,9 +87,9 @@ def main(args, pacu_main):
 
     ec2_data = deepcopy(session.EC2)
     if 'Volumes' not in ec2_data.keys():
-        ec2_data['Volumes'] = []
+        ec2_data['Volumes'] = {}
     if 'Snapshots' not in ec2_data.keys():
-        ec2_data['Snapshots'] = []
+        ec2_data['Snapshots'] = {}
     session.update(pacu_main.database, EC2=ec2_data)
 
     if args.regions is None:
@@ -329,6 +329,11 @@ def main(args, pacu_main):
             for private in snapshot_permissions['Private']:
                 out_file.write('    {}\n'.format(private))
             summary_data['snapshot-permissions-path'] = path
+
+    ec2_data.update({
+        'Snapshots': convert_list_to_dict_by_key(ec2_data['Snapshots'], 'SnapshotId'),
+        'Volumes': convert_list_to_dict_by_key(ec2_data['Volumes'], 'VolumeId'),
+    })
     session.update(pacu_main.database, EC2=ec2_data)
     print('All data has been saved to the current session.')
 

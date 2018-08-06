@@ -2,6 +2,7 @@
 import argparse
 from copy import deepcopy
 import time
+from utils import convert_list_to_dict_by_key
 
 
 module_info = {
@@ -46,7 +47,7 @@ def main(args, pacu_main):
     summary_data = {'load_balancers': 0}
     if 'LoadBalancers' not in session.EC2.keys():
         ec2_data = deepcopy(session.EC2)
-        ec2_data['LoadBalancers'] = []
+        ec2_data['LoadBalancers'] = {}
         session.update(pacu_main.database, EC2=ec2_data)
 
     load_balancers = list()
@@ -79,7 +80,12 @@ def main(args, pacu_main):
         print('  {} total load balancer(s) found in {}.'.format(count, region))
 
     ec2_data = deepcopy(session.EC2)
-    ec2_data['LoadBalancers'] = deepcopy(load_balancers)
+
+
+    # CHECK BEFORE COMMITTING
+    ec2_data['LoadBalancers'] = deepcopy(convert_list_to_dict_by_key(load_balancers, 'LoadBalancerName'))
+
+
     session.update(pacu_main.database, EC2=ec2_data)
 
     print('{} total load balancer(s) found.'.format(len(session.EC2['LoadBalancers'])))
@@ -90,12 +96,12 @@ def main(args, pacu_main):
 
     with open(csv_file_path, 'w+') as csv_file:
         csv_file.write('Load Balancer Name,Load Balancer ARN,Region\n')
-        for load_balancer in session.EC2['LoadBalancers']:
+        for name, load_balancer in session.EC2['LoadBalancers'].items():
             print(load_balancer)
             for attribute in load_balancer['Attributes']:
                 if attribute['Key'] == 'access_logs.s3.enabled':
                     if attribute['Value'] is False or attribute['Value'] == 'false':
-                        csv_file.write('{},{},{}\n'.format(load_balancer['LoadBalancerName'], load_balancer['LoadBalancerArn'], load_balancer['Region']))
+                        csv_file.write('{},{},{}\n'.format(name, load_balancer['LoadBalancerArn'], load_balancer['Region']))
 
     print('A list of load balancers without access logging has been saved to ./{}'.format(csv_file_path))
     print('All data has been saved to the current session.')

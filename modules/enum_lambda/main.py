@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 from botocore.exceptions import ClientError
+from utils import convert_list_to_dict_by_key
 
 
 module_info = {
@@ -40,22 +41,18 @@ parser.add_argument('--regions', required=False, default=None, help='One or more
 def fetch_lambda_data(client, func, key, **kwargs):
     caller = getattr(client, func)
     try:
-        print('  Starting enumeration of {}'.format(key))
         response = caller(**kwargs)
         data = response[key]
         if isinstance(data, dict) or isinstance(data, str):
             print('    Found {} data'.format(key))
-            print('  Finished enumeration of {}'.format(key))
             return data
         while 'nextMarker' in response:
             response = caller({**kwargs, **{'NextMarker': response['nextMarker']}})
             data.extend(response[key])
         print('    Found {} {}'.format(len(data), key))
-        print('  Finished enumeration of {}'.format(key))
         return data
     except client.exceptions.ResourceNotFoundException:
         print('    No valid {} found'.format(key))
-        print('  Finished enumeration of {}'.format(key))
     except ClientError as error:
         if error.response['Error']['Code'] == 'AccessDeniedException':
             print('AccessDenied for: {}'.format(func))
@@ -110,6 +107,10 @@ def main(args, pacu_main):
         lambda_data['Functions'] += lambda_functions
         if len(lambda_functions) > 0:
             summary_data[region] = len(lambda_functions)
+
+    # Unlike Functions, the AccountLimit and AccountUsage fields are already
+    # dictionaries of data about the account's Lambda functions.
+    lambda_data['Functions'] = convert_list_to_dict_by_key(lambda_data['Functions'], 'FunctionName')
     session.update(pacu_main.database, Lambda=lambda_data)
 
     print('{} completed.\n'.format(module_info['name']))

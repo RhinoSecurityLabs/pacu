@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 from copy import deepcopy
+from utils import convert_list_to_dict_by_key
 
 
 module_info = {
@@ -211,6 +212,7 @@ def main(args, pacu_main):
 
             except Exception as error:
                 print('Error while running client.get_jobs: {}'.format(error))
+
     summary_data = {
         'connections': len(all_connections),
         'crawlers': len(all_crawlers),
@@ -220,11 +222,16 @@ def main(args, pacu_main):
     }
 
     glue_data = deepcopy(session.Glue)
-    glue_data['Connections'] = all_connections
-    glue_data['Crawlers'] = all_crawlers
-    glue_data['Databases'] = all_databases
-    glue_data['DevEndpoints'] = all_dev_endpoints
-    glue_data['Jobs'] = all_jobs
+
+
+    # CHECK BEFORE COMMITTING
+
+
+    glue_data['Connections'] = convert_list_to_dict_by_key(all_connections, '')
+    glue_data['Crawlers'] = convert_list_to_dict_by_key(all_crawlers, '')
+    glue_data['Databases'] = convert_list_to_dict_by_key(all_databases, '')
+    glue_data['DevEndpoints'] = convert_list_to_dict_by_key(all_dev_endpoints, '')
+    glue_data['Jobs'] = convert_list_to_dict_by_key(all_jobs, '')
     session.update(pacu_main.database, Glue=glue_data)
 
     print('{} completed.\n'.format(module_info['name']))

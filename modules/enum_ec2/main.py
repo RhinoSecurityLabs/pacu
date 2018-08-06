@@ -3,6 +3,7 @@ import argparse
 from botocore.exceptions import ClientError
 from copy import deepcopy
 from random import choice
+from utils import convert_list_to_dict_by_key
 
 
 module_info = {
@@ -404,31 +405,30 @@ def main(args, pacu_main):
 
         print('')  # Break the line after each region. This isn't on the end of another print because they won't always be all used and isn't before the region print because it would double break lines at the beginning
 
-    gathered_data = {
-        'Instances': all_instances,
-        'SecurityGroups': all_security_groups,
-        'ElasticIPs': all_elastic_ips,
-        'VPNCustomerGateways': all_vpn_customer_gateways,
-        'DedicatedHosts': all_dedicated_hosts,
-        'NetworkACLs': all_network_acls,
-        'NATGateways': all_nat_gateways,
-        'NetworkInterfaces': all_network_interfaces,
-        'RouteTables': all_route_tables,
-        'Subnets': all_subnets,
-        'VPCs': all_vpcs,
-        'VPCEndpoints': all_vpc_endpoints,
-    }
-
+    # This overwrites all data for the following fields, while preserving any
+    # preexisting data in any fields not listed here.
     ec2_data = deepcopy(session.EC2)
-    for key, value in gathered_data.items():
-        ec2_data[key] = value
+    ec2_data.update({
+        'Instances': convert_list_to_dict_by_key(all_instances, 'InstanceId'),
+        'SecurityGroups': convert_list_to_dict_by_key(all_security_groups, 'GroupId'),
+        'ElasticIPs': convert_list_to_dict_by_key(all_elastic_ips, ''),
+        'VPNCustomerGateways': convert_list_to_dict_by_key(all_vpn_customer_gateways, ''),
+        'DedicatedHosts': convert_list_to_dict_by_key(all_dedicated_hosts, ''),
+        'NetworkACLs': convert_list_to_dict_by_key(all_network_acls, 'NetworkAclId'),
+        'NATGateways': convert_list_to_dict_by_key(all_nat_gateways, ''),
+        'NetworkInterfaces': convert_list_to_dict_by_key(all_network_interfaces, 'NetworkInterfaceId'),
+        'RouteTables': convert_list_to_dict_by_key(all_route_tables, 'RouteTableId'),
+        'Subnets': convert_list_to_dict_by_key(all_subnets, 'SubnetId'),
+        'VPCs': convert_list_to_dict_by_key(all_vpcs, 'VpcId'),
+        'VPCEndpoints': convert_list_to_dict_by_key(all_vpc_endpoints, ''),
+    })
     session.update(pacu_main.database, EC2=ec2_data)
 
     print('All data has been saved to the current session.\n')
 
     print('{} completed.\n'.format(module_info['name']))
 
-    return gathered_data
+    return ec2_data
 
 
 def summary(data, pacu_main):

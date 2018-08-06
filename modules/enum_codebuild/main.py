@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 from copy import deepcopy
+from utils import convert_list_to_dict_by_key
 
 
 module_info = {
@@ -107,11 +108,21 @@ def main(args, pacu_main):
     summary_data['All'] = {'EnvironmentVariables': len(environment_variables)}
 
     if len(all_projects) > 0:
-        codebuild_data['Projects'] = all_projects
+
+
+        # CHECK BEFORE COMMITTING:
+        codebuild_data['Projects'] = convert_list_to_dict_by_key(all_projects, 'name')
+
+
         summary_data['All']['Projects'] = len(all_projects)
 
     if len(all_builds) > 0:
-        codebuild_data['Builds'] = all_builds
+
+
+        # CHECK BEFORE COMMITTING:
+        codebuild_data['Builds'] = convert_list_to_dict_by_key(all_builds, 'BuildId')
+
+
         summary_data['All']['Builds'] = len(all_builds)
 
     session.update(pacu_main.database, CodeBuild=codebuild_data)

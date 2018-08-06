@@ -9,6 +9,19 @@ from sqlalchemy.orm import sessionmaker
 from core.base import DATABASE_CONNECTION_PATH
 
 
+def convert_list_to_dict_by_key(data, unique_key):
+    new_data = {}
+
+
+    # CHECK BEFORE COMMITTING: Does data need to be deepcopied? Probably not since it isn't being mutated, right?
+
+
+    for element in data:
+        new_data[element[unique_key]] = element
+
+    return new_data
+
+
 def get_database_connection(database_connection_path=DATABASE_CONNECTION_PATH):
     """ Unlike database file paths, database connection paths must begin with
     sqlite:/// """

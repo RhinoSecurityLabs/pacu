@@ -3,6 +3,7 @@ import argparse
 from botocore.exceptions import ClientError
 from copy import deepcopy
 import time
+from utils import convert_list_to_dict_by_key
 
 
 module_info = {
@@ -49,14 +50,18 @@ def main(args, pacu_main):
     if fetch_data(['EC2', 'Instances'], 'enum_ec2', '--instances') is False:
         print('Pre-req module not run successfully. Exiting...')
         return summary_data
-    instances = session.EC2['Instances']
+    instances = deepcopy(session.EC2['Instances'])
 
     try:
-        client = pacu_main.get_boto3_client('ec2', instances[0]['Region'])
+        # Since dictionaries are not ordered, sorting all the instance IDs
+        # makes retrieving the first instance ID a reproducible operation for
+        # any given data set.
+        first_instance_id = sorted(instances.keys())[0]
+        client = pacu_main.get_boto3_client('ec2', instances[first_instance_id]['Region'])
         client.describe_instance_attribute(
             DryRun=True,
             Attribute='disableApiTermination',
-            InstanceId=instances[0]['InstanceId']
+            InstanceId=first_instance_id
         )
     except ClientError as error:
         if not str(error).find('UnauthorizedOperation') == -1:
@@ -68,13 +73,13 @@ def main(args, pacu_main):
     summary_data['csv_file_path'] = csv_file_path
     with open(csv_file_path, 'w+') as csv_file:
         csv_file.write('Instance Name,Instance ID,Region\n')
-        for instance in instances:
+        for instance_id, instance in instances.items():
             client = pacu_main.get_boto3_client('ec2', instance['Region'])
 
             try:
                 instance['TerminationProtection'] = client.describe_instance_attribute(
                     Attribute='disableApiTermination',
-                    InstanceId=instance['InstanceId']
+                    InstanceId=instance_id
                 )['DisableApiTermination']['Value']
                 if instance['TerminationProtection'] is False:
                     name = ''
@@ -83,10 +88,10 @@ def main(args, pacu_main):
                             if tag['Key'] == 'Name':
                                 name = tag['Value']
                                 break
-                    csv_file.write('{},{},{}\n'.format(name, instance['InstanceId'], instance['Region']))
+                    csv_file.write('{},{},{}\n'.format(name, instance_id, instance['Region']))
                     summary_data['instance_count'] += 1
             except Exception as error:
-                print('Failed to retrieve info for instance ID {}: {}'.format(instance['InstanceId'], error))
+                print('Failed to retrieve info for instance ID {}: {}'.format(instance_id, error))
 
     ec2_data = deepcopy(session.EC2)
     ec2_data['Instances'] = instances
@@ -98,7 +103,7 @@ def main(args, pacu_main):
 
 
 def summary(data, pacu_main):
-    out = '  {} instances have termination protection enabled\n'.format(data['instance_count'])
+    out = '  {} instances have termination protection disabled\n'.format(data['instance_count'])
     if data['instance_count'] > 0:
         out += '    Instances without termination protection have been written to: {}\n'.format(data['csv_file_path'])
     return out

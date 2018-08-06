@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import re
 
 
 module_info = {
@@ -51,7 +52,6 @@ def main(args, pacu_main):
     fetch_data = pacu_main.fetch_data
     ######
 
-    client = pacu_main.get_boto3_client('iam')
     summary_data = {'users_confirmed': 0}
 
     users = []
@@ -80,14 +80,32 @@ def main(args, pacu_main):
         })
         summary_data['single_user'] = args.user_name
     else:
-        user = client.get_user()
+        client = pacu_main.get_boto3_client('sts')
+        identity = client.get_caller_identity()
         active_aws_key = session.get_active_aws_key(pacu_main.database)
-        active_aws_key.update(
-            pacu_main.database,
-            user_name=user['User']['UserName'],
-            user_arn=user['User']['Arn'],
-            user_id=user['User']['UserId'],
-        )
+
+        if re.match(r'arn:aws:iam::\d{12}:user/', identity['Arn']) is not None:
+            client = pacu_main.get_boto3_client('iam')
+            user = client.get_user()
+            active_aws_key.update(
+                pacu_main.database,
+                user_name=user['User']['UserName'],
+                user_arn=identity['Arn'],
+                user_id=identity['UserId'],
+                account_id=identity['Account']
+            )
+        elif re.match(r'arn:aws:sts::\d{12}:assumed-role/', identity['Arn']) is not None:
+            # TODO: Find role info
+            active_aws_key.update(
+                pacu_main.database,
+                user_name=identity['User']['UserName'],
+                user_arn=identity['Arn'],
+                user_id=identity['UserId'],
+                account_id=identity['Account']
+            )
+        else:
+            print('Not an IAM user or role. Exiting...\n')
+            return False
         user = key_info(alias=session.key_alias)
         user['PermissionsConfirmed'] = True
         user['Permissions'] = {'Allow': {}, 'Deny': {}}
@@ -106,6 +124,8 @@ def main(args, pacu_main):
     # get-user-policy
     # get-group-policy
     # get-role-policy
+
+    client = pacu_main.get_boto3_client('iam')
 
     for user in users:
         user['Groups'] = []

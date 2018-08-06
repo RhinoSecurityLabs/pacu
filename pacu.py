@@ -201,21 +201,26 @@ class Main:
     def get_regions(self, service, check_session=True):
         session = self.get_active_session()
 
-        service = str.lower(service)
+        service = service.lower()
 
         with open('./modules/service_regions.json', 'r+') as regions_file:
             regions = json.load(regions_file)
 
         # TODO: Add an option for GovCloud regions
 
-        if str.lower(service) == 'all':
+        if service == 'all':
             return regions['all']
         if 'aws-global' in regions[service]['endpoints']:
             return [None]
         if 'all' in session.session_regions:
-            return list(regions[service]['endpoints'].keys())
+            valid_regions = list(regions[service]['endpoints'].keys())
+            if 'local' in valid_regions:
+                valid_regions.remove('local')
+            return valid_regions
         else:
             valid_regions = list(regions[service]['endpoints'].keys())
+            if 'local' in valid_regions:
+                valid_regions.remove('local')
             if check_session is True:
                 return [region for region in valid_regions if region in session.session_regions]
             else:
@@ -860,29 +865,22 @@ class Main:
 """)
 
     def update_regions(self):
+        py_executable = sys.executable
         # Update boto3 and botocore to fetch the latest version of the AWS region_list
         try:
-            self.print('  Using pip3 to update botocore, so we have the latest region list...\n')
-            subprocess.run(['pip3', 'install', '--upgrade', 'botocore'])
+            self.print('  Using pip to update botocore, so we have the latest region list...\n')
+            subprocess.run([py_executable, '-m', 'pip', 'install', '--upgrade', 'botocore'])
         except:
-            try:
-                self.print('  pip3 failed, trying pip...\n')
-                subprocess.run(['pip', 'install', '--upgrade', 'botocore'])
-            except:
-                pip = self.input('  Could not use pip3 or pip to update botocore to the latest version. Enter the name of your pip binary or press Ctrl+C to exit: ').strip()
-                subprocess.run(['{}'.format(pip), 'install', '--upgrade', 'boto3', 'botocore'])
+            pip = self.input('  Could not use pip3 or pip to update botocore to the latest version. Enter the name of your pip binary or press Ctrl+C to exit: ').strip()
+            subprocess.run(['{}'.format(pip), 'install', '--upgrade', 'botocore'])
 
         path = ''
 
         try:
             self.print('  Using pip3 to locate botocore on the operating system...\n')
-            output = subprocess.check_output('pip3 show botocore')
+            output = subprocess.check_output('{} -m pip show botocore'.format(py_executable), shell=True)
         except:
-            try:
-                self.print('  pip3 failed, trying pip...\n')
-                output = subprocess.check_output('pip show botocore')
-            except:
-                path = self.input('  Could not use pip3 or pip to determine botocore\'s location. Enter it now (example: /usr/local/bin/python3.6/lib/dist-packages) or press Ctrl+C to exit: ').strip()
+            path = self.input('  Could not use pip to determine botocore\'s location. Enter the path to your Python "dist-packages" folder (example: /usr/local/bin/python3.6/lib/dist-packages) or press Ctrl+C to exit: ').strip()
 
         if path == '':
             # Account for Windows \r and \\ in file path (Windows)
@@ -933,7 +931,7 @@ class Main:
             print('  No secret key has been set. Not running module.')
             return
 
-        module_name = command[1]
+        module_name = command[1].lower()
         module = self.import_module_by_name(module_name, include=['main', 'module_info', 'summary'])
 
         if module is not None:

@@ -333,7 +333,7 @@ def main(args, pacu_main):
         allow_permissions[service] = []
         deny_permissions[service] = []
 
-        regions = get_regions(service)
+        # Only checking against 'us-east-1'. To store more granular permissions the DB needs to be changed.
         regions = ['us-east-1']
         for region in regions:
             global current_region

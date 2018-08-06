@@ -865,29 +865,26 @@ class Main:
 """)
 
     def update_regions(self):
+        py_executable = sys.executable
         # Update boto3 and botocore to fetch the latest version of the AWS region_list
         try:
-            self.print('  Using pip3 to update botocore, so we have the latest region list...\n')
-            subprocess.run(['pip3', 'install', '--upgrade', 'botocore'])
+            self.print('  Using pip to update botocore, so we have the latest region list...\n')
+            subprocess.run([py_executable, '-m', 'pip', 'install', '--upgrade', 'botocore'])
         except:
-            try:
-                self.print('  pip3 failed, trying pip...\n')
-                subprocess.run(['pip', 'install', '--upgrade', 'botocore'])
-            except:
-                pip = self.input('  Could not use pip3 or pip to update botocore to the latest version. Enter the name of your pip binary or press Ctrl+C to exit: ').strip()
-                subprocess.run(['{}'.format(pip), 'install', '--upgrade', 'boto3', 'botocore'])
+            pip = self.input('  Could not use pip3 or pip to update botocore to the latest version. Enter the name of your pip binary or press Ctrl+C to exit: ').strip()
+            subprocess.run(['{}'.format(pip), 'install', '--upgrade', 'botocore'])
 
         path = ''
 
         try:
             self.print('  Using pip3 to locate botocore on the operating system...\n')
-            output = subprocess.check_output('pip3 show botocore')
+            output = subprocess.check_output('{} -m pip show botocore'.format(py_executable))
         except:
             try:
                 self.print('  pip3 failed, trying pip...\n')
-                output = subprocess.check_output('pip show botocore')
+                output = subprocess.check_output('{} -m pip show botocore'.format(py_executable))
             except:
-                path = self.input('  Could not use pip3 or pip to determine botocore\'s location. Enter it now (example: /usr/local/bin/python3.6/lib/dist-packages) or press Ctrl+C to exit: ').strip()
+                path = self.input('  Could not use pip to determine botocore\'s location. Enter the path to your Python "dist-packages" folder (example: /usr/local/bin/python3.6/lib/dist-packages) or press Ctrl+C to exit: ').strip()
 
         if path == '':
             # Account for Windows \r and \\ in file path (Windows)

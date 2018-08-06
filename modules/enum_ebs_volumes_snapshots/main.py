@@ -106,7 +106,7 @@ def main(args, pacu_main):
         user = key_info()
 
         if 'AccountId' in user and user['AccountId'] is not None:
-            account_ids = [str(user['AccountId'])]
+            account_ids = [user['AccountId']]
         else:
             current_account = input('No account IDs were passed in as arguments and the account ID for the current user has not been stored in this session yet. An account ID is required to get valid results from the snapshot enumeration portion of this module. If you know the current users account ID then enter it now, otherwise, enter y to try and fetch it, or enter n to skip EBS snapshot enumeration. ([account_id]/y/n) ')
 

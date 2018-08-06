@@ -183,11 +183,6 @@ def convert_special_params(func, kwargs):
     """Certain actions go through additional argument parsing. If such a case exists, the dummy_data will
     be filled with valid data so that the action can successfully pass validation and reach and query
     correctly determine authorization.
-
-    TODO: Go through and actually make sure that when a parameter is requested, it can be programatically
-    returned. If you need a valid InstanceID and you have the permission to get one, you should be able to
-    fill that valid data and determine authorization.
-
     """
     SPECIAL_PARAMS = [
         'Bucket',
@@ -287,6 +282,19 @@ def exception_handler(func, kwargs, error):
         print('Unknown Error. Type: {} Full: {}'.format(type(error), str(error)))
     return False
 
+def valid_exception(error):
+    """There are certain Exceptions raised that indicate successful authorization.
+    This method will return True if one of those Exceptions is raised
+    """
+    VALID_EXCEPTIONS = [
+        'DryRunOperation',
+        'NoSuchCORSConfiguration',
+    ]
+    for exception in VALID_EXCEPTIONS:
+        if exception in str(error):
+            return True
+    return False
+
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -334,7 +342,7 @@ def main(args, pacu_main):
                     except Exception as error:
                         # Special Exception for exception that returns a DryRunOperation.
                         # Sometimes the execution will raise an Exception, others it won't for the same process. 
-                        if 'DryRunOperation' in str(error):
+                        if valid_exception(error):
                             allow_permissions[service].append(func)
                             print('Authorization exists for: {}'.format(func))
                             break
@@ -343,9 +351,9 @@ def main(args, pacu_main):
                             break
                 print('*************************END FUNCTION*************************\n')
 
-    print('Allowed Permissions: \n{}'.format(allow_permissions))
-    print('Denied Permissions: \n{}'.format(deny_permissions))
-    print('Bugged Permissions: \n{}'.format(bugged_permissions))
+    print('Allowed Permissions: \n{}\n'.format(allow_permissions))
+    print('Denied Permissions: \n{}\n'.format(deny_permissions))
+    print('Bugged Permissions: \n{}\n'.format(bugged_permissions))
     
     # Condenses the following dicts to a list that fits the standard service:action format.
     if allow_permissions:

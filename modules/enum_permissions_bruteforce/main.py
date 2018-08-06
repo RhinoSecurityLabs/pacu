@@ -146,6 +146,7 @@ def generate_preload_actions():
     data = open(path).read()
     return json.loads(data)
 
+
 def read_only_function(service, func):
     """Verifies that actions being ran are ReadOnlyAccess to minimize unexpecteed
     changes to the AWS enviornment.
@@ -222,6 +223,7 @@ def build_service_list(services=None):
     service_list = [service for service in services if service in SUPPORTED_SERVICES]
     return service_list
 
+
 def error_code_special_parameter(code):
     COMMON_CODE_AFFIXES = [
         'Malformed',
@@ -238,6 +240,7 @@ def error_code_special_parameter(code):
         return True
     else:
         return False
+
 
 def exception_handler(func, kwargs, error):
     if isinstance(error, ParamValidationError):
@@ -288,6 +291,7 @@ def exception_handler(func, kwargs, error):
         print('Unknown Error. Type: {} Full: {}'.format(type(error), str(error)))
     return False
 
+
 def valid_exception(error):
     """There are certain Exceptions raised that indicate successful authorization.
     This method will return True if one of those Exceptions is raised
@@ -332,7 +336,7 @@ def main(args, pacu_main):
         regions = get_regions(service)
         regions = ['us-east-1']
         for region in regions:
-            global current_region 
+            global current_region
             current_region = region
             global current_client
             current_client = boto3.client(
@@ -371,7 +375,7 @@ def main(args, pacu_main):
     print_permissions(allow_permissions)
     print('Denied Permissions: \n')
     print_permissions(deny_permissions)
-    
+
     # Condenses the following dicts to a list that fits the standard service:action format.
     if allow_permissions:
         full_allow = [service + ':' + camel_case(perm) for perm in allow_permissions[service] for service in allow_permissions]
@@ -391,7 +395,9 @@ def main(args, pacu_main):
     print('{} completed.\n'.format(module_info['name']))
     return summary_data
 
+
 def print_permissions(permission_dict):
+    """Helper function to print permissions."""
     for service in permission_dict:
         print('  {}:'.format(service))
         for action in permission_dict[service]:
@@ -400,6 +406,7 @@ def print_permissions(permission_dict):
 
 
 def camel_case(name):
+    """Helper function to convert snake_case to CamelCase."""
     split_name = name.split('_')
     return ''.join([name[0].upper() + name[1:] for name in split_name])
 

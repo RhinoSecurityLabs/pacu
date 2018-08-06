@@ -18,6 +18,7 @@ def get_special_param(client, func, param):
         PARAM_CACHE[param] = get_key(client)
     return PARAM_CACHE[param]
 
+
 def get_key(client):
     try:
         bucket = client.list_buckets()['Buckets'][0]['Name']

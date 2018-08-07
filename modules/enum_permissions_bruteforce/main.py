@@ -4,12 +4,13 @@ import boto3
 from botocore.exceptions import ClientError
 from botocore.exceptions import ParamValidationError
 from botocore.exceptions import UnknownServiceError
-import os
 from datetime import datetime
 import json
+import os
 import re
 
 from . import param_generator
+
 
 module_info = {
     'name': 'enum_permissions_bruteforce',
@@ -22,10 +23,10 @@ module_info = {
         API calls in order to enumerate permissions without the use of
         IAM permissions
         """,
-    'services': ['ALL'],
+    'services': ['all'],
     'prerequisite_modules': [],
     'external_dependencies': [],
-    'arguments_to_autocomplete': [],
+    'arguments_to_autocomplete': ['--services'],
 }
 
 
@@ -46,15 +47,13 @@ current_client = None
 current_region = None
 current_service = None
 
-allow_permissions = {}
-deny_permissions = {}
 summary_data = {}
 
 
 def complete_service_list():
     """Returns a list of all supported boto3 services"""
     try:
-        client = boto3.client(
+        boto3.client(
             'bad_dummy_service_name',
             region_name='us-east-1'
         )
@@ -143,7 +142,8 @@ def generate_preload_actions():
     """
     module_dir = os.path.dirname(__file__)
     path = os.path.join(module_dir, 'preload_actions.json')
-    data = open(path).read()
+    with open(path) as actions_file:
+        data = actions_file.read()
     return json.loads(data)
 
 
@@ -321,11 +321,12 @@ def main(args, pacu_main):
     session = pacu_main.get_active_session()
     args = parser.parse_args(args)
     print = pacu_main.print
-    get_regions = pacu_main.get_regions
 
     preload_actions = generate_preload_actions()
     service_list = build_service_list(args.services.split(',')) if args.services else build_service_list()
     summary_data['services'] = service_list
+    allow_permissions = {}
+    deny_permissions = {}
 
     for service in service_list:
         global current_service

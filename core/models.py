@@ -151,6 +151,7 @@ class PacuSession(Base, ModelUpdateMixin):
     Shield = Column(JSONType, nullable=False, default=dict)
     VPC = Column(JSONType, nullable=False, default=dict)
     WAF = Column(JSONType, nullable=False, default=dict)
+    WAFRegional = Column(JSONType, nullable=False, default=dict)
     Account = Column(JSONType, nullable=False, default=dict)
     AccountSpend = Column(JSONType, nullable=False, default=dict)
 

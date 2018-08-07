@@ -22,8 +22,8 @@ class AWSKey(Base, ModelUpdateMixin):
 
     user_name = Column(Text)
     user_arn = Column(Text)
-    account_id = Column(Integer)
-    user_id = Column(Integer)
+    account_id = Column(Text)
+    user_id = Column(Text)
     roles = Column(JSONType)
     groups = Column(JSONType)
     policies = Column(JSONType)
@@ -115,7 +115,9 @@ class PacuSession(Base, ModelUpdateMixin):
         'S3',
         'Shield',
         'VPC',
-        'WAF'
+        'WAF',
+        'Account',
+        'AccountSpend'
     )
 
     aws_keys = relationship('AWSKey', backref='session', cascade='all, delete-orphan', lazy='dynamic')
@@ -150,6 +152,8 @@ class PacuSession(Base, ModelUpdateMixin):
     VPC = Column(JSONType, nullable=False, default=dict)
     WAF = Column(JSONType, nullable=False, default=dict)
     WAFRegional = Column(JSONType, nullable=False, default=dict)
+    Account = Column(JSONType, nullable=False, default=dict)
+    AccountSpend = Column(JSONType, nullable=False, default=dict)
 
     def __repr__(self):
         if self.key_alias:

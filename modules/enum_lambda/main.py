@@ -45,17 +45,14 @@ def fetch_lambda_data(client, func, key, **kwargs):
         data = response[key]
         if isinstance(data, dict) or isinstance(data, str):
             print('    Found {} data'.format(key))
-            print('  Finished enumeration of {}'.format(key))
             return data
         while 'nextMarker' in response:
             response = caller({**kwargs, **{'NextMarker': response['nextMarker']}})
             data.extend(response[key])
         print('    Found {} {}'.format(len(data), key))
-        print('  Finished enumeration of {}'.format(key))
         return data
     except client.exceptions.ResourceNotFoundException:
         print('    No valid {} found'.format(key))
-        print('  Finished enumeration of {}'.format(key))
     except ClientError as error:
         if error.response['Error']['Code'] == 'AccessDeniedException':
             print('AccessDenied for: {}'.format(func))

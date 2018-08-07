@@ -65,6 +65,7 @@ def cleanup(pacu_main, regions):
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
     args = parser.parse_args(args)
+    input = pacu_main.input
     print = pacu_main.print
     get_regions = pacu_main.get_regions
     regions = args.regions.split(',') if args.regions else get_regions('apigateway')

@@ -57,7 +57,8 @@ def main(args, pacu_main):
     # Insert all VPCs into a dict indexed by ID for deduplication.
     vpcs_by_id = dict()
     for vpc in session.VPC:
-        vpcs_by_id[vpc['VpcId']] = deepcopy(vpc)
+        if 'VPC' in vpc.keys():
+            vpcs_by_id[vpc['VPC']['VpcId']] = deepcopy(vpc)
 
     vpcs_found = 0
     vgw_assoc = {}
@@ -85,9 +86,9 @@ def main(args, pacu_main):
                                 # for analysis, we bundle up all the data, and key it off the VPC_ID
                                 vpcs_by_id[vpc_id] = {}
                                 vpcs_by_id[vpc_id]['VPC'] = vpc_data
-                                vpcs_by_id[vpc_id]['VGW'] = vgw_attachment
-                                vpcs_by_id[vpc_id]['DirectConnectAssociation'] = dx_assoc
-                                vpcs_by_id[vpc_id]['DirectConnectGateway'] = dx_gw
+                                vpcs_by_id[vpc_id]['VPC']['VGW'] = vgw_attachment
+                                vpcs_by_id[vpc_id]['VPC']['DirectConnectAssociation'] = dx_assoc
+                                vpcs_by_id[vpc_id]['VPC']['DirectConnectGateway'] = dx_gw
                                 vpcs_found += 1
                                 vgw_assoc[vgw_id] = vpc_data
         except ClientError as e:
@@ -108,9 +109,9 @@ def main(args, pacu_main):
                     vpc_id = vpc_data['VpcId']
                     if vpc_id not in vpcs_by_id:
                         vpcs_by_id[vpc_id] = {}
-                    vpcs_by_id[vpc_id]['VPN'] = vpn
                     vpcs_by_id[vpc_id]['VPC'] = vpc_data
-                    vpcs_by_id[vpc_id]['VGW'] = vgw_attachment
+                    vpcs_by_id[vpc_id]['VPC']['VPN'] = vpn
+                    vpcs_by_id[vpc_id]['VPC']['VGW'] = vgw_attachment
                     vpcs_found += 1
 
         print("  Enumerating Peering")
@@ -125,7 +126,9 @@ def main(args, pacu_main):
                     if vpc_data is not None:
                         vpcs_by_id[pcx['AccepterVpcInfo']['VpcId']]['VPC'] = vpc_data
                         vpcs_found += 1
-                vpcs_by_id[pcx['AccepterVpcInfo']['VpcId']]['Peering'] = pcx
+                    else:
+                        vpcs_by_id[pcx['AccepterVpcInfo']['VpcId']]['VPC'] = {'VpcId': pcx['AccepterVpcInfo']['VpcId']}
+                vpcs_by_id[pcx['AccepterVpcInfo']['VpcId']]['VPC']['Peering'] = pcx
 
                 if pcx['RequesterVpcInfo']['VpcId'] not in vpcs_by_id:
                     vpcs_by_id[pcx['RequesterVpcInfo']['VpcId']] = {}
@@ -134,7 +137,9 @@ def main(args, pacu_main):
                     if vpc_data is not None:
                         vpcs_by_id[pcx['RequesterVpcInfo']['VpcId']]['VPC'] = vpc_data
                         vpcs_found += 1
-                vpcs_by_id[pcx['RequesterVpcInfo']['VpcId']]['Peering'] = pcx
+                    else:
+                        vpcs_by_id[pcx['RequesterVpcInfo']['VpcId']]['VPC'] = {'VpcId': pcx['RequesterVpcInfo']['VpcId']}
+                vpcs_by_id[pcx['RequesterVpcInfo']['VpcId']]['VPC']['Peering'] = pcx
 
     updated_dx_vpcs = list(vpcs_by_id.values())
     session.update(pacu_main.database, VPC=updated_dx_vpcs)

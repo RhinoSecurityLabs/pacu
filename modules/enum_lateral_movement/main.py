@@ -79,16 +79,17 @@ def main(args, pacu_main):
                             vgw_region = dx_assoc['virtualGatewayRegion']
                             # Apparently Direct Connects work across region. The Gateway can be in Virgina, but the VGW in Ohio.
                             vgw_attachment, vpc_data = get_vpc_by_vgw(pacu_main, vgw_id, vgw_region)
-                            vpc_id = vpc_data['VpcId']
-                            # Ok, if we get here, we have a active DX VPC and opportunities for more exploration
-                            # for analysis, we bundle up all the data, and key it off the VPC_ID
-                            vpcs_by_id[vpc_id] = {}
-                            vpcs_by_id[vpc_id]['VPC'] = vpc_data
-                            vpcs_by_id[vpc_id]['VGW'] = vgw_attachment
-                            vpcs_by_id[vpc_id]['DirectConnectAssociation'] = dx_assoc
-                            vpcs_by_id[vpc_id]['DirectConnectGateway'] = dx_gw
-                            vpcs_found += 1
-                            vgw_assoc[vgw_id] = vpc_data
+                            if vpc_data is not None:
+                                vpc_id = vpc_data['VpcId']
+                                # Ok, if we get here, we have a active DX VPC and opportunities for more exploration
+                                # for analysis, we bundle up all the data, and key it off the VPC_ID
+                                vpcs_by_id[vpc_id] = {}
+                                vpcs_by_id[vpc_id]['VPC'] = vpc_data
+                                vpcs_by_id[vpc_id]['VGW'] = vgw_attachment
+                                vpcs_by_id[vpc_id]['DirectConnectAssociation'] = dx_assoc
+                                vpcs_by_id[vpc_id]['DirectConnectGateway'] = dx_gw
+                                vpcs_found += 1
+                                vgw_assoc[vgw_id] = vpc_data
         except ClientError as e:
             print("ClientError mapping DirectConnect to VPCs: {}".format(e))
 
@@ -118,20 +119,22 @@ def main(args, pacu_main):
         if 'VpcPeeringConnections' in pcx_response:
             for pcx in pcx_response['VpcPeeringConnections']:
                 if pcx['AccepterVpcInfo']['VpcId'] not in vpcs_by_id:
+                    vpcs_by_id[pcx['AccepterVpcInfo']['VpcId']] = {}
                     # Go get the VPC data and put into results
                     vpc_data = get_vpc_by_id(pacu_main, pcx['AccepterVpcInfo']['VpcId'], pcx['AccepterVpcInfo']['Region'])
-                    vpcs_by_id[pcx['AccepterVpcInfo']['VpcId']] = {}
-                    vpcs_by_id[pcx['AccepterVpcInfo']['VpcId']]['VPC'] = vpc_data
+                    if vpc_data is not None:
+                        vpcs_by_id[pcx['AccepterVpcInfo']['VpcId']]['VPC'] = vpc_data
+                        vpcs_found += 1
                 vpcs_by_id[pcx['AccepterVpcInfo']['VpcId']]['Peering'] = pcx
-                vpcs_found += 1
 
                 if pcx['RequesterVpcInfo']['VpcId'] not in vpcs_by_id:
+                    vpcs_by_id[pcx['RequesterVpcInfo']['VpcId']] = {}
                     # Go get the VPC data and put into results
                     vpc_data = get_vpc_by_id(pacu_main, pcx['RequesterVpcInfo']['VpcId'], pcx['RequesterVpcInfo']['Region'])
-                    vpcs_by_id[pcx['RequesterVpcInfo']['VpcId']] = {}
-                    vpcs_by_id[pcx['RequesterVpcInfo']['VpcId']]['VPC'] = vpc_data
+                    if vpc_data is not None:
+                        vpcs_by_id[pcx['RequesterVpcInfo']['VpcId']]['VPC'] = vpc_data
+                        vpcs_found += 1
                 vpcs_by_id[pcx['RequesterVpcInfo']['VpcId']]['Peering'] = pcx
-                vpcs_found += 1
 
     updated_dx_vpcs = list(vpcs_by_id.values())
     session.update(pacu_main.database, VPC=updated_dx_vpcs)

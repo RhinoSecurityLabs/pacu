@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import argparse
-from copy import deepcopy
 from botocore.exceptions import ClientError
+from copy import deepcopy
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -26,7 +26,7 @@ module_info = {
     'prerequisite_modules': [],
 
     # Module arguments to autocomplete when the user hits tab
-    'arguments_to_autocomplete': [],
+    'arguments_to_autocomplete': ['--regions', '--global-region'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
@@ -132,12 +132,12 @@ def main(args, pacu_main):
     for rule_group in waf_regional_data['RuleGroups']:
         region = rule_group['region']
         client = pacu_main.get_boto3_client('waf-regional', region)
-        id = rule_group['RuleGroupId']
+        group_id = rule_group['RuleGroupId']
         rule_group['ActivatedRules'] = grab_data(
             client,
             'list_activated_rules_in_rule_group',
             'ActivatedRules',
-            RuleGroupId=id
+            RuleGroupId=group_id
         )
     waf_region_data = deepcopy(session.WAFRegional)
     waf_region_data.update(waf_regional_data)
@@ -157,12 +157,12 @@ def main(args, pacu_main):
 
         # Grab additional data specifically for RuleGroups.
         for rule_group in waf_global_data['RuleGroups']:
-            id = rule_group['RuleGroupId']
+            group_id = rule_group['RuleGroupId']
             rule_group['ActivatedRules'] = grab_data(
                 client,
                 'list_activated_rules_in_rule_group',
                 'ActivatedRules',
-                RuleGroupId=id
+                RuleGroupId=group_id
             )
         waf_data = deepcopy(session.WAF)
         waf_data.update(waf_global_data)

@@ -41,9 +41,7 @@ If you're interested in contributing directly to the Pacu Framework itself, plea
 
 If you're interested in writing your own modules for Pacu, check out our [Module Development](https://github.com/RhinoSecurityLabs/pacu/wiki/Module-Development-Guide) wiki page. As you develop new capabilities please reach out to us -- we'd love to add your new modules into the core collection that comes with Pacu.
 
-## Pacu Framework Development Roadmap
- 
-* 1.0 and onwards - Public release
+## Pacu Framework Development Goals
   * Improve interface formatting
   * Database forward-migrations and version tracking
   * "Attack Playbooks" to allow for easier use of complex module execution chains

@@ -22,8 +22,8 @@ class AWSKey(Base, ModelUpdateMixin):
 
     user_name = Column(Text)
     user_arn = Column(Text)
-    account_id = Column(Integer)
-    user_id = Column(Integer)
+    account_id = Column(Text)
+    user_id = Column(Text)
     roles = Column(JSONType)
     groups = Column(JSONType)
     policies = Column(JSONType)
@@ -151,6 +151,7 @@ class PacuSession(Base, ModelUpdateMixin):
     Shield = Column(JSONType, nullable=False, default=dict)
     VPC = Column(JSONType, nullable=False, default=dict)
     WAF = Column(JSONType, nullable=False, default=dict)
+    WAFRegional = Column(JSONType, nullable=False, default=dict)
     Account = Column(JSONType, nullable=False, default=dict)
     AccountSpend = Column(JSONType, nullable=False, default=dict)
 

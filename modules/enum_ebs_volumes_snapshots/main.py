@@ -100,18 +100,14 @@ def main(args, pacu_main):
     else:
         regions = args.regions.split(',')
 
-    print('Targeting regions {}.'.format(regions))
-
-    current_account = None
     account_ids = []
 
     if args.account_ids is None and args.snaps is True:
         user = key_info()
 
-        if 'AccountId' in user:
+        if 'AccountId' in user and user['AccountId'] is not None:
             account_ids = [user['AccountId']]
-
-        if current_account is None or current_account is False:
+        else:
             current_account = input('No account IDs were passed in as arguments and the account ID for the current user has not been stored in this session yet. An account ID is required to get valid results from the snapshot enumeration portion of this module. If you know the current users account ID then enter it now, otherwise, enter y to try and fetch it, or enter n to skip EBS snapshot enumeration. ([account_id]/y/n) ')
 
             if current_account is None or current_account == '' or current_account.lower() == 'n':
@@ -119,25 +115,22 @@ def main(args, pacu_main):
 
             elif current_account == 'y':
                 try:
-                    client = pacu_main.get_boto3_client('iam')
+                    client = pacu_main.get_boto3_client('sts')
 
-                    user = client.get_user()['User']
+                    identity = client.get_caller_identity()
+
+                    account_ids = [identity['Account']]
 
                     # Might as well fill current key data while it is here
-                    current_account = user['Arn'].split('rn:aws:iam::')[1].split(':user/')[0]
-                    account_ids = [current_account]
-
                     session_aws_key = session.get_active_aws_key(pacu_main.database)
                     session_aws_key.update(
                         pacu_main.database,
-                        account_id=current_account,
-                        user_name=user['UserName'],
-                        user_arn=user['Arn'],
-                        user_id=user['UserId'],
+                        account_id=identity['Account'],
+                        user_arn=identity['Arn'],
+                        user_id=identity['UserId'],
                     )
-
                 except Exception as error:
-                    print('Error running get_user. It is possible that the account ID has been returned in this error: {}'.format(error))
+                    print('Error running sts.get_caller_identity. It is possible that the account ID has been returned in this error: {}'.format(error))
                     current_account = input('If the AWS account ID was returned in the previous error, enter it now to continue, or enter n to skip EBS snapshot enumeration. ([account_id]/n) ')
                     if current_account == 'n':
                         account_ids = []
@@ -148,10 +141,7 @@ def main(args, pacu_main):
                 account_ids = [current_account]
 
     elif args.snaps is True:
-        if ',' in args.account_ids:
-            account_ids = args.account_ids.split(',')
-        else:
-            account_ids = [args.account_ids]
+        account_ids = args.account_ids.split(',')
 
     else:
         pass  # Ignore args.account_ids if args.snaps is False

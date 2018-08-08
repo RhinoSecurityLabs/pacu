@@ -317,8 +317,8 @@ def main(args, pacu_main):
             'aggregators': {
                 'deleted': 0,
             }
-
         }
+
         for region in config_regions:
             print('  Starting region {}...\n'.format(region))
 

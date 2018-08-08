@@ -513,3 +513,6 @@ sqlite.db
 # Pacu-specific
 global_error_log.txt
 settings.py
+
+# Module-specific
+modules/privesc_scan/lambda_function.zip

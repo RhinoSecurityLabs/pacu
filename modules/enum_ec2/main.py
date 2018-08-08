@@ -432,18 +432,42 @@ def main(args, pacu_main):
 
 
 def summary(data, pacu_main):
-    results = [
-        '    {} total instance(s) found.'.format(len(data['Instances'])),
-        '    {} total security group(s) found.'.format(len(data['SecurityGroups'])),
-        '    {} total elastic IP address(es) found.'.format(len(data['ElasticIPs'])),
-        '    {} total VPN customer gateway(s) found.'.format(len(data['VPNCustomerGateways'])),
-        '    {} total dedicated hosts(s) found.'.format(len(data['DedicatedHosts'])),
-        '    {} total network ACL(s) found.'.format(len(data['NetworkACLs'])),
-        '    {} total NAT gateway(s) found.'.format(len(data['NATGateways'])),
-        '    {} total network interface(s) found.'.format(len(data['NetworkInterfaces'])),
-        '    {} total route table(s) found.'.format(len(data['RouteTables'])),
-        '    {} total subnets(s) found.'.format(len(data['Subnets'])),
-        '    {} total VPC(s) found.'.format(len(data['VPCs'])),
-        '    {} total VPC endpoint(s) found.'.format(len(data['VPCEndpoints'])),
-    ]
+    results = []
+
+    if len(data['Instances']) > 0:
+        results.append('    {} total instance(s) found.'.format(len(data['Instances'])))
+
+    if len(data['SecurityGroups']) > 0:
+        results.append('    {} total security group(s) found.'.format(len(data['SecurityGroups'])))
+
+    if len(data['ElasticIPs']) > 0:
+        results.append('    {} total elastic IP address(es) found.'.format(len(data['ElasticIPs'])))
+
+    if len(data['VPNCustomerGateways']) > 0:
+        results.append('    {} total VPN customer gateway(s) found.'.format(len(data['VPNCustomerGateways'])))
+
+    if len(data['DedicatedHosts']) > 0:
+        results.append('    {} total dedicated hosts(s) found.'.format(len(data['DedicatedHosts'])))
+
+    if len(data['NetworkACLs']) > 0:
+        results.append('    {} total network ACL(s) found.'.format(len(data['NetworkACLs'])))
+
+    if len(data['NATGateways']) > 0:
+        results.append('    {} total NAT gateway(s) found.'.format(len(data['NATGateways'])))
+
+    if len(data['NetworkInterfaces']) > 0:
+        results.append('    {} total network interface(s) found.'.format(len(data['NetworkInterfaces'])))
+
+    if len(data['RouteTables']) > 0:
+        results.append('    {} total route table(s) found.'.format(len(data['RouteTables'])))
+
+    if len(data['Subnets']) > 0:
+        results.append('    {} total subnets(s) found.'.format(len(data['Subnets'])))
+
+    if len(data['VPCs']) > 0:
+        results.append('    {} total VPC(s) found.'.format(len(data['VPCs'])))
+
+    if len(data['VPCEndpoints']) > 0:
+        results.append('    {} total VPC endpoint(s) found.'.format(len(data['VPCEndpoints'])))
+
     return '\n'.join(results)

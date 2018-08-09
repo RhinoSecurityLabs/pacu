@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Module for ebs_snapshot_explorer"""
 
-# from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError
 from . import parser
 from . import module_info
 
@@ -27,16 +27,59 @@ def get_interactive_instance(pacu_main, session, region):
     return None
 
 
-def load_volumes(instance_id, volume_ids):
+def load_volumes(client, print, input, instance_id, volume_ids):
     """Loads volumes on an instance.
 
     Args:
+        client (boto3.client): client to interact with AWS
+        print (func): Overwritten built-in print function
+        input (func): Overwritten built-in input function
         instance_id (str): instance_id to attach volumes to
         volume_ids (list): list of volume_ids to attach to the instance.
     Returns:
+        bool: True if all volumes were successfully attached.
+    """
+
+    # load volume set
+    set_index = 0
+    SET_COUNT = 10
+    while set_index < len(volume_ids):
+        load_volume_set(
+            client, print, instance_id,
+            volume_ids[set_index:set_index + 40])
+        index += SET_COUNT
+        input('Press enter to load next set of volumes...')
+
+    return instance_id, volume_ids
+
+
+def load_volume_set(client, print, instance_id, volume_id_set):
+    """Helper function to load volumes on an instance to not overload the
+    instance.
+
+    Args:
+        instance_id (str): instance_id to attach volumes to
+        volume_id_set (list): list of volume_ids to attach to the instance.
+    Returns:
         bool: True if the volumes were successfully attached.
     """
-    return instance_id, volume_ids
+
+    BASE_DEVICE = 'xvd'
+    device_offset = 'f'
+    for volume_id in volume_id_set:
+        try:
+            client.attach_volume(
+                Device=BASE_DEVICE+device_offset,
+                InstanceId=instance_id,
+                VolumeId=volume_id)
+            device_offset = chr(ord(device_offset) + 1)
+        except ClientError as error:
+            if error.response['Error']['Code'] == 'UnauthorizedOperation':
+                print('  Unauthorized Operation')
+            else:
+                print(' Unknown Error')
+            return False
+    return True
 
 
 def main(args, pacu_main):
@@ -56,7 +99,7 @@ def main(args, pacu_main):
             pacu_main.print("No valid instance found")
             continue
         # Set the target instance to load
-        pacu_main.print(instance_id)
+        pacu_main.print(instance_id, availability_zone)
 
     summary_data = {}
     return summary_data

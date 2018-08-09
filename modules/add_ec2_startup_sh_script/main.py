@@ -85,7 +85,7 @@ def main(args, pacu_main):
     else:
         print('Targeting all EC2 instances...')
         if fetch_data(['EC2', 'Instances'], 'enum_ec2', '--instances') is False:
-            print('Pre-req module not run successfully. Exiting...')
+            print('Sub-module run failed')
             return
         for instance in session.EC2['Instances']:
             instances.append({
@@ -95,55 +95,50 @@ def main(args, pacu_main):
     instance_count = 0
     for region in regions:
         client = pacu_main.get_boto3_client('ec2', region)
-
         for instance in instances:
             if instance['Region'] == region:
-                result = stop_instance(client, instance['InstanceId'])
+                result = stop_instance(client, instance['InstanceId'], print)
                 if result:
-                    update_userdata(client, instance['InstanceId'], prepare_user_data(client, instance['InstanceId'], args.script))
-                    start_instance(client, instance['InstanceId'])
+                    update_userdata(client, instance['InstanceId'], prepare_user_data(client, instance['InstanceId'], args.script), print)
+                    start_instance(client, instance['InstanceId'], print)
                     instance_count += 1
                 else:
-                    print('Failed to stop instance {}@{}, skipping.'.format(instance['InstanceId'], instance['Region']))
+                    print('Skipping failed {}@{}'.format(instance['InstanceId'], instance['Region']))
     summary_data['Instances'] = instance_count
     print('{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
 def summary(data, pacu_main):
-    out = '  {} Instance(s) Modified'.format(data['Instances']) if 'Instances' in data else 'No Instances Modified'
+    if 'Instances' in data:
+        out = '  {} Instance(s) Modified'.format(data['Instances'])
     return out
 
 
-def stop_instance(client, instance_id):
-    print('Stopping instance id {}'.format(instance_id))
-
-    result = False
+def stop_instance(client, instance_id, print):
+    print('Stopping {}'.format(instance_id))
     try:
-        client.stop_instances(
-            InstanceIds=[instance_id]
-        )
+        client.stop_instances(InstanceIds=[instance_id])
+        return True
+    except ClientError as error:
+        if error.response['Error']['Code'] == 'UnauthorizedOperation':
+            print('  Unauthorized Operation')
+        else:
+            print('  Unknown Error')
+    return False
+
+
+def start_instance(client, instance_id, print):
+    print('Starting {}'.format(instance_id))
+    try:
+        client.start_instances(InstanceIds=[instance_id])
         result = True
     except ClientError as error:
-        print(error.response['Error']['Message'])
-        return False
-
-    return result
-
-
-def start_instance(client, instance_id):
-    print('Starting instance id {}'.format(instance_id))
-
-    result = False
-    try:
-        client.start_instances(
-            InstanceIds=[instance_id]
-        )
-        result = True
-    except ClientError as error:
-        print(error.response['Error']['Message'])
-
-    return result
+        if error.response['Error']['Code'] == 'UnauthorizedOperation':
+            print('  Unauthorized Operation')
+        else:
+            print('  Unknown Error')
+    return False
 
 
 def prepare_user_data(client, instance_id, script):  # Replace this with a fetch_data of download_ec2_userdata
@@ -165,8 +160,8 @@ def prepare_user_data(client, instance_id, script):  # Replace this with a fetch
     return user_data
 
 
-def update_userdata(client, instance_id, user_data):
-    print('Setting userData for instance id {}'.format(instance_id))
+def update_userdata(client, instance_id, user_data, print):
+    print('Setting userData {}'.format(instance_id))
 
     result = False
     code = 'IncorrectInstanceState'

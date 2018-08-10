@@ -105,7 +105,7 @@ def main(args, pacu_main):
                 else:
                     print('Skipping failed {}@{}'.format(instance['InstanceId'], instance['Region']))
     summary_data['Instances'] = instance_count
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
@@ -122,7 +122,7 @@ def stop_instance(client, instance_id, print):
         return True
     except ClientError as error:
         if error.response['Error']['Code'] == 'UnauthorizedOperation':
-            print('  Unauthorized Operation')
+            print('  FAILURE: MISSING NEEDED PERMISSIONS')
         else:
             print('  Unknown Error')
     return False
@@ -135,7 +135,7 @@ def start_instance(client, instance_id, print):
         result = True
     except ClientError as error:
         if error.response['Error']['Code'] == 'UnauthorizedOperation':
-            print('  Unauthorized Operation')
+            print('  FAILURE: MISSING NEEDED PERMISSIONS')
         else:
             print('  Unknown Error')
     return False

@@ -89,115 +89,137 @@ def main(args, pacu_main):
     # Check permissions before hammering through each region
 
     # Instances
-    try:
-        client.describe_instances(
-            DryRun=True
-        )
-    except ClientError as error:
-        if not str(error).find('UnauthorizedOperation') == -1:
-            all = False
-            args.instances = False
-            print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_instances".\nSkipping instance enumeration.')
-            return
+    if args.instances is True:
+        try:
+            client.describe_instances(
+                DryRun=True
+            )
+        except ClientError as error:
+            if not str(error).find('UnauthorizedOperation') == -1:
+                all = False
+                args.instances = False
+                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_instances". Skipping instance enumeration.\n')
     # Security Groups
-    try:
-        client.describe_security_groups(
-            DryRun=True
-        )
-    except ClientError as error:
-        if not str(error).find('UnauthorizedOperation') == -1:
-            all = False
-            args.security_groups = False
-            print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_security_groups".\nSkipping security group enumeration.')
-            return
+    if args.security_groups is True:
+        try:
+            client.describe_security_groups(
+                DryRun=True
+            )
+        except ClientError as error:
+            if not str(error).find('UnauthorizedOperation') == -1:
+                all = False
+                args.security_groups = False
+                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_security_groups". Skipping security group enumeration.\n')
     # Elastic IPs
-    try:
-        client.describe_addresses(
-            DryRun=True
-        )
-    except ClientError as error:
-        if not str(error).find('UnauthorizedOperation') == -1:
-            all = False
-            args.elastic_ips = False
-            print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_addresses".\nSkipping elastic IP enumeration.')
-            return
+    if args.elastic_ips is True:
+        try:
+            client.describe_addresses(
+                DryRun=True
+            )
+        except ClientError as error:
+            if not str(error).find('UnauthorizedOperation') == -1:
+                all = False
+                args.elastic_ips = False
+                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_addresses". Skipping elastic IP enumeration.\n')
     # VPN Customer Gateways
-    try:
-        client.describe_customer_gateways(
-            DryRun=True
-        )
-    except ClientError as error:
-        if not str(error).find('UnauthorizedOperation') == -1:
-            all = False
-            args.customer_gateways = False
-            print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_customer_gateways".\nSkipping VPN customer gateway enumeration.')
-            return
+    if args.customer_gateways is True:
+        try:
+            client.describe_customer_gateways(
+                DryRun=True
+            )
+        except ClientError as error:
+            if not str(error).find('UnauthorizedOperation') == -1:
+                all = False
+                args.customer_gateways = False
+                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_customer_gateways". Skipping VPN customer gateway enumeration.\n')
+    # Dedicated Hosts
+    if args.dedicated_hosts is True:
+        try:
+            response = client.describe_hosts(
+                        MaxResults=500
+                    )
+        except ClientError as error:
+            if not str(error).find('UnauthorizedOperation') == -1:
+                all = False
+                args.dedicated_hosts = False
+                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_hosts". Skipping dedicated host enumeration.\n')
     # Network ACLs
-    try:
-        client.describe_network_acls(
-            DryRun=True
-        )
-    except ClientError as error:
-        if not str(error).find('UnauthorizedOperation') == -1:
-            all = False
-            args.network_acls = False
-            print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_network_acls".\nSkipping network ACL enumeration.')
-            return
+    if args.network_acls is True:
+        try:
+            client.describe_network_acls(
+                DryRun=True
+            )
+        except ClientError as error:
+            if not str(error).find('UnauthorizedOperation') == -1:
+                all = False
+                args.network_acls = False
+                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_network_acls". Skipping network ACL enumeration.\n')
+    # NAT Gateways
+    if args.nat_gateways is True:
+        try:
+            response = client.describe_nat_gateways(
+                        MaxResults=1000
+                    )
+        except ClientError as error:
+            if not str(error).find('UnauthorizedOperation') == -1:
+                all = False
+                args.nat_gateways = False
+                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_nat_gateways". Skipping NAT gateway enumeration.\n')
     # Network Interfaces
-    try:
-        client.describe_network_interfaces(
-            DryRun=True
-        )
-    except ClientError as error:
-        if not str(error).find('UnauthorizedOperation') == -1:
-            all = False
-            args.network_interfaces = False
-            print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_network_interfaces".\nSkipping network interface enumeration.')
-            return
+    if args.network_interfaces is True:
+        try:
+            client.describe_network_interfaces(
+                DryRun=True
+            )
+        except ClientError as error:
+            if not str(error).find('UnauthorizedOperation') == -1:
+                all = False
+                args.network_interfaces = False
+                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_network_interfaces". Skipping network interface enumeration.\n')
     # Route Tables
-    try:
-        client.describe_route_tables(
-            DryRun=True
-        )
-    except ClientError as error:
-        if not str(error).find('UnauthorizedOperation') == -1:
-            all = False
-            args.route_tables = False
-            print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_route_tables".\nSkipping route table enumeration.')
-            return
+    if args.route_tables is True:
+        try:
+            client.describe_route_tables(
+                DryRun=True
+            )
+        except ClientError as error:
+            if not str(error).find('UnauthorizedOperation') == -1:
+                all = False
+                args.route_tables = False
+                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_route_tables". Skipping route table enumeration.\n')
     # Subnets
-    try:
-        client.describe_subnets(
-            DryRun=True
-        )
-    except ClientError as error:
-        if not str(error).find('UnauthorizedOperation') == -1:
-            all = False
-            args.subnets = False
-            print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_subnets".\nSkipping subnet enumeration.')
-            return
+    if args.subnets is True:
+        try:
+            client.describe_subnets(
+                DryRun=True
+            )
+        except ClientError as error:
+            if not str(error).find('UnauthorizedOperation') == -1:
+                all = False
+                args.subnets = False
+                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_subnets". Skipping subnet enumeration.\n')
     # VPCs
-    try:
-        client.describe_vpcs(
-            DryRun=True
-        )
-    except ClientError as error:
-        if not str(error).find('UnauthorizedOperation') == -1:
-            all = False
-            args.vpcs = False
-            print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_vpcs".\nSkipping VPC enumeration.')
-            return
+    if args.vpcs is True:
+        try:
+            client.describe_vpcs(
+                DryRun=True
+            )
+        except ClientError as error:
+            if not str(error).find('UnauthorizedOperation') == -1:
+                all = False
+                args.vpcs = False
+                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_vpcs". Skipping VPC enumeration.\n')
     # VPC Endpoints
-    try:
-        client.describe_vpc_endpoints(
-            DryRun=True
-        )
-    except ClientError as error:
-        if not str(error).find('UnauthorizedOperation') == -1:
-            all = False
-            args.vpc_endpoints = False
-            print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_vpc_endpoints".\nSkipping VPC endpoint enumeration.')
-            return
+    if args.vpc_endpoints is True:
+        try:
+            client.describe_vpc_endpoints(
+                DryRun=True
+            )
+        except ClientError as error:
+            if not str(error).find('UnauthorizedOperation') == -1:
+                all = False
+                args.vpc_endpoints = False
+                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_vpc_endpoints". Skipping VPC endpoint enumeration.\n')
 
     all_instances = []
     all_security_groups = []

@@ -55,7 +55,8 @@ def main(args, pacu_main):
             usernames = [args.usernames]
     else:
         if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies_groups', '--users') is False:
-            print('Pre-req module not run successfully. Exiting...')
+            print('FAILURE')
+            print('  SUB-MODULE EXECUTION FAILED')
             return
 
         for user in session.IAM['Users']:

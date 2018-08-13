@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 import argparse
-from botocore.exceptions import ClientError
-import os
-import datetime
-import pytz
 import csv
+import datetime
+import os
+
+import pytz
+from botocore.exceptions import ClientError
 
 
 module_info = {
@@ -58,10 +59,13 @@ def parse_time(time):
 def write_stream_file(session_name, scan_time, group_name, stream_name, events):
     if not events:
         return True
-    stream_group_path = os.path.join(os.getcwd(), 'sessions', session_name, 'downloads', 'cloud_watch_logs', str(scan_time), group_name[1:])
+    stream_group_path = os.path.join(
+        os.getcwd(), 'sessions', session_name, 'downloads', 'cloud_watch_logs',
+        str(scan_time), group_name[1:])
     if not os.path.exists(stream_group_path):
         os.makedirs(stream_group_path)
-    file_name = os.path.join(stream_group_path, stream_name.replace('/', '_') + '.txt')
+    file_name = os.path.join(
+        stream_group_path, stream_name.replace('/', '_') + '.txt')
     flag = 'a' if os.path.isfile(file_name) else 'w'
 
     with open(file_name, flag, newline='') as out_file:
@@ -77,7 +81,7 @@ def write_stream_file(session_name, scan_time, group_name, stream_name, events):
 
 
 def collect_all(client, func, key, **kwargs):
-    """Collects data given a Boto3 client, function, and a key to look for responses. Returns a list."""
+    """Collects data and stores it in a list."""
     caller = getattr(client, func)
     try:
         response = caller(**kwargs)
@@ -92,18 +96,22 @@ def collect_all(client, func, key, **kwargs):
     return []
 
 
+def millisecond(time_stamp):
+    """Returns millisecond from timestamp"""
+    return int(time_stamp.timestamp() * 1000 + time_stamp.microsecond / 1000)
+
+
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
     args = parser.parse_args(args)
     print = pacu_main.print
     get_regions = pacu_main.get_regions
     summary_data = {}
-    if type(args.from_time) == str:
+    if isinstance(args.from_time, str):
         from_time = parse_time(args.from_time)
     else:
         from_time = DEFAULT_FROM_TIME
-
-    if type(args.to_time) == str:
+    if isinstance(args.to_time, str):
         to_time = parse_time(args.to_time)
 
     scan_time = int(datetime.datetime.now().timestamp())
@@ -123,18 +131,21 @@ def main(args, pacu_main):
             log_groups[group] = {}
 
         for log_group in log_groups.keys():
-            streams = collect_all(client, 'describe_log_streams', 'logStreams', **{'logGroupName': log_group})
+            streams = collect_all(
+                client, 'describe_log_streams', 'logStreams',
+                **{'logGroupName': log_group})
             log_groups[log_group] = [stream['logStreamName'] for stream in streams]
         if not streams:
             print(' No Streams found for {}'.format(region))
             continue
         else:
-            print('  {} Streams found for {}'.format(sum([len(log_groups[key]) for key in log_groups]), region))
+            stream_count = sum([len(log_groups[key]) for key in log_groups])
+            print('  {} Streams found for {}'.format(stream_count, region))
         event_count = 0
         for group in log_groups:
             for stream in log_groups[group]:
-                start_time = int(from_time.timestamp() * 1000 + from_time.microsecond / 1000)
-                end_time = int(to_time.timestamp() * 1000 + to_time.microsecond / 1000) if args.to_time else None
+                start_time = millisecond(from_time)
+                end_time = millisecond(to_time) if args.to_time else None
                 kwargs = {
                     'logGroupName': group,
                     'logStreamName': stream,
@@ -147,16 +158,19 @@ def main(args, pacu_main):
                     print('    No events found for stream: {}'.format(stream))
                     continue
                 event_count += len(response['events'])
-                write_stream_file(session.name, scan_time, group, stream, response['events'])
+                write_stream_file(
+                    session.name, scan_time, group, stream, response['events'])
                 while 'nextBackwardToken' in response:
-                    old_Token = response['nextBackwardToken']
+                    old_token = response['nextBackwardToken']
                     response = client.get_log_events(
                         **{'nextToken': response['nextBackwardToken']},
                         **kwargs
                     )
                     event_count += len(response['events'])
-                    write_stream_file(session.name, scan_time, group, stream, response['events'])
-                    if old_Token == response['nextBackwardToken']:
+                    write_stream_file(
+                        session.name, scan_time, group, stream,
+                        response['events'])
+                    if old_token == response['nextBackwardToken']:
                         break
                 print('    Captured Events for {}'.format(stream))
         summary_data[region] = {
@@ -164,9 +178,9 @@ def main(args, pacu_main):
             'streams': sum([len(log_groups[key]) for key in log_groups]),
             'events': event_count,
         }
-
-    summary_data['log_download_path'] = 'pacu/sessions/{}/downloads/cloud_watch_logs/{}'.format(session.name, scan_time)
-    print("{} completed.\n".format(module_info['name']))
+    dl_root = 'pacu/sessions/' + session.name + '/downloads/cloud_watch_logs/'
+    summary_data['log_download_path'] = '{}{}'.format(dl_root, scan_time)
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

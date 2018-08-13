@@ -58,8 +58,9 @@ def main(args, pacu_main):
             DryRun=True
         )
     except ClientError as error:
-        if not str(error).find('UnauthorizedOperation') == -1:
-            print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_instances".\nExiting module.')
+        if error.response['Error']['Code'] == 'UnauthorizedOperation':
+            print('FAILURE: ')
+            print('  MISSING NEEDED PERMISSIONS')
             return
 
     if args.groups is not None:
@@ -71,17 +72,18 @@ def main(args, pacu_main):
             })
     else:
         if fetch_data(['EC2', 'SecurityGroups'], 'enum_ec2', '--security-groups') is False:
-            print('Pre-req module not run successfully. Exiting...')
+            print('FAILURE')
+            print('  SUB-MODULE EXECUTION FAILED')
             return
         groups = session.EC2['SecurityGroups']
     summary_data['BackdooredCount'] = 0
+    print('Applying Rules...')
     for group in groups:
-        print('Group: {}'.format(group['GroupName']))
+        print('  Group: {}'.format(group['GroupName']))
 
         client = pacu_main.get_boto3_client('ec2', group['Region'])
 
         try:
-            print('Applying rule to security group {}...'.format(group['GroupName']))
             client.authorize_security_group_ingress(
                 GroupName=group['GroupName'],
                 CidrIp=args.ip,
@@ -89,13 +91,19 @@ def main(args, pacu_main):
                 ToPort=int(args.port_range.split('-')[1]),
                 IpProtocol=args.protocol
             )
-            print('  Success.')
-            print('Port range {} opened for IP {}.'.format(args.port_range, args.ip))
+            print('    SUCCESS')
             summary_data['BackdooredCount'] += 1
         except ClientError as error:
-            print('  Error: {}'.format(error.response['Error']['Message']))
-
-    print('{} completed.\n'.format(module_info['name']))
+            print('    FAILURE: ')
+            error_code = error.response['Error']['Code']
+            if error_code == 'UnauthorizedOperation':
+                print('      MISSING NEEDED PERMISSIONS')
+            elif error_code == 'InvalidPermission.Duplicate':
+                print('      RULE ALREADY EXISTS')
+            else:
+                print('      UNKOWN:')
+                print('        {}'.format(error.response['Error']['Code']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

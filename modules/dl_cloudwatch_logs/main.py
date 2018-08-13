@@ -118,29 +118,29 @@ def main(args, pacu_main):
     regions = get_regions('logs')
     log_groups = {}
     for region in regions:
-        print('Collecting logs for region {}...'.format(region))
+        print('Enumerationg {}...'.format(region))
         client = pacu_main.get_boto3_client('logs', region)
         groups = collect_all(client, 'describe_log_groups', 'logGroups')
         if not groups:
-            print('  No Log Groups found for {}'.format(region))
+            print('  No Log Groups found')
             continue
         else:
-            print('  {} Log Groups found for {}'.format(len(groups), region))
+            print('  {} Log Groups found'.format(len(groups)))
         group_names = [group['logGroupName'] for group in groups]
         for group in group_names:
             log_groups[group] = {}
 
-        for log_group in log_groups.keys():
+        for log_group in log_groups:
             streams = collect_all(
                 client, 'describe_log_streams', 'logStreams',
                 **{'logGroupName': log_group})
             log_groups[log_group] = [stream['logStreamName'] for stream in streams]
         if not streams:
-            print(' No Streams found for {}'.format(region))
+            print(' No Streams found')
             continue
         else:
             stream_count = sum([len(log_groups[key]) for key in log_groups])
-            print('  {} Streams found for {}'.format(stream_count, region))
+            print('  {} Streams found'.format(stream_count))
         event_count = 0
         for group in log_groups:
             for stream in log_groups[group]:

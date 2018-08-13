@@ -45,7 +45,7 @@ def cleanup(pacu_main, regions):
         try:
             keys = client.get_api_keys()['items']
             if len(keys) < 1:
-                print('  No keys were found for {}'.format(region))
+                print('  No keys were found in {}'.format(region))
             for key in keys:
                 if key['name'] == 'Pacu':
                     try:
@@ -53,11 +53,13 @@ def cleanup(pacu_main, regions):
                         print('  Key deletion successful for: {}'.format(region))
                     except ClientError as error:
                         if error.response['Error']['Code'] == 'AccessDeniedException':
-                            print('The current credentials lack the authorization to delete API keys.')
+                            print('    FAILURE: ')
+                            print('      MISSING NEEDED PERMISSIONS')
                             return False
         except ClientError as error:
             if error.response['Error']['Code'] == 'AccessDeniedException':
-                print('The current credentials lack the authorization to list API keys.')
+                print('    FAILURE: ')
+                print('      MISSING NEEDED PERMISSIONS')
                 return False
     return True
 
@@ -74,15 +76,15 @@ def main(args, pacu_main):
     api_keys = {}
     if args.cleanup:
         if cleanup(pacu_main, regions):
-            print('  Successfully cleaned up old Pacu keys.')
+            print('  Old Keys Cleaned')
             summary_data['cleanup'] = True
         else:
-            print('  Keys were not successfully cleaned up.')
+            print('  Failed to Cleanup Keys')
             summary_data['cleanup'] = False
         # Either way assume database has been cleared, it if failed it's out of sync
         session.update(pacu_main.database, APIGateway={})
-        user_input = input('  Do you want to continue key creation? (y/n)')
-        if user_input != 'y':
+        user_input = input('  Continue key creation? (y/n)')
+        if user_input.lower() != 'y':
             return summary_data
 
     for region in regions:
@@ -91,12 +93,14 @@ def main(args, pacu_main):
         client = pacu_main.get_boto3_client('apigateway', region)
         try:
             response = client.create_api_key(name='Pacu')
-            print('  Successfully created API key for: {}'.format(region))
             api_keys[region].append(response['id'])
-            summary_data['keys_created'] += 1
         except ClientError as error:
             if error.response['Error']['Code'] == 'AccessDeniedException':
-                print('Unable to add key due to lack of authorization')
+                print('  FAILURE: ')
+                print('    MISSING NEEDED PERMISSIONS')
+                return summary_data
+        print('  Key creation successful')
+        summary_data['keys_created'] += 1
 
     api_gateway_data = deepcopy(session.APIGateway)
     for region in api_keys:
@@ -106,14 +110,13 @@ def main(args, pacu_main):
             api_gateway_data[region] = api_keys[region]
     session.update(pacu_main.database, APIGateway=api_gateway_data)
 
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
 def summary(data, pacu_main):
     out = ''
     if data.get('cleanup'):
-        out += '  Old keys were removed.\n'
-    else:
-        out += '  Old keys were not removed.\n'
-    out += '  {} key(s) were created.\n'.format(data['keys_created'])
+        out += '  Old keys removed.\n'
+    out += '  {} key(s) created.\n'.format(data['keys_created'])
     return out

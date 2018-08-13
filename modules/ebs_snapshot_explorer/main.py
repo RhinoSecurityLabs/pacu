@@ -104,11 +104,11 @@ def modify_volume_set(client, print, func, instance_id, volume_id_set):
 
 
 def get_snapshots(pacu, session, regions):
-    """Returns volumes given an AWS region
+    """Returns snapshots given an AWS region
     Args:
         pacu (Main): Reference to Pacu
         session (PacuSession): Reference to the Pacu session database
-        region (str): Region to get EC2 instance.
+        regions (list): Regions to check for snapshots
     Returns:
         dict: Mapping regions to corresponding list of snapshot_ids.
     """
@@ -128,15 +128,42 @@ def get_snapshots(pacu, session, regions):
     return snapshot_ids
 
 
+def get_volumes(pacu, session, regions):
+    """Returns volumes given an AWS region
+    Args:
+        pacu (Main): Reference to Pacu
+        session (PacuSession): Reference to the Pacu session database
+        regions (list): Regions to check for volumes
+    Returns:
+        dict: Mapping regions to corresponding list of snapshot_ids.
+    """
+    ec2_data = deepcopy(session.EC2)
+    if 'Snapshots' not in ec2_data:
+        fields = ['EC2', 'Volumes']
+        module = 'enum_ebs_volumes_snapshots'
+        fetched_ec2_instances = pacu.fetch_data(fields, module)
+        if fetched_ec2_instances is False:
+            return None
+    volume_ids = {}
+    for region in regions:
+        volume_ids[region] = []
+    for volume in ec2_data['Volumes']:
+        if volume['Region'] in regions:
+            volume_ids[volume['Region']].append(volume['VolumeId'])
+    return volume_ids
+
+
 def main(args, pacu):
     """Main module function, called from Pacu"""
     args = parser.parse_args(args)
     session = pacu.get_active_session()
+    print = pacu.print
     input = pacu.input
     key_info = pacu.key_info
     regions = pacu.get_regions('ec2')
     region = regions[0]
     print(get_snapshots(pacu, session, regions))
+    print(get_volumes(pacu, session, regions))
     print(get_interactive_instance(pacu, session, region))
 
     #client = pacu.get_boto3_client('ec2', region)

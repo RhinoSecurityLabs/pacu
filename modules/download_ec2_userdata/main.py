@@ -72,8 +72,6 @@ def main(args, pacu_main):
             return
         instances = session.EC2['Instances']
 
-    if not os.path.exists('sessions/{}/downloads/'.format(session.name)):
-        os.makedirs('sessions/{}/downloads/'.format(session.name))
     if not os.path.exists('sessions/{}/downloads/ec2_user_data/'.format(session.name)):
         os.makedirs('sessions/{}/downloads/ec2_user_data/'.format(session.name))
 

@@ -89,7 +89,7 @@ def main(args, pacu_main):
     # Check permissions before hammering through each region
 
     # Instances
-    if args.instances is True:
+    if args.instances is True or all is True:
         try:
             client.describe_instances(
                 DryRun=True
@@ -100,7 +100,7 @@ def main(args, pacu_main):
                 args.instances = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_instances". Skipping instance enumeration.\n')
     # Security Groups
-    if args.security_groups is True:
+    if args.security_groups is True or all is True:
         try:
             client.describe_security_groups(
                 DryRun=True
@@ -111,7 +111,7 @@ def main(args, pacu_main):
                 args.security_groups = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_security_groups". Skipping security group enumeration.\n')
     # Elastic IPs
-    if args.elastic_ips is True:
+    if args.elastic_ips is True or all is True:
         try:
             client.describe_addresses(
                 DryRun=True
@@ -122,7 +122,7 @@ def main(args, pacu_main):
                 args.elastic_ips = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_addresses". Skipping elastic IP enumeration.\n')
     # VPN Customer Gateways
-    if args.customer_gateways is True:
+    if args.customer_gateways is True or all is True:
         try:
             client.describe_customer_gateways(
                 DryRun=True
@@ -133,7 +133,7 @@ def main(args, pacu_main):
                 args.customer_gateways = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_customer_gateways". Skipping VPN customer gateway enumeration.\n')
     # Dedicated Hosts
-    if args.dedicated_hosts is True:
+    if args.dedicated_hosts is True or all is True:
         try:
             response = client.describe_hosts(
                         MaxResults=500
@@ -144,7 +144,7 @@ def main(args, pacu_main):
                 args.dedicated_hosts = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_hosts". Skipping dedicated host enumeration.\n')
     # Network ACLs
-    if args.network_acls is True:
+    if args.network_acls is True or all is True:
         try:
             client.describe_network_acls(
                 DryRun=True
@@ -155,7 +155,7 @@ def main(args, pacu_main):
                 args.network_acls = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_network_acls". Skipping network ACL enumeration.\n')
     # NAT Gateways
-    if args.nat_gateways is True:
+    if args.nat_gateways is True or all is True:
         try:
             response = client.describe_nat_gateways(
                         MaxResults=1000
@@ -166,7 +166,7 @@ def main(args, pacu_main):
                 args.nat_gateways = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_nat_gateways". Skipping NAT gateway enumeration.\n')
     # Network Interfaces
-    if args.network_interfaces is True:
+    if args.network_interfaces is True or all is True:
         try:
             client.describe_network_interfaces(
                 DryRun=True
@@ -177,7 +177,7 @@ def main(args, pacu_main):
                 args.network_interfaces = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_network_interfaces". Skipping network interface enumeration.\n')
     # Route Tables
-    if args.route_tables is True:
+    if args.route_tables is True or all is True:
         try:
             client.describe_route_tables(
                 DryRun=True
@@ -188,7 +188,7 @@ def main(args, pacu_main):
                 args.route_tables = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_route_tables". Skipping route table enumeration.\n')
     # Subnets
-    if args.subnets is True:
+    if args.subnets is True or all is True:
         try:
             client.describe_subnets(
                 DryRun=True
@@ -199,7 +199,7 @@ def main(args, pacu_main):
                 args.subnets = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_subnets". Skipping subnet enumeration.\n')
     # VPCs
-    if args.vpcs is True:
+    if args.vpcs is True or all is True:
         try:
             client.describe_vpcs(
                 DryRun=True
@@ -210,7 +210,7 @@ def main(args, pacu_main):
                 args.vpcs = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_vpcs". Skipping VPC enumeration.\n')
     # VPC Endpoints
-    if args.vpc_endpoints is True:
+    if args.vpc_endpoints is True or all is True:
         try:
             client.describe_vpc_endpoints(
                 DryRun=True

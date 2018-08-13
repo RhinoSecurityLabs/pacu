@@ -25,7 +25,7 @@ module_info = {
     'one_liner': 'An IAM privilege escalation path finder and abuser.',
 
     # Description about what the module does and how it works
-    'description': 'This module will scan for permission misconfigurations to see where privilege escalation will be possible. Available attack paths will be presented to the user and executed on if chosen.\n',
+    'description': 'This module will scan for permission misconfigurations to see where privilege escalation will be possible. Available attack paths will be presented to the user and executed on if chosen. Warning: Due to the implementation in IAM policies, this module has a difficult time parsing "NotActions". If your user has any NotActions associated with them, it is recommended to manually verify the results of this module. NotActions are noted with a "!" preceeding the action when viewing the results of the "whoami" command. For more information on what NotActions are, visit the following link: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_notaction.html\n',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['IAM', 'EC2', 'Glue', 'Lambda', 'DataPipeline', 'DynamoDB', 'CloudFormation'],

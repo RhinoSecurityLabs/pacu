@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import argparse
 import base64
-from botocore.exceptions import ClientError
 import os
+
+from botocore.exceptions import ClientError
 
 
 module_info = {
@@ -55,10 +56,13 @@ def main(args, pacu_main):
             DryRun=True,
             InstanceId='1'
         )
-    except ClientError as e:
-        if not str(e).find('UnauthorizedOperation') == -1:
-            print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_instance_attribute".\nExiting module.')
-            return
+    except ClientError as error:
+        print('FAILURE: ')
+        code = error.response['Error']['Code']
+        if code == 'AccessDenied':
+            print('  MISSING NEEDED PERMISSIONS')
+        else:
+            print('  ' + code)
 
     if args.instance_ids is not None:
         for instance in args.instance_ids.split(','):
@@ -69,37 +73,39 @@ def main(args, pacu_main):
     else:
         if fetch_data(['EC2', 'Instances'], 'enum_ec2', '--instances') is False:
             print('Pre-req module not run successfully. Exiting...')
-            return
+            return None
         instances = session.EC2['Instances']
 
     if not os.path.exists('sessions/{}/downloads/'.format(session.name)):
         os.makedirs('sessions/{}/downloads/'.format(session.name))
 
+    print('Found {} instance(s)...'.format(len(instances)))
     for instance in instances:
-        client = pacu_main.get_boto3_client('ec2', instance['Region'])
+        instance_id = instance['InstanceId']
+        region = instance['Region']
+        client = pacu_main.get_boto3_client('ec2', region)
 
         user_data = client.describe_instance_attribute(
-            InstanceId=instance['InstanceId'],
+            InstanceId=instance_id,
             Attribute='userData'
         )['UserData']
 
         if 'Value' in user_data.keys():
             formatted_user_data = '{}@{}:\n{}\n'.format(
-                instance['InstanceId'],
-                instance['Region'],
+                instance_id,
+                region,
                 base64.b64decode(user_data['Value'])
             )
-
-            print(formatted_user_data)
+            print('  {}@{} user data found'.format(instance_id, region))
 
             with open('sessions/{}/downloads/user_data.txt'.format(session.name), 'a+') as data_file:
                 data_file.write(formatted_user_data)
             summary_data['userdata_downloads'] += 1
 
         else:
-            print('{}@{}: No user data'.format(instance['InstanceId'], instance['Region']))
+            print('  {}@{} user data not found'.format(instance_id, region))
 
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

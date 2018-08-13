@@ -57,7 +57,8 @@ def main(args, pacu_main):
     users = []
     if args.all_users is True:
         if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies_groups', '--users') is False:
-            print('Pre-req module not run successfully. Exiting...')
+            print('FAILURE')
+            print('  SUB-MODULE EXECUTION FAILED')
             return
         fetched_users = session.IAM['Users']
         for user in fetched_users:
@@ -127,6 +128,9 @@ def main(args, pacu_main):
 
     client = pacu_main.get_boto3_client('iam')
 
+    print('Permision Document Location:')
+    print('  sessions/{}/downloads/confirmed_permissions/'.format(session.name))
+    print('Confirming Permissions for Users...')
     for user in users:
         user['Groups'] = []
         user['Policies'] = []
@@ -260,6 +264,7 @@ def main(args, pacu_main):
             summary_data['users_confirmed'] += 1
 
             if args.user_name is None and args.all_users is False:  # TODO: If this runs and gets all permissions, replace the current set under user['Permissions'] rather than add to it in this module
+                print('  Confirmed Permissions for {}'.format(user['UserName']))
                 active_aws_key.update(
                     pacu_main.database,
                     user_name=user['UserName'],
@@ -278,11 +283,11 @@ def main(args, pacu_main):
                 with open('sessions/{}/downloads/confirmed_permissions/{}.json'.format(session.name, user['UserName']), 'w+') as user_permissions_file:
                     json.dump(user, user_permissions_file, indent=2, default=str)
 
-                print('User details stored in ./sessions/{}/downloads/confirmed_permissions/{}.json'.format(session.name, user['UserName']))
+                print('  {} data stored in {}.json'.format(user['UserName'], user['UserName']))
         except Exception as error:
             print('Error, skipping user {}:\n{}'.format(user['UserName'], error))
 
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
@@ -346,64 +351,64 @@ def get_attached_policy(client, policy_arn):
 
 def parse_document(document, user):
     """ Loop permissions and the resources they apply to """
-    if type(document['Statement']) is dict:
+    if isinstance(document['Statement'], dict):
         document['Statement'] = [document['Statement']]
 
     for statement in document['Statement']:
 
         if statement['Effect'] == 'Allow':
 
-            if 'Action' in statement and type(statement['Action']) is list:  # Check if the action is a single action (str) or multiple (list)
+            if 'Action' in statement and isinstance(statement['Action'], list):  # Check if the action is a single action (str) or multiple (list)
                 statement['Action'] = list(set(statement['Action']))  # Remove duplicates to stop the circular reference JSON error
                 for action in statement['Action']:
                     if action in user['Permissions']['Allow']:
-                        if type(statement['Resource']) is list:
+                        if isinstance(statement['Resource'], list):
                             user['Permissions']['Allow'][action] += statement['Resource']
                         else:
                             user['Permissions']['Allow'][action].append(statement['Resource'])
                     else:
-                        if type(statement['Resource']) is list:
+                        if isinstance(statement['Resource'], list):
                             user['Permissions']['Allow'][action] = statement['Resource']
                         else:
                             user['Permissions']['Allow'][action] = [statement['Resource']]
                     user['Permissions']['Allow'][action] = list(set(user['Permissions']['Allow'][action]))  # Remove duplicate resources
 
-            elif 'Action' in statement and type(statement['Action']) is str:
+            elif 'Action' in statement and isinstance(statement['Action'], str):
                 if statement['Action'] in user['Permissions']['Allow']:
-                    if type(statement['Resource']) is list:
+                    if isinstance(statement['Resource'], list):
                         user['Permissions']['Allow'][statement['Action']] += statement['Resource']
                     else:
                         user['Permissions']['Allow'][statement['Action']].append(statement['Resource'])
                 else:
-                    if type(statement['Resource']) is list:
+                    if isinstance(statement['Resource'], list):
                         user['Permissions']['Allow'][statement['Action']] = statement['Resource']
                     else:
                         user['Permissions']['Allow'][statement['Action']] = [statement['Resource']]  # Make sure that resources are always arrays
                 user['Permissions']['Allow'][statement['Action']] = list(set(user['Permissions']['Allow'][statement['Action']]))  # Remove duplicate resources
 
-            if 'NotAction' in statement and type(statement['NotAction']) is list:  # NotAction is reverse, so allowing a NotAction is denying that action basically
+            if 'NotAction' in statement and isinstance(statement['NotAction'], list):  # NotAction is reverse, so allowing a NotAction is denying that action basically
                 statement['NotAction'] = list(set(statement['NotAction']))  # Remove duplicates to stop the circular reference JSON error
                 for not_action in statement['NotAction']:
                     if not_action in user['Permissions']['Deny']:
-                        if type(statement['Resource']) is list:
+                        if isinstance(statement['Resource'], list):
                             user['Permissions']['Deny'][not_action] += statement['Resource']
                         else:
                             user['Permissions']['Deny'][not_action].append(statement['Resource'])
                     else:
-                        if type(statement['Resource']) is list:
+                        if isinstance(statement['Resource'], list):
                             user['Permissions']['Deny'][not_action] = statement['Resource']
                         else:
                             user['Permissions']['Deny'][not_action] = [statement['Resource']]
                     user['Permissions']['Deny'][not_action] = list(set(user['Permissions']['Deny'][not_action]))  # Remove duplicate resources
 
-            elif 'NotAction' in statement and type(statement['NotAction']) is str:
+            elif 'NotAction' in statement and isinstance(statement['NotAction'], str):
                 if statement['NotAction'] in user['Permissions']['Deny']:
-                    if type(statement['Resource']) is list:
+                    if isinstance(statement['Resource'], list):
                         user['Permissions']['Deny'][statement['NotAction']] += statement['Resource']
                     else:
                         user['Permissions']['Deny'][statement['NotAction']].append(statement['Resource'])
                 else:
-                    if type(statement['Resource']) is list:
+                    if isinstance(statement['Resource'], list):
                         user['Permissions']['Deny'][statement['NotAction']] = statement['Resource']
                     else:
                         user['Permissions']['Deny'][statement['NotAction']] = [statement['Resource']]  # Make sure that resources are always arrays
@@ -411,57 +416,57 @@ def parse_document(document, user):
 
         if statement['Effect'] == 'Deny':
 
-            if 'Action' in statement and type(statement['Action']) is list:
+            if 'Action' in statement and isinstance(statement['Action'], list):
                 statement['Action'] = list(set(statement['Action']))  # Remove duplicates to stop the circular reference JSON error
                 for action in statement['Action']:
                     if action in user['Permissions']['Deny']:
-                        if type(statement['Resource']) is list:
+                        if isinstance(statement['Resource'], list):
                             user['Permissions']['Deny'][action] += statement['Resource']
                         else:
                             user['Permissions']['Deny'][action].append(statement['Resource'])
                     else:
-                        if type(statement['Resource']) is list:
+                        if isinstance(statement['Resource'], list):
                             user['Permissions']['Deny'][action] = statement['Resource']
                         else:
                             user['Permissions']['Deny'][action] = [statement['Resource']]
                     user['Permissions']['Deny'][action] = list(set(user['Permissions']['Deny'][action]))  # Remove duplicate resources
 
-            elif 'Action' in statement and type(statement['Action']) is str:
+            elif 'Action' in statement and isinstance(statement['Action'], str):
                 if statement['Action'] in user['Permissions']['Deny']:
-                    if type(statement['Resource']) is list:
+                    if isinstance(statement['Resource'], list):
                         user['Permissions']['Deny'][statement['Action']] += statement['Resource']
                     else:
                         user['Permissions']['Deny'][statement['Action']].append(statement['Resource'])
                 else:
-                    if type(statement['Resource']) is list:
+                    if isinstance(statement['Resource'], list):
                         user['Permissions']['Deny'][statement['Action']] = statement['Resource']
                     else:
                         user['Permissions']['Deny'][statement['Action']] = [statement['Resource']]  # Make sure that resources are always arrays
                 user['Permissions']['Deny'][statement['Action']] = list(set(user['Permissions']['Deny'][statement['Action']]))  # Remove duplicate resources
 
-            if 'NotAction' in statement and type(statement['NotAction']) is list:  # NotAction is reverse, so allowing a NotAction is denying that action basically
+            if 'NotAction' in statement and isinstance(statement['NotAction'], list):  # NotAction is reverse, so allowing a NotAction is denying that action basically
                 statement['NotAction'] = list(set(statement['NotAction']))  # Remove duplicates to stop the circular reference JSON error
                 for not_action in statement['NotAction']:
                     if not_action in user['Permissions']['Allow']:
-                        if type(statement['Resource']) is list:
+                        if isinstance(statement['Resource'], list):
                             user['Permissions']['Allow'][not_action] += statement['Resource']
                         else:
                             user['Permissions']['Allow'][not_action].append(statement['Resource'])
                     else:
-                        if type(statement['Resource']) is list:
+                        if isinstance(statement['Resource'], list):
                             user['Permissions']['Allow'][not_action] = statement['Resource']
                         else:
                             user['Permissions']['Allow'][not_action] = [statement['Resource']]
                     user['Permissions']['Allow'][not_action] = list(set(user['Permissions']['Allow'][not_action]))  # Remove duplicate resources
 
-            elif 'NotAction' in statement and type(statement['NotAction']) is str:
+            elif 'NotAction' in statement and isinstance(statement['NotAction'], str):
                 if statement['NotAction'] in user['Permissions']['Allow']:
-                    if type(statement['Resource']) is list:
+                    if isinstance(statement['Resource'], list):
                         user['Permissions']['Allow'][statement['NotAction']] += statement['Resource']
                     else:
                         user['Permissions']['Allow'][statement['NotAction']].append(statement['Resource'])
                 else:
-                    if type(statement['Resource']) is list:
+                    if isinstance(statement['Resource'], list):
                         user['Permissions']['Allow'][statement['NotAction']] = statement['Resource']
                     else:
                         user['Permissions']['Allow'][statement['NotAction']] = [statement['Resource']]  # Make sure that resources are always arrays

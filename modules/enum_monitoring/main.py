@@ -85,19 +85,19 @@ def main(args, pacu_main):
             print('Error {} getting Shield Info'.format(error))
 
     if enum_all is True or args.cloud_trail is True:
-        print('Starting CloudTrail...')
+        print('CloudTrail Enumeration...')
         cloudtrail_regions = get_regions('cloudtrail')
         all_trails = []
 
         for region in cloudtrail_regions:
-            print('  Starting region {}...'.format(region))
+            print('  {}:'.format(region))
 
             client = pacu_main.get_boto3_client('cloudtrail', region)
 
             trails = client.describe_trails(
                 includeShadowTrails=False
             )
-            print('    {} trails found.'.format(len(trails['trailList'])))
+            print('    {} trails'.format(len(trails['trailList'])))
 
             for trail in trails['trailList']:
                 trail['Region'] = region
@@ -106,18 +106,18 @@ def main(args, pacu_main):
         cloudtrail_data = deepcopy(session.CloudTrail)
         cloudtrail_data['Trails'] = all_trails
         session.update(pacu_main.database, CloudTrail=cloudtrail_data)
-        print('  {} total CloudTrail trails found.\n'.format(len(session.CloudTrail['Trails'])))
+        print('  {} total CloudTrail trails'.format(len(session.CloudTrail['Trails'])))
         summary_data['CloudTrails'] = len(session.CloudTrail['Trails'])
 
     if enum_all is True or args.guard_duty is True:
-        print('Starting GuardDuty...')
+        print('GuardDuty Enumeration...')
         master_count = 0
         guard_duty_regions = get_regions('guardduty')
         all_detectors = []
 
         for region in guard_duty_regions:
             detectors = []
-            print('  Starting region {}...'.format(region))
+            print('  {}...'.format(region))
 
             client = pacu_main.get_boto3_client('guardduty', region)
 
@@ -150,18 +150,18 @@ def main(args, pacu_main):
                     if not master:
                         master_count += 1
 
-            print('    {} GuardDuty Detectors found.'.format(len(detectors)))
+            print('    {} GuardDuty Detectors'.format(len(detectors)))
             all_detectors.extend(detectors)
 
         summary_data['MasterDetectors'] = master_count
         guardduty_data = deepcopy(session.GuardDuty)
         guardduty_data['Detectors'] = all_detectors
         session.update(pacu_main.database, GuardDuty=guardduty_data)
-        print('  {} total GuardDuty Detectors found.\n'.format(len(session.GuardDuty['Detectors'])))
+        print('  {} total GuardDuty Detectors'.format(len(session.GuardDuty['Detectors'])))
         summary_data['Detectors'] = len(session.GuardDuty['Detectors'])
 
     if enum_all is True or args.config is True:
-        print('Starting Config...')
+        print('AWS Config Enumeration...')
         config_regions = get_regions('config')
         all_rules = []
         all_delivery_channels = []
@@ -169,7 +169,7 @@ def main(args, pacu_main):
         all_configuration_aggregators = []
 
         for region in config_regions:
-            print('  Starting region {}...'.format(region))
+            print('  {}...'.format(region))
 
             client = pacu_main.get_boto3_client('config', region)
 
@@ -193,7 +193,7 @@ def main(args, pacu_main):
                     if channel['name'] == status['name']:
                         channel.update(status)  # Merge the channel "status" fields into the actual channel for the DB
                         break
-            print('    {} delivery channels found.'.format(len(delivery_channels)))
+            print('    {} delivery channels'.format(len(delivery_channels)))
             all_delivery_channels.extend(delivery_channels)
 
             configuration_recorders = client.describe_configuration_recorders()['ConfigurationRecorders']
@@ -204,7 +204,7 @@ def main(args, pacu_main):
                     if recorder['name'] == status['name']:
                         recorder.update(status)  # Merge the recorder "status" fields into the actual recorder for the DB
                         break
-            print('    {} configuration recorders found.'.format(len(configuration_recorders)))
+            print('    {} configuration recorders'.format(len(configuration_recorders)))
             all_configuration_recorders.extend(configuration_recorders)
 
             # The following regions lack support for configuration aggregators.
@@ -220,7 +220,7 @@ def main(args, pacu_main):
                 configuration_aggregators.extend(response['ConfigurationAggregators'])
             for aggregator in configuration_aggregators:
                 aggregator['Region'] = region
-            print('    {} configuration aggregators found.'.format(len(configuration_aggregators)))
+            print('    {} configuration aggregators'.format(len(configuration_aggregators)))
             all_configuration_aggregators.extend(configuration_aggregators)
 
         config_data = deepcopy(session.Config)
@@ -229,7 +229,7 @@ def main(args, pacu_main):
         config_data['DeliveryChannels'] = all_delivery_channels
         config_data['Aggregators'] = all_configuration_aggregators
         session.update(pacu_main.database, Config=config_data)
-        print('  {} total Config rules found.\n'.format(len(session.Config['Rules'])))
+        print('  {} total Config rules'.format(len(session.Config['Rules'])))
         summary_data.update({
             'config': {
                 'rules': len(all_rules),
@@ -240,12 +240,12 @@ def main(args, pacu_main):
         })
 
     if enum_all is True or args.cloud_watch is True:
-        print('Starting CloudWatch...')
+        print('CloudWatch Enumeration...')
         cw_regions = get_regions('monitoring')
         all_alarms = []
 
         for region in cw_regions:
-            print('  Starting region {}...'.format(region))
+            print('  {}...'.format(region))
 
             client = pacu_main.get_boto3_client('cloudwatch', region)
 
@@ -256,7 +256,7 @@ def main(args, pacu_main):
                     NextToken=response['NextToken']
                 )
                 alarms.extend(response['MetricAlarms'])
-            print('    {} alarms found.'.format(len(alarms)))
+            print('    {} alarms'.format(len(alarms)))
 
             for alarm in alarms:
                 alarm['Region'] = region
@@ -266,11 +266,11 @@ def main(args, pacu_main):
         cw_data = deepcopy(session.CloudWatch)
         cw_data['Alarms'] = all_alarms
         session.update(pacu_main.database, CloudWatch=cw_data)
-        print('  {} total CloudWatch alarms found.\n'.format(len(session.CloudWatch['Alarms'])))
+        print('  {} total CloudWatch alarms found.'.format(len(session.CloudWatch['Alarms'])))
         summary_data['alarms'] = len(all_alarms)
 
     if enum_all is True or args.vpc is True:
-        print('Starting VPC...')
+        print('VPC Enumeration...')
         vpc_regions = get_regions('ec2')
         all_flow_logs = []
 
@@ -289,7 +289,7 @@ def main(args, pacu_main):
                     NextToken=response['NextToken']
                 )
                 flow_logs.extend(response['FlowLogs'])
-            print('    {} flow logs found.'.format(len(flow_logs)))
+            print('    {} flow logs'.format(len(flow_logs)))
 
             for flow_log in flow_logs:
                 flow_log['Region'] = region
@@ -299,10 +299,10 @@ def main(args, pacu_main):
         vpc_data = deepcopy(session.VPC)
         vpc_data['FlowLogs'] = all_flow_logs
         session.update(pacu_main.database, VPC=vpc_data)
-        print('  {} total VPC flow logs found.\n'.format(len(session.VPC['FlowLogs'])))
+        print('  {} total VPC flow logs'.format(len(session.VPC['FlowLogs'])))
         summary_data['flowlogs'] = len(all_flow_logs)
 
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
@@ -314,9 +314,9 @@ def summary(data, pacu_main):
             out += '  Shield Subscription Start: {}\n'.format(data['ShieldSubscriptionStart'])
             out += '  Shield Subscription Length: {} day(s(\n'.format(data['ShieldSubscriptionLength'])
     if 'CloudTrails' in data:
-        out += '{} CloudTrail Trail(s) found.\n'.format(data['CloudTrails'])
+        out += '  {} CloudTrail Trail(s) found.\n'.format(data['CloudTrails'])
     if 'Detectors' in data:
-        out += '{} GuardDuty Detector(s) found.\n'.format(data['Detectors'])
+        out += '  {} GuardDuty Detector(s) found.\n'.format(data['Detectors'])
     if 'MasterDetectors' in data:
         out += '  {} Master GuardDuty Detector(s) found.\n'.format(data['MasterDetectors'])
     if 'config' in data:

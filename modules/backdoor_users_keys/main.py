@@ -89,7 +89,7 @@ def main(args, pacu_main):
                     print('        {}'.format(error.response['Error']['Code']))
                     return
 
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

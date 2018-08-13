@@ -57,12 +57,13 @@ def main(args, pacu_main):
             InstanceId='1'
         )
     except ClientError as error:
-        print('FAILURE: ')
         code = error.response['Error']['Code']
-        if code == 'AccessDenied':
-            print('  MISSING NEEDED PERMISSIONS')
-        else:
-            print('  ' + code)
+        if code != 'DryRunOperation':
+            print('FAILURE: ')
+            if code == 'AccessDenied':
+                print('  MISSING NEEDED PERMISSIONS')
+            else:
+                print('  ' + code)
 
     if args.instance_ids is not None:
         for instance in args.instance_ids.split(','):
@@ -78,6 +79,7 @@ def main(args, pacu_main):
 
     if not os.path.exists('sessions/{}/downloads/'.format(session.name)):
         os.makedirs('sessions/{}/downloads/'.format(session.name))
+    summary_data['dl_path'] = 'sessions/{}/downloads/user_data.txt'.format(session.name)
 
     print('Found {} instance(s)...'.format(len(instances)))
     for instance in instances:
@@ -110,5 +112,8 @@ def main(args, pacu_main):
 
 
 def summary(data, pacu_main):
-    out = '  Downloaded EC2 userdata from {} instance(s).\n'.format(data['userdata_downloads'])
+    out = ''
+    if 'dl_path'in data:
+        out += '  Data downloaded to: \n    {}\n'.format(data['dl_path'])
+    out += '  {} instance(s) user data downloaded'.format(data['userdata_downloads'])
     return out

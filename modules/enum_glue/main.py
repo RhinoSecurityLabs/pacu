@@ -227,7 +227,7 @@ def main(args, pacu_main):
     glue_data['Jobs'] = all_jobs
     session.update(pacu_main.database, Glue=glue_data)
 
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

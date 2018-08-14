@@ -95,7 +95,7 @@ def main(args, pacu_main):
 
     session.update(pacu_main.database, Account=account_data)
 
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
 
     summary_data = {
         'key_arn': key_arn,

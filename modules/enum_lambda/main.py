@@ -37,10 +37,9 @@ parser.add_argument('--versions-all', required=False, default=False, action='sto
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all session regions.')
 
 
-def fetch_lambda_data(client, func, key, **kwargs):
+def fetch_lambda_data(client, func, key, print, **kwargs):
     caller = getattr(client, func)
     try:
-        print('  Starting enumeration of {}'.format(key))
         response = caller(**kwargs)
         data = response[key]
         if isinstance(data, dict) or isinstance(data, str):
@@ -54,10 +53,12 @@ def fetch_lambda_data(client, func, key, **kwargs):
     except client.exceptions.ResourceNotFoundException:
         print('    No valid {} found'.format(key))
     except ClientError as error:
-        if error.response['Error']['Code'] == 'AccessDeniedException':
-            print('AccessDenied for: {}'.format(func))
+        print('  FAILURE:')
+        code = error.response['Error']['Code']
+        if code == 'AccessDeniedException':
+            print('    MISSING NEEDED PERMISSIONS')
         else:
-            print('Unknown Error:\n{}'.format(error))
+            print(code)
     return []
 
 
@@ -92,18 +93,18 @@ def main(args, pacu_main):
             else:
                 print(error)
 
-        lambda_functions = fetch_lambda_data(client, 'list_functions', 'Functions')
+        lambda_functions = fetch_lambda_data(client, 'list_functions', 'Functions',  print)
 
         for func in lambda_functions:
             print('  Enumerating data for {}'.format(func['FunctionName']))
             func_arn = func['FunctionArn']
-            func['Code'] = fetch_lambda_data(client, 'get_function', 'Code', FunctionName=func_arn)
-            func['Aliases'] = fetch_lambda_data(client, 'list_aliases', 'Aliases', FunctionName=func_arn)
-            func['EventSourceMappings'] = fetch_lambda_data(client, 'list_event_source_mappings', 'EventSourceMappings', FunctionName=func_arn)
-            func['Tags'] = fetch_lambda_data(client, 'list_tags', 'Tags', Resource=func_arn)
-            func['Policy'] = fetch_lambda_data(client, 'get_policy', 'Policy', FunctionName=func_arn)
+            func['Code'] = fetch_lambda_data(client, 'get_function', 'Code', print, FunctionName=func_arn)
+            func['Aliases'] = fetch_lambda_data(client, 'list_aliases', 'Aliases', print, FunctionName=func_arn)
+            func['EventSourceMappings'] = fetch_lambda_data(client, 'list_event_source_mappings', 'EventSourceMappings', print, FunctionName=func_arn)
+            func['Tags'] = fetch_lambda_data(client, 'list_tags', 'Tags', print, Resource=func_arn)
+            func['Policy'] = fetch_lambda_data(client, 'get_policy', 'Policy', print, FunctionName=func_arn)
             if args.versions_all:
-                func['Versions'] = fetch_lambda_data(client, 'list_versions_by_function', 'Versions', FunctionName=func_arn)
+                func['Versions'] = fetch_lambda_data(client, 'list_versions_by_function', 'Versions', print, FunctionName=func_arn)
         lambda_data['Functions'] += lambda_functions
         if len(lambda_functions) > 0:
             summary_data[region] = len(lambda_functions)

@@ -73,7 +73,7 @@ def main(args, pacu_main):
         summary_data['buckets'] = len(response['Buckets'])
         for bucket in response['Buckets']:
             buckets.append(bucket['Name'])
-            print('  Found bucket "{bucket_name}".'.format(bucket_name=bucket['Name']))
+            print('  {}'.format(bucket['Name']))
 
     else:
         print('Found --dl-names argument, skipping bucket enumeration.')
@@ -98,7 +98,6 @@ def main(args, pacu_main):
         bucket_download_path = 'sessions/{}/downloads/s3_bucket_dump/{}'.format(session.name, bucket)
 
         try:
-            print('    Checking read permissions...')
             response = client.list_objects_v2(
                 Bucket=bucket,
                 MaxKeys=10
@@ -106,9 +105,8 @@ def main(args, pacu_main):
 
             if args.dl_all is False and args.names_only is False and args.dl_names is False:
                 summary_data['readable_buckets'] += 1
-                try_to_dl = input('      You have permission to read files in bucket {}, do you want to attempt to download all files in it? (y/n) '.format(bucket))
+                try_to_dl = input('    Download all files in it? (y/n) '.format(bucket))
                 if try_to_dl == 'n':
-                    print('      Skipping to next bucket.')
                     continue
             elif args.names_only is True:
                 try_to_dl = 'n'

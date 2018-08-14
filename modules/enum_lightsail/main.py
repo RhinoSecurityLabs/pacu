@@ -63,10 +63,9 @@ def camelCase(name):
     return out
 
 
-def fetch_lightsail_data(client, func):
+def fetch_lightsail_data(client, func, print):
     # Adding 'get_' portion to each field to build command.
     caller = getattr(client, 'get_' + func)
-    print('  Attempting to enumerate {}'.format(func))
     try:
         response = caller()
         data = response[camelCase(func)]
@@ -74,7 +73,6 @@ def fetch_lightsail_data(client, func):
             response = caller(pageToken=response['nextPageToken'])
             data.extend(response[camelCase(func)])
         print('    Found {} {}'.format(len(data), func))
-        print('  Finished enumerating for {}'.format(func))
         return data
     except ClientError as error:
         if error.response['Error']['Code'] == 'AccessDeniedException':
@@ -103,7 +101,7 @@ def main(args, pacu_main):
         print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('lightsail', region)
         for field in fields:
-            lightsail_data[region][field] = fetch_lightsail_data(client, field)
+            lightsail_data[region][field] = fetch_lightsail_data(client, field, print)
 
     summary_data = {}
     for field in fields:

@@ -89,9 +89,10 @@ def main(args, pacu_main):
                 continue
         try:
             if len(findings) < 1:
-                print('  No findings found for {}.'.format(region))
+                print('  No findings found')
                 continue
             else:
+                print('  {} findings found'.format(len(findings)))
                 summary_data['findings'] += len(findings)
             descriptions = client.describe_findings(findingArns=findings)['findings']
             complete_data[region] = descriptions
@@ -99,7 +100,7 @@ def main(args, pacu_main):
             if error.response['Error']['Code'] == 'AccessDeniedException':
                 print('Access Denied for describe-findings')
     session.update(pacu_main.database, Inspector=complete_data)
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

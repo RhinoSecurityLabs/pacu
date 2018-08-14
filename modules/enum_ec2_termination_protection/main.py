@@ -91,14 +91,13 @@ def main(args, pacu_main):
     ec2_data = deepcopy(session.EC2)
     ec2_data['Instances'] = instances
     session.update(pacu_main.database, EC2=ec2_data)
-
-    print('Instances with Termination Protection disabled have been written to ./{}'.format(csv_file_path))
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
 def summary(data, pacu_main):
-    out = '  {} instances have termination protection enabled\n'.format(data['instance_count'])
+    out = '  {} instances have termination protection disabled\n'.format(data['instance_count'])
     if data['instance_count'] > 0:
-        out += '    Instances without termination protection have been written to: {}\n'.format(data['csv_file_path'])
+        out += '  Instances without termination protection have been written to:\n'
+        out += '     {}\n'.format(data['csv_file_path'])
     return out

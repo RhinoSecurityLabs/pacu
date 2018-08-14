@@ -146,7 +146,7 @@ def main(args, pacu_main):
         'vpcs_found': vpcs_found,
         'vpc_data': vpc_data,
     }
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

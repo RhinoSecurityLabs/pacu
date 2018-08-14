@@ -76,13 +76,13 @@ def main(args, pacu_main):
 
             count += len(response['LoadBalancers'])
         summary_data['load_balancers'] += count
-        print('  {} total load balancer(s) found in {}.'.format(count, region))
+        print('  {} load balancer(s) found '.format(count))
 
     ec2_data = deepcopy(session.EC2)
     ec2_data['LoadBalancers'] = deepcopy(load_balancers)
     session.update(pacu_main.database, EC2=ec2_data)
 
-    print('{} total load balancer(s) found.'.format(len(session.EC2['LoadBalancers'])))
+    print('\n{} total load balancer(s) found.'.format(len(session.EC2['LoadBalancers'])))
 
     now = time.time()
     csv_file_path = 'sessions/{}/downloads/elbs_no_logs_{}.csv'.format(session.name, now)
@@ -97,10 +97,8 @@ def main(args, pacu_main):
                     if attribute['Value'] is False or attribute['Value'] == 'false':
                         csv_file.write('{},{},{}\n'.format(load_balancer['LoadBalancerName'], load_balancer['LoadBalancerArn'], load_balancer['Region']))
 
-    print('A list of load balancers without access logging has been saved to ./{}'.format(csv_file_path))
-    print('All data has been saved to the current session.')
 
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

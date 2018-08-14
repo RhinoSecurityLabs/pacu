@@ -225,7 +225,7 @@ def main(args, pacu_main):
         vpcs = []
         vpc_endpoints = []
 
-        print('Starting region {}...\n'.format(region))
+        print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('ec2', region)
 
         # Instances

@@ -59,11 +59,11 @@ def main(args, pacu_main):
                     print('waiting...')
                     time.sleep(20)
                 else:
-                    generate = input('Credential report not generated, do you want to generate one? (y/n) ')
+                    generate = input('Report not found. Generate? (y/n) ')
                     if generate == 'y':
                         try:
                             client.generate_credential_report()
-                            print('Credential report generation started, this may take up to a couple minutes. Checking if it is ready every 20 seconds...')
+                            print('  Starting. Checking completion every 20 seconds...')
                             generated = True
                             summary_data['generated'] = True
                         except ClientError as error:
@@ -75,7 +75,8 @@ def main(args, pacu_main):
                         report = None
                         break
             elif code == 'AccessDenied':
-                print('Access Denied for get_credential_report')
+                print('  FAILURE:')
+                print('    MISSING NEEDED PERMISSIONS')
                 report = None
                 break
             else:
@@ -94,9 +95,9 @@ def main(args, pacu_main):
         print('Credential report saved to {}'.format(filename))
 
     else:
-        print('\n  Unable to generate report.\n')
+        print('\n  Unable to generate report.')
 
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

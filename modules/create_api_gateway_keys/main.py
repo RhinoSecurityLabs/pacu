@@ -83,7 +83,7 @@ def main(args, pacu_main):
             summary_data['cleanup'] = False
         # Either way assume database has been cleared, it if failed it's out of sync
         session.update(pacu_main.database, APIGateway={})
-        user_input = input('  Continue key creation? (y/n)')
+        user_input = input('  Continue key creation? (y/n) ')
         if user_input.lower() != 'y':
             return summary_data
 

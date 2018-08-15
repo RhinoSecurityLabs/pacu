@@ -119,4 +119,6 @@ def summary(data, pacu_main):
     if data.get('cleanup'):
         out += '  Old keys removed.\n'
     out += '  {} key(s) created.\n'.format(data['keys_created'])
+    if data['keys_created'] > 0:
+        out += '  Keys saved in Pacu database.\n'
     return out

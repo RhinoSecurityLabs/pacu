@@ -34,7 +34,7 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--script', help='File path of the shell script to add to the EC2 instances')
+parser.add_argument('--script', required=True, help='File path of the shell script to add to the EC2 instances')
 parser.add_argument('--instance-ids', required=False, default=None, help='One or more (comma separated) EC2 instance IDs and their regions in the format instanceid@region. Defaults to all instances.')
 
 
@@ -122,7 +122,7 @@ def stop_instance(client, instance_id, print):
         return True
     except ClientError as error:
         if error.response['Error']['Code'] == 'UnauthorizedOperation':
-            print('  FAILURE: MISSING NEEDED PERMISSIONS')
+            print('  FAILURE: MISSING REQUIRED AWS PERMISSIONS')
         else:
             print('  Unknown Error')
     return False
@@ -135,7 +135,7 @@ def start_instance(client, instance_id, print):
         result = True
     except ClientError as error:
         if error.response['Error']['Code'] == 'UnauthorizedOperation':
-            print('  FAILURE: MISSING NEEDED PERMISSIONS')
+            print('  FAILURE: MISSING REQUIRED AWS PERMISSIONS')
         else:
             print('  Unknown Error')
     return False

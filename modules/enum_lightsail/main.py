@@ -76,7 +76,8 @@ def fetch_lightsail_data(client, func, print):
         return data
     except ClientError as error:
         if error.response['Error']['Code'] == 'AccessDeniedException':
-            print('AccessDenied for: {}'.format(func))
+            print('  {}'.format(func))
+            print('    FAILURE: MISSING REQUIRED AWS PERMISSIONS')
         else:
             print('Unknown Error:\n{}'.format(error))
     return []
@@ -103,7 +104,7 @@ def main(args, pacu_main):
         for field in fields:
             lightsail_data[region][field] = fetch_lightsail_data(client, field, print)
 
-    summary_data = {}
+    summary_data = {'regions': regions}
     for field in fields:
         summary_data[field] = 0
         for region in lightsail_data:
@@ -115,7 +116,10 @@ def main(args, pacu_main):
 
 
 def summary(data, pacu_main):
-    out = ''
+    out = '  Regions Enumerated:\n'
+    for region in data['regions']:
+        out += '    {}\n'.format(region)
+    del data['regions']
     for field in data:
         out += '  {} {} enumerated\n'.format(data[field], field[:-1] + '(s)')
     return out

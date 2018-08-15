@@ -3,6 +3,8 @@ import argparse
 from copy import deepcopy
 import time
 
+from botocore.exceptions import ClientError
+
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -59,22 +61,29 @@ def main(args, pacu_main):
         next_marker = False
 
         while (response is None or 'NextMarker' in response):
-            if next_marker is False:
-                response = client.describe_load_balancers()
-            else:
-                response = client.describe_load_balancers(Marker=next_marker)
+            try:
+                if next_marker is False:
+                    response = client.describe_load_balancers()
+                else:
+                    response = client.describe_load_balancers(Marker=next_marker)
 
-            if 'NextMarker' in response:
-                next_marker = response['NextMarker']
-            for load_balancer in response['LoadBalancers']:
-                load_balancer['Region'] = region
-                # Adding Attributes to current load balancer database
-                load_balancer['Attributes'] = client.describe_load_balancer_attributes(
-                    LoadBalancerArn=load_balancer['LoadBalancerArn']
-                )['Attributes']
-                load_balancers.append(load_balancer)
-
-            count += len(response['LoadBalancers'])
+                if 'NextMarker' in response:
+                    next_marker = response['NextMarker']
+                for load_balancer in response['LoadBalancers']:
+                    load_balancer['Region'] = region
+                    # Adding Attributes to current load balancer database
+                    load_balancer['Attributes'] = client.describe_load_balancer_attributes(
+                        LoadBalancerArn=load_balancer['LoadBalancerArn']
+                    )['Attributes']
+                    load_balancers.append(load_balancer)
+            except ClientError as error:
+                if error.response['Error']['Code'] == 'AccessDenied':
+                    print('  FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+                else:
+                    print('  {}'.format(error.response['Error']['Code']))
+                break
+            if response and 'LoadBalancers' in response:
+                count += len(response['LoadBalancers'])
         summary_data['load_balancers'] += count
         print('  {} load balancer(s) found '.format(count))
 
@@ -91,7 +100,6 @@ def main(args, pacu_main):
     with open(csv_file_path, 'w+') as csv_file:
         csv_file.write('Load Balancer Name,Load Balancer ARN,Region\n')
         for load_balancer in session.EC2['LoadBalancers']:
-            print(load_balancer)
             for attribute in load_balancer['Attributes']:
                 if attribute['Key'] == 'access_logs.s3.enabled':
                     if attribute['Value'] is False or attribute['Value'] == 'false':

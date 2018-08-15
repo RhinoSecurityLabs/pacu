@@ -59,9 +59,14 @@ def main(args, pacu_main):
             InstanceId=instances[0]['InstanceId']
         )
     except ClientError as error:
-        if not str(error).find('UnauthorizedOperation') == -1:
-            print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_instance_attribute".\nExiting module.')
-            return summary_data
+        print('  FAILURE: ')
+        if error.response['Error']['Code'] == 'UnauthorizedOperation':
+            print('    MISSING NEEDED PERMISSIONS')
+        else:
+            print(error.response['Error']['Code'])
+        # Print newline for spacing
+        print('')
+        return summary_data
 
     now = time.time()
     csv_file_path = 'sessions/{}/downloads/termination_protection_disabled_{}.csv'.format(session.name, now)
@@ -98,6 +103,6 @@ def main(args, pacu_main):
 def summary(data, pacu_main):
     out = '  {} instances have termination protection disabled\n'.format(data['instance_count'])
     if data['instance_count'] > 0:
-        out += '  Instances without termination protection have been written to:\n'
+        out += '  Identified instances have been written to:\n'
         out += '     {}\n'.format(data['csv_file_path'])
     return out

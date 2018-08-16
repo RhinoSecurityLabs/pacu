@@ -88,7 +88,7 @@ def main(args, pacu_main):
     for user in users:
         if args.usernames is None:
             target_user = input('  User: {} (y/n)? '.format(user))
-            if target_user.lower() == 'y':
+            if target_user.lower() != 'y':
                 continue
         else:
             print('  User: {}'.format(user))

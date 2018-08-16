@@ -76,7 +76,7 @@ def main(args, pacu_main):
     target_user = ''
     password = create_valid_password(password_policy)
     summary_data['backdoored_password_count'] = 0
-    print('Modifying user passwords...')
+    print('Modifying an IAM user\'s current password')
     print('Password: {}'.format(password))
 
     if args.update:
@@ -97,7 +97,7 @@ def main(args, pacu_main):
                 UserName=user,
                 Password=password,
                 PasswordResetRequired=False)
-            print('    Password Applied')
+            print('    Password successfully changed')
             summary_data['backdoored_password_count'] += 1
         except ClientError as error:
             print('    FAILURE:')

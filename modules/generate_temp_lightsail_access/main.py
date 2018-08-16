@@ -168,5 +168,5 @@ def summary(data, pacu_main):
     out = '  Created temporary access for {} Windows instances.\n'.format(data['windows'])
     out += '  Created temporary access for {} Linux instances.\n'.format(data['linux'])
     if data['written_file_path'] is not None:
-        out += '\n  Credential files written to directory {}{}.'.format(data['written_file_path'], os.path.sep)
+        out += '\n  Credential files written to:\n     {}{}'.format(data['written_file_path'], os.path.sep)
     return out

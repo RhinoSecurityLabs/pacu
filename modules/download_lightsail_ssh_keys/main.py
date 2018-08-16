@@ -46,6 +46,7 @@ def main(args, pacu_main):
         dl_path.mkdir()
     summary_data['dl_path'] = str(dl_path.relative_to(Path.cwd() / 'sessions' / session.name))
     for region in regions:
+        print('  Downloading default keys for {}...'.format(region))
         cur_path = dl_path / region
         if not cur_path.exists():
             cur_path.mkdir()

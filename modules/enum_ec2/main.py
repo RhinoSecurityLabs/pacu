@@ -424,6 +424,10 @@ def main(args, pacu_main):
         ec2_data[key] = value
     session.update(pacu_main.database, EC2=ec2_data)
 
+    # Add regions to gathered_data for summary output
+    gathered_data['regions'] = regions
+
+
     print('All data has been saved to the current session.\n')
 
     print('{} completed.\n'.format(module_info['name']))
@@ -433,6 +437,12 @@ def main(args, pacu_main):
 
 def summary(data, pacu_main):
     results = []
+
+    results.append('  Regions:')
+    for region in data['regions']:
+        results.append('     {}'.format(region))
+
+    results.append('')
 
     if len(data['Instances']) > 0:
         results.append('    {} total instance(s) found.'.format(len(data['Instances'])))

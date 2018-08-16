@@ -53,7 +53,7 @@ def main(args, pacu_main):
     iam_client = pacu_main.get_boto3_client('iam')
     response = iam_client.list_account_aliases()
     account_iam_alias = response['AccountAliases'][0]
-
+    print('Enumerating Account: {}'.format(account_iam_alias))
     # All the billing seems to be in us-east-1. YMMV
     cwm_client = pacu_main.get_boto3_client('cloudwatch', "us-east-1")
     try:
@@ -94,8 +94,6 @@ def main(args, pacu_main):
     }
 
     session.update(pacu_main.database, Account=account_data)
-
-    print('\n{} completed.\n'.format(module_info['name']))
 
     summary_data = {
         'key_arn': key_arn,

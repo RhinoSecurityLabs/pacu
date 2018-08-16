@@ -164,7 +164,7 @@ def main(args, pacu_main):
                     groups.append(group)
 
                 is_truncated = response['IsTruncated']
-            print('Found {} groups.\n'.format(len(groups)))
+            print('Found {} groups'.format(len(groups)))
 
         except ClientError:
             print('No Groups Found')
@@ -183,4 +183,5 @@ def summary(data, pacu_main):
     out = ''
     for key in data:
         out += '  {} {} Enumerated\n'.format(data[key], key)
+    out += '  IAM resources saved in Pacu database.\n'
     return out

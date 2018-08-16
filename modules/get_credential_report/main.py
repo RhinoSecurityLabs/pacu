@@ -105,6 +105,8 @@ def summary(data, pacu_main):
     out = ''
     if data['generated']:
         out += '  Report was generated\n'
+    else:
+        out += '  Report was not generated\n'
     if 'report_location' in data:
         out += '    Report saved to: {}\n'.format(data['report_location'])
     return out

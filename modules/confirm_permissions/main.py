@@ -4,6 +4,8 @@ import json
 import os
 import re
 
+from botocore.exceptions import ClientError
+
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -87,7 +89,16 @@ def main(args, pacu_main):
 
         if re.match(r'arn:aws:iam::\d{12}:user/', identity['Arn']) is not None:
             client = pacu_main.get_boto3_client('iam')
-            user = client.get_user()
+            try:
+                user = client.get_user()
+            except ClientError as error:
+                print('  Unable to get current user identity')
+                if error.response['Error']['Code'] == 'AccessDenied':
+                    print('    FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+                else:
+                    print('    {}'.format(error.response['Error']['Code']))
+                print('')
+                return summary_data
             active_aws_key.update(
                 pacu_main.database,
                 user_name=user['User']['UserName'],
@@ -132,6 +143,7 @@ def main(args, pacu_main):
     print('  sessions/{}/downloads/confirmed_permissions/'.format(session.name))
     print('Confirming Permissions for Users...')
     for user in users:
+        print('  {}...'.format(user['UserName']))
         user['Groups'] = []
         user['Policies'] = []
         try:
@@ -149,8 +161,12 @@ def main(args, pacu_main):
                         Marker=response['Marker']
                     )
                     user['Groups'] += response['Groups']
-            except Exception as error:
-                print('List groups for user failed: {}'.format(error))
+            except ClientError as error:
+                print('    List groups for user failed')
+                if error.response['Error']['Code'] == 'AccessDenied':
+                    print('      FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+                else:
+                    print('      {}'.format(error.response['Error']['Code']))
                 user['PermissionsConfirmed'] = False
 
             # Get inline and attached group policies
@@ -168,8 +184,12 @@ def main(args, pacu_main):
                             Marker=response['Marker']
                         )
                         policies += response['PolicyNames']
-                except Exception as error:
-                    print('List group policies failed: {}'.format(error))
+                except ClientError as error:
+                    print('     List group policies failed')
+                    if error.response['Error']['Code'] == 'AccessDenied':
+                        print('      FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+                    else:
+                        print('      {}'.format(error.response['Error']['Code']))
                     user['PermissionsConfirmed'] = False
 
                 # Get document for each inline policy
@@ -182,8 +202,12 @@ def main(args, pacu_main):
                             GroupName=group['GroupName'],
                             PolicyName=policy
                         )['PolicyDocument']
-                    except Exception as error:
-                        print('Get group policy failed: {}'.format(error))
+                    except ClientError as error:
+                        print('     Get group policy failed')
+                        if error.response['Error']['Code'] == 'AccessDenied':
+                            print('      FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+                        else:
+                            print('      {}'.format(error.response['Error']['Code']))
                         user['PermissionsConfirmed'] = False
                     user = parse_document(document, user)
 
@@ -201,8 +225,12 @@ def main(args, pacu_main):
                         )
                         attached_policies += response['AttachedPolicies']
                     group['Policies'] += attached_policies
-                except Exception as error:
-                    print('List attached group policies failed: {}'.format(error))
+                except ClientError as error:
+                    print('    List attached group policies failed')
+                    if error.response['Error']['Code'] == 'AccessDenied':
+                        print('      FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+                    else:
+                        print('      {}'.format(error.response['Error']['Code']))
                     user['PermissionsConfirmed'] = False
                 user = parse_attached_policies(client, attached_policies, user)
 
@@ -225,8 +253,12 @@ def main(args, pacu_main):
                     user['Policies'].append({
                         'PolicyName': policy
                     })
-            except Exception as error:
-                print('List user policies failed: {}'.format(error))
+            except ClientError as error:
+                print('    List user policies failed')
+                if error.response['Error']['Code'] == 'AccessDenied':
+                    print('      FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+                else:
+                    print('      {}'.format(error.response['Error']['Code']))
                 user['PermissionsConfirmed'] = False
 
             # Get document for each inline policy
@@ -236,8 +268,12 @@ def main(args, pacu_main):
                         UserName=user['UserName'],
                         PolicyName=policy
                     )['PolicyDocument']
-                except Exception as error:
-                    print('Get user policy failed: {}'.format(error))
+                except ClientError as error:
+                    print('    Get user policy failed')
+                    if error.response['Error']['Code'] == 'AccessDenied':
+                        print('      FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+                    else:
+                        print('      {}'.format(error.response['Error']['Code']))
                     user['PermissionsConfirmed'] = False
                 user = parse_document(document, user)
 
@@ -255,13 +291,17 @@ def main(args, pacu_main):
                     )
                     attached_policies += response['AttachedPolicies']
                 user['Policies'] += attached_policies
-            except Exception as error:
-                print('List attached user policies failed: {}'.format(error))
+            except ClientError as error:
+                print('    List attached user policies failed')
+                if error.response['Error']['Code'] == 'AccessDenied':
+                    print('      FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+                else:
+                    print('      {}'.format(error.response['Error']['Code']))
                 user['PermissionsConfirmed'] = False
 
             user = parse_attached_policies(client, attached_policies, user)
-
-            summary_data['users_confirmed'] += 1
+            if user['PermissionsConfirmed']:
+                summary_data['users_confirmed'] += 1
 
             if args.user_name is None and args.all_users is False:  # TODO: If this runs and gets all permissions, replace the current set under user['Permissions'] rather than add to it in this module
                 print('  Confirmed Permissions for {}'.format(user['UserName']))
@@ -283,9 +323,13 @@ def main(args, pacu_main):
                 with open('sessions/{}/downloads/confirmed_permissions/{}.json'.format(session.name, user['UserName']), 'w+') as user_permissions_file:
                     json.dump(user, user_permissions_file, indent=2, default=str)
 
-                print('  {} data stored in {}.json'.format(user['UserName'], user['UserName']))
-        except Exception as error:
-            print('Error, skipping user {}:\n{}'.format(user['UserName'], error))
+                print('    {} data stored in {}.json'.format(user['UserName'], user['UserName']))
+        except ClientError as error:
+            if error.response['Error']['Code'] == 'AccessDenied':
+                print('  FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+            else:
+                print('  {}'.format(error.response['Error']['Code']))
+            print('Skipping {}'.format(user['UserName'], error))
 
     print('\n{} completed.\n'.format(module_info['name']))
     return summary_data

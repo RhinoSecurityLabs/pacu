@@ -110,8 +110,8 @@ def main(args, pacu_main):
                 print('  UNKNOWN:')
                 print('    {}'.format(code))
                 print(error)
-            quit = input('    Continue? (y/n)')
-            if quit == 'n':
+            quit = input('    Continue? (y/n) ')
+            if quit.lower() == 'n':
                 print('    Exiting...')
                 return summary_data
     print('{} completed.\n'.format(module_info['name']))

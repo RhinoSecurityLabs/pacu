@@ -43,12 +43,12 @@ def load_volumes(client, print, input, instance_id, volume_ids):
 
     # load volume set
     set_index = 0
-    SET_COUNT = 3
+    set_count = 10
 
     while set_index < len(volume_ids):
-        current_volume_set = volume_ids[set_index:set_index + SET_COUNT]
+        current_volume_set = volume_ids[set_index:set_index + set_count]
         attached = modify_volume_set(
-            client, print, 'attach_volume', instance_id, current_volume_set)            
+            client, print, 'attach_volume', instance_id, current_volume_set)
         if not attached:
             print(' Volume attachment failed')
             print(' Exiting...')
@@ -62,7 +62,7 @@ def load_volumes(client, print, input, instance_id, volume_ids):
             return False
         waiter = client.get_waiter('volume_available')
         waiter.wait(VolumeIds=current_volume_set)
-        set_index += SET_COUNT
+        set_index += set_count
     return True
 
 def modify_volume_set(client, print, func, instance_id, volume_id_set):
@@ -78,12 +78,12 @@ def modify_volume_set(client, print, func, instance_id, volume_id_set):
     Returns:
         bool: True if the volumes were successfully attached.
     """
-    BASE_DEVICE = 'xvd'
+    base_device = 'xvd'
     device_offset = 'f'
     for volume_id in volume_id_set:
         try:
             kwargs = {
-                'Device':BASE_DEVICE+device_offset,
+                'Device':base_device+device_offset,
                 'InstanceId':instance_id,
                 'VolumeId':volume_id
             }
@@ -153,9 +153,9 @@ def get_volumes(pacu, session, regions):
     for volume in ec2_data['Volumes']:
         if volume['Region'] in regions:
             if volume['State'] == 'available':
-                volume_ids[region]['available'].append(volume['VolumeId'])
+                volume_ids[volume['Region']]['available'].append(volume['VolumeId'])
             elif volume['State'] == 'in-use':
-                volume_ids[region]['in_use'].append(volume['VolumeId'])
+                volume_ids[volume['Region']]['in_use'].append(volume['VolumeId'])
     return volume_ids
 
 
@@ -209,7 +209,6 @@ def main(args, pacu):
     snapshots = get_snapshots(pacu, session, regions)
     volumes = get_volumes(pacu, session, regions)
     for region in regions:
-        region_snapshots = snapshots[region]
         client = pacu.get_boto3_client('ec2', region)
         if args.instance:
             instance = args.instance.split('@')[0]
@@ -220,8 +219,7 @@ def main(args, pacu):
         # Load the pre-existing volumes
         load_volumes(client, print, input, instance, volumes[region]['available'])
 
-        continue
-        # Generate temporary volumes from running volumes        
+        # Generate temporary volumes from running volumes
         print('  Attaching in-use volumes...')
         temp_snaps = generate_snapshots_from_volumes(
             client, volumes[region]['in_use'])

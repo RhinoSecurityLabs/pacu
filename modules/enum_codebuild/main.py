@@ -27,10 +27,7 @@ def all_region_prompt(print, input, regions):
     for region in regions:
         print('  {}'.format(region))
     response = input('Do you wish to continue? (y/n) ')
-    if response.lower() == 'y':
-        return True
-    else:
-        return False
+    return response.lower() == 'y'
 
 
 def main(args, pacu_main):

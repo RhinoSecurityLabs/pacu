@@ -43,7 +43,7 @@ def fetch_lambda_data(client, func, key, **kwargs):
         print('  Starting enumeration of {}'.format(key))
         response = caller(**kwargs)
         data = response[key]
-        if isinstance(data, dict) or isinstance(data, str):
+        if isinstance(data, (dict, str)):
             print('    Found {} data'.format(key))
             return data
         while 'nextMarker' in response:
@@ -66,10 +66,7 @@ def all_region_prompt(print, input, regions):
     for region in regions:
         print('  {}'.format(region))
     response = input('Do you wish to continue? (y/n) ')
-    if response.lower() == 'y':
-        return True
-    else:
-        return False
+    return response.lower() == 'y'
 
 
 def main(args, pacu_main):
@@ -123,7 +120,7 @@ def main(args, pacu_main):
             if args.versions_all:
                 func['Versions'] = fetch_lambda_data(client, 'list_versions_by_function', 'Versions', FunctionName=func_arn)
         lambda_data['Functions'] += lambda_functions
-        if len(lambda_functions) > 0:
+        if lambda_functions:
             summary_data[region] = len(lambda_functions)
     session.update(pacu_main.database, Lambda=lambda_data)
 

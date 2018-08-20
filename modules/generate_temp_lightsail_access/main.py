@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import argparse
-from botocore.exceptions import ClientError
 import os
 
+from botocore.exceptions import ClientError
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -77,10 +77,7 @@ def all_region_prompt(print, input, regions):
     for region in regions:
         print('  {}'.format(region))
     response = input('Do you wish to continue? (y/n) ')
-    if response.lower() == 'y':
-        return True
-    else:
-        return False
+    return response.lower() == 'y'
 
 
 def main(args, pacu_main):
@@ -91,7 +88,7 @@ def main(args, pacu_main):
     fetch_data = pacu_main.fetch_data
 
     args = parser.parse_args(args)
-    if args.regions:        
+    if args.regions:
         regions = args.regions.split(',')
     else:
         regions = get_regions('lightsail')

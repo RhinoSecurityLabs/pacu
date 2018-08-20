@@ -38,7 +38,7 @@ def all_region_prompt(print, input, regions):
     print('Automatically targeting region(s):')
     for region in regions:
         print('  {}'.format(region))
-    response = input('Do you wish to continue? (y/n)' )
+    response = input('Do you wish to continue? (y/n) ')
     return response.lower() == 'y'
 
 

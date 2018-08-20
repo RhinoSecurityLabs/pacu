@@ -35,6 +35,17 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format "us-east-1". Defaults to all session regions.')
 
 
+def all_region_prompt(print, input, regions):
+    print('Automatically targeting region(s):')
+    for region in regions:
+        print('  {}'.format(region))
+    response = input('Do you wish to continue? (y/n) ')
+    if response.lower() == 'y':
+        return True
+    else:
+        return False
+
+
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
@@ -42,7 +53,13 @@ def main(args, pacu_main):
     print = pacu_main.print
     get_regions = pacu_main.get_regions
 
-    regions = get_regions('elasticloadbalancing')
+    if args.regions:
+        regions = args.regions.split(',')
+    else:
+        regions = get_regions('elasticloadbalancing')
+        if not all_region_prompt(print, input, regions):
+            return
+
     summary_data = {'load_balancers': 0}
     if 'LoadBalancers' not in session.EC2.keys():
         ec2_data = deepcopy(session.EC2)

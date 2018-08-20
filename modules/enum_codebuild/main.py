@@ -22,6 +22,17 @@ parser.add_argument('--builds', required=False, default=False, action='store_tru
 parser.add_argument('--projects', required=False, default=False, action='store_true', help='Enumerate projects. If this is passed in without --builds, then only projects will be enumerated. By default, both are enumerated.')
 
 
+def all_region_prompt(print, input, regions):
+    print('Automatically targeting region(s):')
+    for region in regions:
+        print('  {}'.format(region))
+    response = input('Do you wish to continue? (y/n) ')
+    if response.lower() == 'y':
+        return True
+    else:
+        return False
+
+
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
@@ -33,7 +44,12 @@ def main(args, pacu_main):
         enum_all = True
     else:
         enum_all = False
-    regions = args.regions.split(',') if args.regions else get_regions('CodeBuild')
+    if args.regions:
+        regions = args.regions.split(',')
+    else:
+        regions = get_regions('CodeBuild')
+        if not all_region_prompt(print, input, regions):
+            return
 
     all_projects = []
     all_builds = []

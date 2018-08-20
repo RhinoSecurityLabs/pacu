@@ -46,6 +46,17 @@ parser.add_argument('--dev-endpoints', required=False, default=False, action='st
 parser.add_argument('--jobs', required=False, default=False, action='store_true', help='Enumerate Glue jobs.')
 
 
+def all_region_prompt(print, input, regions):
+    print('Automatically targeting region(s):')
+    for region in regions:
+        print('  {}'.format(region))
+    response = input('Do you wish to continue? (y/n) ')
+    if response.lower() == 'y':
+        return True
+    else:
+        return False
+
+
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
@@ -59,13 +70,12 @@ def main(args, pacu_main):
     if args.connections is False and args.databases is False and args.crawlers is False and args.jobs is False and args.dev_endpoints is False:
         all = True
 
-    if args.regions is None:
-        regions = get_regions('glue')
-        if regions is None or regions == [] or regions == '' or regions == {}:
-            print('This module is not supported in any regions specified in the current sessions region set. Exiting...')
-            return
-    else:
+    if args.regions:
         regions = args.regions.split(',')
+    else:
+        regions = get_regions('glue')
+        if not all_region_prompt(print, input, regions):
+            return
 
     all_connections = []
     all_crawlers = []

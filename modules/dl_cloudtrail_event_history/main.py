@@ -35,15 +35,34 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format "us-east-1". Defaults to all session regions.')
 
 
+def all_region_prompt(print, input, regions):
+    print('Automatically targeting region(s):')
+    for region in regions:
+        print('  {}'.format(region))
+    response = input('Do you wish to continue? (y/n) ')
+    if response.lower() == 'y':
+        return True
+    else:
+        return False
+
+
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = pacu_main.print
+    input = pacu_main.input
     get_regions = pacu_main.get_regions
     ######
     summary_data = {}
+    if args.regions:
+        regions = args.regions.split(',')
+    else:
+        regions = get_regions('cloudtrail')
+        if not all_region_prompt(print, input, regions):
+            return
+
     if args.regions is None:
         regions = get_regions('cloudtrail')
         if regions is None or regions == [] or regions == '' or regions == {}:

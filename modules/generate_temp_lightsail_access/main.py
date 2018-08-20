@@ -72,14 +72,31 @@ def write_keys_to_file(created_keys, session):
                     continue
 
 
+def all_region_prompt(print, input, regions):
+    print('Automatically targeting region(s):')
+    for region in regions:
+        print('  {}'.format(region))
+    response = input('Do you wish to continue? (y/n) ')
+    if response.lower() == 'y':
+        return True
+    else:
+        return False
+
+
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
     print = pacu_main.print
+    input = pacu_main.input
     get_regions = pacu_main.get_regions
     fetch_data = pacu_main.fetch_data
 
     args = parser.parse_args(args)
-    regions = args.regions.split(',') if args.regions else get_regions('lightsail')
+    if args.regions:        
+        regions = args.regions.split(',')
+    else:
+        regions = get_regions('lightsail')
+        if not all_region_prompt(print, input, regions):
+            return
     instances = {}
     for region in regions:
         instances[region] = []

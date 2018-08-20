@@ -38,6 +38,17 @@ parser.add_argument('--regions', required=False, default=None, help='One or more
 parser.add_argument('--cleanup', required=False, default=None, action='store_true', help='Searches for Pacu keys previously generated and removes them.')
 
 
+def all_region_prompt(print, input, regions):
+    print('Automatically targeting region(s):')
+    for region in regions:
+        print('  {}'.format(region))
+    response = input('Do you wish to continue? (y/n)')
+    if response.lower() == 'y':
+        return True
+    else:
+        return False
+
+
 def cleanup(pacu_main, regions):
     print = pacu_main.print
     for region in regions:
@@ -68,7 +79,12 @@ def main(args, pacu_main):
     input = pacu_main.input
     print = pacu_main.print
     get_regions = pacu_main.get_regions
-    regions = args.regions.split(',') if args.regions else get_regions('apigateway')
+    if args.regions:
+        regions = args.regions.split(',')
+    else:
+        regions = get_regions('apigateway')
+        if not all_region_prompt(print, input, regions):
+            return
 
     summary_data = {'keys_created': 0}
     api_keys = {}

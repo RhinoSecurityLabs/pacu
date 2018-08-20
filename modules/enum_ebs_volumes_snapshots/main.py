@@ -71,6 +71,17 @@ parser.add_argument(
 )
 
 
+def all_region_prompt(print, input, regions):
+    print('Automatically targeting region(s):')
+    for region in regions:
+        print('  {}'.format(region))
+    response = input('Do you wish to continue? (y/n) ')
+    if response.lower() == 'y':
+        return True
+    else:
+        return False
+
+
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
@@ -91,6 +102,13 @@ def main(args, pacu_main):
     if 'Snapshots' not in ec2_data.keys():
         ec2_data['Snapshots'] = []
     session.update(pacu_main.database, EC2=ec2_data)
+
+    if args.regions:
+        regions = args.regions.split(',')
+    else:
+        regions = get_regions('ec2')
+        if not all_region_prompt(print, input, regions):
+            return
 
     if args.regions is None:
         regions = get_regions('ec2')

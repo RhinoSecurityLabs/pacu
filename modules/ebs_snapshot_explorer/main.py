@@ -177,6 +177,7 @@ def generate_snapshots_from_volumes(client, volume_ids):
         snapshot_ids.append(response['SnapshotId'])
     return snapshot_ids
 
+
 def delete_volumes(client, volumes):
     """Deletes a given list of volumes"""
     for volume in volumes:

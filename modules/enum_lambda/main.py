@@ -110,7 +110,7 @@ def main(args, pacu_main):
             summary_data[region] = len(lambda_functions)
     session.update(pacu_main.database, Lambda=lambda_data)
 
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
@@ -118,4 +118,6 @@ def summary(data, pacu_main):
     out = ''
     for region in sorted(data):
         out += '  {} functions found in {}.\n'.format(data[region], region)
+    if not out:
+        out = '  Nothing was enumerated'
     return out

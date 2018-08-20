@@ -51,6 +51,7 @@ def all_region_prompt(print, input, regions):
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
+    input = pacu_main.input
     print = pacu_main.print
     get_regions = pacu_main.get_regions
 

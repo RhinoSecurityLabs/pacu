@@ -115,6 +115,7 @@ def main(args, pacu_main):
     session = pacu_main.get_active_session()
     args = parser.parse_args(args)
     print = pacu_main.print
+    input = pacu_main.input
     get_regions = pacu_main.get_regions
     if args.regions:
         regions = args.regions.split(',')

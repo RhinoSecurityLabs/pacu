@@ -340,10 +340,7 @@ def main(args, pacu_main):
             global current_region
             current_region = region
             global current_client
-            current_client = boto3.client(
-                service,
-                region_name=region,
-            )
+            current_client = pacu_main.get_boto3_client(service, region)
             functions = [func for func in dir(current_client) if valid_func(service, func)]
             index = 1
             for func in functions:

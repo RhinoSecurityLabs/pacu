@@ -65,24 +65,35 @@ parser.add_argument('--vpcs', required=False, default=False, action='store_true'
 parser.add_argument('--vpc-endpoints', required=False, default=False, action='store_true', help='Enumerate EC2 VPC endpoints')
 
 
+def all_region_prompt(print, input, regions):
+    print('Automatically targeting region(s):')
+    for region in regions:
+        print('  {}'.format(region))
+    response = input('Do you wish to continue? (y/n) ')
+    if response.lower() == 'y':
+        return True
+    else:
+        return False
+
+
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
     args = parser.parse_args(args)
     print = pacu_main.print
+    input = pacu_main.input
     get_regions = pacu_main.get_regions
 
     all = False
     if args.instances is False and args.security_groups is False and args.elastic_ips is False and args.customer_gateways is False and args.dedicated_hosts is False and args.network_acls is False and args.nat_gateways is False and args.network_interfaces is False and args.route_tables is False and args.subnets is False and args.vpcs is False and args.vpc_endpoints is False:
         all = True
 
-    if args.regions is None:
-        regions = get_regions('ec2')
-        if regions is None or regions == [] or regions == '' or regions == {}:
-            print('This module is not supported in any regions specified in the current sessions region set. Exiting...')
-            return
-    else:
+    if args.regions:
         regions = args.regions.split(',')
+    else:
+        regions = get_regions('ec2')
+        if not all_region_prompt(print, input, regions):
+            return
 
     client = pacu_main.get_boto3_client('ec2', choice(regions))
 

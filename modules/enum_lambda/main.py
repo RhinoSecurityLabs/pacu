@@ -42,7 +42,7 @@ def fetch_lambda_data(client, func, key, print, **kwargs):
     try:
         response = caller(**kwargs)
         data = response[key]
-        if isinstance(data, dict) or isinstance(data, str):
+        if isinstance(data, (dict, str)):
             print('    Found {} data'.format(key))
             return data
         while 'nextMarker' in response:
@@ -62,16 +62,32 @@ def fetch_lambda_data(client, func, key, print, **kwargs):
     return []
 
 
+def full_region_prompt(print, input, regions):
+    print('Automatically targeting region(s):')
+    for region in regions:
+        print('  {}'.format(region))
+    selection = input('Do you wish to continue? (y/n) ')
+    if selection.lower() == 'y':
+        return True
+    return False
+
+
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = pacu_main.print
+    input = pacu_main.input
     get_regions = pacu_main.get_regions
     ######
 
-    regions = args.regions.split(',') if args.regions else get_regions('Lambda')
+    if args.regions:
+        regions = args.regions.split(',')
+    else:
+        regions = get_regions('Lambda')
+        if not full_region_prompt(print, input, regions):
+            return
 
     lambda_data = {}
     summary_data = {}
@@ -83,8 +99,8 @@ def main(args, pacu_main):
 
         try:
             account_settings = client.get_account_settings()
-            # pop any ResponseMetaData to have cleaner account_settings response
-            account_settings.pop('ResponseMetadata', None)
+            # Delete any ResponseMetaData to have cleaner account_settings response
+            del account_settings['ResponseMetadata']
             for key in account_settings:
                 lambda_data[key] = account_settings[key]
         except ClientError as error:
@@ -93,7 +109,7 @@ def main(args, pacu_main):
             else:
                 print(error)
 
-        lambda_functions = fetch_lambda_data(client, 'list_functions', 'Functions',  print)
+        lambda_functions = fetch_lambda_data(client, 'list_functions', 'Functions', print)
 
         for func in lambda_functions:
             print('  Enumerating data for {}'.format(func['FunctionName']))
@@ -106,7 +122,7 @@ def main(args, pacu_main):
             if args.versions_all:
                 func['Versions'] = fetch_lambda_data(client, 'list_versions_by_function', 'Versions', print, FunctionName=func_arn)
         lambda_data['Functions'] += lambda_functions
-        if len(lambda_functions) > 0:
+        if lambda_functions:
             summary_data[region] = len(lambda_functions)
     session.update(pacu_main.database, Lambda=lambda_data)
 

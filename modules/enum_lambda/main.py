@@ -61,6 +61,17 @@ def fetch_lambda_data(client, func, key, **kwargs):
     return []
 
 
+def all_region_prompt(print, input, regions):
+    print('Automatically targeting region(s):')
+    for region in regions:
+        print('  {}'.format(region))
+    response = input('Do you wish to continue? (y/n) ')
+    if response.lower() == 'y':
+        return True
+    else:
+        return False
+
+
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
@@ -71,6 +82,13 @@ def main(args, pacu_main):
     ######
 
     regions = args.regions.split(',') if args.regions else get_regions('Lambda')
+
+    if args.regions:
+        regions = args.regions.split(',')
+    else:
+        regions = get_regions('Lambda')
+        if not all_region_prompt(print, input, regions):
+            return
 
     lambda_data = {}
     summary_data = {}

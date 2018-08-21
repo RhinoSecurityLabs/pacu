@@ -81,7 +81,7 @@ def main(args, pacu_main):
         except botocore.exceptions.ClientError as error:
             if 'The requested DurationSeconds exceeds the MaxSessionDuration set for this role.' in str(error):
                 # Found a vulnerable role, but requested more time than the max allowed for it
-                print('Vulnerable role found: {}!'.format(role_arn))
+                print('** Found vulnerable role: {} **'.format(role_arn))
                 print('  Hit max session time limit, reverting to minimum of 1 hour...\n')
 
                 response = client.assume_role(
@@ -103,9 +103,8 @@ def main(args, pacu_main):
                 pass
             elif 'is not authorized to perform: sts:AssumeRole on resource' in str(error):
                 # Role found, but not allowed to assume
-                print('Found role: {}'.format(role_arn))
+                print('Found restricted role: {}\n'.format(role_arn))
                 data['enumerated'].append(role_arn)
-                print('  Not allowed to assume it.\n')
 
     print('{} completed.\n'.format(module_info['name']))
     return data

@@ -32,11 +32,8 @@ parser.add_argument('--word-list', required=False, default=None, help='File path
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
-
     args = parser.parse_args(args)
     print = pacu_main.print
-    input = pacu_main.input
 
     if not len(args.account_id) == 12 or not args.account_id.isdigit():
         print('Error: An AWS account ID is a number of length 12. You supplied: {}\n'.format(args.account_id))

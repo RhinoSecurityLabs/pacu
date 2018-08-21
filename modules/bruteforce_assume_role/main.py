@@ -38,6 +38,10 @@ def main(args, pacu_main):
     print = pacu_main.print
     input = pacu_main.input
 
+    if not len(args.account_id) == 12 or not args.account_id.isdigit():
+        print('Error: An AWS account ID is a number of length 12. You supplied: {}\n'.format(args.account_id))
+        return None
+
     data = {
         'attempts': 0,
         'enumerated': [],
@@ -53,6 +57,8 @@ def main(args, pacu_main):
 
     with open(word_list_path, 'r') as f:
         word_list = f.read().splitlines()
+
+    print('Starting role bruteforce...\n')
 
     client = pacu_main.get_boto3_client('sts')
     for word in word_list:
@@ -77,6 +83,7 @@ def main(args, pacu_main):
             break
         except botocore.exceptions.ClientError as error:
             if 'The requested DurationSeconds exceeds the MaxSessionDuration set for this role.' in str(error):
+                # Found a vulnerable role, but requested more time than the max allowed for it
                 print('Vulnerable role found: {}!'.format(role_arn))
                 print('  Hit max session time limit, reverting to minimum of 1 hour...\n')
 

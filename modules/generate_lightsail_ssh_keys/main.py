@@ -41,19 +41,11 @@ parser.add_argument('--import-key-file', required=False, help='Import a key if s
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all session regions.')
 
 
-def all_region_prompt(print, input, regions):
-    print('Automatically targeting region(s):')
-    for region in regions:
-        print('  {}'.format(region))
-    response = input('Do you wish to continue? (y/n) ')
-    return response.lower() == 'y'
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
-    input = pacu_main.input
     print = pacu_main.print
     get_regions = pacu_main.get_regions
+    all_regions_prompt = pacu_main.all_regions_prompt
 
     args = parser.parse_args(args)
     created_keys = {}
@@ -63,7 +55,7 @@ def main(args, pacu_main):
         regions = args.regions.split(',')
     else:
         regions = get_regions('lightsail')
-        if not all_region_prompt(print, input, regions):
+        if not all_regions_prompt(regions):
             return
 
     for region in regions:

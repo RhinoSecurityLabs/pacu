@@ -103,25 +103,17 @@ def consistentCase(name):
     return out
 
 
-def all_region_prompt(print, input, regions):
-    print('Automatically targeting region(s):')
-    for region in regions:
-        print('  {}'.format(region))
-    response = input('Do you wish to continue? (y/n) ')
-    return response.lower() == 'y'
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
     args = parser.parse_args(args)
     print = pacu_main.print
-    input = pacu_main.input
     get_regions = pacu_main.get_regions
+    all_regions_prompt = pacu_main.all_regions_prompt
     if args.regions:
         regions = args.regions.split(',')
     else:
         regions = get_regions('waf-regional')
-        if not all_region_prompt(print, input, regions):
+        if not all_regions_prompt(regions):
             if args.global_region:
                 regions = []
             else:

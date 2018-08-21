@@ -46,22 +46,14 @@ parser.add_argument('--dev-endpoints', required=False, default=False, action='st
 parser.add_argument('--jobs', required=False, default=False, action='store_true', help='Enumerate Glue jobs.')
 
 
-def all_region_prompt(print, input, regions):
-    print('Automatically targeting region(s):')
-    for region in regions:
-        print('  {}'.format(region))
-    response = input('Do you wish to continue? (y/n) ')
-    return response.lower() == 'y'
-
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = pacu_main.print
-    input = pacu_main.input
     get_regions = pacu_main.get_regions
+    all_regions_prompt = pacu_main.all_regions_prompt
     ######
 
     all = False
@@ -72,7 +64,7 @@ def main(args, pacu_main):
         regions = args.regions.split(',')
     else:
         regions = get_regions('glue')
-        if not all_region_prompt(print, input, regions):
+        if not all_regions_prompt(regions):
             return
 
     all_connections = []

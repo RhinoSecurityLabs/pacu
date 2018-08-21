@@ -28,6 +28,16 @@ def get_interactive_instance(pacu, session, region):
     return None
 
 
+def input_helper(input):
+    """Helper function that loops until a successful response is given"""
+    prompt = '    Load next set of volumes? (y/n) '
+    while True:
+        response = input(prompt)
+        if response.lower() == 'y':
+            return True
+        elif response.lower() == 'n':
+            return False
+
 def load_volumes(client, print, input, instance_id, volume_ids):
     """Loads volumes on an instance.
 
@@ -47,22 +57,25 @@ def load_volumes(client, print, input, instance_id, volume_ids):
 
     while set_index < len(volume_ids):
         current_volume_set = volume_ids[set_index:set_index + set_count]
+        waiter = client.get_waiter('volume_available')
+        waiter.wait(VolumeIds=current_volume_set)
         attached = modify_volume_set(
             client, print, 'attach_volume', instance_id, current_volume_set)
         if not attached:
             print(' Volume attachment failed')
             print(' Exiting...')
             return False
-        input('    Press enter to load next set of volumes...')
+        running = input_helper(input)
         detached = modify_volume_set(
             client, print, 'detach_volume', instance_id, current_volume_set)
         if not detached:
             print(' Volume detachment failed')
             print(' Exiting...')
             return False
-        waiter = client.get_waiter('volume_available')
         waiter.wait(VolumeIds=current_volume_set)
         set_index += set_count
+        if not running:
+            break
     return True
 
 def modify_volume_set(client, print, func, instance_id, volume_id_set):
@@ -162,15 +175,17 @@ def get_volumes(pacu, session, regions):
 def generate_volumes_from_snapshots(client, snapshots, zone):
     """ Returns a list of generated volumes"""
     volume_ids = []
+    waiter = client.get_waiter('snapshot_completed')
+    waiter.wait(SnapshotIds=snapshots)
     for snapshot in snapshots:
         response = client.create_volume(
             SnapshotId=snapshot, AvailabilityZone=zone)
         volume_ids.append(response['VolumeId'])
     return volume_ids
 
+
 def generate_snapshots_from_volumes(client, volume_ids):
-    """Returns a list of generated snapshots volumes that are currently in-use
-    """
+    """Returns a list of generated snapshots volumes"""
     snapshot_ids = []
     for volume in volume_ids:
         response = client.create_snapshot(VolumeId=volume)
@@ -180,21 +195,33 @@ def generate_snapshots_from_volumes(client, volume_ids):
 
 def delete_volumes(client, volumes):
     """Deletes a given list of volumes"""
+    failed_volumes = []
     for volume in volumes:
         try:
             client.delete_volume(VolumeId=volume)
-        except ClientError as error:
-            raise error
-    return True
+        except ClientError:
+            failed_volumes.append(volume)
+    return failed_volumes
 
 
 def delete_snapshots(client, snapshots):
     """Deletes a given list of snapshots"""
+    failed_snapshots = []
     for snapshot in snapshots:
         try:
             client.delete_snapshot(SnapshotId=snapshot)
-        except ClientError as error:
-            raise error
+        except ClientError:
+            failed_snapshots.append(snapshot)
+    return failed_snapshots
+
+
+def process_volumes(pacu, client, instance, zone, volumes):
+    """Takes in a volume set, creates copies, and loads them onto an instance"""
+    temp_snaps = generate_snapshots_from_volumes(client, volumes)
+    temp_volumes = generate_volumes_from_snapshots(client, temp_snaps, zone)
+    load_volumes(client, pacu.print, pacu.input, instance, temp_volumes)
+    delete_volumes(client, temp_volumes)
+    delete_snapshots(client, temp_snaps)
     return True
 
 
@@ -203,8 +230,8 @@ def main(args, pacu):
     args = parser.parse_args(args)
     session = pacu.get_active_session()
     print = pacu.print
-    input = pacu.input
-    #key_info = pacu.key_info
+
+    summary_data = {}
 
     regions = pacu.get_regions('ec2')
     snapshots = get_snapshots(pacu, session, regions)
@@ -216,30 +243,24 @@ def main(args, pacu):
             zone = args.instance.split('@')[1]
         else:
             instance, zone = get_interactive_instance(pacu, session, region)
+        available_volumes = volumes[region]['available']
+        in_use_volumes = volumes[region]['in_use']
+
         print('  Attaching initial volumes...')
-        # Load the pre-existing volumes
-        load_volumes(client, print, input, instance, volumes[region]['available'])
+        process_volumes(pacu, client, instance, zone, available_volumes)
+        print('  Finished attaching initial volumes')
 
-        # Generate temporary volumes from running volumes
         print('  Attaching in-use volumes...')
-        temp_snaps = generate_snapshots_from_volumes(
-            client, volumes[region]['in_use'])
-        waiter = client.get_waiter('snapshot_completed')
-        waiter.wait(SnapshotIds=temp_snaps)
-        in_use_volumes = generate_volumes_from_snapshots(
-            client, temp_snaps, zone)
-        load_volumes(client, print, input, instance, in_use_volumes)
-        delete_volumes(client, in_use_volumes)
-        delete_snapshots(client, temp_snaps)
+        process_volumes(pacu, client, instance, zone, in_use_volumes)
+        print('  Finished attaching in-use volumes')
 
-        # Generate temporary volumes from snapshots
         print('  Attaching volumes from existing snapshots')
         temp_volumes = generate_volumes_from_snapshots(
             client, snapshots[region], zone)
-        load_volumes(client, print, input, instance, temp_volumes)
+        load_volumes(client, print, pacu.input, instance, temp_volumes)
         delete_volumes(client, temp_volumes)
+        print('  Finished attaching existing snapshot volumes ')
 
-    summary_data = {}
     return summary_data
 
 

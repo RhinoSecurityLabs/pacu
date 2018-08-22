@@ -40,6 +40,73 @@ parser.add_argument('--config', required=False, default=False, action='store_tru
 parser.add_argument('--vpc', required=False, default=False, action='store_true', help='Enumerate VPC flow logs.')
 
 
+def permission_check(pacu, args):
+    """Checks permissions and runs enumeration accordingly"""
+    arguments = [args.cloud_trail, args.cloud_watch, args.shield, args.guard_duty, args.config, args.vpc]
+    enum_all = not any(arguments)
+    confirmed = []
+    if args.cloud_trail or enum_all:
+        try:
+            client = pacu.get_boto3_client('cloudtrail', 'us-east-1')
+            client.describe_trails()
+            confirmed.append('cloudtrail')
+        except ClientError as error:
+            code = error.response['Error']['Code']
+            if code != 'AccessDeniedException':
+                pacu.print(code)
+    if args.shield or enum_all:
+        try:
+            client = pacu.get_boto3_client('shield', 'us-east-1')
+            client.get_subscription_state()
+            client.describe_subscription()
+            confirmed.append('shield')
+        except ClientError as error:
+            code = error.response['Error']['Code']
+            if code == 'InvalidSignatureException':
+                # TODO Solve BOTO3 Error
+                pass
+            elif code != 'AccessDeniedException':
+                pacu.print(code)
+    if args.guard_duty or enum_all:
+        try:
+            client = pacu.get_boto3_client('guardduty', 'us-east-1')
+            client.list_detectors()
+            confirmed.append('guardduty')
+        except ClientError as error:
+            code = error.response['Error']['Code']
+            if code != 'AccessDeniedException':
+                pacu.print(code)
+    if args.config or enum_all:
+        try:
+            client = pacu.get_boto3_client('config', 'us-east-1')
+            client.describe_config_rules()
+            confirmed.append('config')
+        except ClientError as error:
+            code = error.response['Error']['Code']
+            if code != 'AccessDeniedException':
+                pacu.print(code)
+    if args.cloud_watch or enum_all:
+        try:
+            client = pacu.get_boto3_client('cloudwatch', 'us-east-1')
+            client.describe_alarms()
+            confirmed.append('cloudwatch')
+        except ClientError as error:
+            code = error.response['Error']['Code']
+            if code != 'AccessDenied':
+                pacu.print(code)
+    if args.vpc or enum_all:
+        try:
+            client = pacu.get_boto3_client('ec2', 'us-east-1')
+            client.describe_flow_logs()
+            confirmed.append('vpc')
+        except ClientError as error:
+            code = error.response['Error']['Code']
+            if code != 'UnauthorizedOperation':
+                pacu.print(error)
+                pacu.print(code)
+    return confirmed
+
+
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
@@ -49,12 +116,10 @@ def main(args, pacu_main):
     get_regions = pacu_main.get_regions
     ######
 
-    enum_all = False
-    if not any([args.cloud_trail, args.cloud_watch, args.shield, args.guard_duty, args.config, args.vpc]):
-        enum_all = True
-
+    services = permission_check(pacu_main, args)
     summary_data = {}
-    if enum_all is True or args.shield is True:
+
+    if 'shield' in services:
         print('Starting Shield...')
 
         try:
@@ -84,7 +149,7 @@ def main(args, pacu_main):
         except ClientError as error:
             print('Error {} getting Shield Info'.format(error))
 
-    if enum_all is True or args.cloud_trail is True:
+    if 'cloudtrail' in services:
         print('Starting CloudTrail...')
         cloudtrail_regions = get_regions('cloudtrail')
         all_trails = []
@@ -109,7 +174,7 @@ def main(args, pacu_main):
         print('  {} total CloudTrail trails found.\n'.format(len(session.CloudTrail['Trails'])))
         summary_data['CloudTrails'] = len(session.CloudTrail['Trails'])
 
-    if enum_all is True or args.guard_duty is True:
+    if 'guardduty' in services:
         print('Starting GuardDuty...')
         master_count = 0
         guard_duty_regions = get_regions('guardduty')
@@ -160,7 +225,7 @@ def main(args, pacu_main):
         print('  {} total GuardDuty Detectors found.\n'.format(len(session.GuardDuty['Detectors'])))
         summary_data['Detectors'] = len(session.GuardDuty['Detectors'])
 
-    if enum_all is True or args.config is True:
+    if 'config' in services:
         print('Starting Config...')
         config_regions = get_regions('config')
         all_rules = []
@@ -239,7 +304,7 @@ def main(args, pacu_main):
             }
         })
 
-    if enum_all is True or args.cloud_watch is True:
+    if 'cloudwatch' in services:
         print('Starting CloudWatch...')
         cw_regions = get_regions('monitoring')
         all_alarms = []
@@ -269,7 +334,7 @@ def main(args, pacu_main):
         print('  {} total CloudWatch alarms found.\n'.format(len(session.CloudWatch['Alarms'])))
         summary_data['alarms'] = len(all_alarms)
 
-    if enum_all is True or args.vpc is True:
+    if 'vpc' in services:
         print('Starting VPC...')
         vpc_regions = get_regions('ec2')
         all_flow_logs = []
@@ -309,14 +374,14 @@ def main(args, pacu_main):
 def summary(data, pacu_main):
     out = ''
     if 'ShieldSubscription' in data:
-        out += 'Shield Subscription Status: {}\n'.format(data['ShieldSubscription'])
+        out += '  Shield Subscription Status: {}\n'.format(data['ShieldSubscription'])
         if data['ShieldSubscription'] == 'Active':
-            out += '  Shield Subscription Start: {}\n'.format(data['ShieldSubscriptionStart'])
-            out += '  Shield Subscription Length: {} day(s(\n'.format(data['ShieldSubscriptionLength'])
+            out += '    Shield Subscription Start: {}\n'.format(data['ShieldSubscriptionStart'])
+            out += '    Shield Subscription Length: {} day(s(\n'.format(data['ShieldSubscriptionLength'])
     if 'CloudTrails' in data:
-        out += '{} CloudTrail Trail(s) found.\n'.format(data['CloudTrails'])
+        out += '  {} CloudTrail Trail(s) found.\n'.format(data['CloudTrails'])
     if 'Detectors' in data:
-        out += '{} GuardDuty Detector(s) found.\n'.format(data['Detectors'])
+        out += '  {} GuardDuty Detector(s) found.\n'.format(data['Detectors'])
     if 'MasterDetectors' in data:
         out += '  {} Master GuardDuty Detector(s) found.\n'.format(data['MasterDetectors'])
     if 'config' in data:
@@ -329,6 +394,9 @@ def summary(data, pacu_main):
         out += '  {} CloudWatch Alarm(s) found.\n'.format(data['alarms'])
     if 'flowlogs' in data:
         out += '  {} VPC flow logs found.\n'.format(data['flowlogs'])
+
+    if not out:
+        return '  No data could be found'
     return out
 
 

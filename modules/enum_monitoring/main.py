@@ -115,11 +115,12 @@ def main(args, pacu_main):
     print = pacu_main.print
     get_regions = pacu_main.get_regions
     ######
+    arguments = [args.cloud_trail, args.cloud_watch, args.shield, args.guard_duty, args.config, args.vpc]
+    enum_all = not any(arguments)
 
-    services = permission_check(pacu_main, args)
     summary_data = {}
 
-    if 'shield' in services:
+    if args.shield or enum_all:
         print('Starting Shield...')
 
         try:
@@ -149,7 +150,7 @@ def main(args, pacu_main):
         except ClientError as error:
             print('Error {} getting Shield Info'.format(error))
 
-    if 'cloudtrail' in services:
+    if args.cloud_trail or enum_all:
         print('Starting CloudTrail...')
         cloudtrail_regions = get_regions('cloudtrail')
         all_trails = []
@@ -158,10 +159,14 @@ def main(args, pacu_main):
             print('  Starting region {}...'.format(region))
 
             client = pacu_main.get_boto3_client('cloudtrail', region)
-
-            trails = client.describe_trails(
-                includeShadowTrails=False
-            )
+            try:
+                trails = client.describe_trails(
+                    includeShadowTrails=False
+                )
+            except ClientError as error:
+                if error.response['Error']['Code'] == 'AccessDeniedException':
+                    print('    MISSING NEEDED AWS PERMISSIONS')
+                continue
             print('    {} trails found.'.format(len(trails['trailList'])))
 
             for trail in trails['trailList']:
@@ -173,8 +178,7 @@ def main(args, pacu_main):
         session.update(pacu_main.database, CloudTrail=cloudtrail_data)
         print('  {} total CloudTrail trails found.\n'.format(len(session.CloudTrail['Trails'])))
         summary_data['CloudTrails'] = len(session.CloudTrail['Trails'])
-
-    if 'guardduty' in services:
+    if args.guard_duty or enum_all:
         print('Starting GuardDuty...')
         master_count = 0
         guard_duty_regions = get_regions('guardduty')
@@ -225,7 +229,7 @@ def main(args, pacu_main):
         print('  {} total GuardDuty Detectors found.\n'.format(len(session.GuardDuty['Detectors'])))
         summary_data['Detectors'] = len(session.GuardDuty['Detectors'])
 
-    if 'config' in services:
+    if args.config or enum_all:
         print('Starting Config...')
         config_regions = get_regions('config')
         all_rules = []
@@ -304,7 +308,7 @@ def main(args, pacu_main):
             }
         })
 
-    if 'cloudwatch' in services:
+    if args.cloud_watch or enum_all:
         print('Starting CloudWatch...')
         cw_regions = get_regions('monitoring')
         all_alarms = []
@@ -334,7 +338,7 @@ def main(args, pacu_main):
         print('  {} total CloudWatch alarms found.\n'.format(len(session.CloudWatch['Alarms'])))
         summary_data['alarms'] = len(all_alarms)
 
-    if 'vpc' in services:
+    if args.vpc or enum_all:
         print('Starting VPC...')
         vpc_regions = get_regions('ec2')
         all_flow_logs = []

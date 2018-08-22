@@ -96,6 +96,16 @@ def modify_volume_set(client, print, func, instance_id, volume_id_set):
             return False
     return True
 
+def get_valid_device(client, instance):
+    """Returns the next device mapping available"""
+    response  = client.describe_instances(InstanceIds=[instance])
+    mappings = response['Reservations'][0]['Instances'][0]['BlockDeviceMappings']
+    current_mappings = [device['DeviceName'] for device in mappings]
+    base_mappings = [char for char in 'bcdefghijklmnoqrstuvwxyz']
+    for base in base_mappings:
+        if '/dev/xvd' + base not in current_mappings:
+            return '/dev/xvd' + base
+
 
 def get_snapshots(pacu, session, region):
     """Returns snapshots given an AWS region

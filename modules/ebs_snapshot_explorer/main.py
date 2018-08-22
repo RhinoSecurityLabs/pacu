@@ -152,7 +152,6 @@ def generate_volumes_from_snapshots(client, snapshots, zone):
         response = client.create_volume(
             SnapshotId=snapshot, AvailabilityZone=zone)
         volume_ids.append(response['VolumeId'])
-    
     store_temp_data({'volumes':volume_ids})
     return volume_ids
 
@@ -183,6 +182,7 @@ def delete_volumes(client, volumes):
                 waiter = client.get_waiter('volume_available')
                 waiter.wait(VolumeIds=[volume])
                 client.delete_volume(VolumeId=volume)
+                continue
             failed_volumes.append(volume)
     return failed_volumes
 
@@ -201,26 +201,27 @@ def delete_snapshots(client, snapshots):
 def cleanup(client):
     """Cleans up the temporary snapshots and volumes created during this
     modules execution
-    """   
+    """
+    new_data = {}
+    success = True
     temp_file = Path(__file__).parent / 'temp.json'
     if temp_file.is_file():
         with temp_file.open('r') as file:
             data = json.load(file)
-            success = True
             if 'snapshots' in data:
-                failed_snaps = delete_snapshots(client, data['snapshots'])
-                if failed_snaps:
-                    print('  Failed to delete snapshots: {}'.format(failed_snaps))
-                    store_temp_data({'snapshots':failed_snaps})
-                    success = False
+                new_data['snapshots'] = delete_snapshots(client, data['snapshots'])
             if 'volumes' in data:
-                failed_vols = delete_volumes(client, data['volumes'])
-                if failed_vols:
-                    print('  Failed to delete volumes: {}'.format(failed_vols))
-                    store_temp_data({'volumes':failed_vols})
-                    success = False
-            return success
-    return True
+                new_data['volumes'] = delete_volumes(client, data['volumes'])
+        if 'volumes' in new_data and new_data['volumes']:
+            print('  Failed to delete volumes: {}'.format(new_data['volumes']))
+            success = False
+        if 'snapshots' in new_data and new_data['snapshots']:
+            print('  Failed to delete snapshots: {}'.format(new_data['snapshots']))
+            success = False
+        store_temp_data(new_data)
+        if success:
+            temp_file.unlink()
+    return success
 
 
 def store_temp_data(data):
@@ -253,9 +254,7 @@ def main(args, pacu):
     if not cleanup(client):
         print('  Cleanup failed')
         return summary_data
-    print('  Cleanup successful')
-    return
-    print('  Attaching volumes...')    
+    print('  Attaching volumes...')
     temp_snaps = generate_snapshots_from_volumes(client, volumes)
     temp_volumes = generate_volumes_from_snapshots(client, temp_snaps, zone)
     load_volumes(client, pacu.print, pacu.input, instance, temp_volumes)

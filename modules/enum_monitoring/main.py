@@ -45,6 +45,7 @@ def permission_check(pacu, args):
     arguments = [args.cloud_trail, args.cloud_watch, args.shield, args.guard_duty, args.config, args.vpc]
     enum_all = not any(arguments)
     confirmed = []
+
     if args.cloud_trail or enum_all:
         try:
             client = pacu.get_boto3_client('cloudtrail', 'us-east-1')
@@ -149,7 +150,6 @@ def main(args, pacu_main):
 
         except ClientError as error:
             print('Error {} getting Shield Info'.format(error))
-
     if args.cloud_trail or enum_all:
         print('Starting CloudTrail...')
         cloudtrail_regions = get_regions('cloudtrail')
@@ -164,8 +164,11 @@ def main(args, pacu_main):
                     includeShadowTrails=False
                 )
             except ClientError as error:
-                if error.response['Error']['Code'] == 'AccessDeniedException':
+                code = error.response['Error']['Code']
+                if code == 'AccessDeniedException':
                     print('    MISSING NEEDED AWS PERMISSIONS')
+                else:
+                    print('    {}'.format(code))
                 continue
             print('    {} trails found.'.format(len(trails['trailList'])))
 
@@ -187,29 +190,29 @@ def main(args, pacu_main):
         for region in guard_duty_regions:
             detectors = []
             print('  Starting region {}...'.format(region))
-
-            client = pacu_main.get_boto3_client('guardduty', region)
-
-            response = client.list_detectors()
-
-            for detector in response['DetectorIds']:
-                status, master = get_detector_master(detector, client)
-                detectors.append({
-                    'Id': detector,
-                    'Region': region,
-                    'MasterStatus': status,
-                    'MasterAccountId': master
-                })
-                if not master:
-                    master_count += 1
-
-            while 'NextToken' in response:
-                response = client.list_detectors(
-                    NextToken=response['NextToken']
-                )
+            client = pacu_main.get_boto3_client('guardduty', region)            
+            kwargs = {}
+            while True:            
+                try:
+                    response = client.list_detectors(**kwargs)
+                except ClientError as error:
+                    code = error.response['Error']['Code']
+                    if code == 'AccessDeniedException':
+                        print('    MISSING NEEDED AWS PERMISSIONS')
+                    else:
+                        print('    {}'.format(code))
+                    break
 
                 for detector in response['DetectorIds']:
-                    status, master = get_detector_master(detector, client)
+                    try:
+                        status, master = get_detector_master(detector, client)
+                    except ClientError as error:
+                        code = error.response['Error']['Code']
+                        if code == 'AccessDeniedException':
+                            print('    MISSING NEEDED AWS PERMISSIONS')
+                        else:
+                            print('    {}'.format(code))
+                        continue
                     detectors.append({
                         'Id': detector,
                         'Region': region,
@@ -218,9 +221,12 @@ def main(args, pacu_main):
                     })
                     if not master:
                         master_count += 1
-
-            print('    {} GuardDuty Detectors found.'.format(len(detectors)))
-            all_detectors.extend(detectors)
+                if 'NextToken' in response:
+                    kwargs['NextToken'] = response['NextToken']
+                else:
+                    print('    {} GuardDuty Detectors found.'.format(len(detectors)))
+                    all_detectors.extend(detectors)
+                    break            
 
         summary_data['MasterDetectors'] = master_count
         guardduty_data = deepcopy(session.GuardDuty)
@@ -405,9 +411,12 @@ def summary(data, pacu_main):
 
 
 def get_detector_master(detector_id, client):
-    response = client.get_master_account(
-        DetectorId=detector_id
-    )
+    try:
+        response = client.get_master_account(
+            DetectorId=detector_id
+        )
+    except ClientError:
+        raise
     if 'Master' not in response:
         return(None, None)
 

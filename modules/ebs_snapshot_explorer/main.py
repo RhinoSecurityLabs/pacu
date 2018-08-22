@@ -96,13 +96,13 @@ def modify_volume_set(client, print, func, instance_id, volume_id_set):
 
 def get_valid_device(client, instance):
     """Returns the next device mapping available
-    
+
     Args:
         client (boto3.client): Client that gets the current block device mappings
         instance (str): InstanceId to get curretn block device mappings
     Returns:
         str: Returns next mapping in form of /dev/xvd[base], otherwise /dev/xvdzz
-    
+
     """
     response = client.describe_instances(InstanceIds=[instance])
     mappings = response['Reservations'][0]['Instances'][0]['BlockDeviceMappings']
@@ -186,7 +186,7 @@ def generate_snapshots_from_volumes(client, volume_ids):
 
 def delete_volumes(client, volumes):
     """Deletes a given list of volumes
-    
+
     If the volume is in use, the volume is forcibly detached because this module
     only deals with temporary copies so data integrity is not a high priority when
     a volume is ready to be detatched. After the volume is forcibly detatched, the
@@ -262,7 +262,7 @@ def main(args, pacu):
     """Main module function, called from Pacu"""
     args = parser.parse_args(args)
     session = pacu.get_active_session()
-    print = pacu.print   
+    print = pacu.print
 
     instance = args.instance
     region = args.region
@@ -276,7 +276,7 @@ def main(args, pacu):
     snapshots = get_snapshots(pacu, session, region)
     volumes = get_volumes(pacu, session, region)
     summary_data = {'snapshots': len(snapshots), 'volumes': len(volumes)}
-    
+
     print('  Attaching volumes...')
     temp_snaps = generate_snapshots_from_volumes(client, volumes)
     temp_volumes = generate_volumes_from_snapshots(client, temp_snaps, zone)

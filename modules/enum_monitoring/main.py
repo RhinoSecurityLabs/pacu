@@ -185,18 +185,16 @@ def main(args, pacu_main):
 
             client = pacu_main.get_boto3_client('config', region)
             if permissions['rules']:
+                paginator = client.get_paginator('describe_config_rules')
+                rules_pages = paginator.paginate()
+                
+                rules = []
                 try:
-                    response = client.describe_config_rules()
-                    rules = response['ConfigRules']
-                    while 'NextToken' in response:
-                        response = client.describe_config_rules(
-                            NextToken=response['NextToken']
-                        )
-                        rules.extend(response['ConfigRules'])
-                    print('    {} rules found.'.format(len(rules)))
+                    for page in rules_pages:
+                        rules.extend(page['ConfigRules'])
                     for rule in rules:
                         rule['Region'] = region
-                    all_rules.extend(rules)
+                    print('    {} rules found.'.format(len(rules)))
                 except ClientError as error:
                     code = error.response['Error']['Code']
                     if code == 'AccessDeniedException':
@@ -205,6 +203,8 @@ def main(args, pacu_main):
                         permissions['rules'] = False
                     else:
                         print('    {}'.format(code))
+                
+                all_rules.extend(rules)
 
             if permissions['delivery_channels']:
                 delivery_channels = []

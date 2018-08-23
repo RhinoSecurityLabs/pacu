@@ -119,10 +119,10 @@ def main(args, pacu_main):
         summary_data['CloudTrails'] = len(session.CloudTrail['Trails'])
     if args.guard_duty or enum_all:
         print('Starting GuardDuty...')
-        master_count = 0
         guard_duty_regions = get_regions('guardduty')
         all_detectors = []
         guard_duty_permission = True
+        master_count = 0
 
         for region in guard_duty_regions:
             if not guard_duty_permission:

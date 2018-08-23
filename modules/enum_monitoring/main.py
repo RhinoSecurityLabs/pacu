@@ -18,7 +18,7 @@ module_info = {
     'one_liner': 'Detects monitoring and logging capabilities.',
 
     # Description about what the module does and how it works
-    'description': 'This module will enumerate the different logging and monitoring capabilities that have been implemented in the current AWS account. By default the module will enumerate all services that it supports, but by specifying the individual arguments, it is possible to target specific services. The supported services include CloudTrail, CloudWatch, Config, Shield, VPC, and GuardDuty.',
+    'description': 'This module will enumerate the different logging and monitoring capabilities that have been implemented in the current AWS account. By default the module will enumerate all services that it supports, but by specifying the individual arguments, it is possible to target specific services. The supported services include CloudTrail, CloudWatch, Config, Shield, VPC, and GuardDuty. Not all regions contain support for AWS Config aggregators, so no attempts are made to obtain aggregators in unsupported regions. When a permission issue is detected for an action, future attempts to call that action will be skipped. If permissions to enumerate a service have all been invalidated, the enumeration of that service will stop for all subsequen regions and the module will continue execution.',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['GuardDuty', 'CloudTrail', 'Shield', 'monitoring', 'Config', 'EC2'],  # CloudWatch needs to be "monitoring" and VPC needs to be "EC2" here for "ls" to work

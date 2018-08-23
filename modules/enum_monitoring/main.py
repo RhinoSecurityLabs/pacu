@@ -144,8 +144,8 @@ def main(args, pacu_main):
                             'MasterStatus': status,
                             'MasterAccountId': master
                         })
-                    if not master:
-                        master_count += 1
+                        if not master:
+                            master_count += 1
                 print('    {} GuardDuty Detectors found.'.format(len(detectors)))
                 all_detectors.extend(detectors)
             except ClientError as error:

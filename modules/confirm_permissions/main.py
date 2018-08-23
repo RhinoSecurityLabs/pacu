@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 import re
+import botocore
 
 
 module_info = {
@@ -31,7 +32,7 @@ module_info = {
     'prerequisite_modules': [],
 
     # Module arguments to autocomplete when the user hits tab
-    'arguments_to_autocomplete': ['--all-users', '--user-name'],
+    'arguments_to_autocomplete': ['--all-users', '--user-name']
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
@@ -48,6 +49,7 @@ def main(args, pacu_main):
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = pacu_main.print
+    input = pacu_main.input
     key_info = pacu_main.key_info
     fetch_data = pacu_main.fetch_data
     ######
@@ -86,14 +88,34 @@ def main(args, pacu_main):
 
         if re.match(r'arn:aws:iam::\d{12}:user/', identity['Arn']) is not None:
             client = pacu_main.get_boto3_client('iam')
-            user = client.get_user()
-            active_aws_key.update(
-                pacu_main.database,
-                user_name=user['User']['UserName'],
-                user_arn=identity['Arn'],
-                user_id=identity['UserId'],
-                account_id=identity['Account']
-            )
+            try:
+                user = client.get_user()
+                active_aws_key.update(
+                    pacu_main.database,
+                    user_name=user['User']['UserName'],
+                    user_arn=identity['Arn'],
+                    user_id=identity['UserId'],
+                    account_id=identity['Account']
+                )
+            except botocore.exceptions.ClientError:
+                username = input('Failed to discover the current users username, enter it now or Ctrl+C to exit the module: ').strip()
+                if username:
+                    active_aws_key.update(
+                        pacu_main.database,
+                        user_name=username,
+                        user_arn=identity['Arn'],
+                        user_id=identity['UserId'],
+                        account_id=identity['Account']
+                    )
+                else:
+                    # Update the information from get_caller_identity and exit
+                    active_aws_key.update(
+                        pacu_main.database,
+                        user_arn=identity['Arn'],
+                        user_id=identity['UserId'],
+                        account_id=identity['Account']
+                    )
+                    return False
         elif re.match(r'arn:aws:sts::\d{12}:assumed-role/', identity['Arn']) is not None:
             # TODO: Find role info
             active_aws_key.update(
@@ -146,7 +168,7 @@ def main(args, pacu_main):
                     )
                     user['Groups'] += response['Groups']
             except Exception as error:
-                print('List groups for user failed: {}'.format(error))
+                print('List groups for user failed: {}\n'.format(error))
                 user['PermissionsConfirmed'] = False
 
             # Get inline and attached group policies
@@ -165,7 +187,7 @@ def main(args, pacu_main):
                         )
                         policies += response['PolicyNames']
                 except Exception as error:
-                    print('List group policies failed: {}'.format(error))
+                    print('List group policies failed: {}\n'.format(error))
                     user['PermissionsConfirmed'] = False
 
                 # Get document for each inline policy
@@ -179,7 +201,7 @@ def main(args, pacu_main):
                             PolicyName=policy
                         )['PolicyDocument']
                     except Exception as error:
-                        print('Get group policy failed: {}'.format(error))
+                        print('Get group policy failed: {}\n'.format(error))
                         user['PermissionsConfirmed'] = False
                     user = parse_document(document, user)
 
@@ -198,7 +220,7 @@ def main(args, pacu_main):
                         attached_policies += response['AttachedPolicies']
                     group['Policies'] += attached_policies
                 except Exception as error:
-                    print('List attached group policies failed: {}'.format(error))
+                    print('List attached group policies failed: {}\n'.format(error))
                     user['PermissionsConfirmed'] = False
                 user = parse_attached_policies(client, attached_policies, user)
 
@@ -222,7 +244,7 @@ def main(args, pacu_main):
                         'PolicyName': policy
                     })
             except Exception as error:
-                print('List user policies failed: {}'.format(error))
+                print('List user policies failed: {}\n'.format(error))
                 user['PermissionsConfirmed'] = False
 
             # Get document for each inline policy
@@ -233,7 +255,7 @@ def main(args, pacu_main):
                         PolicyName=policy
                     )['PolicyDocument']
                 except Exception as error:
-                    print('Get user policy failed: {}'.format(error))
+                    print('Get user policy failed: {}\n'.format(error))
                     user['PermissionsConfirmed'] = False
                 user = parse_document(document, user)
 
@@ -252,7 +274,7 @@ def main(args, pacu_main):
                     attached_policies += response['AttachedPolicies']
                 user['Policies'] += attached_policies
             except Exception as error:
-                print('List attached user policies failed: {}'.format(error))
+                print('List attached user policies failed: {}\n'.format(error))
                 user['PermissionsConfirmed'] = False
 
             user = parse_attached_policies(client, attached_policies, user)
@@ -278,9 +300,9 @@ def main(args, pacu_main):
                 with open('sessions/{}/downloads/confirmed_permissions/{}.json'.format(session.name, user['UserName']), 'w+') as user_permissions_file:
                     json.dump(user, user_permissions_file, indent=2, default=str)
 
-                print('User details stored in ./sessions/{}/downloads/confirmed_permissions/{}.json'.format(session.name, user['UserName']))
+                print('User details stored in ./sessions/{}/downloads/confirmed_permissions/{}.json\n'.format(session.name, user['UserName']))
         except Exception as error:
-            print('Error, skipping user {}:\n{}'.format(user['UserName'], error))
+            print('Error, skipping user {}:\n{}\n'.format(user['UserName'], error))
 
     print('{} completed.\n'.format(module_info['name']))
     return summary_data

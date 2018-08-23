@@ -72,9 +72,8 @@ def main(args, pacu_main):
     print = pacu_main.print
     get_regions = pacu_main.get_regions
 
-    all = False
     if args.instances is False and args.security_groups is False and args.elastic_ips is False and args.customer_gateways is False and args.dedicated_hosts is False and args.network_acls is False and args.nat_gateways is False and args.network_interfaces is False and args.route_tables is False and args.subnets is False and args.vpcs is False and args.vpc_endpoints is False:
-        all = True
+        args.instances = args.security_groups = args.elastic_ips = args.customer_gateways = args.dedicated_hosts = args.network_acls = args.nat_gateways = args.network_interfaces = args.route_tables = args.subnets = args.vpcs = args.vpc_endpoints = True
 
     if args.regions is None:
         regions = get_regions('ec2')
@@ -89,135 +88,123 @@ def main(args, pacu_main):
     # Check permissions before hammering through each region
 
     # Instances
-    if args.instances is True or all is True:
+    if args.instances:
         try:
             client.describe_instances(
                 DryRun=True
             )
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
-                all = False
                 args.instances = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_instances". Skipping instance enumeration.\n')
     # Security Groups
-    if args.security_groups is True or all is True:
+    if args.security_groups:
         try:
             client.describe_security_groups(
                 DryRun=True
             )
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
-                all = False
                 args.security_groups = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_security_groups". Skipping security group enumeration.\n')
     # Elastic IPs
-    if args.elastic_ips is True or all is True:
+    if args.elastic_ips:
         try:
             client.describe_addresses(
                 DryRun=True
             )
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
-                all = False
                 args.elastic_ips = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_addresses". Skipping elastic IP enumeration.\n')
     # VPN Customer Gateways
-    if args.customer_gateways is True or all is True:
+    if args.customer_gateways:
         try:
             client.describe_customer_gateways(
                 DryRun=True
             )
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
-                all = False
                 args.customer_gateways = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_customer_gateways". Skipping VPN customer gateway enumeration.\n')
     # Dedicated Hosts
-    if args.dedicated_hosts is True or all is True:
+    if args.dedicated_hosts:
         try:
             response = client.describe_hosts(
                         MaxResults=500
                     )
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
-                all = False
                 args.dedicated_hosts = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_hosts". Skipping dedicated host enumeration.\n')
     # Network ACLs
-    if args.network_acls is True or all is True:
+    if args.network_acls:
         try:
             client.describe_network_acls(
                 DryRun=True
             )
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
-                all = False
                 args.network_acls = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_network_acls". Skipping network ACL enumeration.\n')
     # NAT Gateways
-    if args.nat_gateways is True or all is True:
+    if args.nat_gateways:
         try:
             response = client.describe_nat_gateways(
                         MaxResults=1000
                     )
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
-                all = False
                 args.nat_gateways = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_nat_gateways". Skipping NAT gateway enumeration.\n')
     # Network Interfaces
-    if args.network_interfaces is True or all is True:
+    if args.network_interfaces:
         try:
             client.describe_network_interfaces(
                 DryRun=True
             )
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
-                all = False
                 args.network_interfaces = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_network_interfaces". Skipping network interface enumeration.\n')
     # Route Tables
-    if args.route_tables is True or all is True:
+    if args.route_tables:
         try:
             client.describe_route_tables(
                 DryRun=True
             )
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
-                all = False
                 args.route_tables = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_route_tables". Skipping route table enumeration.\n')
     # Subnets
-    if args.subnets is True or all is True:
+    if args.subnets:
         try:
             client.describe_subnets(
                 DryRun=True
             )
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
-                all = False
                 args.subnets = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_subnets". Skipping subnet enumeration.\n')
     # VPCs
-    if args.vpcs is True or all is True:
+    if args.vpcs:
         try:
             client.describe_vpcs(
                 DryRun=True
             )
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
-                all = False
                 args.vpcs = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_vpcs". Skipping VPC enumeration.\n')
     # VPC Endpoints
-    if args.vpc_endpoints is True or all is True:
+    if args.vpc_endpoints:
         try:
             client.describe_vpc_endpoints(
                 DryRun=True
             )
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
-                all = False
                 args.vpc_endpoints = False
                 print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_vpc_endpoints". Skipping VPC endpoint enumeration.\n')
 
@@ -251,7 +238,7 @@ def main(args, pacu_main):
         client = pacu_main.get_boto3_client('ec2', region)
 
         # Instances
-        if args.instances is True or all is True:
+        if args.instances:
             response = None
             next_token = False
             while (response is None or 'NextToken' in response):
@@ -274,7 +261,7 @@ def main(args, pacu_main):
             all_instances += instances
 
         # Security Groups
-        if args.security_groups is True or all is True:
+        if args.security_groups:
             response = None
             next_token = False
             while (response is None or 'NextToken' in response):
@@ -296,7 +283,7 @@ def main(args, pacu_main):
             all_security_groups += security_groups
 
         # Elastic IPs
-        if args.elastic_ips is True or all is True:
+        if args.elastic_ips:
             response = client.describe_addresses()
             for ip in response['Addresses']:
                 ip['Region'] = region
@@ -305,7 +292,7 @@ def main(args, pacu_main):
             all_elastic_ips += elastic_ips
 
         # VPN Customer Gateways
-        if args.customer_gateways is True or all is True:
+        if args.customer_gateways:
             response = client.describe_customer_gateways()
             for gateway in response['CustomerGateways']:
                 gateway['Region'] = region
@@ -314,7 +301,7 @@ def main(args, pacu_main):
             all_vpn_customer_gateways += vpn_customer_gateways
 
         # Dedicated Hosts
-        if args.dedicated_hosts is True or all is True:
+        if args.dedicated_hosts:
             response = None
             next_token = False
             while (response is None or 'NextToken' in response):
@@ -336,7 +323,7 @@ def main(args, pacu_main):
             all_dedicated_hosts += dedicated_hosts
 
         # Network ACLs
-        if args.network_acls is True or all is True:
+        if args.network_acls:
             response = client.describe_network_acls()
             for acl in response['NetworkAcls']:
                 acl['Region'] = region
@@ -345,7 +332,7 @@ def main(args, pacu_main):
             all_network_acls += network_acls
 
         # NAT Gateways
-        if args.nat_gateways is True or all is True:
+        if args.nat_gateways:
             response = None
             next_token = False
             while (response is None or 'NextToken' in response):
@@ -367,7 +354,7 @@ def main(args, pacu_main):
             all_nat_gateways += nat_gateways
 
         # Network Interfaces
-        if args.network_interfaces is True or all is True:
+        if args.network_interfaces:
             response = client.describe_network_interfaces()
             for interface in response['NetworkInterfaces']:
                 interface['Region'] = region
@@ -376,7 +363,7 @@ def main(args, pacu_main):
             all_network_interfaces += network_interfaces
 
         # Route Tables
-        if args.route_tables is True or all is True:
+        if args.route_tables:
             response = client.describe_route_tables()
             for table in response['RouteTables']:
                 table['Region'] = region
@@ -385,7 +372,7 @@ def main(args, pacu_main):
             all_route_tables += route_tables
 
         # Subnets
-        if args.subnets is True or all is True:
+        if args.subnets:
             response = client.describe_subnets()
             for subnet in response['Subnets']:
                 subnet['Region'] = region
@@ -394,7 +381,7 @@ def main(args, pacu_main):
             all_subnets += subnets
 
         # VPCs
-        if args.vpcs is True or all is True:
+        if args.vpcs:
             response = client.describe_vpcs()
             for vpc in response['Vpcs']:
                 vpc['Region'] = region
@@ -403,7 +390,7 @@ def main(args, pacu_main):
             all_vpcs += vpcs
 
         # VPC Endpoints
-        if args.vpc_endpoints is True or all is True:
+        if args.vpc_endpoints:
             response = None
             next_token = False
             while (response is None or 'NextToken' in response):

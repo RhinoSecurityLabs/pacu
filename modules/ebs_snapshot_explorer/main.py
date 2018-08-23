@@ -137,30 +137,25 @@ def get_valid_device(client, instance):
     return '/dev/xvdzz'
 
 
-def get_snapshots(pacu, session, region):
+def get_snapshots(pacu):
     """Returns snapshots given an AWS region
     Args:
         pacu (Main): Reference to Pacu
-        session (PacuSession): Reference to the Pacu session database
-        regions (list): Regions to check for snapshots
     Returns:
-        dict: Mapping regions to corresponding list of snapshot_ids.
+        list: List of Snapshots.
     """
+    session = pacu.get_active_session()
     ec2_data = deepcopy(session.EC2)
     if 'Snapshots' not in ec2_data:
         fields = ['EC2', 'Snapshots']
         module = 'enum_ebs_volumes_snapshots'
         fetched_ec2_instances = pacu.fetch_data(fields, module)
         if fetched_ec2_instances is False:
-            return None
-    snapshot_ids = []
-    for snapshot in ec2_data['Snapshots']:
-        if snapshot['Region'] == region:
-            snapshot_ids.append(snapshot['SnapshotId'])
-    return snapshot_ids
+            return []
+    return ec2_data['Snapshots']
 
 
-def get_volumes(pacu, session, region):
+def get_volumes(pacu):
     """Returns volumes given an AWS region
     Args:
         pacu (Main): Reference to Pacu
@@ -169,18 +164,14 @@ def get_volumes(pacu, session, region):
     Returns:
         dict: Mapping regions to corresponding list of volume_ids.
     """
-    ec2_data = deepcopy(session.EC2)
+    ec2_data = deepcopy(pacu.get_active_session().EC2)
     if 'Volumes' not in ec2_data:
         fields = ['EC2', 'Volumes']
         module = 'enum_ebs_volumes_snapshots'
         fetched_ec2_instances = pacu.fetch_data(fields, module)
         if fetched_ec2_instances is False:
-            return None
-    volume_ids = []
-    for volume in ec2_data['Volumes']:
-        if volume['Region'] == region:
-            volume_ids.append(volume['VolumeId'])
-    return volume_ids
+            return []
+    return ec2_data['Volumes']
 
 
 def generate_volumes_from_snapshots(client, snapshots, zone):
@@ -283,33 +274,30 @@ def store_temp_data(data):
 
 def main(args, pacu):
     """Main module function, called from Pacu"""
-    args = parser.parse_args(args)
-    session = pacu.get_active_session()
-    print = pacu.print
-
-    instance = args.instance
-    zone = args.zone
+    summary_data = {}
+    instance = parser.parse_args(args).instance
+    zone = parser.parse_args(args).zone
     region = zone[:-1]
     client = pacu.get_boto3_client('ec2', region)
 
     if not cleanup(client):
-        print('  Cleanup failed')
+        pacu.print('  Cleanup failed')
         return summary_data
 
-    snapshots = get_snapshots(pacu, session, region)
-    volumes = get_volumes(pacu, session, region)
-    summary_data = {'snapshots': len(snapshots), 'volumes': len(volumes)}
+    snapshots = [snap['SnapshotId'] for snap in get_snapshots(pacu) if snap['Region'] == region]
+    volumes = [vol['VolumeId'] for vol in get_volumes(pacu) if vol['Region'] == region]
+    summary_data.update({'snapshots': len(snapshots), 'volumes': len(volumes)})
 
-    print('  Attaching volumes...')
+    pacu.print('  Attaching volumes...')
     temp_snaps = generate_snapshots_from_volumes(client, volumes)
     temp_volumes = generate_volumes_from_snapshots(client, temp_snaps, zone)
     load_volumes(client, pacu.print, pacu.input, instance, temp_volumes)
-    print('  Finished attaching volumes')
+    pacu.print('  Finished attaching volumes')
 
-    print('  Attaching volumes from existing snapshots')
+    pacu.print('  Attaching volumes from existing snapshots')
     temp_volumes = generate_volumes_from_snapshots(client, snapshots, zone)
     load_volumes(client, pacu.print, pacu.input, instance, temp_volumes)
-    print('  Finished attaching existing snapshot volumes ')
+    pacu.print('  Finished attaching existing snapshot volumes ')
 
     return summary_data
 

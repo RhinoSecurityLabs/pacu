@@ -187,7 +187,7 @@ def main(args, pacu_main):
             if permissions['rules']:
                 paginator = client.get_paginator('describe_config_rules')
                 rules_pages = paginator.paginate()
-                
+
                 rules = []
                 try:
                     for page in rules_pages:
@@ -203,7 +203,7 @@ def main(args, pacu_main):
                         permissions['rules'] = False
                     else:
                         print('    {}'.format(code))
-                
+
                 all_rules.extend(rules)
 
             if permissions['delivery_channels']:

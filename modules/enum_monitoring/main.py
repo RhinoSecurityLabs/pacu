@@ -341,7 +341,7 @@ def main(args, pacu_main):
                 code = error.response['Error']['Code']
                 if code == 'AccessDenied':
                     print('    ACCESS DENIED: DescribeAlarms')
-                    permission = False
+                    cloudwatch_permission = False
                 else:
                     print('    {}'.format(code))
             for alarm in alarms:

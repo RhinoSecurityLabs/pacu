@@ -98,7 +98,7 @@ def main(args, pacu_main):
             client = pacu_main.get_boto3_client('cloudtrail', region)
             trails = []
             try:
-                trails = client.describe_trails(includeShadowTrails=False)['trailList']
+                trails = client.describe_trails(includeShadowTrails=False)
                 print('    {} trails found.'.format(len(trails['trailList'])))
             except ClientError as error:
                 code = error.response['Error']['Code']
@@ -108,7 +108,7 @@ def main(args, pacu_main):
                     cloudtrail_permission = False
                 else:
                     print('    {}'.format(code))
-            for trail in trails:
+            for trail in trails['trailList']:
                 trail['Region'] = region
                 all_trails.append(trail)
 

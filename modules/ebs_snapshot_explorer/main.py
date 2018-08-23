@@ -1,13 +1,36 @@
 #!/usr/bin/env python3
 """Module for ebs_snapshot_explorer"""
+import argparse
 from copy import deepcopy
 import json
 from pathlib import Path
 
 from botocore.exceptions import ClientError
 
-from . import parser
-from . import module_info
+module_info = {
+    'name': 'ebs_snapshot_explorer',
+    'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
+    'category': 'post_exploitation',
+    'one_liner': 'Loads EBS snapshots and volumes so they are easily accessible.',
+    'description': 'This module will use an EC2 instance to load Elastic Block Store volumes and snapshots in the account and allow the user to access the data.',
+    'services': ['EC2'],
+    'prerequisite_modules': [],
+    'arguments_to_autocomplete': ['--instance', '--zone'],
+}
+
+parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
+parser.add_argument(
+    '--instance',
+    required=True,
+    default=None,
+    help='InstanceId of instance to target'
+)
+parser.add_argument(
+    '--zone',
+    required=True,
+    default=None,
+    help='Availability zone of instance to target'
+)
 
 
 def input_helper(input):
@@ -265,8 +288,8 @@ def main(args, pacu):
     print = pacu.print
 
     instance = args.instance
-    region = args.region
-    zone = region + args.zone
+    zone = args.zone
+    region = zone[:-1]
     client = pacu.get_boto3_client('ec2', region)
 
     if not cleanup(client):

@@ -323,7 +323,7 @@ def main(args, pacu_main):
         all_alarms = []
         cloudwatch_permission = True
         for region in cw_regions:
-            if not cloudwatch_permission:                
+            if not cloudwatch_permission:
                 print('  No Valid Permissions Found')
                 print('    Skipping Subsequent Enumerations for remaining regions...')
                 break
@@ -358,24 +358,35 @@ def main(args, pacu_main):
         print('Starting VPC...')
         vpc_regions = get_regions('ec2')
         all_flow_logs = []
+        flow_log_permission = True
 
         for region in vpc_regions:
+            if not flow_log_permission:
+                print('  No Valid Permissions Found')
+                print('    Skipping Subsequent Enumerations for remaining regions...')
+                break
             print('  Starting region {}...'.format(region))
 
             client = pacu_main.get_boto3_client('ec2', region)
-
-            response = client.describe_flow_logs(
-                MaxResults=1000
-            )
-            flow_logs = response['FlowLogs']
-            while 'NextToken' in response:
-                response = client.describe_flow_logs(
-                    MaxResults=1000,
-                    NextToken=response['NextToken']
-                )
+            kwargs = {'MaxResults':1000}
+            flow_logs = []
+            while True:
+                try:
+                    response = client.describe_flow_logs(**kwargs)
+                except ClientError as error:
+                    code = error.response['Error']['Code']
+                    if code == 'UnauthorizedOperation':
+                        print('    ACCESS DENIED: DescribeFlowLogs')
+                        flow_log_permission = False
+                    else:
+                        print('    {}'.format(code))
+                    break
                 flow_logs.extend(response['FlowLogs'])
-            print('    {} flow logs found.'.format(len(flow_logs)))
-
+                if 'NextToken' in response:
+                    kwargs['NextToken'] = response['NextToken']
+                else:                    
+                    print('    {} flow logs found.'.format(len(flow_logs)))
+                    break
             for flow_log in flow_logs:
                 flow_log['Region'] = region
 

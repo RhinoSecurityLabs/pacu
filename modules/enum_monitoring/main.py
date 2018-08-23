@@ -81,30 +81,34 @@ def main(args, pacu_main):
                 summary_data['ShieldSubscription'] = 'Inactive'
 
         except ClientError as error:
-            print('Error {} getting Shield Info'.format(error))
+            code = error.response['Error']['Code']
+            print('  Error getting Shield Info: {}\n'.format(code))
     if args.cloud_trail or enum_all:
         print('Starting CloudTrail...')
         cloudtrail_regions = get_regions('cloudtrail')
         all_trails = []
-
+        cloudtrail_permission = True
         for region in cloudtrail_regions:
+            if not cloudtrail_permission:
+                print('  No Valid Permissions Found')
+                print('    Skipping Subsequent Enumerations for remaining regions...')
+                break
             print('  Starting region {}...'.format(region))
 
             client = pacu_main.get_boto3_client('cloudtrail', region)
+            trails = []
             try:
-                trails = client.describe_trails(
-                    includeShadowTrails=False
-                )
+                trails = client.describe_trails(includeShadowTrails=False)['trailList']
+                print('    {} trails found.'.format(len(trails['trailList'])))
             except ClientError as error:
                 code = error.response['Error']['Code']
                 if code == 'AccessDeniedException':
-                    print('    ACCESS DENIED')
+                    print('    ACCESS DENIED: DescribeTrails')
+                    print('       Skipping Subsequent Enumerations...')
+                    cloudtrail_permission = False
                 else:
                     print('    {}'.format(code))
-                continue
-            print('    {} trails found.'.format(len(trails['trailList'])))
-
-            for trail in trails['trailList']:
+            for trail in trails:
                 trail['Region'] = region
                 all_trails.append(trail)
 
@@ -118,47 +122,40 @@ def main(args, pacu_main):
         master_count = 0
         guard_duty_regions = get_regions('guardduty')
         all_detectors = []
+        guard_duty_permission = True
 
         for region in guard_duty_regions:
+            if not guard_duty_permission:
+                print('  No Valid Permissions Found')
+                print('    Skipping Subsequent Enumerations for remaining regions...')
+                break
             detectors = []
             print('  Starting region {}...'.format(region))
-            client = pacu_main.get_boto3_client('guardduty', region)            
-            kwargs = {}
-            while True:            
-                try:
-                    response = client.list_detectors(**kwargs)
-                except ClientError as error:
-                    code = error.response['Error']['Code']
-                    if code == 'AccessDeniedException':
-                        print('    ACCESS DENIED')
-                    else:
-                        print('    {}'.format(code))
-                    break
-
-                for detector in response['DetectorIds']:
-                    try:
+            client = pacu_main.get_boto3_client('guardduty', region)
+            paginator = client.get_paginator('list_detectors')
+            page_iterator = paginator.paginate()
+            try:
+                for page in page_iterator:
+                    for detector in page['DetectorIds']:
                         status, master = get_detector_master(detector, client)
-                    except ClientError as error:
-                        code = error.response['Error']['Code']
-                        if code == 'AccessDeniedException':
-                            print('    ACCESS DENIED')
-                        else:
-                            print('    {}'.format(code))
-                        continue
-                    detectors.append({
-                        'Id': detector,
-                        'Region': region,
-                        'MasterStatus': status,
-                        'MasterAccountId': master
-                    })
+                        detectors.append({
+                            'Id': detector,
+                            'Region': region,
+                            'MasterStatus': status,
+                            'MasterAccountId': master
+                        })
                     if not master:
                         master_count += 1
-                if 'NextToken' in response:
-                    kwargs['NextToken'] = response['NextToken']
+                print('    {} GuardDuty Detectors found.'.format(len(detectors)))
+                all_detectors.extend(detectors)
+            except ClientError as error:
+                code = error.response['Error']['Code']
+                if code == 'AccessDeniedException':
+                    print('    ACCESS DENIED: ListDetectors')
+                    print('       Skipping Subsequent Enumerations...')
+                    guard_duty_permission = False
                 else:
-                    print('    {} GuardDuty Detectors found.'.format(len(detectors)))
-                    all_detectors.extend(detectors)
-                    break            
+                    print('    {}'.format(code))
 
         summary_data['MasterDetectors'] = master_count
         guardduty_data = deepcopy(session.GuardDuty)
@@ -226,7 +223,7 @@ def main(args, pacu_main):
                         for status in delivery_channels_status:
                             if channel['name'] == status['name']:
                                 channel.update(status)  # Merge the channel "status" fields into the actual channel for the DB
-                                break          
+                                break
                     print('    {} delivery channels found.'.format(len(delivery_channels)))
                     all_delivery_channels.extend(delivery_channels)
                 except ClientError as error:
@@ -271,6 +268,7 @@ def main(args, pacu_main):
             # The following regions lack support for configuration aggregators.
             BAD_AGGREGATION_REGIONS = ['eu-west-2', 'ca-central-1', 'eu-west-3', 'sa-east-1', 'ap-south-1', 'ap-northeast-2']
             if region in BAD_AGGREGATION_REGIONS:
+                print('    Skipping Unsupported Aggregator Region...')
                 continue
             if permissions['aggregators']:
                 configuration_aggregators = []
@@ -295,9 +293,7 @@ def main(args, pacu_main):
                             aggregator['Region'] = region
                         print('    {} configuration aggregators found.'.format(len(configuration_aggregators)))
                         all_configuration_aggregators.extend(configuration_aggregators)
-                        break          
-                
-                
+                        break
 
         config_data = deepcopy(session.Config)
         config_data['Rules'] = all_rules
@@ -308,7 +304,7 @@ def main(args, pacu_main):
         print('  {} total Config rules found.'.format(len(session.Config['Rules'])))
         print('  {} total Config recorders found.'.format(len(session.Config['Recorders'])))
         print('  {} total Config delivery channels found.'.format(len(session.Config['DeliveryChannels'])))
-        print('  {} total Config aggregators found.'.format(len(session.Config['Aggregators'])))
+        print('  {} total Config aggregators found.\n'.format(len(session.Config['Aggregators'])))
         summary_data.update({
             'config': {
                 'rules': len(all_rules),
@@ -341,6 +337,7 @@ def main(args, pacu_main):
                 code = error.response['Error']['Code']
                 if code == 'AccessDenied':
                     print('    ACCESS DENIED: DescribeAlarms')
+                    print('      Skipping Subsequent Enumerations...')
                     cloudwatch_permission = False
                 else:
                     print('    {}'.format(code))
@@ -353,7 +350,6 @@ def main(args, pacu_main):
         session.update(pacu_main.database, CloudWatch=cw_data)
         print('  {} total CloudWatch alarms found.\n'.format(len(session.CloudWatch['Alarms'])))
         summary_data['alarms'] = len(all_alarms)
-
     if args.vpc or enum_all:
         print('Starting VPC...')
         vpc_regions = get_regions('ec2')
@@ -377,6 +373,7 @@ def main(args, pacu_main):
                     code = error.response['Error']['Code']
                     if code == 'UnauthorizedOperation':
                         print('    ACCESS DENIED: DescribeFlowLogs')
+                        print('      Skipping Subsequent Enumerations...')
                         flow_log_permission = False
                     else:
                         print('    {}'.format(code))
@@ -384,7 +381,7 @@ def main(args, pacu_main):
                 flow_logs.extend(response['FlowLogs'])
                 if 'NextToken' in response:
                     kwargs['NextToken'] = response['NextToken']
-                else:                    
+                else:
                     print('    {} flow logs found.'.format(len(flow_logs)))
                     break
             for flow_log in flow_logs:

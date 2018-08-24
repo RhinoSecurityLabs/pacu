@@ -951,10 +951,23 @@ class Main:
             else:
                 self.print('  Running module {} on agent at {}...'.format(module_name, proxy_settings.target_agent[0]))
 
-            self.running_module_names.append(module.module_info['name'])
+            try:
+                module.parser.parse_args(command[2:])
+            except SystemExit:
+                print('  Error: Invalid Arguments')
+                return
 
+            self.running_module_names.append(module.module_info['name'])
             try:
                 summary_data = module.main(command[2:], self)
+                # If the module's return value is None, it exited early.
+                if summary_data is not None:
+                    summary = module.summary(summary_data, self)
+                    if len(summary) > 1000:
+                        raise ValueError('The {} module\'s summary is too long ({} characters). Reduce it to 1000 characters or fewer.'.format(module.module_info['name'], len(summary)))
+                    if not isinstance(summary, str):
+                        raise TypeError(' The {} module\'s summary is {}-type instead of str. Make summary return a string.'.format(module.module_info['name'], type(summary)))
+                    self.print('MODULE SUMMARY:\n\n{}\n'.format(summary.strip('\n')))
             except SystemExit as error:
                 exception_type, exception_value, tb = sys.exc_info()
                 if 'SIGINT called' in exception_value.args:
@@ -964,16 +977,13 @@ class Main:
                     session, global_data, local_data = self.get_data_from_traceback(tb)
                     self.log_error(
                         traceback_text,
-                        exception_info='{}: {}\n\nPacu caught a SystemExit error. This may be due to incorrect module arguments received by argparse in the module itself. Check to see if any required arguments are not being received by the module when it executes.'.format(exception_type, exception_value),
+                        exception_info='{}: {}\n\nPacu caught a SystemExit error. '.format(exception_type, exception_value),
                         session=session,
                         local_data=local_data,
                         global_data=global_data
                     )
             finally:
-                try:
-                    self.running_module_names.pop()
-                except IndexError:
-                    pass
+                self.running_module_names.pop()
         elif module_name in self.COMMANDS:
             print('Error: "{}" is the name of a Pacu command, not a module. Try using it without "run" or "exec" in front.'.format(module_name))
         else:
@@ -1428,8 +1438,8 @@ class Main:
                             results = [c + ' ' for c in MODULES if c.startswith(cmd)] + [None]
 
                     elif len(line) == 3 and line[0] == 'search' and line[1] in ('cat', 'category'):
-                            cmd = line[2].strip()
-                            results = [c + ' ' for c in CATEGORIES if c.startswith(cmd)] + [None]
+                        cmd = line[2].strip()
+                        results = [c + ' ' for c in CATEGORIES if c.startswith(cmd)] + [None]
 
                     elif len(line) >= 3:
                         if line[0].strip() == 'run' or line[0].strip() == 'exec':

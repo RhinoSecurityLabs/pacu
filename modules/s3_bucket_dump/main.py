@@ -189,7 +189,7 @@ def main(args, pacu_main):
                 continue
 
             file_names_list_path = 'sessions/{}/downloads/s3_bucket_dump/s3_bucket_dump_file_names.txt'.format(session.name)
-            with open(file_names_list_path, 'w+') as file_names_list:
+            with open(file_names_list_path, 'a+') as file_names_list:
                 for file in s3_objects:
                     file_names_list.write('{}@{}\n'.format(file, bucket))
             print('    Saved found file names to ./{}'.format(file_names_list_path))

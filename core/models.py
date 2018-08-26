@@ -72,7 +72,7 @@ class ProxySettings(Base, ModelUpdateMixin):
     port = Column(Integer, nullable=False, default=80)
     listening = Column(Boolean, nullable=False, default=False)
     ssh_username = Column(Text, nullable=True, default='')
-    ssh_priv_key = Column(Text, nullable=True, default='')
+    ssh_password = Column(Text, nullable=True, default='')
 
     @classmethod
     def get_proxy_settings(cls, database):

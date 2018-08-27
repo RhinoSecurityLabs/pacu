@@ -259,7 +259,7 @@ def main(args, pacu_main):
                 with open('{}{}'.format(folder, file_name), 'r') as confirmed_permissions_file:
                     user = json.load(confirmed_permissions_file)
 
-                if '*' in user['Permissions']['Allow'] and user['Permissions']['Allow']['*'] == ['*']:  # If the user is already an admin, skip them
+                if '*' in user['Permissions']['Allow'] and user['Permissions']['Allow']['*']['Resources'] == ['*']:  # If the user is already an admin, skip them
                     print('  {} already has administrator permissions.'.format(user['UserName']))
                     continue
 
@@ -318,7 +318,7 @@ def main(args, pacu_main):
             user = key_info()
 
         # Are they an admin already?
-        if '*' in user['Permissions']['Allow'] and user['Permissions']['Allow']['*'] == ['*']:
+        if '*' in user['Permissions']['Allow'] and user['Permissions']['Allow']['*']['Resources'] == ['*']:
             print('You already have admin permissions (Action: * on Resource: *)! Exiting...')
             return
 

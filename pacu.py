@@ -690,8 +690,11 @@ class Main:
 
                                 def do_GET(self):
                                     self._set_headers()
-                                    with open('pp_modules/powershell/reverse-socks.ps1', 'r') as f:
-                                        script = f.read().encode()
+                                    if self.path == '/{}'.format(secret_string):
+                                        with open('pp_modules/powershell/reverse-socks.ps1', 'r') as f:
+                                            script = f.read().encode()
+                                    else:
+                                        script = b''
                                     self.wfile.write(script)
                                     return
 

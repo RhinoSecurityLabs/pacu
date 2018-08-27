@@ -43,7 +43,7 @@ def fetch_lambda_data(client, func, key, **kwargs):
         print('  Starting enumeration of {}'.format(key))
         response = caller(**kwargs)
         data = response[key]
-        if isinstance(data, dict) or isinstance(data, str):
+        if isinstance(data, (dict, str)):
             print('    Found {} data'.format(key))
             return data
         while 'nextMarker' in response:
@@ -68,9 +68,17 @@ def main(args, pacu_main):
     args = parser.parse_args(args)
     print = pacu_main.print
     get_regions = pacu_main.get_regions
+    all_regions_prompt = pacu_main.all_regions_prompt
     ######
 
     regions = args.regions.split(',') if args.regions else get_regions('Lambda')
+
+    if args.regions:
+        regions = args.regions.split(',')
+    else:
+        regions = get_regions('Lambda')
+        if not all_regions_prompt(regions):
+            return
 
     lambda_data = {}
     summary_data = {}
@@ -105,7 +113,7 @@ def main(args, pacu_main):
             if args.versions_all:
                 func['Versions'] = fetch_lambda_data(client, 'list_versions_by_function', 'Versions', FunctionName=func_arn)
         lambda_data['Functions'] += lambda_functions
-        if len(lambda_functions) > 0:
+        if lambda_functions:
             summary_data[region] = len(lambda_functions)
     session.update(pacu_main.database, Lambda=lambda_data)
 

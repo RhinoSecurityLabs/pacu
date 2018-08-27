@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import argparse
-from botocore.exceptions import ClientError
 import os
 
+from botocore.exceptions import ClientError
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -77,9 +77,15 @@ def main(args, pacu_main):
     print = pacu_main.print
     get_regions = pacu_main.get_regions
     fetch_data = pacu_main.fetch_data
+    all_regions_prompt = pacu_main.all_regions_prompt
 
     args = parser.parse_args(args)
-    regions = args.regions.split(',') if args.regions else get_regions('lightsail')
+    if args.regions:
+        regions = args.regions.split(',')
+    else:
+        regions = get_regions('lightsail')
+        if not all_regions_prompt(regions):
+            return
     instances = {}
     for region in regions:
         instances[region] = []

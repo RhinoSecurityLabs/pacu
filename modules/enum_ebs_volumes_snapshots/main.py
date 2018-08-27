@@ -80,6 +80,7 @@ def main(args, pacu_main):
     input = pacu_main.input
     key_info = pacu_main.key_info
     get_regions = pacu_main.get_regions
+    all_regions_prompt = pacu_main.all_regions_prompt
     ######
 
     if args.snaps is False and args.vols is False:
@@ -91,6 +92,13 @@ def main(args, pacu_main):
     if 'Snapshots' not in ec2_data.keys():
         ec2_data['Snapshots'] = []
     session.update(pacu_main.database, EC2=ec2_data)
+
+    if args.regions:
+        regions = args.regions.split(',')
+    else:
+        regions = get_regions('ec2')
+        if not all_regions_prompt(regions):
+            return
 
     if args.regions is None:
         regions = get_regions('ec2')

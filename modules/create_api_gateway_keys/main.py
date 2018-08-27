@@ -34,6 +34,7 @@ module_info = {
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
+
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all session regions.')
 parser.add_argument('--cleanup', required=False, default=None, action='store_true', help='Searches for Pacu keys previously generated and removes them.')
 
@@ -68,7 +69,13 @@ def main(args, pacu_main):
     input = pacu_main.input
     print = pacu_main.print
     get_regions = pacu_main.get_regions
-    regions = args.regions.split(',') if args.regions else get_regions('apigateway')
+    all_regions_prompt = pacu_main.all_regions_prompt
+    if args.regions:
+        regions = args.regions.split(',')
+    else:
+        regions = get_regions('apigateway')
+        if not all_regions_prompt(regions):
+            return
 
     summary_data = {'keys_created': 0}
     api_keys = {}

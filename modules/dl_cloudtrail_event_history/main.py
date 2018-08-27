@@ -42,8 +42,16 @@ def main(args, pacu_main):
     args = parser.parse_args(args)
     print = pacu_main.print
     get_regions = pacu_main.get_regions
+    all_regions_prompt = pacu_main.all_regions_prompt
     ######
     summary_data = {}
+    if args.regions:
+        regions = args.regions.split(',')
+    else:
+        regions = get_regions('cloudtrail')
+        if not all_regions_prompt(regions):
+            return
+
     if args.regions is None:
         regions = get_regions('cloudtrail')
         if regions is None or regions == [] or regions == '' or regions == {}:

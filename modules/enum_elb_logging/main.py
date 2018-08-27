@@ -41,8 +41,15 @@ def main(args, pacu_main):
     args = parser.parse_args(args)
     print = pacu_main.print
     get_regions = pacu_main.get_regions
+    all_regions_prompt = pacu_main.all_regions_prompt
 
-    regions = get_regions('elasticloadbalancing')
+    if args.regions:
+        regions = args.regions.split(',')
+    else:
+        regions = get_regions('elasticloadbalancing')
+        if not all_regions_prompt(regions):
+            return
+
     summary_data = {'load_balancers': 0}
     if 'LoadBalancers' not in session.EC2.keys():
         ec2_data = deepcopy(session.EC2)

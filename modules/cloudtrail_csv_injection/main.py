@@ -39,6 +39,7 @@ def main(args, pacu_main):
     args = parser.parse_args(args)
     print = pacu_main.print
     get_regions = pacu_main.get_regions
+    all_regions_prompt = pacu_main.all_regions_prompt
     ######
 
     summary_data = {
@@ -47,13 +48,13 @@ def main(args, pacu_main):
         'instance_attacks': 0,
         'instance_fails': 0
     }
-    if 'regions' in args and args.regions is not None:
-        if len(args.regions) == 1:
-            regions = [args.regions]
-        else:
-            regions = args.regions.split(',')
+
+    if args.regions:
+        regions = args.regions.split(',')
     else:
         regions = get_regions('cloudtrail')
+        if not all_regions_prompt(regions):
+            return
 
     for region in regions:
         print('Starting region {}...'.format(region))

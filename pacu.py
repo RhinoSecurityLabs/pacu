@@ -110,6 +110,32 @@ class Main:
             print('Error while saving exception information. This means the exception was not added to any error log and should most likely be provided to the developers.\n    Exception raised: {}'.format(str(error)))
             raise
 
+    def choose(self, prompt, choices, failure='Unknown choice.', lower=True, strip=True):
+        """ Prompt the user for input and verify their response is one of the
+        valid choices; otherwise, re-prompt the user, after displaying an
+        optional failure message. """
+        response = self.input(prompt)
+        while True:
+            if lower:
+                response = response.lower()
+            if strip:
+                response = response.strip()
+            if response not in choices:
+                if failure:
+                    self.print(failure)
+                response = self.input(prompt)
+            else:
+                return response
+
+    def all_regions_prompt(self, regions):
+        """ List a supplied set of targeted regions, then ask the user if they
+        want to continue. """
+        self.print('Automatically targeting region(s):')
+        for region in regions:
+            self.print('  {}'.format(region))
+        response = self.choose('Do you wish to continue? (y/n) ', ['y', 'n'])
+        return response == 'y'
+
     # @message: String - message to print and/or write to file
     # @output: String - where to output the message: both, file, or screen
     # @output_type: String - format for message when written to file: plain or xml

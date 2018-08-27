@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import argparse
-from botocore.exceptions import ClientError
 import os
+
+from botocore.exceptions import ClientError
 
 
 module_info = {
@@ -44,12 +45,18 @@ def main(args, pacu_main):
     session = pacu_main.get_active_session()
     print = pacu_main.print
     get_regions = pacu_main.get_regions
+    all_regions_prompt = pacu_main.all_regions_prompt
 
     args = parser.parse_args(args)
     created_keys = {}
     imported_keys = 0
     name = args.key_name
-    regions = args.regions.split(',') if args.regions else get_regions('lightsail')
+    if args.regions:
+        regions = args.regions.split(',')
+    else:
+        regions = get_regions('lightsail')
+        if not all_regions_prompt(regions):
+            return
 
     for region in regions:
         print('Starting region {}...'.format(region))

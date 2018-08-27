@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import argparse
-from botocore.exceptions import ClientError
 from copy import deepcopy
+
+from botocore.exceptions import ClientError
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -107,7 +108,16 @@ def main(args, pacu_main):
     args = parser.parse_args(args)
     print = pacu_main.print
     get_regions = pacu_main.get_regions
-    regions = get_regions('waf-regional') if args.regions is None else args.regions.split(',')
+    all_regions_prompt = pacu_main.all_regions_prompt
+    if args.regions:
+        regions = args.regions.split(',')
+    else:
+        regions = get_regions('waf-regional')
+        if not all_regions_prompt(regions):
+            if args.global_region:
+                regions = []
+            else:
+                return
 
     waf_regional_data = {}
     waf_global_data = {}
@@ -129,19 +139,20 @@ def main(args, pacu_main):
             waf_regional_data[key].extend(items)
 
     # Grab additional data specifically for RuleGroups.
-    for rule_group in waf_regional_data['RuleGroups']:
-        region = rule_group['region']
-        client = pacu_main.get_boto3_client('waf-regional', region)
-        group_id = rule_group['RuleGroupId']
-        rule_group['ActivatedRules'] = grab_data(
-            client,
-            'list_activated_rules_in_rule_group',
-            'ActivatedRules',
-            RuleGroupId=group_id
-        )
-    waf_region_data = deepcopy(session.WAFRegional)
-    waf_region_data.update(waf_regional_data)
-    session.update(pacu_main.database, WAFRegional=waf_region_data)
+    if 'RuleGroups' in waf_regional_data:
+        for rule_group in waf_regional_data['RuleGroups']:
+            region = rule_group['region']
+            client = pacu_main.get_boto3_client('waf-regional', region)
+            group_id = rule_group['RuleGroupId']
+            rule_group['ActivatedRules'] = grab_data(
+                client,
+                'list_activated_rules_in_rule_group',
+                'ActivatedRules',
+                RuleGroupId=group_id
+            )
+        waf_region_data = deepcopy(session.WAFRegional)
+        waf_region_data.update(waf_regional_data)
+        session.update(pacu_main.database, WAFRegional=waf_region_data)
 
     if args.global_region:
         client = pacu_main.get_boto3_client('waf')

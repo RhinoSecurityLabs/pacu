@@ -28,12 +28,18 @@ def main(args, pacu_main):
     args = parser.parse_args(args)
     print = pacu_main.print
     get_regions = pacu_main.get_regions
+    all_regions_prompt = pacu_main.all_regions_prompt
 
     if args.builds is False and args.projects is False:
         enum_all = True
     else:
         enum_all = False
-    regions = args.regions.split(',') if args.regions else get_regions('CodeBuild')
+    if args.regions:
+        regions = args.regions.split(',')
+    else:
+        regions = get_regions('CodeBuild')
+        if not all_regions_prompt(regions):
+            return
 
     all_projects = []
     all_builds = []

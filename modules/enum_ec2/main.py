@@ -71,18 +71,18 @@ def main(args, pacu_main):
     args = parser.parse_args(args)
     print = pacu_main.print
     get_regions = pacu_main.get_regions
+    all_regions_prompt = pacu_main.all_regions_prompt
 
     all = False
     if args.instances is False and args.security_groups is False and args.elastic_ips is False and args.customer_gateways is False and args.dedicated_hosts is False and args.network_acls is False and args.nat_gateways is False and args.network_interfaces is False and args.route_tables is False and args.subnets is False and args.vpcs is False and args.vpc_endpoints is False:
         all = True
 
-    if args.regions is None:
-        regions = get_regions('ec2')
-        if regions is None or regions == [] or regions == '' or regions == {}:
-            print('This module is not supported in any regions specified in the current sessions region set. Exiting...')
-            return
-    else:
+    if args.regions:
         regions = args.regions.split(',')
+    else:
+        regions = get_regions('ec2')
+        if not all_regions_prompt(regions):
+            return
 
     client = pacu_main.get_boto3_client('ec2', choice(regions))
 

@@ -367,7 +367,7 @@ def get_attached_policy(client, policy_arn):
 
 
 def parse_document(document, user):
-    """ Loop permissions and the resources they apply to """
+    """ Loop permissions, resources, and conditions """
     if type(document['Statement']) is dict:
         document['Statement'] = [document['Statement']]
 
@@ -384,11 +384,13 @@ def parse_document(document, user):
                         else:
                             user['Permissions']['Allow'][action]['Resources'].append(statement['Resource'])
                     else:
-                        user['Permissions']['Allow'][action] = {'Resources': [], 'Conditions': {}}
+                        user['Permissions']['Allow'][action] = {'Resources': [], 'Conditions': []}
                         if type(statement['Resource']) is list:
                             user['Permissions']['Allow'][action]['Resources'] = statement['Resource']
                         else:
                             user['Permissions']['Allow'][action]['Resources'] = [statement['Resource']]
+                    if 'Condition' in statement:
+                            user['Permissions']['Allow'][action]['Conditions'].append(statement['Condition'])
                     user['Permissions']['Allow'][action]['Resources'] = list(set(user['Permissions']['Allow'][action]['Resources']))  # Remove duplicate resources
 
             elif 'Action' in statement and type(statement['Action']) is str:
@@ -398,11 +400,13 @@ def parse_document(document, user):
                     else:
                         user['Permissions']['Allow'][statement['Action']]['Resources'].append(statement['Resource'])
                 else:
-                    user['Permissions']['Allow'][statement['Action']] = {'Resources': [], 'Conditions': {}}
+                    user['Permissions']['Allow'][statement['Action']] = {'Resources': [], 'Conditions': []}
                     if type(statement['Resource']) is list:
                         user['Permissions']['Allow'][statement['Action']]['Resources'] = statement['Resource']
                     else:
                         user['Permissions']['Allow'][statement['Action']]['Resources'] = [statement['Resource']]  # Make sure that resources are always arrays
+                if 'Condition' in statement:
+                    user['Permissions']['Allow'][statement['Action']]['Conditions'].append(statement['Condition'])
                 user['Permissions']['Allow'][statement['Action']]['Resources'] = list(set(user['Permissions']['Allow'][statement['Action']]['Resources']))  # Remove duplicate resources
 
             if 'NotAction' in statement and type(statement['NotAction']) is list:  # NotAction is reverse, so allowing a NotAction is denying that action basically
@@ -414,11 +418,13 @@ def parse_document(document, user):
                         else:
                             user['Permissions']['Allow']['!{}'.format(not_action)]['Resources'].append(statement['Resource'])
                     else:
-                        user['Permissions']['Allow']['!{}'.format(not_action)] = {'Resources': [], 'Conditions': {}}
+                        user['Permissions']['Allow']['!{}'.format(not_action)] = {'Resources': [], 'Conditions': []}
                         if type(statement['Resource']) is list:
                             user['Permissions']['Allow']['!{}'.format(not_action)]['Resources'] = statement['Resource']
                         else:
                             user['Permissions']['Allow']['!{}'.format(not_action)]['Resources'] = [statement['Resource']]
+                    if 'Condition' in statement:
+                        user['Permissions']['Allow']['!{}'.format(not_action)]['Conditions'].append(statement['Condition'])
                     user['Permissions']['Allow']['!{}'.format(not_action)]['Resources'] = list(set(user['Permissions']['Allow']['!{}'.format(not_action)]['Resources']))  # Remove duplicate resources
 
             elif 'NotAction' in statement and type(statement['NotAction']) is str:
@@ -428,11 +434,13 @@ def parse_document(document, user):
                     else:
                         user['Permissions']['Allow']['!{}'.format(statement['NotAction'])]['Resources'].append(statement['Resource'])
                 else:
-                    user['Permissions']['Allow']['!{}'.format(statement['NotAction'])] = {'Resources': [], 'Conditions': {}}
+                    user['Permissions']['Allow']['!{}'.format(statement['NotAction'])] = {'Resources': [], 'Conditions': []}
                     if type(statement['Resource']) is list:
                         user['Permissions']['Allow']['!{}'.format(statement['NotAction'])]['Resources'] = statement['Resource']
                     else:
                         user['Permissions']['Allow']['!{}'.format(statement['NotAction'])]['Resources'] = [statement['Resource']]  # Make sure that resources are always arrays
+                if 'Condition' in statement:
+                    user['Permissions']['Allow']['!{}'.format(statement['NotAction'])]['Conditions'].append(statement['Condition'])
                 user['Permissions']['Allow']['!{}'.format(statement['NotAction'])]['Resources'] = list(set(user['Permissions']['Allow']['!{}'.format(statement['NotAction'])]['Resources']))  # Remove duplicate resources
 
         if statement['Effect'] == 'Deny':
@@ -446,11 +454,13 @@ def parse_document(document, user):
                         else:
                             user['Permissions']['Deny'][action]['Resources'].append(statement['Resource'])
                     else:
-                        user['Permissions']['Deny'][action] = {'Resources': [], 'Conditions': {}}
+                        user['Permissions']['Deny'][action] = {'Resources': [], 'Conditions': []}
                         if type(statement['Resource']) is list:
                             user['Permissions']['Deny'][action]['Resources'] = statement['Resource']
                         else:
                             user['Permissions']['Deny'][action]['Resources'] = [statement['Resource']]
+                    if 'Condition' in statement:
+                        user['Permissions']['Deny'][action]['Conditions'].append(statement['Condition'])
                     user['Permissions']['Deny'][action]['Resources'] = list(set(user['Permissions']['Deny'][action]['Resources']))  # Remove duplicate resources
 
             elif 'Action' in statement and type(statement['Action']) is str:
@@ -460,11 +470,13 @@ def parse_document(document, user):
                     else:
                         user['Permissions']['Deny'][statement['Action']]['Resources'].append(statement['Resource'])
                 else:
-                    user['Permissions']['Deny'][statement['Action']] = {'Resources': [], 'Conditions': {}}
+                    user['Permissions']['Deny'][statement['Action']] = {'Resources': [], 'Conditions': []}
                     if type(statement['Resource']) is list:
                         user['Permissions']['Deny'][statement['Action']]['Resources'] = statement['Resource']
                     else:
                         user['Permissions']['Deny'][statement['Action']]['Resources'] = [statement['Resource']]  # Make sure that resources are always arrays
+                if 'Condition' in statement:
+                    user['Permissions']['Deny'][statement['Action']]['Conditions'].append(statement['Condition'])
                 user['Permissions']['Deny'][statement['Action']]['Resources'] = list(set(user['Permissions']['Deny'][statement['Action']]['Resources']))  # Remove duplicate resources
 
             if 'NotAction' in statement and type(statement['NotAction']) is list:  # NotAction is reverse, so allowing a NotAction is denying that action basically
@@ -476,11 +488,13 @@ def parse_document(document, user):
                         else:
                             user['Permissions']['Deny']['!{}'.format(not_action)]['Resources'].append(statement['Resource'])
                     else:
-                        user['Permissions']['Deny']['!{}'.format(not_action)] = {'Resources': [], 'Conditions': {}}
+                        user['Permissions']['Deny']['!{}'.format(not_action)] = {'Resources': [], 'Conditions': []}
                         if type(statement['Resource']) is list:
                             user['Permissions']['Deny']['!{}'.format(not_action)]['Resources'] = statement['Resource']
                         else:
                             user['Permissions']['Deny']['!{}'.format(not_action)]['Resources'] = [statement['Resource']]
+                    if 'Condition' in statement:
+                        user['Permissions']['Deny']['!{}'.format(not_action)]['Conditions'].append(statement['Condition'])
                     user['Permissions']['Deny']['!{}'.format(not_action)]['Resources'] = list(set(user['Permissions']['Deny']['!{}'.format(not_action)]['Resources']))  # Remove duplicate resources
 
             elif 'NotAction' in statement and type(statement['NotAction']) is str:
@@ -490,11 +504,13 @@ def parse_document(document, user):
                     else:
                         user['Permissions']['Deny']['!{}'.format(statement['NotAction'])]['Resources'].append(statement['Resource'])
                 else:
-                    user['Permissions']['Deny']['!{}'.format(statement['NotAction'])] = {'Resources': [], 'Conditions': {}}
+                    user['Permissions']['Deny']['!{}'.format(statement['NotAction'])] = {'Resources': [], 'Conditions': []}
                     if type(statement['Resource']) is list:
                         user['Permissions']['Deny']['!{}'.format(statement['NotAction'])]['Resources'] = statement['Resource']
                     else:
                         user['Permissions']['Deny']['!{}'.format(statement['NotAction'])]['Resources'] = [statement['Resource']]  # Make sure that resources are always arrays
+                if 'Condition' in statement:
+                    user['Permissions']['Deny']['!{}'.format(statement['NotAction'])]['Conditions'].append(statement['Condition'])
                 user['Permissions']['Deny']['!{}'.format(statement['NotAction'])]['Resources'] = list(set(user['Permissions']['Deny']['!{}'.format(statement['NotAction'])]['Resources']))  # Remove duplicate resources
 
     return user

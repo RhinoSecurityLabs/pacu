@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import argparse
-import boto3
-from botocore.exceptions import ClientError
-from botocore.exceptions import ParamValidationError
-from botocore.exceptions import UnknownServiceError
 from datetime import datetime
 import json
 import os
 import re
+
+import boto3
+from botocore.exceptions import ClientError
+from botocore.exceptions import ParamValidationError
 
 from . import param_generator
 
@@ -52,15 +52,8 @@ summary_data = {}
 
 def complete_service_list():
     """Returns a list of all supported boto3 services"""
-    try:
-        boto3.client(
-            'bad_dummy_service_name',
-            region_name='us-east-1'
-        )
-        return []
-    except UnknownServiceError as error:
-        service_string = str(error)[62:]
-        return service_string.split(', ').copy()
+    session = boto3.session.Session()
+    return session.get_available_services()
 
 
 def missing_param(param):
@@ -340,10 +333,7 @@ def main(args, pacu_main):
             global current_region
             current_region = region
             global current_client
-            current_client = boto3.client(
-                service,
-                region_name=region,
-            )
+            current_client = pacu_main.get_boto3_client(service, region)
             functions = [func for func in dir(current_client) if valid_func(service, func)]
             index = 1
             for func in functions:

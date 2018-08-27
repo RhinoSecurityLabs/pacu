@@ -918,6 +918,17 @@ class Main:
             return module
         return None
 
+    def all_region_prompt(self):
+        print('Automatically targeting region(s):')
+        for region in self.get_regions('all'):
+            print('  {}'.format(region))
+        response = input('Do you wish to continue? (y/n)')
+        if response.lower() == 'y':
+            return True
+        else:
+            return False
+
+
     ###### Some module notes
     # For any argument that needs a value and a region for that value, use the form
     # value@region
@@ -952,7 +963,12 @@ class Main:
                 self.print('  Running module {} on agent at {}...'.format(module_name, proxy_settings.target_agent[0]))
 
             try:
-                module.parser.parse_args(command[2:])
+                args = module.parser.parse_args(command[2:])
+                if 'regions' in args and args.regions is None:
+                    session = self.get_active_session()
+                    if session.session_regions == ['all']:
+                        if not self.all_region_prompt():
+                            return
             except SystemExit:
                 print('  Error: Invalid Arguments')
                 return

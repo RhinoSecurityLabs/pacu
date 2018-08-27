@@ -28,7 +28,7 @@ module_info = {
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 parser.add_argument('--account-id', required=True, help='The AWS account ID of the target account (12 numeric characters).')
-parser.add_argument('--word-list', required=False, default=None, help='File path to a different word list to use. There is a default word list with 1063 words and it is stored in this modules folder. The word list should contain words, one on each line, to use to try and guess IAM role names. Role names ARE case-sensitive.')
+parser.add_argument('--word-list', required=False, default=None, help='File path to a different word list to use. There is a default word list with 1063 words and it is stored in this module\'s folder. The word list should contain words, one on each line, to use to try and guess IAM role names. Role names ARE case-sensitive.')
 
 
 def main(args, pacu_main):

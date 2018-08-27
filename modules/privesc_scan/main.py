@@ -9,6 +9,7 @@ import re
 import random
 import time
 import subprocess
+from utils import remove_empty_from_dict
 
 
 module_info = {
@@ -425,16 +426,6 @@ def summary(data, pacu_main):
         else:
             out = '  Privilege escalation was not successful'
     return out
-
-
-# https://stackoverflow.com/a/24893252
-def remove_empty_from_dict(d):
-    if type(d) is dict:
-        return dict((k, remove_empty_from_dict(v)) for k, v in d.items() if v and remove_empty_from_dict(v))
-    elif type(d) is list:
-        return [remove_empty_from_dict(v) for v in d if v and remove_empty_from_dict(v)]
-    else:
-        return d
 
 
 # Functions for individual privesc methods

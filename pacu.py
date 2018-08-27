@@ -685,7 +685,8 @@ class Main:
                             class S(BaseHTTPRequestHandler):
                                 def _set_headers(self):
                                     self.send_response(200)
-                                    self.send_header('Content-type', 'text/plain')
+                                    self.send_header('Content-Type', 'text/plain')
+                                    self.send_header('Server', random.choice(['Apache', 'nginx']))  # Maybe make this perm per session or remove altogether
                                     self.end_headers()
 
                                 def do_GET(self):

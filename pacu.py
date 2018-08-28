@@ -7,6 +7,7 @@ import platform
 from queue import Queue
 import random
 import re
+import shlex
 import string
 import subprocess
 import sys
@@ -486,9 +487,13 @@ class Main:
 
     def parse_command(self, command):
         command = command.strip()
-        command = command.split(' ')
+        try:
+            command = shlex.split(command)
+        except ValueError:
+            self.print('  Error: Unbalanced quotes in command')
+            return
 
-        if command[0] == '':
+        if not command or command[0] == '':
             return
         elif command[0] == 'data':
             self.parse_data_command(command)
@@ -964,6 +969,17 @@ class Main:
             return module
         return None
 
+    def all_region_prompt(self):
+        print('Automatically targeting region(s):')
+        for region in self.get_regions('all'):
+            print('  {}'.format(region))
+        response = input('Do you wish to continue? (y/n)')
+        if response.lower() == 'y':
+            return True
+        else:
+            return False
+
+
     ###### Some module notes
     # For any argument that needs a value and a region for that value, use the form
     # value@region
@@ -997,16 +1013,29 @@ class Main:
             else:
                 self.print('  Running module {} on agent at {}...'.format(module_name, proxy_settings.target_agent[0]))
 
-            self.running_module_names.append(module.module_info['name'])
+            try:
+                args = module.parser.parse_args(command[2:])
+                if 'regions' in args and args.regions is None:
+                    session = self.get_active_session()
+                    if session.session_regions == ['all']:
+                        if not self.all_region_prompt():
+                            return
+            except SystemExit:
+                print('  Error: Invalid Arguments')
+                return
 
+            self.running_module_names.append(module.module_info['name'])
             try:
                 summary_data = module.main(command[2:], self)
-
+                # If the module's return value is None, it exited early.
+                if summary_data is not None:
+                    summary = module.summary(summary_data, self)
+                    if len(summary) > 1000:
+                        raise ValueError('The {} module\'s summary is too long ({} characters). Reduce it to 1000 characters or fewer.'.format(module.module_info['name'], len(summary)))
+                    if not isinstance(summary, str):
+                        raise TypeError(' The {} module\'s summary is {}-type instead of str. Make summary return a string.'.format(module.module_info['name'], type(summary)))
+                    self.print('MODULE SUMMARY:\n\n{}\n'.format(summary.strip('\n')))
             except SystemExit as error:
-                try:
-                    self.running_module_names.pop()
-                except IndexError:
-                    pass
                 exception_type, exception_value, tb = sys.exc_info()
                 if 'SIGINT called' in exception_value.args:
                     self.print('^C\nExiting the currently running module.')
@@ -1015,41 +1044,17 @@ class Main:
                     session, global_data, local_data = self.get_data_from_traceback(tb)
                     self.log_error(
                         traceback_text,
-                        exception_info='{}: {}\n\nPacu caught a SystemExit error. This may be due to incorrect module arguments received by argparse in the module itself. Check to see if any required arguments are not being received by the module when it executes.'.format(exception_type, exception_value),
+                        exception_info='{}: {}\n\nPacu caught a SystemExit error. '.format(exception_type, exception_value),
                         session=session,
                         local_data=local_data,
                         global_data=global_data
                     )
-                return
-
-            except Exception as error:
-                try:
-                    self.running_module_names.pop()
-                except IndexError:
-                    pass
-                raise
-
-            # If the module's return value is None, it exited early.
-            if summary_data is not None:
-                summary = module.summary(summary_data, self)
-                if len(summary) > 1000:
-                    raise ValueError('The {} module\'s summary is too long ({} characters). Reduce it to 1000 characters or fewer.'.format(module.module_info['name'], len(summary)))
-                if not isinstance(summary, str):
-                    raise TypeError(' The {} module\'s summary is {}-type instead of str. Make summary return a string.'.format(module.module_info['name'], type(summary)))
-                self.print('MODULE SUMMARY:\n\n{}\n'.format(summary.strip('\n')))
-
-            try:
+            finally:
                 self.running_module_names.pop()
-            except IndexError:
-                pass
-            return
-
         elif module_name in self.COMMANDS:
             print('Error: "{}" is the name of a Pacu command, not a module. Try using it without "run" or "exec" in front.'.format(module_name))
-
         else:
             print('Module not found. Is it spelled correctly? Try using the module search function.')
-            return
 
     def display_command_help(self, command_name):
         if command_name == 'proxy':
@@ -1500,8 +1505,8 @@ class Main:
                             results = [c + ' ' for c in MODULES if c.startswith(cmd)] + [None]
 
                     elif len(line) == 3 and line[0] == 'search' and line[1] in ('cat', 'category'):
-                            cmd = line[2].strip()
-                            results = [c + ' ' for c in CATEGORIES if c.startswith(cmd)] + [None]
+                        cmd = line[2].strip()
+                        results = [c + ' ' for c in CATEGORIES if c.startswith(cmd)] + [None]
 
                     elif len(line) >= 3:
                         if line[0].strip() == 'run' or line[0].strip() == 'exec':

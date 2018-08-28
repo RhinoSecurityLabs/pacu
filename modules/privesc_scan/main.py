@@ -9,6 +9,7 @@ import re
 import random
 import time
 import subprocess
+from utils import remove_empty_from_dict
 
 
 module_info = {
@@ -25,7 +26,7 @@ module_info = {
     'one_liner': 'An IAM privilege escalation path finder and abuser.',
 
     # Description about what the module does and how it works
-    'description': 'This module will scan for permission misconfigurations to see where privilege escalation will be possible. Available attack paths will be presented to the user and executed on if chosen.\n',
+    'description': 'This module will scan for permission misconfigurations to see where privilege escalation will be possible. Available attack paths will be presented to the user and executed on if chosen. Warning: Due to the implementation in IAM policies, this module has a difficult time parsing "NotActions". If your user has any NotActions associated with them, it is recommended to manually verify the results of this module. NotActions are noted with a "!" preceeding the action when viewing the results of the "whoami" command. For more information on what NotActions are, visit the following link: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_notaction.html\n',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['IAM', 'EC2', 'Glue', 'Lambda', 'DataPipeline', 'DynamoDB', 'CloudFormation'],
@@ -44,78 +45,11 @@ parser.add_argument('--folder', required=False, default=None, help='A file path 
 parser.add_argument('--scan-only', required=False, default=False, action='store_true', help='Only run the scan to check for possible escalation methods, don\'t attempt any found methods.')
 
 
-# Permissions to check (x == added checks already):
-# 1)x Associate an existing instance profile with an existing EC2 instance
-#   iam:PassRole
-#   ec2:AssociateIamInstanceProfile
-#   ? ec2:DescribeInstances to know the right instance ID
-#   ? iam:ListRoles to know what instance profiles exist already
-# 2)x Create new instance with ssh key that I control, with an existing instance profile
-#   ec2:CreateKeyPair // This actually could be replace by code execution in the user data
-#   ec2:RunInstances
-#   iam:PassRole
-#   ? iam:ListInstanceProfiles to know what instance profiles exist already
-# 3)x Create instance profile, create or use a role, attach policies to the role if necessary, attach the role to the profile, then create a new instance with ssh keys that I control
-#   iam:PassRole
-#   iam:CreateInstanceProfile
-#   ? iam:ListRoles to see if there is a role to associate with an instance profile
-#   ? iam:CreateRole if there are no roles to associate with an instance profile
-#   ? iam:AttachRolePolicy or iam:PutRolePolicy if permissions are needed to be added to the role being used
-#   ? iam:AddRoleToInstanceProfile if there is not already an instance profile with a suitable role attached
-#   ec2:CreateKeyPair
-#   ec2:RunInstances
-# 4)x Create a new version of an existing policy and set it as default
-#   iam:CreatePolicyVersion
-#   ? iam:ListPolicies to determine the policy ARN
-#   ? iam:DeletePolicyVersion if there are already 5 versions
-#   // iam:SetDefaultPolicyVersion is only required if setting the default straight up. Not required if creating a policy with --set-as-default flag enabled
-# 5)x Create a set of access keys for a different user
-#   iam:CreateAccessKey
-#   ? iam:ListUsers if I need to figure out a username to target
-# 6)x Create a web console login profile for an account that doesn't have one yet
-#   iam:CreateLoginProfile
-#   ? iam:ListUsers if I need to figure out a username to target
-# 7)x Attach an existing policy, to a user, group, or role that I have access to
-#   iam:AttachUserPolicy
-#   iam:AttachGroupPolicy
-#   iam:AttachRolePolicy
-#   ? Somehow try and figure out what groups/roles are attached to the user user
-# 8)x Attach inline policies to a user, group, or role that I have access to
-#   iam:PutUserPolicy
-#   iam:PutGroupPolicy
-#   iam:PutRolePolicy
-#   ? Somehow try and figure out what groups/roles are attached to the user user
-# 9)x Add the user user to a more privileged group
-#   iam:AddUserToGroup
-#   ? iam:ListGroups to enumerate groups
-# 10)x Allow the user user to assume higher privileged roles
-#   iam:UpdateAssumeRolePolicy
-#   ? Some way to update their own policy to allows them to iam:AssumeRole if they can't already
-# 11)x Change the password of an existing user
-#   iam:UpdateLoginProfile
-#   ? iam:ListUsers to find users to change
-# 12)x Pass role to new Lambda function
-#   iam:PassRole
-#   lambda:CreateFunction
-#   ? lambda:CreateEventSourceMapping
-#   ? lambda:InvokeFunction
-#   ? iam:CreateRole
-#   ? dynamodb:CreateTable (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.Lambda.Tutorial.html)
-#   ? dynamodb:PutItem
-# 15)x Datapipeline passrole privesc.
-#   Pass a role to a pipeline that is scheduled to run an AWS CLI command. Can escalate somewhat if only the default role is allowed to be passed, otherwise anything is possible. This is annoying to setup, use https://github.com/aws-samples/data-pipeline-samples/tree/master/samples for help
-# 17)x Glue passrole privesc
-#   SSH into a dev endpoint for full access to AWS CLI
-#   iam:PassRole
-#   glue:GetDevEndpoint (or glue:GetDevEndpoints)
-#   glue:CreateDevEndpoint (or glue:UpdateDevEndpoint)
 # 18) GreenGrass passrole privesc ?
 # 19) Redshift passrole privesc ?
 # 20) S3 passrole privesc ?
 # 21) ServiceCatalog passrole privesc ?
 # 22) StorageGateway passrole privesc ?
-# 23)x CloudFormation passrole privesc!
-# 24) Modify existing Lambda function with higher privs than current user
 
 
 def main(args, pacu_main):
@@ -326,7 +260,7 @@ def main(args, pacu_main):
                 with open('{}{}'.format(folder, file_name), 'r') as confirmed_permissions_file:
                     user = json.load(confirmed_permissions_file)
 
-                if '*' in user['Permissions']['Allow'] and user['Permissions']['Allow']['*'] == '*':  # If the user is already an admin, skip them
+                if '*' in user['Permissions']['Allow'] and user['Permissions']['Allow']['*']['Resources'] == ['*']:  # If the user is already an admin, skip them
                     print('  {} already has administrator permissions.'.format(user['UserName']))
                     continue
 
@@ -385,7 +319,7 @@ def main(args, pacu_main):
             user = key_info()
 
         # Are they an admin already?
-        if '*' in user['Permissions']['Allow'] and user['Permissions']['Allow']['*'] == ['*']:
+        if '*' in user['Permissions']['Allow'] and user['Permissions']['Allow']['*']['Resources'] == ['*']:
             print('You already have admin permissions (Action: * on Resource: *)! Exiting...')
             return
 
@@ -475,6 +409,10 @@ def main(args, pacu_main):
             if escalated is False:
                 print('No potential privilege escalation methods worked.')
         summary_data['success'] = escalated
+    elif len(checked_methods['Confirmed']) == 0 and len(checked_methods['Potential']) == 0:
+        print('No privilege escalation paths found.')
+        summary_data['success'] = False
+
     print('{} completed.\n'.format(module_info['name']))
     return summary_data
 
@@ -488,16 +426,6 @@ def summary(data, pacu_main):
         else:
             out = '  Privilege escalation was not successful'
     return out
-
-
-# https://stackoverflow.com/a/24893252
-def remove_empty_from_dict(d):
-    if type(d) is dict:
-        return dict((k, remove_empty_from_dict(v)) for k, v in d.items() if v and remove_empty_from_dict(v))
-    elif type(d) is list:
-        return [remove_empty_from_dict(v) for v in d if v and remove_empty_from_dict(v)]
-    else:
-        return d
 
 
 # Functions for individual privesc methods

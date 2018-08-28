@@ -6,15 +6,15 @@ import string
 
 
 module_info = {
-    'name': 'bruteforce_assume_role',
+    'name': 'enum_assume_role',
 
     'author': 'Spencer Gietzen of Rhino Security Labs',
 
     'category': 'recon_enum_no_keys',
 
-    'one_liner': 'Bruteforces existing roles in other AWS accounts to try and gain access via misconfigurations.',
+    'one_liner': 'Enumerates existing roles in other AWS accounts to try and gain access via misconfigurations.',
 
-    'description': 'This module takes in an AWS account ID and tries to bruteforce role names within that account. If one is discovered and it is misconfigured to allow role-assumption from a wide group, it is possible to assume that role and gain access to that AWS account through this method. NOTE: This module is listed under the recon_enum_no_keys category because it is not recommended to use compromised keys to run this module. This module DOES require a set of AWS keys, but it will spam CloudTrail with "AssumeRole" logs, so it is suggested to use a personal account to run this. The keys you use should have the sts:AssumeRole permission on any resource ("*") to identify/assume misconfigured roles, but you will still be able to enumerate roles that exist without it.',
+    'description': 'This module takes in an AWS account ID and tries to enumerate role names within that account. If one is discovered and it is misconfigured to allow role-assumption from a wide group, it is possible to assume that role and gain access to that AWS account through this method. NOTE: This module is listed under the recon_enum_no_keys category because it is not recommended to use compromised keys to run this module. This module DOES require a set of AWS keys, but it will spam CloudTrail with "AssumeRole" logs, so it is suggested to use a personal account to run this. The keys you use should have the sts:AssumeRole permission on any resource ("*") to identify/assume misconfigured roles, but you will still be able to enumerate roles that exist without it.',
 
     'services': ['STS'],
 
@@ -55,7 +55,7 @@ def main(args, pacu_main):
     with open(word_list_path, 'r') as f:
         word_list = f.read().splitlines()
 
-    print('Starting role bruteforce...\n')
+    print('Starting role enumeration...\n')
 
     client = pacu_main.get_boto3_client('sts')
     for word in word_list:

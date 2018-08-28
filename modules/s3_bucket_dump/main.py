@@ -99,6 +99,17 @@ def extract_from_file(pacu, file):
     return files
 
 def write_bucket_keys_to_file(pacu, objects):
+    pacu.print('  Writing file names to disk...')
+    session = pacu.get_active_session()
+    file = 'sessions/{}/downloads/s3_bucket_dump/'.format(session.name)
+    file += 's3_bucket_dump_file_names.txt'
+    try:
+        with open(file, 'w') as objects_file:
+            for key in objects:
+                for file in objects[key]:
+                    objects_file.write('{}@{}\n'.format(file,key))
+    except Exception as error:
+        print(error)
     return True
 
 def main(args, pacu_main):
@@ -165,7 +176,7 @@ def main(args, pacu_main):
     if args.names_only:
         write_bucket_keys_to_file(pacu_main, objects)
         return summary_data
-
+    summary_data['downloaded_files'] = 0
     for bucket in objects:
         print('  Bucket: "{}" Size: {} Bytes'.format(bucket, get_bucket_size(pacu_main, bucket)))
         if input('    Download files (y/n)? ') != 'y':
@@ -178,6 +189,8 @@ def main(args, pacu_main):
             ignore = False
             if not download_s3_file(pacu_main, key, bucket):
                 fails += 1
+            else:
+                summary_data['downloaded_files'] += 1
             if not ignore and fails == 5:
                 print('  5 files failed to download.')
                 prompt = input('  Continue downloading attempts? (y/n) ')

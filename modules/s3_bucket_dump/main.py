@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 from botocore.exceptions import ClientError
+import datetime
 from copy import deepcopy
 import os
 
@@ -37,6 +38,68 @@ parser.add_argument('--dl-all', required=False, action='store_true', help='If sp
 parser.add_argument('--names-only', required=False, action='store_true', help='If specified, only pull the names of files in the buckets instead of downloading. This can help in cases where the whole bucket is a large amount of data and you only want to target specific files for download. This option will store the filenames in a .txt file in ./sessions/[current_session_name]/downloads/s3_bucket_dump/s3_bucket_dump_file_names.txt, one per line, formatted as "filename@bucketname". These can then be used with the "--dl-names" option.')
 parser.add_argument('--dl-names', required=False, default=False, help='A path to a file that includes the only files to be downloaded, one per line. The format for these files must be "filename.ext@bucketname", which is what the --names-only argument outputs.')
 
+FILE_SIZE_THRESHOLD = 1073741824
+FILE_SIZE_THRESHOLD = 1000
+
+def get_bucket_size(pacu, bucket_name):
+    client = pacu.get_boto3_client('cloudwatch', 'us-east-1')
+    response = client.get_metric_statistics(Namespace='AWS/S3',
+                                        MetricName='BucketSizeBytes',
+                                        Dimensions=[
+                                            {'Name': 'BucketName', 'Value':bucket_name},
+                                            {'Name': 'StorageType', 'Value': 'StandardStorage'}
+                                        ],
+                                        Statistics=['Average'],
+                                        Period=3600,
+                                        StartTime=datetime.datetime.today() - datetime.timedelta(days=1),
+                                        EndTime=datetime.datetime.now().isoformat()
+                                        )
+    if response['Datapoints']:
+        return response['Datapoints'][0]['Average']
+    return 0
+
+def download_s3_file(pacu, key, bucket):
+    session = pacu.get_active_session()
+    base_directory = 'sessions/{}/downloads/s3_bucket_dump/{}/'.format(session.name, bucket)
+    
+    directory = base_directory
+    offset_directory = key.split('/')[:-1]
+    if offset_directory:
+        directory += '/' + ''.join(offset_directory)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    
+    s3 = pacu.get_boto3_resource('s3')
+
+    size = s3.Object(bucket, key).content_length
+    if size > FILE_SIZE_THRESHOLD:
+        confirm = pacu.input('  Download {}? Size: {} bytes (y/n) '.format(key, size))
+        if confirm != 'y':
+            return False
+    try:
+        #pacu.print('putting in at: {}'.format(base_directory + key))
+        #return
+        s3.Bucket(bucket).download_file(key, base_directory + key)
+    except Exception as error:
+        pacu.print('  {}'.format(error))
+        return False
+    return True
+
+
+
+
+def extract_from_file(pacu, file):
+    files = {}
+    try:
+        with open(file, 'r') as bucket_file:
+            for line in bucket_file:
+                delimiter = line.rfind('@')
+                key = line[:delimiter]
+                bucket = line[delimiter + 1:-1]
+                files[key] = bucket
+    except FileNotFoundError as error:
+        pacu.print('  Download File not found...')
+    return files
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -55,6 +118,17 @@ def main(args, pacu_main):
     if (args.names_only is True and args.dl_names is True) or (args.names_only is True and args.dl_all is True) or (args.dl_names is True and args.dl_all is True):
         print('Only zero or one options of --dl-all, --names-only, and --dl-names may be specified. Exiting...')
         return
+
+    if args.dl_names:
+        pacu_main.print('  Extracting files from file...')
+        extracted_files = extract_from_file(pacu_main, args.dl_names)
+        total = len(extracted_files.keys())
+        success = 0
+        for key in extracted_files:
+            if download_s3_file(pacu_main, key, extracted_files[key]):
+                success += 1
+        pacu_main.print('  Finished downloading from file...')
+        return {'downloaded_files':success, 'failed':total - success}
 
     client = pacu_main.get_boto3_client('s3')
 
@@ -93,7 +167,7 @@ def main(args, pacu_main):
     print('Starting scan process...')
 
     for bucket in buckets:
-        print('  Bucket name: "{}"'.format(bucket))
+        print('  Bucket name: "{}" Size: {} Bytes'.format(bucket, get_bucket_size(pacu_main, bucket)))
 
         bucket_download_path = 'sessions/{}/downloads/s3_bucket_dump/{}'.format(session.name, bucket)
 
@@ -179,6 +253,10 @@ def main(args, pacu_main):
                             if not os.path.exists(s3_obj_key_path):
                                 os.makedirs(s3_obj_key_path)
                         else:
+                            #if s3_obj['Size'] > FILE_SIZE_THRESHOLD:
+                            #    response = input('   Download {} bytes file? (y/n) '.format(s3_obj['Size']))
+                            #    if response != 'y':
+                            #        continue
                             s3_objects.append(s3_obj['Key'])
 
                 print('      Successfully collected all available file names.')
@@ -247,4 +325,6 @@ def summary(data, pacu_main):
         out += '  {} buckets found with read permissions.\n'.format(data['readable_buckets'])
     if 'downloaded_files' in data:
         out += '  {} files downloaded.\n'.format(data['downloaded_files'])
+    if 'failed' in data:
+        out += '  {} files failed to be downloaded.\n'.format(data['failed'])
     return out

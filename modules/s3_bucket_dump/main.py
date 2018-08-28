@@ -73,7 +73,8 @@ def download_s3_file(pacu, key, bucket):
 
     size = s3.Object(bucket, key).content_length
     if size > FILE_SIZE_THRESHOLD:
-        confirm = pacu.input('  Download {}? Size: {} bytes (y/n) '.format(key, size))
+        pacu.print('  LARGE FILE DETECTED:')
+        confirm = pacu.input('    Download {}? Size: {} bytes (y/n) '.format(key, size))
         if confirm != 'y':
             return False
     try:
@@ -96,6 +97,9 @@ def extract_from_file(pacu, file):
     except FileNotFoundError as error:
         pacu.print('  Download File not found...')
     return files
+
+def write_bucket_keys_to_file(pacu, objects):
+    return True
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -135,11 +139,10 @@ def main(args, pacu_main):
         print('  Found bucket "{bucket_name}"'.format(bucket_name=bucket['Name']))
 
     # Process Enuemrated Buckets
-    print('Starting scan process...')
+    print('Starting enumerating objects in buckets...')
     summary_data['readable_buckets'] = 0
     objects = {}
     for bucket in buckets:
-        print('  Bucket: "{}" Size: {} Bytes'.format(bucket, get_bucket_size(pacu_main, bucket)))
         paginator = client.get_paginator('list_objects_v2')
         page_iterator = paginator.paginate(Bucket=bucket)
 
@@ -157,153 +160,30 @@ def main(args, pacu_main):
             continue
         continue
     # Enumerated buckets and associated list of files
-    print(objects)
-    return summary_data
+    print('Finished enumerating objects in buckets...')
 
-        
-        #bucket_download_path = 'sessions/{}/downloads/s3_bucket_dump/{}'.format(session.name, bucket)
+    if args.names_only:
+        write_bucket_keys_to_file(pacu_main, objects)
+        return summary_data
 
-        #try:
-        #    print('    Checking read permissions...')
-        #    response = client.list_objects_v2(
-        #        Bucket=bucket,
-        #        MaxKeys=10
-        #    )
-
-        #    if args.dl_all is False and args.names_only is False and args.dl_names is False:
-        #        summary_data['readable_buckets'] += 1
-        #        try_to_dl = input('      You have permission to read files in bucket {}, do you want to attempt to download all files in it? (y/n) '.format(bucket))
-        #        if try_to_dl == 'n':
-        #            print('      Skipping to next bucket.')
-        #            continue
-        #    elif args.names_only is True:
-        #        try_to_dl = 'n'
-        #    else:
-        #        try_to_dl = 'y'
-
-        #except ClientError:
-        #    try_to_dl = 'n'
-        #    print('      You do not have permission to view files in bucket {}, skipping to next bucket.'.format(bucket))
-        #    continue
-
-        #if try_to_dl == 'y':
-        #    try:
-        #        print('    Attempting to download a test file...'.format(bucket))
-        #        first_obj_key = response['Contents'][0]['Key']
-        #        i = 0
-
-        #        while first_obj_key[-1] == '/':
-        #            i += 1
-        #            first_obj_key = response['Contents'][i]['Key']
-
-        #        if not os.path.exists('tmp/{}'.format(os.path.dirname(first_obj_key))):
-        #            os.makedirs('tmp/{}'.format(os.path.dirname(first_obj_key)))
-
-        #        s3.meta.client.download_file(bucket, first_obj_key, 'tmp/{}'.format(first_obj_key))
-        #        summary_data['download_files'] += 1
-
-        #        with open('tmp/{}'.format(first_obj_key), 'rb') as test_file:
-        #            test_file.read()
-
-        #        print('      Test file has been downloaded to ./tmp and read successfully.')
-
-        #    except Exception as error:
-        #        print(error)
-        #        print('      Test file has failed to be downloaded and read, skipping to next bucket.')
-        #        continue
-
-        #s3_objects = []
-
-        #if args.dl_names is False:
-        #    try:
-        #        if not os.path.exists(bucket_download_path):
-        #            os.makedirs(bucket_download_path)
-
-        #        response = None
-        #        continuation_token = False
-        #        print('    Finding all files in the bucket...')
-
-        #        while (response is None or 'NextContinuationToken' in response):
-        #            if continuation_token is False:
-        #                response = client.list_objects_v2(
-        #                    Bucket=bucket,
-        #                    MaxKeys=100
-        #                )
-        #            else:
-        #                response = client.list_objects_v2(
-        #                    Bucket=bucket,
-        #                    MaxKeys=100,
-        #                    ContinuationToken=continuation_token
-        #                )
-
-        #            if 'NextContinuationToken' in response:
-        #                continuation_token = response['NextContinuationToken']
-
-        #            for s3_obj in response['Contents']:
-        #                if s3_obj['Key'][-1] == '/':
-        #                    s3_obj_key_path = os.path.join(bucket_download_path, s3_obj['Key'])
-        #                    if not os.path.exists(s3_obj_key_path):
-        #                        os.makedirs(s3_obj_key_path)
-        #                else:
-        #                    #if s3_obj['Size'] > FILE_SIZE_THRESHOLD:
-        #                    #    response = input('   Download {} bytes file? (y/n) '.format(s3_obj['Size']))
-        #                    #    if response != 'y':
-        #                    #        continue
-        #                    s3_objects.append(s3_obj['Key'])
-
-        #        print('      Successfully collected all available file names.')
-
-        #    except Exception as error:
-        #        print(error)
-        #        print('      Failed to collect all available files, skipping to the next bucket...')
-        #        continue
-
-        #    file_names_list_path = 'sessions/{}/downloads/s3_bucket_dump/s3_bucket_dump_file_names.txt'.format(session.name)
-        #    with open(file_names_list_path, 'w+') as file_names_list:
-        #        for file in s3_objects:
-        #            file_names_list.write('{}@{}\n'.format(file, bucket))
-        #    print('    Saved found file names to ./{}'.format(file_names_list_path))
-
-        #else:
-        #    print('    File names were supplied, skipping file name enumeration.')
-
-        #if args.names_only is False:
-        #    print('    Starting to download files...')
-
-        #    if args.dl_names is not False:
-        #        for file in names_and_buckets:
-        #            if '@{}'.format(bucket) in file:
-        #                s3_objects.append(file.split('@{}'.format(bucket))[0])
-
-        #    failed_dl = 0
-        #    cont = 'y'
-
-        #    for key in s3_objects:
-        #        if failed_dl > 4 and cont == 'y':
-        #            cont = input('    There have been 5 failed downloads in a row, do you want to continue and ignore this message for the current bucket (y) or move onto the next bucket (n)? ')
-
-        #        if cont == 'y':
-        #            try:
-        #                print('      Downloading file {}...'.format(key))
-
-        #                nested_key_directory_path, file_name = os.path.split(key)
-        #                key_directory_path = os.path.join(bucket_download_path, nested_key_directory_path)
-
-        #                if not os.path.exists(key_directory_path):
-        #                    os.makedirs(key_directory_path)
-
-        #                key_file_path = os.path.join(key_directory_path, file_name)
-        #                s3.meta.client.download_file(bucket, key, key_file_path)
-        #                summary_data['downloaded_files'] += 1
-
-        #                print('        Successful.')
-        #                failed_dl = 0
-
-        #            except Exception as error:
-        #                print(error)
-        #                print('        Failed to download, moving onto next file.')
-        #                failed_dl += 1
-
+    for bucket in objects:
+        print('  Bucket: "{}" Size: {} Bytes'.format(bucket, get_bucket_size(pacu_main, bucket)))
+        if input('    Download files (y/n)? ') != 'y':
+            continue
+        for key in objects[bucket]:
+            if not args.dl_all:
+                if input('  Download "{}" in "{}" (y/n)? '.format(key, bucket)) != 'y':
+                    continue            
+            fails = 0
+            ignore = False
+            if not download_s3_file(pacu_main, key, bucket):
+                fails += 1
+            if not ignore and fails == 5:
+                print('  5 files failed to download.')
+                prompt = input('  Continue downloading attempts? (y/n) ')
+                if prompt != 'y':
+                    break
+                ignore = True
     print('All buckets have been analyzed.')
     print('{} completed.\n'.format(module_info['name']))
     return summary_data

@@ -460,7 +460,7 @@ class Main:
                     return None, None, False
 
     def update_sshd_config(self):
-        self.print('Ensuring that local port forwarding is disabled (to prevent a "hack back" scenario)...')
+        self.print('Ensuring that local port forwarding is disabled (to prevent a "hack back" scenario). This is done by editing /etc/ssh/sshd_config to either add the line or modify the value if the setting already exists: "AllowTcpForwarding remote". This prevents the target server from forwarding our local ports back to them.')
         action = ''
         with open('/etc/ssh/sshd_config', 'r') as config_file:
             contents = config_file.read()

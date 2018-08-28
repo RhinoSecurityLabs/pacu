@@ -14,7 +14,7 @@ module_info = {
 
     'one_liner': 'Bruteforces existing roles in other AWS accounts to try and gain access via misconfigurations.',
 
-    'description': 'This module takes in an AWS account ID and tries to bruteforce role names within that account. If one is discovered and it is misconfigured to allow role-assumption from a wide group, it is possible to assume that role and gain access to that AWS account through this method. NOTE: This module is listed under the recon_enum_no_keys category because it is not recommended to use compromised keys to run this module. This module DOES require a set of AWS keys, but it will spam CloudTrail with "AssumeRole" logs, so it is suggested to use a personal account to run this. The keys used must have the sts:AssumeRole permission on any resource.',
+    'description': 'This module takes in an AWS account ID and tries to bruteforce role names within that account. If one is discovered and it is misconfigured to allow role-assumption from a wide group, it is possible to assume that role and gain access to that AWS account through this method. NOTE: This module is listed under the recon_enum_no_keys category because it is not recommended to use compromised keys to run this module. This module DOES require a set of AWS keys, but it will spam CloudTrail with "AssumeRole" logs, so it is suggested to use a personal account to run this. The keys you use should have the sts:AssumeRole permission on any resource ("*") to identify/assume misconfigured roles, but you will still be able to enumerate roles that exist without it.',
 
     'services': ['STS'],
 

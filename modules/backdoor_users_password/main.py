@@ -2,7 +2,6 @@
 import argparse
 from random import choice
 import string
-
 from botocore.exceptions import ClientError
 
 

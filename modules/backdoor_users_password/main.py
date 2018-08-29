@@ -91,7 +91,7 @@ def main(args, pacu_main):
                 continue
         else:
             print('  User: {}'.format(user))
-        
+
         password = create_valid_password(password_policy)
         print('  Password: {}'.format(password))
         try:
@@ -102,7 +102,6 @@ def main(args, pacu_main):
             print('    Password successfully changed')
             summary_data['backdoored_password_count'] += 1
         except ClientError as error:
-            print('    FAILURE:')
             code = error.response['Error']['Code']
             if code == 'AccessDenied':
                 print('    FAILURE: MISSING NEEDED PERMISSIONS')
@@ -122,7 +121,7 @@ def summary(data, pacu_main):
     out = ''
     if 'backdoored_password_count' in data:
         count = data['backdoored_password_count']
-        out += '  {} user(s) successfully backdoored.\n'.format(count)
+        out += '  {} user(s) backdoored.\n'.format(count)
     return out
 
 

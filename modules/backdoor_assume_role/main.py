@@ -3,6 +3,8 @@ import argparse
 import json
 from random import choice
 
+from botocore.exceptions import ClientError
+
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -106,7 +108,7 @@ def main(args, pacu_main):
                 )
                 print('    Backdoor successful!')
                 backdoored_role_count += 1
-            except Exception as error:
+            except ClientError as error:
                 print('      FAILURE:')
                 code = error.response['Error']['Code']
                 if code == 'UnmodifiableEntity':

@@ -118,7 +118,7 @@ def main(args, pacu_main):
     regions = get_regions('logs')
     log_groups = {}
     for region in regions:
-        print('Enumerationg {}...'.format(region))
+        print('Enumerating {}...'.format(region))
         client = pacu_main.get_boto3_client('logs', region)
         groups = collect_all(client, 'describe_log_groups', 'logGroups')
         if not groups:
@@ -148,37 +148,26 @@ def main(args, pacu_main):
                 end_time = millisecond(to_time) if args.to_time else None
                 kwargs = {
                     'logGroupName': group,
-                    'logStreamName': stream,
+                    'logStreamNames': [stream],
                     'startTime': start_time,
                 }
                 if end_time:
                     kwargs['endTime'] = end_time
-                response = client.get_log_events(**kwargs)
-                if not response['events']:
-                    print('    No events found for stream: {}'.format(stream))
-                    continue
-                event_count += len(response['events'])
-                write_stream_file(
-                    session.name, scan_time, group, stream, response['events'])
-                while 'nextBackwardToken' in response:
-                    old_token = response['nextBackwardToken']
-                    response = client.get_log_events(
-                        **{'nextToken': response['nextBackwardToken']},
-                        **kwargs
-                    )
+
+                paginator = client.get_paginator('filter_log_events')
+                page_iterator = paginator.paginate(**kwargs)
+                for response in page_iterator:
                     event_count += len(response['events'])
                     write_stream_file(
                         session.name, scan_time, group, stream,
                         response['events'])
-                    if old_token == response['nextBackwardToken']:
-                        break
                 print('    Captured Events for {}'.format(stream))
         summary_data[region] = {
             'groups': len(log_groups),
             'streams': sum([len(log_groups[key]) for key in log_groups]),
             'events': event_count,
         }
-    dl_root = 'pacu/sessions/' + session.name + '/downloads/cloud_watch_logs/'
+    dl_root = 'sessions/' + session.name + '/downloads/cloud_watch_logs/'
     summary_data['log_download_path'] = '{}{}'.format(dl_root, scan_time)
     print('\n{} completed.\n'.format(module_info['name']))
     return summary_data

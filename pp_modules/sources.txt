@@ -1,0 +1,11 @@
+# Credits/Sources/Usage
+
+./powershell/reverse-socks.ps1
+    # PowerShell in-memory reverse socks proxy through SSH
+    https://github.com/fridgehead/Powershell-SSHTools
+
+    import-module SSH-Tools.ps1 Start-ReversePortForward -sshhost ssh.myhost.com -username USER1 -password PASS -RemotePort 23000 -Desthost someinternalserver.local -destport 80
+
+    start-socksproxy -sshhost ssh.myhost.com -username USER -password PASS -RemotePort 23000 -LocalPort 10000
+
+    Stop-PortForwardJobs

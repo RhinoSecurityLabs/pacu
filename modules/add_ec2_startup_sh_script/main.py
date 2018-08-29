@@ -121,10 +121,11 @@ def stop_instance(client, instance_id, print):
         client.stop_instances(InstanceIds=[instance_id])
         return True
     except ClientError as error:
-        if error.response['Error']['Code'] == 'UnauthorizedOperation':
+        code = error.response['Error']['Code']
+        if code == 'UnauthorizedOperation':
             print('  FAILURE: MISSING REQUIRED AWS PERMISSIONS')
         else:
-            print('  Unknown Error')
+            print('  FAILURE: {}'.format(code))
     return False
 
 
@@ -134,12 +135,12 @@ def start_instance(client, instance_id, print):
         client.start_instances(InstanceIds=[instance_id])
         result = True
     except ClientError as error:
-        if error.response['Error']['Code'] == 'UnauthorizedOperation':
+        code = error.response['Error']['Code']
+        if code == 'UnauthorizedOperation':
             print('  FAILURE: MISSING REQUIRED AWS PERMISSIONS')
         else:
-            print('  Unknown Error')
+            print('  FAILURE: {}'.format(code))
     return False
-
 
 def prepare_user_data(client, instance_id, script):  # Replace this with a fetch_data of download_ec2_userdata
     response = client.describe_instance_attribute(
@@ -161,7 +162,7 @@ def prepare_user_data(client, instance_id, script):  # Replace this with a fetch
 
 
 def update_userdata(client, instance_id, user_data, print):
-    print('Setting userData {}'.format(instance_id))
+    print('Setting User Data for {}'.format(instance_id))
 
     result = False
     code = 'IncorrectInstanceState'

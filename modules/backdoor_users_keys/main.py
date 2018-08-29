@@ -73,7 +73,7 @@ def main(args, pacu_main):
         if add_key == 'y' or args.usernames is not None:
             try:
                 response = client.create_access_key(UserName=username)
-                print('    Key ID: {}'.format(response['AccessKey']['AccessKeyId']))
+                print('    Access Key ID: {}'.format(response['AccessKey']['AccessKeyId']))
                 print('    Secret Key: {}'.format(response['AccessKey']['SecretAccessKey']))
 
                 summary_data['Backdoored_Users_Count'] += 1

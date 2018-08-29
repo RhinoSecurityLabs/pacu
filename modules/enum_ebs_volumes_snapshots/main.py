@@ -31,7 +31,7 @@ module_info = {
     'prerequisite_modules': [],
 
     # Module arguments to autocomplete when the user hits tab
-    'arguments_to_autocomplete': ['--regions', '--vols', '--snaps', '--account-ids', '--snapshot-permissions', '--download'],
+    'arguments_to_autocomplete': ['--regions', '--vols', '--snaps', '--account-ids', '--snapshot-permissions'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
@@ -69,13 +69,7 @@ parser.add_argument(
     default=None,
     help='One or more (comma separated) AWS account IDs. If snapshot enumeration is enabled, then this module will fetch all snapshots owned by each account in this list of AWS account IDs. Defaults to the current user accounts AWS account ID.'
 )
-parser.add_argument(
-    '--download',
-    required=False,
-    default=None,
-    action='store_true',
-    help='Downloads enumerated snapshots or volumes'
-)
+
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -188,7 +182,7 @@ def main(args, pacu_main):
         'Private': []
     }
     for region in regions:
-        print('  {}...'.format(region))
+        print('Starting region {} (this may take a while if there are thousands of EBS volumes/snapshots)...'.format(region))
         client = pacu_main.get_boto3_client('ec2', region)
 
         if args.vols is True:
@@ -284,26 +278,24 @@ def main(args, pacu_main):
     if args.vols:
         ec2_data['Volumes'] = all_vols
         summary_data['volumes'] = len(ec2_data['Volumes'])
-        if args.download:
-            unencrypted_volumes_csv_path = 'sessions/{}/downloads/unencrypted_ebs_volumes_{}.csv'.format(session.name, now)
-            with open(unencrypted_volumes_csv_path, 'w+') as unencrypted_volumes_csv:
-                unencrypted_volumes_csv.write('Volume Name,Volume ID,Region\n')
-                print('  Writing data for {} volumes...'.format(len(volumes_csv_data)))
-                for line in volumes_csv_data:
-                    unencrypted_volumes_csv.write(line)
-            summary_data['volumes_csv_path'] = unencrypted_volumes_csv_path
+        unencrypted_volumes_csv_path = 'sessions/{}/downloads/unencrypted_ebs_volumes_{}.csv'.format(session.name, now)
+        with open(unencrypted_volumes_csv_path, 'w+') as unencrypted_volumes_csv:
+            unencrypted_volumes_csv.write('Volume Name,Volume ID,Region\n')
+            print('  Writing data for {} volumes...'.format(len(volumes_csv_data)))
+            for line in volumes_csv_data:
+                unencrypted_volumes_csv.write(line)
+        summary_data['volumes_csv_path'] = unencrypted_volumes_csv_path
 
     if args.snaps:
         ec2_data['Snapshots'] = all_snaps
         summary_data['snapshots'] = len(ec2_data['Snapshots'])
-        if args.download:
-            unencrypted_snapshots_csv_path = 'sessions/{}/downloads/unencrypted_ebs_snapshots_{}.csv'.format(session.name, now)
-            with open(unencrypted_snapshots_csv_path, 'w+') as unencrypted_snapshots_csv:
-                unencrypted_snapshots_csv.write('Snapshot Name,Snapshot ID,Region\n')
-                print('  Writing data for {} snapshots...'.format(len(snapshots_csv_data)))
-                for line in snapshots_csv_data:
-                    unencrypted_snapshots_csv.write(line)
-            summary_data['snapshots_csv_path'] = unencrypted_snapshots_csv_path
+        unencrypted_snapshots_csv_path = 'sessions/{}/downloads/unencrypted_ebs_snapshots_{}.csv'.format(session.name, now)
+        with open(unencrypted_snapshots_csv_path, 'w+') as unencrypted_snapshots_csv:
+            unencrypted_snapshots_csv.write('Snapshot Name,Snapshot ID,Region\n')
+            print('  Writing data for {} snapshots...'.format(len(snapshots_csv_data)))
+            for line in snapshots_csv_data:
+                unencrypted_snapshots_csv.write(line)
+        summary_data['snapshots_csv_path'] = unencrypted_snapshots_csv_path
 
     if args.snapshot_permissions:
         permission_data = {

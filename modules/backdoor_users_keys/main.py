@@ -64,7 +64,7 @@ def main(args, pacu_main):
 
     add_key = ''
     summary_data['Backdoored_Users_Count'] = 0
-    print('Add keypair users...')
+    print('Backdoor the following users?')
     for username in usernames:
         if args.usernames is None:
             add_key = input('  {} (y/n)? '.format(username))

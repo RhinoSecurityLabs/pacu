@@ -74,7 +74,6 @@ def main(args, pacu_main):
         if not str(error).find('UnauthorizedOperation') == -1:
             print('Dry run failed, the current AWS account does not have the necessary permissions to run this module.\nExiting...')
             return
-    summary_data = {}
     instances = []
     if args.instance_ids is not None:  # need to update this to include the regions of these IDs
         for instance in args.instance_ids.split(','):
@@ -103,15 +102,16 @@ def main(args, pacu_main):
                     start_instance(client, instance['InstanceId'], print)
                     instance_count += 1
                 else:
-                    print('Skipping failed {}@{}'.format(instance['InstanceId'], instance['Region']))
-    summary_data['Instances'] = instance_count
+                    print('  {}@{} FAILED'.format(instance['InstanceId'], instance['Region']))
     print('\n{} completed.\n'.format(module_info['name']))
-    return summary_data
+    return {'Instances': instance_count}
 
 
 def summary(data, pacu_main):
-    if 'Instances' in data:
+    if data['Instances']:
         out = '  {} Instance(s) Modified'.format(data['Instances'])
+    else:
+        out = '  No Instances Modified'
     return out
 
 

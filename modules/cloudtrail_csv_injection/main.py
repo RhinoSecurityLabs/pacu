@@ -65,7 +65,7 @@ def main(args, pacu_main):
                 S3BucketName=args.payload
             )
             print('    FAILURE:')
-            print('      Payload fit the parameters for a valid trail name')
+            print('      Trail created. Payload fit the parameters for a valid trail name')
             print('      Exiting...')
             return
         except ClientError as error:
@@ -106,8 +106,6 @@ def main(args, pacu_main):
 
 
 def summary(data, pacu_main):
-    total_trails = data['trail_attacks'] + data['trail_fails']
-    out = '  {} total trail(s) found.\n'.format(total_trails)
     out += '  {} trail(s) attacked.\n'.format(data['trail_attacks'])
     out += '  {} trail(s) attack fails.\n'.format(data['trail_fails'])
     out += '  {} instances() attacked.\n'.format(data['instance_attacks'])

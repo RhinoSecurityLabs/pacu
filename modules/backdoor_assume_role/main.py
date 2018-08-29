@@ -88,7 +88,7 @@ def main(args, pacu_main):
 
     iam = pacu_main.get_boto3_resource('iam')
     backdoored_role_count = 0
-    print('Backdoor the following roles...')
+    print('Backdoor the following roles?')
     for rolename in rolenames:
         target_role = 'n'
         if args.role_names is None:
@@ -108,12 +108,13 @@ def main(args, pacu_main):
                 backdoored_role_count += 1
             except Exception as error:
                 print('      FAILURE:')
-                if error.response['Error']['Code'] == 'UnmodifiableEntity':
+                code = error.response['Error']['Code']
+                if code == 'UnmodifiableEntity':
                     print('        SERVICE PROTECTED BY AWS')
-                elif error.response['Error']['Code'] == 'AccessDenied':
+                elif code == 'AccessDenied':
                     print('        MISSING NEEDED PERMISSIONS')
                 else:
-                    print('        {}'.format(error))
+                    print('        {}'.format(code))
     summary_data['RoleCount'] = backdoored_role_count
     print('\n{} completed.\n'.format(module_info['name']))
     return summary_data

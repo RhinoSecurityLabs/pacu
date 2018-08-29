@@ -427,7 +427,6 @@ def main(args, pacu_main):
     # Add regions to gathered_data for summary output
     gathered_data['regions'] = regions
 
-
     print('All data has been saved to the current session.\n')
 
     print('{} completed.\n'.format(module_info['name']))

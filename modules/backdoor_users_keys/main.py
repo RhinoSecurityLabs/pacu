@@ -78,16 +78,12 @@ def main(args, pacu_main):
 
                 summary_data['Backdoored_Users_Count'] += 1
 
-            except ClientError as error:
+            except ClientError as error:                
                 code = error.response['Error']['Code']
                 if code == 'AccessDenied':
-                    print('    FAILURE: ')
-                    print('      MISSING NEEDED PERMISSIONS')
+                    print('    FAILURE: MISSING REQUIRED AWS PERMISSIONS')
                 else:
-                    print('    FAILURE: ')
-                    print('      UNKNOWN:')
-                    print('        {}'.format(error.response['Error']['Code']))
-                    return
+                    print('    FAILURE: {}'.format(code))
 
     print('\n{} completed.\n'.format(module_info['name']))
     return summary_data

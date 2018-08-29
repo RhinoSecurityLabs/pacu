@@ -101,7 +101,7 @@ def main(args, pacu_main):
             elif error_code == 'InvalidPermission.Duplicate':
                 print('      RULE ALREADY EXISTS')
             else:
-                print('      UNKOWN:')
+                print('      UNKNOWN:')
                 print('        {}'.format(error.response['Error']['Code']))
     print('\n{} completed.\n'.format(module_info['name']))
     return summary_data

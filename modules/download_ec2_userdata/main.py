@@ -81,7 +81,7 @@ def main(args, pacu_main):
         os.makedirs('sessions/{}/downloads/'.format(session.name))
     summary_data['dl_path'] = 'sessions/{}/downloads/user_data.txt'.format(session.name)
 
-    print('Found {} instance(s)...'.format(len(instances)))
+    print('Targeting {} instance(s)...'.format(len(instances)))
     for instance in instances:
         instance_id = instance['InstanceId']
         region = instance['Region']

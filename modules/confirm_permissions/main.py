@@ -139,7 +139,7 @@ def main(args, pacu_main):
 
     client = pacu_main.get_boto3_client('iam')
 
-    print('Permision Document Location:')
+    print('Permission Document Location:')
     print('  sessions/{}/downloads/confirmed_permissions/'.format(session.name))
     print('Confirming Permissions for Users...')
     for user in users:
@@ -323,7 +323,7 @@ def main(args, pacu_main):
                 with open('sessions/{}/downloads/confirmed_permissions/{}.json'.format(session.name, user['UserName']), 'w+') as user_permissions_file:
                     json.dump(user, user_permissions_file, indent=2, default=str)
 
-                print('    {} data stored in {}.json'.format(user['UserName'], user['UserName']))
+                print('    {}\'s permissions stored in {}.json'.format(user['UserName'], user['UserName']))
         except ClientError as error:
             if error.response['Error']['Code'] == 'AccessDenied':
                 print('  FAILURE: MISSING REQUIRED AWS PERMISSIONS')

@@ -15,7 +15,7 @@ from . import param_generator
 module_info = {
     'name': 'enum_permissions_bruteforce',
     'author': 'Alexander Morgenstern at RhinoSecurityLabs',
-    'category': 'recon_enum_no_keys',
+    'category': 'recon_enum_with_keys',
     'one_liner': 'Enumerates permissions using brute force',
     'description':
         """

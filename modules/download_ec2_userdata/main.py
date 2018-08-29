@@ -72,8 +72,8 @@ def main(args, pacu_main):
             return
         instances = session.EC2['Instances']
 
-    if not os.path.exists('sessions/{}/downloads/'.format(session.name)):
-        os.makedirs('sessions/{}/downloads/'.format(session.name))
+    if not os.path.exists('sessions/{}/downloads/ec2_user_data/'.format(session.name)):
+        os.makedirs('sessions/{}/downloads/ec2_user_data/'.format(session.name))
 
     for instance in instances:
         client = pacu_main.get_boto3_client('ec2', instance['Region'])
@@ -84,25 +84,30 @@ def main(args, pacu_main):
         )['UserData']
 
         if 'Value' in user_data.keys():
-            formatted_user_data = '{}@{}:\n{}\n'.format(
+            formatted_user_data = '{}@{}:\n{}\n\n'.format(
                 instance['InstanceId'],
                 instance['Region'],
-                base64.b64decode(user_data['Value'])
+                base64.b64decode(user_data['Value']).decode('utf-8')
             )
 
             print(formatted_user_data)
 
-            with open('sessions/{}/downloads/user_data.txt'.format(session.name), 'a+') as data_file:
+            # Write to the "all" file
+            with open('sessions/{}/downloads/ec2_user_data/all_user_data.txt'.format(session.name), 'a+') as data_file:
                 data_file.write(formatted_user_data)
+            # Write to the individual file
+            with open('sessions/{}/downloads/ec2_user_data/{}.txt'.format(session.name, instance['InstanceId']), 'w+') as data_file:
+                data_file.write(formatted_user_data.replace('\\t', '\t').replace('\\n', '\n').rstrip())
             summary_data['userdata_downloads'] += 1
 
         else:
-            print('{}@{}: No user data'.format(instance['InstanceId'], instance['Region']))
+            print('{}@{}: No User Data'.format(instance['InstanceId'], instance['Region']))
 
     print('{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
 def summary(data, pacu_main):
-    out = '  Downloaded EC2 userdata from {} instance(s).\n'.format(data['userdata_downloads'])
+    session = pacu_main.get_active_session()
+    out = '  Downloaded EC2 User Data for {} instance(s) to ./sessions/{}/downloads/ec2_user_data/.\n'.format(data['userdata_downloads'], session.name)
     return out

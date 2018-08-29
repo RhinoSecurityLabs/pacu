@@ -74,7 +74,7 @@ class PacuProxy(object):
                 client_hostname = conn.recv(1024).decode('utf-8')
                 address = address + (client_hostname,)
             except Exception as error:
-                if 'not a socket' in str(error) or 'Invalid argument' in str(error):
+                if 'not a socket' in str(error) or 'Invalid argument' in str(error) or 'Bad file descriptor' in str(error):
                     break
                 print('** Error accepting connections: {} **'.format(str(error)))
                 continue

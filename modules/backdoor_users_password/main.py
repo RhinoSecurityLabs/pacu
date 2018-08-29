@@ -75,13 +75,13 @@ def main(args, pacu_main):
     target_user = ''
     password = create_valid_password(password_policy)
     summary_data['backdoored_password_count'] = 0
-    print('Modifying an IAM user\'s current password')
-    print('Password: {}'.format(password))
 
     if args.update:
         func = 'update_login_profile'
+        print('Modifying an IAM user\'s current password')
     else:
         func = 'create_login_profile'
+        print('Creating an IAM user password')
     caller = getattr(client, func)
 
     for user in users:
@@ -91,6 +91,9 @@ def main(args, pacu_main):
                 continue
         else:
             print('  User: {}'.format(user))
+        
+        password = create_valid_password(password_policy)
+        print('  Password: {}'.format(password))
         try:
             caller(
                 UserName=user,
@@ -102,15 +105,13 @@ def main(args, pacu_main):
             print('    FAILURE:')
             code = error.response['Error']['Code']
             if code == 'AccessDenied':
-                print('      MISSING NEEDED PERMISSIONS')
+                print('    FAILURE: MISSING NEEDED PERMISSIONS')
             elif code == 'EntityAlreadyExists':
-                print('      LOGIN PROFILE ALREADY EXISTS')
+                print('    FAILURE: LOGIN PROFILE ALREADY EXISTS')
             else:
-                print('  UNKNOWN:')
-                print('    {}'.format(code))
-                print(error)
+                print('    FAILURE: {}'.format(code))
             quit = input('    Continue? (y/n) ')
-            if quit.lower() == 'n':
+            if quit.lower() != 'y':
                 print('    Exiting...')
                 return summary_data
     print('{} completed.\n'.format(module_info['name']))

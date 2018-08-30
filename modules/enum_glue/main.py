@@ -56,11 +56,13 @@ def fetch_glue_data(client, func, key, print, **kwargs):
             print({**kwargs, **{'NextToken': response['NextToken']}})
             response = caller({**kwargs, **{'NextToken': response['NextToken']}})
             data.extend(response[key])
+        for resource in data:
+            resource['region'] = client.meta.region_name
         return data
     except ClientError as error:
         code = error.response['Error']['Code']
         if code == 'AccessDeniedException':
-            print('  FAILURE: MISSING NEEDED PERMISSIONS')
+            print('  {} FAILURE: MISSING NEEDED PERMISSIONS'.format(func))
         else:
             print(code)
     return []

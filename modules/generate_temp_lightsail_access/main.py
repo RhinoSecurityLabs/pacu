@@ -130,10 +130,10 @@ def main(args, pacu_main):
             except ClientError as error:
                 code = error.response['Error']['Code']
                 if code == 'AccessDeniedException':
-                    print('     Unauthorized to generate temporary access.')
+                    print('      Unauthorized to generate temporary access.')
                     return
                 elif code == 'OperationFailureException':
-                    print(error.response['Error']['Code'])
+                    print('      FAILED: Instance Stopped')
                     continue
                 else:
                     print(error)

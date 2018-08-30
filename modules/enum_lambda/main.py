@@ -114,6 +114,7 @@ def main(args, pacu_main):
         for func in lambda_functions:
             print('  Enumerating data for {}'.format(func['FunctionName']))
             func_arn = func['FunctionArn']
+            func['Region'] = region
             func['Code'] = fetch_lambda_data(client, 'get_function', 'Code', print, FunctionName=func_arn)
             func['Aliases'] = fetch_lambda_data(client, 'list_aliases', 'Aliases', print, FunctionName=func_arn)
             func['EventSourceMappings'] = fetch_lambda_data(client, 'list_event_source_mappings', 'EventSourceMappings', print, FunctionName=func_arn)

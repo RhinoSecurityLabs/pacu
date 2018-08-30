@@ -266,7 +266,7 @@ def main(args, pacu_main):
         cw_data = deepcopy(session.CloudWatch)
         cw_data['Alarms'] = all_alarms
         session.update(pacu_main.database, CloudWatch=cw_data)
-        print('  {} total CloudWatch alarms found.'.format(len(session.CloudWatch['Alarms'])))
+        print('  {} total CloudWatch alarms'.format(len(session.CloudWatch['Alarms'])))
         summary_data['alarms'] = len(all_alarms)
 
     if enum_all is True or args.vpc is True:

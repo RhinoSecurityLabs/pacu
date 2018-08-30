@@ -43,8 +43,10 @@ def main(args, pacu_main):
     args = parser.parse_args(args)
     print = pacu_main.print
     get_regions = pacu_main.get_regions
-
-    regions = get_regions('elasticloadbalancing')
+    if not args.regions:
+        regions = get_regions('elasticloadbalancing')
+    else:
+        regions = args.regions.split(',')
     summary_data = {'load_balancers': 0}
     if 'LoadBalancers' not in session.EC2.keys():
         ec2_data = deepcopy(session.EC2)
@@ -113,5 +115,5 @@ def main(args, pacu_main):
 def summary(data, pacu_main):
     out = '  {} Load balancer(s) have been found\n'.format(data['load_balancers'])
     if data['load_balancers'] > 0:
-        out += '    Load balancer information has been saved to: {}\n'.format(data['csv_file_path'])
+        out += '  List of Load balancers without logging saved to:\n    {}\n'.format(data['csv_file_path'])
     return out

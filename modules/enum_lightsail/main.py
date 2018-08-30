@@ -73,6 +73,9 @@ def fetch_lightsail_data(client, func, print):
             response = caller(pageToken=response['nextPageToken'])
             data.extend(response[camelCase(func)])
         print('    Found {} {}'.format(len(data), func))
+        if func != 'active_names':
+            for resource in data:
+                resource['region'] = client.meta.region_name
         return data
     except ClientError as error:
         if error.response['Error']['Code'] == 'AccessDeniedException':
@@ -94,21 +97,18 @@ def main(args, pacu_main):
         # Converts kebab-case to snake_case to match expected Boto3 function names.
         fields = [field.replace('-', '_') for field in MASTER_FIELDS]
 
-    lightsail_data = {}
+    lightsail_data = setup_storage(fields)
     regions = get_regions('lightsail')
 
     for region in regions:
-        lightsail_data[region] = setup_storage(fields)
         print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('lightsail', region)
         for field in fields:
-            lightsail_data[region][field] = fetch_lightsail_data(client, field, print)
+            lightsail_data[field].extend(fetch_lightsail_data(client, field, print))
 
     summary_data = {'regions': regions}
-    for field in fields:
-        summary_data[field] = 0
-        for region in lightsail_data:
-            summary_data[field] += len(lightsail_data[region][field])
+    for field in lightsail_data:
+        summary_data[field] = len(lightsail_data[field])
 
     session.update(pacu_main.database, Lightsail=lightsail_data)
     print('{} completed.\n'.format(module_info['name']))

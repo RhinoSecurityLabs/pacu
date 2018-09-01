@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 from botocore.exceptions import ClientError
-import os
 import copy
 import string
 import random
@@ -30,7 +29,6 @@ def main(args, pacu_main):
     args = parser.parse_args(args)
     print = pacu_main.print
     input = pacu_main.input
-    key_info = pacu_main.key_info
     fetch_data = pacu_main.fetch_data
     get_regions = pacu_main.get_regions
 
@@ -50,7 +48,7 @@ def main(args, pacu_main):
         if fetch_data(['GuardDuty', 'Detectors'], 'enum_monitoring', '--guard-duty') is False:
             print('Pre-req module failed.')
             return
-        detectors = copy.deepcopy(session.GuardDuty['Detectors'])        
+        detectors = copy.deepcopy(session.GuardDuty['Detectors'])
 
     for region in regions:
         client = pacu_main.get_boto3_client('guardduty', region)
@@ -90,7 +88,7 @@ def main(args, pacu_main):
                                 )
 
                                 print('      Replaced IPSet {}...\n'.format(existing_ip_set_id))
-                                data['ip_sets'].append(existing_ip_set_id)   
+                                data['ip_sets'].append(existing_ip_set_id)
                             except ClientError as error:
                                 print('      Error: {}'.format(str(error)))
                     else:

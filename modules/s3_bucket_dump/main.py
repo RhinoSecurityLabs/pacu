@@ -41,22 +41,25 @@ parser.add_argument('--dl-names', required=False, default=False, help='A path to
 
 FILE_SIZE_THRESHOLD = 1073741824
 
+
 def get_bucket_size(pacu, bucket_name):
     client = pacu.get_boto3_client('cloudwatch', 'us-east-1')
-    response = client.get_metric_statistics(Namespace='AWS/S3',
-                                            MetricName='BucketSizeBytes',
-                                            Dimensions=[
-                                                {'Name': 'BucketName', 'Value':bucket_name},
-                                                {'Name': 'StorageType', 'Value': 'StandardStorage'}
-                                            ],
-                                            Statistics=['Average'],
-                                            Period=3600,
-                                            StartTime=datetime.datetime.today() - datetime.timedelta(days=1),
-                                            EndTime=datetime.datetime.now().isoformat()
-                                           )
+    response = client.get_metric_statistics(
+        Namespace='AWS/S3',
+        MetricName='BucketSizeBytes',
+        Dimensions=[
+            {'Name': 'BucketName', 'Value': bucket_name},
+            {'Name': 'StorageType', 'Value': 'StandardStorage'}
+        ],
+        Statistics=['Average'],
+        Period=3600,
+        StartTime=datetime.datetime.today() - datetime.timedelta(days=1),
+        EndTime=datetime.datetime.now().isoformat()
+    )
     if response['Datapoints']:
         return response['Datapoints'][0]['Average']
     return 0
+
 
 def download_s3_file(pacu, key, bucket):
     session = pacu.get_active_session()
@@ -98,6 +101,7 @@ def extract_from_file(pacu, file):
         pacu.print('  Download File not found...')
     return files
 
+
 def write_bucket_keys_to_file(pacu, objects):
     pacu.print('  Writing file names to disk...')
     session = pacu.get_active_session()
@@ -111,6 +115,7 @@ def write_bucket_keys_to_file(pacu, objects):
     except Exception as error:
         print(error)
     return True
+
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -131,7 +136,7 @@ def main(args, pacu_main):
             if download_s3_file(pacu_main, key, extracted_files[key]):
                 success += 1
         pacu_main.print('  Finished downloading from file...')
-        return {'downloaded_files':success, 'failed':total - success}
+        return {'downloaded_files': success, 'failed': total - success}
 
     # Enumerate Buckets
     client = pacu_main.get_boto3_client('s3')
@@ -151,7 +156,7 @@ def main(args, pacu_main):
     s3_data = deepcopy(session.S3)
     s3_data['Buckets'] = deepcopy(response['Buckets'])
     session.update(pacu_main.database, S3=s3_data)
-    summary_data = {'buckets':len(response['Buckets'])}
+    summary_data = {'buckets': len(response['Buckets'])}
     for bucket in response['Buckets']:
         buckets.append(bucket['Name'])
         print('  Found bucket "{bucket_name}"'.format(bucket_name=bucket['Name']))

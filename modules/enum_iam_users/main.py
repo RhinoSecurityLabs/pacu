@@ -34,12 +34,12 @@ def main(args, pacu_main):
     args = parser.parse_args(args)
     print = pacu_main.print
 
-    if not len(args.starting_point) == 12 or not args.starting_point.isdigit():
-        print('Error: An AWS account ID is a number of length 12. You supplied: {}\n'.format(args.starting_point))
+    if not len(args.account_id) == 12 or not args.account_id.isdigit():
+        print('Error: An AWS account ID is a number of length 12. You supplied: {}\n'.format(args.account_id))
         return None
 
     if args.word_list is None:
-        word_list_path = './default-word-list.txt'
+        word_list_path = './modules/{}/default-word-list.txt'.format(module_info['name'])
     else:
         word_list_path = args.word_list.strip()
 
@@ -85,10 +85,11 @@ def main(args, pacu_main):
         print('\nFound {} user(s):\n'.format(len(data['valid_users'])))
         for user in data['valid_users']:
             print('    {}'.format(user))
+        print('')
 
     print('{} completed.\n'.format(module_info['name']))
-    return True
+    return data
 
 
 def summary(data, pacu_main):
-    return '{} user(s) found after {} guess(es).'.format(len(data['valid_users']), data['attempts'])
+    return '  {} user(s) found after {} guess(es).'.format(len(data['valid_users']), data['attempts'])

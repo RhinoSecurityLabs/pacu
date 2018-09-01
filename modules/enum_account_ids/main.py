@@ -77,6 +77,7 @@ def main(args, pacu_main):
         print('\nFound {} valid AWS account(s):\n'.format(len(data['valid_accounts'])))
         for aid in data['valid_accounts']:
             print('    {}'.format(aid))
+        print('')
 
     print('{} completed.\n'.format(module_info['name']))
     return data
@@ -107,4 +108,4 @@ def guess(client, role_name, current_guess):
 
 
 def summary(data, pacu_main):
-    return '{} account ID(s) found after {} guess(es).'.format(len(data['valid_accounts']), data['attempts'])
+    return '  {} account ID(s) found after {} guess(es).'.format(len(data['valid_accounts']), data['attempts'])

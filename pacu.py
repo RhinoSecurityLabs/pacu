@@ -973,7 +973,7 @@ class Main:
         print('Automatically targeting region(s):')
         for region in self.get_regions('all'):
             print('  {}'.format(region))
-        response = input('Do you wish to continue? (y/n)')
+        response = input('Continue? (y/n) ')
         if response.lower() == 'y':
             return True
         else:

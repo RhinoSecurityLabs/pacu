@@ -20,8 +20,8 @@ module_info = {
     'description':
         """
         This module will automatically run through all possible
-        API calls in order to enumerate permissions without the use of
-        IAM permissions
+        API calls of supported services in order to enumerate permissions without the use of the
+        IAM API.
         """,
     'services': ['all'],
     'prerequisite_modules': [],

@@ -18,7 +18,7 @@ module_info = {
 
     # One liner description of the module functionality.
     # This shows up when a user searches for modules.
-    'one_liner': 'Tries to get a confirmed list of permissions for the current user.',
+    'one_liner': 'Tries to get a confirmed list of permissions for the current (or all) user(s).',
 
     # Description about what the module does and how it works
     'description': 'This module will attempt to use IAM APIs to enumerate a confirmed list of IAM permissions for the current user. This is done by checking attached and inline policies for the user and the groups they are in.',

@@ -15,7 +15,7 @@ module_info = {
     'services': ['GuardDuty'],
     'prerequisite_modules': [],
     'external_dependencies': [],
-    'arguments_to_autocomplete': [],
+    'arguments_to_autocomplete': ['--path', '--regions', '--targets'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])

@@ -32,6 +32,7 @@ parser.add_argument(
 
 SET_COUNT = 10
 
+
 def load_volumes(pacu, client, instance_id, volume_ids):
     """Loads volumes on an instance.
 
@@ -54,7 +55,7 @@ def load_volumes(pacu, client, instance_id, volume_ids):
         waiter.wait(VolumeIds=current_volume_set)
         attached = modify_volume_list(
             pacu, client, 'attach_volume', instance_id, current_volume_set
-            )
+        )
         if not attached:
             pacu.print(' Volume attachment failed')
             pacu.print(' Exiting...')
@@ -71,7 +72,7 @@ def load_volumes(pacu, client, instance_id, volume_ids):
 
         detached = modify_volume_list(
             pacu, client, 'detach_volume', instance_id, current_volume_set
-            )
+        )
         if not detached:
             pacu.print(' Volume detachment failed')
             pacu.print(' Exiting...')
@@ -101,8 +102,8 @@ def modify_volume_list(pacu, client, func, instance_id, volume_id_list):
     for volume_id in volume_id_list:
         try:
             kwargs = {
-                'InstanceId':instance_id,
-                'VolumeId':volume_id
+                'InstanceId': instance_id,
+                'VolumeId': volume_id
             }
             if func == 'attach_volume':
                 kwargs['Device'] = next(available_devices_iterator)
@@ -110,7 +111,7 @@ def modify_volume_list(pacu, client, func, instance_id, volume_id_list):
             caller(**kwargs)
         except ClientError as error:
             code = error.response['Error']['Code']
-            if  code == 'UnauthorizedOperation':
+            if code == 'UnauthorizedOperation':
                 pacu.print('  FAILURE MISSING AWS PERMISSIONS')
             else:
                 pacu.print(error)
@@ -224,7 +225,7 @@ def generate_volumes_from_snapshots(client, snapshots, zone):
     for snapshot in snapshots:
         response = client.create_volume(SnapshotId=snapshot, AvailabilityZone=zone)
         volume_ids.append(response['VolumeId'])
-    store_temp_data({'volumes':volume_ids})
+    store_temp_data({'volumes': volume_ids})
     return volume_ids
 
 

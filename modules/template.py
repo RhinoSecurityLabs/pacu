@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 from botocore.exceptions import ClientError
-import os
 
 
 # When writing a module, feel free to remove any comments, placeholders, or

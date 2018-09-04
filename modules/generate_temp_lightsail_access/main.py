@@ -133,7 +133,7 @@ def main(args, pacu_main):
                     print('      Unauthorized to generate temporary access.')
                     return
                 elif code == 'OperationFailureException':
-                    print('      FAILED: Instance Stopped')
+                    print('      FAILED: Unable to interact with non-running instance.')
                     continue
                 else:
                     print(error)

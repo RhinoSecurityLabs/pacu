@@ -109,7 +109,8 @@ def main(args, pacu_main):
             quit = input('    Continue? (y/n) ')
             if quit.lower() != 'y':
                 print('    Exiting...')
-            return summary_data        
+                return summary_data
+            continue
         print('    Password successfully changed')
         print('    Password: {}'.format(password))
         summary_data['backdoored_password_count'] += 1

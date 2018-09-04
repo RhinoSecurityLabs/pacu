@@ -98,6 +98,7 @@ def main(args, pacu_main):
     now = time.time()
     csv_file_path = 'sessions/{}/downloads/elbs_no_logs_{}.csv'.format(session.name, now)
     summary_data['csv_file_path'] = csv_file_path
+    summary_data['logless'] = 0
 
     with open(csv_file_path, 'w+') as csv_file:
         csv_file.write('Load Balancer Name,Load Balancer ARN,Region\n')
@@ -106,6 +107,7 @@ def main(args, pacu_main):
                 if attribute['Key'] == 'access_logs.s3.enabled':
                     if attribute['Value'] is False or attribute['Value'] == 'false':
                         csv_file.write('{},{},{}\n'.format(load_balancer['LoadBalancerName'], load_balancer['LoadBalancerArn'], load_balancer['Region']))
+                        summary_data['logless'] += 1
 
 
     print('\n{} completed.\n'.format(module_info['name']))
@@ -114,6 +116,7 @@ def main(args, pacu_main):
 
 def summary(data, pacu_main):
     out = '  {} Load balancer(s) have been found\n'.format(data['load_balancers'])
-    if data['load_balancers'] > 0:
+    if data['logless'] > 0:
+        out += '  {} Load balancer(s) found without logging\n'.format(data['logless'])
         out += '  List of Load balancers without logging saved to:\n    {}\n'.format(data['csv_file_path'])
     return out

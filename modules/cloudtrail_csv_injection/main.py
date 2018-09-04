@@ -47,11 +47,8 @@ def main(args, pacu_main):
         'instance_attacks': 0,
         'instance_fails': 0
     }
-    if 'regions' in args and args.regions is not None:
-        if len(args.regions) == 1:
-            regions = [args.regions]
-        else:
-            regions = args.regions.split(',')
+    if 'regions' in args:
+        regions = args.regions.split(',')
     else:
         regions = get_regions('cloudtrail')
 

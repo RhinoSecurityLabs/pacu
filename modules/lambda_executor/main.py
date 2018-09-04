@@ -31,11 +31,8 @@ FUNC_NAME = 'function_executor'
 def get_code(zip_file):
     path = Path(zip_file)
     print(path)
-    if path.exists():
-        print('Found')
-    else:
-        print('Not found')
-    out = ''
+    if not path.exists():
+        return ''
     with open(r'{}'.format(zip_file), 'rb') as code_file:
         out = code_file.read()
     return out
@@ -72,7 +69,7 @@ def main(args, pacu):
     client = pacu.get_boto3_client('lambda', 'ap-northeast-2')
     init_function(client, get_role(), get_handler(), get_code(args.code))
 
-    client.invoke(FunctionName=FUNC_NAME, Payload=json.JSONEncoder().encode({"command":"cp -r tmp /tmp"}))
+    client.invoke(FunctionName=FUNC_NAME, Payload=json.JSONEncoder().encode({"command":"cp -r nmap /tmp"}))
     client.invoke(FunctionName=FUNC_NAME, Payload=json.JSONEncoder().encode({"command":"chmod -R a+x /tmp"}))
     client.invoke(FunctionName=FUNC_NAME, Payload=json.JSONEncoder().encode({"command":"PATH=$PATH:/tmp/tmp/nmap/bin"}))
 

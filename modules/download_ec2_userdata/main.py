@@ -16,7 +16,7 @@ module_info = {
     'category': 'recon_enum_with_keys',
 
     # One liner description of the module functionality. This shows up when a user searches for modules.
-    'one_liner': 'Downloads user data from EC2 instances.',
+    'one_liner': 'Downloads User Data from EC2 instances.',
 
     # Description about what the module does and how it works
     'description': 'This module will take a list of EC2 instance IDs and request then download the User Data associated with each instance. All of the data will be saved to ./sessions/[session_name]/downloads/user_data.txt.',

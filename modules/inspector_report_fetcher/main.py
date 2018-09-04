@@ -9,7 +9,7 @@ module_info = {
     'name': 'inspector_report_fetcher',
     'author': 'Alexander Morgenstern',
     'category': 'recon_enum_with_keys',
-    'one_liner': 'Captures vulnerabilties found when running a preconfigured inspector report',
+    'one_liner': 'Captures vulnerabilties found when running a preconfigured inspector report.',
     'description':
         """
         This module captures findings for reports in regions that support AWS Inspector.

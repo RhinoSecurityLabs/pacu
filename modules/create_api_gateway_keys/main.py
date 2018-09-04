@@ -15,7 +15,7 @@ module_info = {
     'category': 'post_exploitation',
 
     # One liner description of the module functionality. This shows up when a user searches for modules.
-    'one_liner': 'Attempts to create an API gateway key for a (or all) rest APIs that are defined.',
+    'one_liner': 'Attempts to create an API Gateway key for any/all REST APIs that are defined.',
 
     # Full description about what the module does and how it works
     'description': 'This module automatically creates API keys for every available region. There is an included cleanup feature to remove old "Pacu" keys that are referenced by name.',

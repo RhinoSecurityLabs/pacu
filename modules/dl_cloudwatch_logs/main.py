@@ -12,7 +12,7 @@ module_info = {
     'name': 'dl_cloudwatch_logs',
     'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
     'category': 'logging_monitoring',
-    'one_liner': 'Captures Cloudwatch logs and downloads them to the session downloads folder',
+    'one_liner': 'Captures CloudWatch logs and downloads them to the session downloads folder',
     'description': """
         This module examines all logs for all regions and saves them as CSV files. By default,
         only events that were logged in the past 24 hours will be captured. Otherwise, they will
@@ -65,7 +65,7 @@ def write_stream_file(session_name, scan_time, group_name, stream_name, events):
     if not os.path.exists(stream_group_path):
         os.makedirs(stream_group_path)
     file_name = os.path.join(
-        stream_group_path, stream_name.replace('/', '_') + '.txt')
+        stream_group_path, stream_name.replace('/', '_') + '.csv')
     flag = 'a' if os.path.isfile(file_name) else 'w'
 
     with open(file_name, flag, newline='') as out_file:

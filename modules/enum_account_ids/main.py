@@ -46,14 +46,16 @@ def main(args, pacu_main):
         print('Error: An AWS account ID is a number of length 12. You supplied: {}\n'.format(args.starting_point))
         return None
 
+    print('Warning: This script does not check if the keys you supplied have the correct permissions. Make sure they are allowed to use iam:UpdateAssumeRolePolicy on the role that you pass into --role-name!\n')
+
     data = {
         'attempts': 0,
         'valid_accounts': []
     }
 
-    print('Starting account ID enumeration...\n')
-
     client = pacu_main.get_boto3_client('iam')
+
+    print('Starting account ID enumeration...\n')
 
     if args.file:
         with open('{}'.format(args.file), 'r') as f:

@@ -50,7 +50,7 @@ def main(args, pacu_main):
     summary_data = {'userdata_downloads': 0}
     # Check permissions before doing anything
     try:
-        client = pacu_main.get_boto3_client('ec2', 'us-east-1')
+        client = pacu_main.get_boto3_client('ec2', pacu_main.get_regions('ec2')[0])
         client.describe_instance_attribute(
             Attribute='userData',
             DryRun=True,

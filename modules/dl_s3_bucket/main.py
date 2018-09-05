@@ -9,7 +9,7 @@ from botocore.exceptions import ClientError
 
 module_info = {
     # Name of the module (should be the same as the filename)
-    'name': 's3_bucket_dump',
+    'name': 'dl_s3_bucket',
 
     # Name and any other notes about the author
     'author': 'Spencer Gietzen of Rhino Security Labs',

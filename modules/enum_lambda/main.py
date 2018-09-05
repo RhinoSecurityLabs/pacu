@@ -135,7 +135,7 @@ def main(args, pacu_main):
 def summary(data, pacu_main):
     out = ''
     for region in sorted(data):
-        out += '  {} functions found in {}.\n'.format(data[region], region)
+        out += '  {} function(s) found in {}.\n'.format(data[region], region)
     if not out:
         out = '  No Lambda data found'
     return out

@@ -77,13 +77,15 @@ def get_vpc_config(pacu, vpc, region):
     if not pacu.fetch_data(fields, 'enum_ec2', args):
         return {}
     session = pacu.get_active_session()
+    pacu.print('  Finding Subnets to add to VPC Config...')
     for subnet in session.EC2['Subnets']:
         if subnet['VpcId'] == vpc:
-            if pacu.input('  Add {} to VPC config? (y/n) '.format(subnet['CidrBlock'])) == 'y':
+            if pacu.input('    {}? (y/n) '.format(subnet['CidrBlock'])) == 'y':
                 config['SubnetIds'].append(subnet['SubnetId'])
+    pacu.print('  Finding Security Groups to add to VPC Config...')
     for sec_group in session.EC2['SecurityGroups']:
         if sec_group['VpcId'] == vpc:
-            if pacu.input('  Add {} to VPC config? (y/n) '.format(sec_group['GroupName'])) == 'y':
+            if pacu.input('    {}? (y/n) '.format(sec_group['GroupName'])) == 'y':
                 config['SecurityGroupIds'].append(sec_group['GroupId'])
     if not config['SubnetIds'] or not config['SecurityGroupIds']:
         return {}

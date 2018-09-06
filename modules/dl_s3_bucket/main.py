@@ -21,7 +21,7 @@ module_info = {
     'one_liner': 'Enumerate and dumps files from S3 buckets.',
 
     # Description about what the module does and how it works
-    'description': 'This module scans the current account for AWS buckets and prints/stores as much data as it can about each one. With no arguments, this module will enumerate all buckets the account has access to, then prompt you to download all files in the bucket or not. Use --names-only or --dl-names to change that. The files will be downloaded to ./sessions/[current_session_name]/downloads/s3_bucket_dump/.',
+    'description': 'This module scans the current account for AWS buckets and prints/stores as much data as it can about each one. With no arguments, this module will enumerate all buckets the account has access to, then prompt you to download all files in the bucket or not. Use --names-only or --dl-names to change that. The files will be downloaded to ./sessions/[current_session_name]/downloads/dl_s3_bucket/.',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['S3'],
@@ -36,7 +36,7 @@ module_info = {
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 parser.add_argument('--dl-all', required=False, action='store_true', help='If specified, automatically download all files from buckets that are allowed instead of asking for each one. WARNING: This could mean you could potentially be downloading terrabytes of data! It is suggested to user --names-only and then --dl-names to download specific files.')
-parser.add_argument('--names-only', required=False, action='store_true', help='If specified, only pull the names of files in the buckets instead of downloading. This can help in cases where the whole bucket is a large amount of data and you only want to target specific files for download. This option will store the filenames in a .txt file in ./sessions/[current_session_name]/downloads/s3_bucket_dump/s3_bucket_dump_file_names.txt, one per line, formatted as "filename@bucketname". These can then be used with the "--dl-names" option.')
+parser.add_argument('--names-only', required=False, action='store_true', help='If specified, only pull the names of files in the buckets instead of downloading. This can help in cases where the whole bucket is a large amount of data and you only want to target specific files for download. This option will store the filenames in a .txt file in ./sessions/[current_session_name]/downloads/dl_s3_bucket/dl_s3_bucket_file_names.txt, one per line, formatted as "filename@bucketname". These can then be used with the "--dl-names" option.')
 parser.add_argument('--dl-names', required=False, default=False, help='A path to a file that includes the only files to be downloaded, one per line. The format for these files must be "filename.ext@bucketname", which is what the --names-only argument outputs.')
 
 FILE_SIZE_THRESHOLD = 1073741824
@@ -63,7 +63,7 @@ def get_bucket_size(pacu, bucket_name):
 
 def download_s3_file(pacu, key, bucket):
     session = pacu.get_active_session()
-    base_directory = 'sessions/{}/downloads/s3_bucket_dump/{}/'.format(session.name, bucket)
+    base_directory = 'sessions/{}/downloads/{}/{}/'.format(session.name, module_info['name'], bucket)
 
     directory = base_directory
     offset_directory = key.split('/')[:-1]
@@ -105,8 +105,10 @@ def extract_from_file(pacu, file):
 def write_bucket_keys_to_file(pacu, objects):
     pacu.print('  Writing file names to disk...')
     session = pacu.get_active_session()
-    file = 'sessions/{}/downloads/s3_bucket_dump/'.format(session.name)
-    file += 's3_bucket_dump_file_names.txt'
+    file = 'sessions/{}/downloads/{}/'.format(session.name, module_info['name'])    
+    if not os.path.exists(file):
+        os.makedirs(file)
+    file += '{}_file_names.txt'.format(module_info['name'])
     try:
         with open(file, 'w') as objects_file:
             for key in objects:

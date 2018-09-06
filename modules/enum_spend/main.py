@@ -15,10 +15,10 @@ module_info = {
     'category': 'recon_enum_with_keys',
 
     # One liner description of the module functionality. This shows up when a user searches for modules.
-    'one_liner': 'Enumerates account spend by service',
+    'one_liner': 'Enumerates account spend by service.',
 
     # Full description about what the module does and how it works
-    'description': 'Display what services the account uses and how much is spent. Data is pulled from CloudWatch metrics and the AWS/Billing Namespace',
+    'description': 'Display what services the account uses and how much is spent. Data is pulled from CloudWatch metrics and the AWS/Billing Namespace.',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['IAM'],

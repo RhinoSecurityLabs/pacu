@@ -2,6 +2,8 @@
 import argparse
 from copy import deepcopy
 
+from botocore.exceptions import ClientError
+
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -45,6 +47,26 @@ parser.add_argument('--databases', required=False, default=False, action='store_
 parser.add_argument('--dev-endpoints', required=False, default=False, action='store_true', help='Enumerate Glue development endpoints.')
 parser.add_argument('--jobs', required=False, default=False, action='store_true', help='Enumerate Glue jobs.')
 
+def fetch_glue_data(client, func, key, print, **kwargs):
+    caller = getattr(client, func)
+    try:
+        response = caller(**kwargs)
+        data = response[key]
+        while 'NextToken' in response and response['NextToken'] != '':
+            print({**kwargs, **{'NextToken': response['NextToken']}})
+            response = caller({**kwargs, **{'NextToken': response['NextToken']}})
+            data.extend(response[key])
+        for resource in data:
+            resource['region'] = client.meta.region_name
+        return data
+    except ClientError as error:
+        code = error.response['Error']['Code']
+        if code == 'AccessDeniedException':
+            print('  {} FAILURE: MISSING NEEDED PERMISSIONS'.format(func))
+        else:
+            print(code)
+    return []
+
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -73,144 +95,39 @@ def main(args, pacu_main):
     all_dev_endpoints = []
     all_jobs = []
     for region in regions:
-        connections = []
-        crawlers = []
-        databases = []
-        dev_endpoints = []
-        jobs = []
-
         print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('glue', region)
 
         # Connections
         if args.connections is True or all is True:
-            try:
-                response = client.get_connections(
-                    MaxResults=200
-                )
-
-                for connection in response['ConnectionList']:
-                    connection['Region'] = region
-                    connections.append(connection)
-
-                while 'NextToken' in response:
-                    response = client.get_connections(
-                        MaxResults=200,
-                        NextToken=response['NextToken']
-                    )
-                    for connection in response['ConnectionList']:
-                        connection['Region'] = region
-                        connections.append(connection)
-
-                print('  {} connection(s) found.'.format(len(connections)))
-                all_connections += connections
-
-            except Exception as error:
-                print('Error while running client.get_connections: {}'.format(error))
+            connections = fetch_glue_data(client, 'get_connections', 'ConnectionList', print)
+            print('  {} connection(s) found.'.format(len(connections)))
+            all_connections += connections
 
         # Crawlers
         if args.crawlers is True or all is True:
-            try:
-                response = client.get_crawlers(
-                    MaxResults=200
-                )
-
-                for crawler in response['Crawlers']:
-                    crawler['Region'] = region
-                    crawlers.append(crawler)
-
-                while 'NextToken' in response:
-                    response = client.get_crawlers(
-                        MaxResults=200,
-                        NextToken=response['NextToken']
-                    )
-
-                    for crawler in response['Crawlers']:
-                        crawler['Region'] = region
-                        crawlers.append(crawler)
-
-                print('  {} crawler(s) found.'.format(len(crawlers)))
-                all_crawlers += crawlers
-
-            except Exception as error:
-                print('Error while running client.get_crawlers: {}'.format(error))
+            crawlers = fetch_glue_data(client, 'get_crawlers', 'Crawlers', print)
+            print('  {} crawler(s) found.'.format(len(crawlers)))
+            all_crawlers += crawlers
 
         # Databases
         if args.databases is True or all is True:
-            try:
-                response = client.get_databases(
-                    MaxResults=200
-                )
-
-                for database in response['DatabaseList']:
-                    database['Region'] = region
-                    databases.append(database)
-
-                while 'NextToken' in response:
-                    response = client.get_databases(
-                        MaxResults=200,
-                        NextToken=response['NextToken']
-                    )
-
-                    for database in response['DatabaseList']:
-                        database['Region'] = region
-                        databases.append(database)
-
-                print('  {} database(s) found.'.format(len(databases)))
-                all_databases += databases
-
-            except Exception as error:
-                print('Error while running client.get_databases: {}'.format(error))
+            databases = fetch_glue_data(client, 'get_databases', 'DatabaseList', print)
+            print('  {} database(s) found.'.format(len(databases)))
+            all_databases += databases
 
         # Development Endpoints
         if args.dev_endpoints is True or all is True:
-            try:
-                response = client.get_dev_endpoints()
-                for dev_endpoint in response['DevEndpoints']:
-                    dev_endpoint['Region'] = region
-                    dev_endpoints.append(dev_endpoint)
-
-                while 'NextToken' in response and not response['NextToken'] == '':
-                    response = client.get_dev_endpoints(
-                        NextToken=response['NextToken']
-                    )
-
-                    for dev_endpoint in response['DevEndpoints']:
-                        dev_endpoint['Region'] = region
-                        dev_endpoints.append(dev_endpoint)
-
-                print('  {} development endpoint(s) found.'.format(len(dev_endpoints)))
-                all_dev_endpoints += dev_endpoints
-
-            except Exception as error:
-                print('Error while running client.get_dev_endpoints: {}'.format(error))
+            dev_endpoints = fetch_glue_data(client, 'get_dev_endpoints', 'DevEndpoints', print)
+            print('  {} development endpoint(s) found.'.format(len(dev_endpoints)))
+            all_dev_endpoints += dev_endpoints
 
         # Jobs
         if args.jobs is True or all is True:
-            try:
-                response = client.get_jobs(
-                    MaxResults=200
-                )
+            jobs = fetch_glue_data(client, 'get_jobs', 'Jobs', print)
+            print('  {} job(s) found.'.format(len(jobs)))
+            all_jobs += jobs
 
-                for job in response['Jobs']:
-                    job['Region'] = region
-                    jobs.append(job)
-
-                while 'NextToken' in response:
-                    response = client.get_jobs(
-                        MaxResults=200,
-                        NextToken=response['NextToken']
-                    )
-
-                    for job in response['Jobs']:
-                        job['Region'] = region
-                        jobs.append(job)
-
-                print('  {} job(s) found.'.format(len(jobs)))
-                all_jobs += jobs
-
-            except Exception as error:
-                print('Error while running client.get_jobs: {}'.format(error))
     summary_data = {
         'connections': len(all_connections),
         'crawlers': len(all_crawlers),
@@ -219,6 +136,13 @@ def main(args, pacu_main):
         'jobs': len(all_jobs),
     }
 
+    if not all:
+        for var in vars(args):
+            if var == 'regions':
+                continue
+            if not getattr(args, var):
+                del summary_data[var]
+        
     glue_data = deepcopy(session.Glue)
     glue_data['Connections'] = all_connections
     glue_data['Crawlers'] = all_crawlers
@@ -227,14 +151,13 @@ def main(args, pacu_main):
     glue_data['Jobs'] = all_jobs
     session.update(pacu_main.database, Glue=glue_data)
 
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
 def summary(data, pacu_main):
-    out = '  {} total connection(s) found.\n'.format(data['connections'])
-    out += '  {} total crawler(s) found.\n'.format(data['crawlers'])
-    out += '  {} total database(s) found.\n'.format(data['databases'])
-    out += '  {} total development endpoint(s) found.\n'.format(data['dev_endpoints'])
-    out += '  {} total job(s) found.\n'.format(data['jobs'])
+    out = ''
+    for key in data:
+        out += '  {} total {}(s) found.\n'.format(data[key], key[:-1])
+    out += '  Glue resources saved in Pacu database.\n'
     return out

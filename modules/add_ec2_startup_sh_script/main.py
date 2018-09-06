@@ -34,7 +34,7 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--script', help='File path of the shell script to add to the EC2 instances')
+parser.add_argument('--script', required=True, help='File path of the shell script to add to the EC2 instances')
 parser.add_argument('--instance-ids', required=False, default=None, help='One or more (comma separated) EC2 instance IDs and their regions in the format instanceid@region. Defaults to all instances.')
 
 
@@ -74,7 +74,6 @@ def main(args, pacu_main):
         if not str(error).find('UnauthorizedOperation') == -1:
             print('Dry run failed, the current AWS account does not have the necessary permissions to run this module.\nExiting...')
             return
-    summary_data = {}
     instances = []
     if args.instance_ids is not None:  # need to update this to include the regions of these IDs
         for instance in args.instance_ids.split(','):
@@ -85,7 +84,7 @@ def main(args, pacu_main):
     else:
         print('Targeting all EC2 instances...')
         if fetch_data(['EC2', 'Instances'], 'enum_ec2', '--instances') is False:
-            print('Pre-req module not run successfully. Exiting...')
+            print('Sub-module run failed')
             return
         for instance in session.EC2['Instances']:
             instances.append({
@@ -95,56 +94,53 @@ def main(args, pacu_main):
     instance_count = 0
     for region in regions:
         client = pacu_main.get_boto3_client('ec2', region)
-
         for instance in instances:
             if instance['Region'] == region:
-                result = stop_instance(client, instance['InstanceId'])
+                result = stop_instance(client, instance['InstanceId'], print)
                 if result:
-                    update_userdata(client, instance['InstanceId'], prepare_user_data(client, instance['InstanceId'], args.script))
-                    start_instance(client, instance['InstanceId'])
+                    update_userdata(client, instance['InstanceId'], prepare_user_data(client, instance['InstanceId'], args.script), print)
+                    start_instance(client, instance['InstanceId'], print)
                     instance_count += 1
                 else:
-                    print('Failed to stop instance {}@{}, skipping.'.format(instance['InstanceId'], instance['Region']))
-    summary_data['Instances'] = instance_count
-    print('{} completed.\n'.format(module_info['name']))
-    return summary_data
+                    print('  {}@{} FAILED'.format(instance['InstanceId'], instance['Region']))
+    print('\n{} completed.\n'.format(module_info['name']))
+    return {'Instances': instance_count}
 
 
 def summary(data, pacu_main):
-    out = '  {} Instance(s) Modified'.format(data['Instances']) if 'Instances' in data else 'No Instances Modified'
+    if data['Instances']:
+        out = '  {} Instance(s) Modified'.format(data['Instances'])
+    else:
+        out = '  No Instances Modified'
     return out
 
 
-def stop_instance(client, instance_id):
-    print('Stopping instance id {}'.format(instance_id))
-
-    result = False
+def stop_instance(client, instance_id, print):
+    print('Stopping {}'.format(instance_id))
     try:
-        client.stop_instances(
-            InstanceIds=[instance_id]
-        )
+        client.stop_instances(InstanceIds=[instance_id])
+        return True
+    except ClientError as error:
+        code = error.response['Error']['Code']
+        if code == 'UnauthorizedOperation':
+            print('  FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+        else:
+            print('  FAILURE: {}'.format(code))
+    return False
+
+
+def start_instance(client, instance_id, print):
+    print('Starting {}'.format(instance_id))
+    try:
+        client.start_instances(InstanceIds=[instance_id])
         result = True
     except ClientError as error:
-        print(error.response['Error']['Message'])
-        return False
-
-    return result
-
-
-def start_instance(client, instance_id):
-    print('Starting instance id {}'.format(instance_id))
-
-    result = False
-    try:
-        client.start_instances(
-            InstanceIds=[instance_id]
-        )
-        result = True
-    except ClientError as error:
-        print(error.response['Error']['Message'])
-
-    return result
-
+        code = error.response['Error']['Code']
+        if code == 'UnauthorizedOperation':
+            print('  FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+        else:
+            print('  FAILURE: {}'.format(code))
+    return False
 
 def prepare_user_data(client, instance_id, script):  # Replace this with a fetch_data of download_ec2_userdata
     response = client.describe_instance_attribute(
@@ -165,8 +161,8 @@ def prepare_user_data(client, instance_id, script):  # Replace this with a fetch
     return user_data
 
 
-def update_userdata(client, instance_id, user_data):
-    print('Setting userData for instance id {}'.format(instance_id))
+def update_userdata(client, instance_id, user_data, print):
+    print('Setting User Data for {}'.format(instance_id))
 
     result = False
     code = 'IncorrectInstanceState'

@@ -63,10 +63,9 @@ def camelCase(name):
     return out
 
 
-def fetch_lightsail_data(client, func):
+def fetch_lightsail_data(client, func, print):
     # Adding 'get_' portion to each field to build command.
     caller = getattr(client, 'get_' + func)
-    print('  Attempting to enumerate {}'.format(func))
     try:
         response = caller()
         data = response[camelCase(func)]
@@ -74,11 +73,14 @@ def fetch_lightsail_data(client, func):
             response = caller(pageToken=response['nextPageToken'])
             data.extend(response[camelCase(func)])
         print('    Found {} {}'.format(len(data), func))
-        print('  Finished enumerating for {}'.format(func))
+        if func != 'active_names':
+            for resource in data:
+                resource['region'] = client.meta.region_name
         return data
     except ClientError as error:
         if error.response['Error']['Code'] == 'AccessDeniedException':
-            print('AccessDenied for: {}'.format(func))
+            print('  {}'.format(func))
+            print('    FAILURE: MISSING REQUIRED AWS PERMISSIONS')
         else:
             print('Unknown Error:\n{}'.format(error))
     return []
@@ -95,21 +97,18 @@ def main(args, pacu_main):
         # Converts kebab-case to snake_case to match expected Boto3 function names.
         fields = [field.replace('-', '_') for field in MASTER_FIELDS]
 
-    lightsail_data = {}
+    lightsail_data = setup_storage(fields)
     regions = get_regions('lightsail')
 
     for region in regions:
-        lightsail_data[region] = setup_storage(fields)
         print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('lightsail', region)
         for field in fields:
-            lightsail_data[region][field] = fetch_lightsail_data(client, field)
+            lightsail_data[field].extend(fetch_lightsail_data(client, field, print))
 
-    summary_data = {}
-    for field in fields:
-        summary_data[field] = 0
-        for region in lightsail_data:
-            summary_data[field] += len(lightsail_data[region][field])
+    summary_data = {'regions': regions}
+    for field in lightsail_data:
+        summary_data[field] = len(lightsail_data[field])
 
     session.update(pacu_main.database, Lightsail=lightsail_data)
     print('{} completed.\n'.format(module_info['name']))
@@ -117,7 +116,10 @@ def main(args, pacu_main):
 
 
 def summary(data, pacu_main):
-    out = ''
+    out = '  Regions Enumerated:\n'
+    for region in data['regions']:
+        out += '    {}\n'.format(region)
+    del data['regions']
     for field in data:
         out += '  {} {} enumerated\n'.format(data[field], field[:-1] + '(s)')
     return out

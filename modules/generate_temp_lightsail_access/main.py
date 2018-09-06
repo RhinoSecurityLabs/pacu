@@ -114,10 +114,10 @@ def main(args, pacu_main):
     temp_keys = {}
     for region in instances:
         temp_keys[region] = []
-        print('Starting region {}...'.format(region))
+        print('  {}...'.format(region))
         client = pacu_main.get_boto3_client('lightsail', region)
         for instance in instances[region]:
-            print('  Processing instance {}'.format(instance['name']))
+            print('    Instance {}'.format(instance['name']))
             try:
                 name = instance['name']
                 protocol = instance['protocol']
@@ -126,21 +126,21 @@ def main(args, pacu_main):
                     protocol=protocol
                 )
                 temp_keys[region].append(response['accessDetails'])
-                print('  Successfully created temporary access for {}'.format(name))
+                print('    Successfully created temporary access for {}'.format(name))
             except ClientError as error:
                 code = error.response['Error']['Code']
                 if code == 'AccessDeniedException':
-                    print('Unauthorized to generate temporary access.')
+                    print('      Unauthorized to generate temporary access.')
                     return
                 elif code == 'OperationFailureException':
-                    print(error.response['Error']['Message'])
+                    print('      FAILED: Unable to interact with non-running instance.')
                     continue
                 else:
                     print(error)
                 break
 
     write_keys_to_file(temp_keys, session)
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
 
     windows_count = 0
     ssh_count = 0
@@ -168,5 +168,5 @@ def summary(data, pacu_main):
     out = '  Created temporary access for {} Windows instances.\n'.format(data['windows'])
     out += '  Created temporary access for {} Linux instances.\n'.format(data['linux'])
     if data['written_file_path'] is not None:
-        out += '\n  Credential files written to directory {}{}.'.format(data['written_file_path'], os.path.sep)
+        out += '\n  Credential files written to:\n     {}{}'.format(data['written_file_path'], os.path.sep)
     return out

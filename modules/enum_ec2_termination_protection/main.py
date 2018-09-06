@@ -59,9 +59,14 @@ def main(args, pacu_main):
             InstanceId=instances[0]['InstanceId']
         )
     except ClientError as error:
-        if not str(error).find('UnauthorizedOperation') == -1:
-            print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_instance_attribute".\nExiting module.')
-            return summary_data
+        print('  FAILURE: ')
+        if error.response['Error']['Code'] == 'UnauthorizedOperation':
+            print('    MISSING NEEDED PERMISSIONS')
+        else:
+            print(error.response['Error']['Code'])
+        # Print newline for spacing
+        print('')
+        return summary_data
 
     now = time.time()
     csv_file_path = 'sessions/{}/downloads/termination_protection_disabled_{}.csv'.format(session.name, now)
@@ -91,14 +96,13 @@ def main(args, pacu_main):
     ec2_data = deepcopy(session.EC2)
     ec2_data['Instances'] = instances
     session.update(pacu_main.database, EC2=ec2_data)
-
-    print('Instances with Termination Protection disabled have been written to ./{}'.format(csv_file_path))
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
 def summary(data, pacu_main):
     out = '  {} instances have termination protection disabled\n'.format(data['instance_count'])
     if data['instance_count'] > 0:
-        out += '    Instances without termination protection have been written to: {}\n'.format(data['csv_file_path'])
+        out += '  Identified instances have been written to:\n'
+        out += '     {}\n'.format(data['csv_file_path'])
     return out

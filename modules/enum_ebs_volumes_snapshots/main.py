@@ -219,7 +219,7 @@ def main(args, pacu_main):
 
                 count += len(response['Volumes'])
 
-            print('  {} total volume(s) found in {}.'.format(count, region))
+            print('    {} volume(s) found'.format(count))
 
         if args.snaps is True and not account_ids == []:
             # Start EBS Snapshots in this region
@@ -272,29 +272,29 @@ def main(args, pacu_main):
 
                 count += len(response['Snapshots'])
 
-            print('  {} total snapshot(s) found in {}.'.format(count, region))
+            print('    {} snapshot(s) found'.format(count))
 
     summary_data = {'snapshot_permissions': args.snapshot_permissions}
-    if args.vols is True:
+    if args.vols:
         ec2_data['Volumes'] = all_vols
+        summary_data['volumes'] = len(ec2_data['Volumes'])
         unencrypted_volumes_csv_path = 'sessions/{}/downloads/unencrypted_ebs_volumes_{}.csv'.format(session.name, now)
         with open(unencrypted_volumes_csv_path, 'w+') as unencrypted_volumes_csv:
             unencrypted_volumes_csv.write('Volume Name,Volume ID,Region\n')
-            print('Writing data for {} volumes...'.format(len(volumes_csv_data)))
+            print('  Writing data for {} volumes...'.format(len(volumes_csv_data)))
             for line in volumes_csv_data:
                 unencrypted_volumes_csv.write(line)
-        summary_data['volumes'] = len(ec2_data['Volumes'])
         summary_data['volumes_csv_path'] = unencrypted_volumes_csv_path
 
-    if args.snaps is True:
+    if args.snaps:
         ec2_data['Snapshots'] = all_snaps
+        summary_data['snapshots'] = len(ec2_data['Snapshots'])
         unencrypted_snapshots_csv_path = 'sessions/{}/downloads/unencrypted_ebs_snapshots_{}.csv'.format(session.name, now)
         with open(unencrypted_snapshots_csv_path, 'w+') as unencrypted_snapshots_csv:
             unencrypted_snapshots_csv.write('Snapshot Name,Snapshot ID,Region\n')
-            print('Writing data for {} snapshots...'.format(len(snapshots_csv_data)))
+            print('  Writing data for {} snapshots...'.format(len(snapshots_csv_data)))
             for line in snapshots_csv_data:
                 unencrypted_snapshots_csv.write(line)
-        summary_data['snapshots'] = len(ec2_data['Snapshots'])
         summary_data['snapshots_csv_path'] = unencrypted_snapshots_csv_path
 
     if args.snapshot_permissions:
@@ -320,9 +320,8 @@ def main(args, pacu_main):
                 out_file.write('    {}\n'.format(private))
             summary_data['snapshot-permissions-path'] = path
     session.update(pacu_main.database, EC2=ec2_data)
-    print('All data has been saved to the current session.')
 
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
@@ -330,12 +329,12 @@ def summary(data, pacu_main):
     out = ''
     if 'volumes' in data:
         out += '  {} Volumes found\n'.format(data['volumes'])
-    if 'volumes_csv_path' in data:
-        out += '    Unencrypted volume information written to: {}\n'.format(data['volumes_csv_path'])
     if 'snapshots' in data:
         out += '  {} Snapshots found\n'.format(data['snapshots'])
+    if 'volumes_csv_path' in data:
+        out += '  Unencrypted volume information written to:\n    {}\n'.format(data['volumes_csv_path'])
     if 'snapshots_csv_path' in data:
-        out += '    Unencrypted snapshot information written to: {}\n'.format(data['snapshots_csv_path'])
+        out += '  Unencrypted snapshot information written to:\n    {}\n'.format(data['snapshots_csv_path'])
     if data['snapshot_permissions']:
         out += '  Snapshot Permissions: \n'
         out += '    {} Public snapshots found\n'.format(data['Public'])

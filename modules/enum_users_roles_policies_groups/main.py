@@ -70,15 +70,16 @@ def main(args, pacu_main):
                     users.append(user)
 
                 is_truncated = response['IsTruncated']
-
+                
+            print('Found {} users'.format(len(users)))
         except ClientError:
-            print('The current user is not allowed to describe users.')
+            print('No Users Found')
+            print('  FAILURE: MISSING NEEDED PERMISSIONS')
 
         iam_data = deepcopy(session.IAM)
         iam_data['Users'] = users
         session.update(pacu_main.database, IAM=iam_data)
         summary_data['Users'] = len(users)
-        print('Found {} users.\n'.format(len(users)))
 
     if args.roles is True:
         roles = []
@@ -99,15 +100,16 @@ def main(args, pacu_main):
                     roles.append(role)
 
                 is_truncated = response['IsTruncated']
+            print('Found {} roles'.format(len(roles)))
 
         except ClientError:
-            print('The current user is not allowed to describe roles.')
+            print('No Roles Found')
+            print('  FAILURE: MISSING NEEDED PERMISSIONS')
 
         iam_data = deepcopy(session.IAM)
         iam_data['Roles'] = roles
         session.update(pacu_main.database, IAM=iam_data)
         summary_data['Roles'] = len(roles)
-        print('Found {} roles.\n'.format(len(roles)))
 
     if args.policies is True:
         policies = []
@@ -131,15 +133,16 @@ def main(args, pacu_main):
                     policies.append(policy)
 
                 is_truncated = response['IsTruncated']
+            print('Found {} policies'.format(len(policies)))
 
         except ClientError:
-            print('The current user is not allowed to describe policies.')
+            print('No Policies Found')
+            print('  FAILURE: MISSING NEEDED PERMISSIONS')
 
         iam_data = deepcopy(session.IAM)
         iam_data['Policies'] = policies
         session.update(pacu_main.database, IAM=iam_data)
         summary_data['Policies'] = len(policies)
-        print('Found {} policies.\n'.format(len(policies)))
 
     if args.groups is True:
         groups = []
@@ -161,22 +164,24 @@ def main(args, pacu_main):
                     groups.append(group)
 
                 is_truncated = response['IsTruncated']
+            print('Found {} groups'.format(len(groups)))
 
         except ClientError:
-            print('The current user is not allowed to describe groups.')
+            print('No Groups Found')
+            print('  FAILURE: MISSING NEEDED PERMISSIONS')
 
         iam_data = deepcopy(session.IAM)
         iam_data['Groups'] = groups
         session.update(pacu_main.database, IAM=iam_data)
         summary_data['Groups'] = len(groups)
-        print('Found {} groups.\n'.format(len(groups)))
 
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
 def summary(data, pacu_main):
     out = ''
     for key in data:
-        out += '{} {} Enumerated\n'.format(data[key], key)
+        out += '  {} {} Enumerated\n'.format(data[key], key)
+    out += '  IAM resources saved in Pacu database.\n'
     return out

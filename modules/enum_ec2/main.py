@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import argparse
-from botocore.exceptions import ClientError
 from copy import deepcopy
 from random import choice
+
+from botocore.exceptions import ClientError
 
 
 module_info = {
@@ -64,6 +65,20 @@ parser.add_argument('--subnets', required=False, default=False, action='store_tr
 parser.add_argument('--vpcs', required=False, default=False, action='store_true', help='Enumerate EC2 VPCs')
 parser.add_argument('--vpc-endpoints', required=False, default=False, action='store_true', help='Enumerate EC2 VPC endpoints')
 
+ARG_FIELD_MAPPER = {
+    'instances':'Instances',
+    'security_groups':'SecurityGroups',
+    'elastic_ips':'ElasticIPs',
+    'customer_gateways':'VPNCustomerGateways',
+    'dedicated_hosts':'DedicatedHosts',
+    'network_acls':'NetworkACLs',
+    'nat_gateways':'NATGateways',
+    'network_interfaces':'NetworkInterfaces',
+    'route_tables':'RouteTables',
+    'subnets':'Subnets',
+    'vpcs':'VPCs',
+    'vpc_endpoints':'VPCEndpoints',
+}
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -234,7 +249,7 @@ def main(args, pacu_main):
         vpcs = []
         vpc_endpoints = []
 
-        print('Starting region {}...\n'.format(region))
+        print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('ec2', region)
 
         # Instances
@@ -413,6 +428,7 @@ def main(args, pacu_main):
 
         print('')  # Break the line after each region. This isn't on the end of another print because they won't always be all used and isn't before the region print because it would double break lines at the beginning
 
+
     gathered_data = {
         'Instances': all_instances,
         'SecurityGroups': all_security_groups,
@@ -428,10 +444,20 @@ def main(args, pacu_main):
         'VPCEndpoints': all_vpc_endpoints,
     }
 
+    if not all:
+        for var in vars(args):
+            if var == 'regions':
+                continue
+            if not getattr(args, var):
+                del gathered_data[ARG_FIELD_MAPPER[var]]
+
     ec2_data = deepcopy(session.EC2)
     for key, value in gathered_data.items():
         ec2_data[key] = value
     session.update(pacu_main.database, EC2=ec2_data)
+
+    # Add regions to gathered_data for summary output
+    gathered_data['regions'] = regions
 
     print('All data has been saved to the current session.\n')
 
@@ -443,40 +469,46 @@ def main(args, pacu_main):
 def summary(data, pacu_main):
     results = []
 
-    if len(data['Instances']) > 0:
+    results.append('  Regions:')
+    for region in data['regions']:
+        results.append('     {}'.format(region))
+
+    results.append('')
+
+    if 'Instances' in data:
         results.append('    {} total instance(s) found.'.format(len(data['Instances'])))
 
-    if len(data['SecurityGroups']) > 0:
+    if 'SecurityGroups' in data:
         results.append('    {} total security group(s) found.'.format(len(data['SecurityGroups'])))
 
-    if len(data['ElasticIPs']) > 0:
+    if 'ElasticIPs' in data:
         results.append('    {} total elastic IP address(es) found.'.format(len(data['ElasticIPs'])))
 
-    if len(data['VPNCustomerGateways']) > 0:
+    if 'VPNCustomerGateways' in data:
         results.append('    {} total VPN customer gateway(s) found.'.format(len(data['VPNCustomerGateways'])))
 
-    if len(data['DedicatedHosts']) > 0:
+    if 'DedicatedHosts' in data:
         results.append('    {} total dedicated hosts(s) found.'.format(len(data['DedicatedHosts'])))
 
-    if len(data['NetworkACLs']) > 0:
+    if 'NetworkACLs' in data:
         results.append('    {} total network ACL(s) found.'.format(len(data['NetworkACLs'])))
 
-    if len(data['NATGateways']) > 0:
+    if 'NATGateways' in data:
         results.append('    {} total NAT gateway(s) found.'.format(len(data['NATGateways'])))
 
-    if len(data['NetworkInterfaces']) > 0:
+    if 'NetworkInterfaces' in data:
         results.append('    {} total network interface(s) found.'.format(len(data['NetworkInterfaces'])))
 
-    if len(data['RouteTables']) > 0:
+    if 'RouteTables' in data:
         results.append('    {} total route table(s) found.'.format(len(data['RouteTables'])))
 
-    if len(data['Subnets']) > 0:
+    if 'Subnets' in data:
         results.append('    {} total subnets(s) found.'.format(len(data['Subnets'])))
 
-    if len(data['VPCs']) > 0:
+    if 'VPCs' in data:
         results.append('    {} total VPC(s) found.'.format(len(data['VPCs'])))
 
-    if len(data['VPCEndpoints']) > 0:
+    if 'VPCEndpoints' in data:
         results.append('    {} total VPC endpoint(s) found.'.format(len(data['VPCEndpoints'])))
 
     return '\n'.join(results)

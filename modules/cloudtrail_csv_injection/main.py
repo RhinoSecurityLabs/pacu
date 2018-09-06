@@ -105,6 +105,6 @@ def main(args, pacu_main):
 
 
 def summary(data, pacu_main):
-    out = '  {} trail(s) successfully attacked.\n'.format(data['success'])
-    out += '  {} trail(s) failed to be attacked.\n'.format(data['fails'])
+    out = '  {} CloudTrail regions(s) successfully attacked.\n'.format(data['success'])
+    out += '  {} CloudTrail regions(s) failed to be attacked.\n'.format(data['fails'])
     return out

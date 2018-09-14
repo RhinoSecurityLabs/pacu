@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import argparse
-import boto3
-from botocore.exceptions import ClientError
-from botocore.exceptions import ParamValidationError
-from botocore.exceptions import UnknownServiceError
 from datetime import datetime
 import json
 import os
 import re
+
+import boto3
+from botocore.exceptions import ClientError
+from botocore.exceptions import ParamValidationError
 
 from . import param_generator
 
@@ -15,13 +15,13 @@ from . import param_generator
 module_info = {
     'name': 'enum_permissions_bruteforce',
     'author': 'Alexander Morgenstern at RhinoSecurityLabs',
-    'category': 'recon_enum_no_keys',
+    'category': 'recon_enum_with_keys',
     'one_liner': 'Enumerates permissions using brute force',
     'description':
         """
         This module will automatically run through all possible
-        API calls in order to enumerate permissions without the use of
-        IAM permissions
+        API calls of supported services in order to enumerate
+        permissions without the use of the IAM API.
         """,
     'services': ['all'],
     'prerequisite_modules': [],
@@ -52,15 +52,8 @@ summary_data = {}
 
 def complete_service_list():
     """Returns a list of all supported boto3 services"""
-    try:
-        boto3.client(
-            'bad_dummy_service_name',
-            region_name='us-east-1'
-        )
-        return []
-    except UnknownServiceError as error:
-        service_string = str(error)[62:]
-        return service_string.split(', ').copy()
+    session = boto3.session.Session()
+    return session.get_available_services()
 
 
 def missing_param(param):
@@ -340,10 +333,7 @@ def main(args, pacu_main):
             global current_region
             current_region = region
             global current_client
-            current_client = boto3.client(
-                service,
-                region_name=region,
-            )
+            current_client = pacu_main.get_boto3_client(service, region)
             functions = [func for func in dir(current_client) if valid_func(service, func)]
             index = 1
             for func in functions:

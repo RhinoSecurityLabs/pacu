@@ -17,7 +17,7 @@ module_info = {
     'category': 'recon_enum_with_keys',
 
     # One liner description of the module functionality. This shows up when a user searches for modules.
-    'one_liner': 'Downloads user data from EC2 instances.',
+    'one_liner': 'Downloads User Data from EC2 instances.',
 
     # Description about what the module does and how it works
     'description': 'This module will take a list of EC2 instance IDs and request then download the User Data associated with each instance. All of the data will be saved to ./sessions/[session_name]/downloads/user_data.txt.',
@@ -77,9 +77,8 @@ def main(args, pacu_main):
             return None
         instances = session.EC2['Instances']
 
-    if not os.path.exists('sessions/{}/downloads/'.format(session.name)):
-        os.makedirs('sessions/{}/downloads/'.format(session.name))
-    summary_data['dl_path'] = 'sessions/{}/downloads/user_data.txt'.format(session.name)
+    if not os.path.exists('sessions/{}/downloads/ec2_user_data/'.format(session.name)):
+        os.makedirs('sessions/{}/downloads/ec2_user_data/'.format(session.name))
 
     print('Targeting {} instance(s)...'.format(len(instances)))
     for instance in instances:
@@ -93,27 +92,29 @@ def main(args, pacu_main):
         )['UserData']
 
         if 'Value' in user_data.keys():
-            formatted_user_data = '{}@{}:\n{}\n'.format(
+            formatted_user_data = '{}@{}:\n{}\n\n'.format(
                 instance_id,
                 region,
-                base64.b64decode(user_data['Value'])
+                base64.b64decode(user_data['Value']).decode('utf-8')
             )
-            print('  {}@{} user data found'.format(instance_id, region))
+            print('  {}@{}: User Data found'.format(instance_id, region))
 
-            with open('sessions/{}/downloads/user_data.txt'.format(session.name), 'a+') as data_file:
+            # Write to the "all" file
+            with open('sessions/{}/downloads/ec2_user_data/all_user_data.txt'.format(session.name), 'a+') as data_file:
                 data_file.write(formatted_user_data)
+            # Write to the individual file
+            with open('sessions/{}/downloads/ec2_user_data/{}.txt'.format(session.name, instance_id), 'w+') as data_file:
+                data_file.write(formatted_user_data.replace('\\t', '\t').replace('\\n', '\n').rstrip())
             summary_data['userdata_downloads'] += 1
 
         else:
-            print('  {}@{} user data not found'.format(instance_id, region))
+            print('  {}@{}: No User Data found'.format(instance_id, region))
 
     print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
 def summary(data, pacu_main):
-    out = ''
-    if 'dl_path'in data:
-        out += '  Data downloaded to: \n    {}\n'.format(data['dl_path'])
-    out += '  {} instance(s) user data downloaded'.format(data['userdata_downloads'])
+    session = pacu_main.get_active_session()
+    out = '  Downloaded EC2 User Data for {} instance(s) to ./sessions/{}/downloads/ec2_user_data/.\n'.format(data['userdata_downloads'], session.name)
     return out

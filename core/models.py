@@ -31,7 +31,6 @@ class AWSKey(Base, ModelUpdateMixin):
     secret_access_key = Column(Text)
     session_token = Column(Text)
     key_alias = Column(Text)
-    note = Column(Text)
     permissions_confirmed = Column(JSONType)
     allow_permissions = Column(JSONType, nullable=False, default=dict)
     deny_permissions = Column(JSONType, nullable=False, default=dict)
@@ -53,11 +52,10 @@ class AWSKey(Base, ModelUpdateMixin):
             'SecretAccessKey': self.secret_access_key,
             'SessionToken': self.session_token,
             'KeyAlias': self.key_alias,
-            'Note': self.note,
             'PermissionsConfirmed': self.permissions_confirmed,
             'Permissions': {
-                'Allow': self.allow_permissions,
-                'Deny': self.deny_permissions,
+                'Allow': remove_empty_from_dict(self.allow_permissions),
+                'Deny': remove_empty_from_dict(self.deny_permissions),
             },
         })
 
@@ -72,7 +70,8 @@ class ProxySettings(Base, ModelUpdateMixin):
     port = Column(Integer, nullable=False, default=80)
     listening = Column(Boolean, nullable=False, default=False)
     ssh_username = Column(Text, nullable=True, default='')
-    ssh_priv_key = Column(Text, nullable=True, default='')
+    ssh_password = Column(Text, nullable=True, default='')
+    ssh_shm_name = Column(Text, nullable=True, default='')
 
     @classmethod
     def get_proxy_settings(cls, database):

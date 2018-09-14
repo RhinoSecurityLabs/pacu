@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 import re
+import botocore
 
 from botocore.exceptions import ClientError
 
@@ -19,7 +20,7 @@ module_info = {
 
     # One liner description of the module functionality.
     # This shows up when a user searches for modules.
-    'one_liner': 'Tries to get a confirmed list of permissions for the current user.',
+    'one_liner': 'Tries to get a confirmed list of permissions for the current (or all) user(s).',
 
     # Description about what the module does and how it works
     'description': 'This module will attempt to use IAM APIs to enumerate a confirmed list of IAM permissions for the current user. This is done by checking attached and inline policies for the user and the groups they are in.',
@@ -33,7 +34,7 @@ module_info = {
     'prerequisite_modules': [],
 
     # Module arguments to autocomplete when the user hits tab
-    'arguments_to_autocomplete': ['--all-users', '--user-name'],
+    'arguments_to_autocomplete': ['--all-users', '--user-name']
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
@@ -50,6 +51,7 @@ def main(args, pacu_main):
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = pacu_main.print
+    input = pacu_main.input
     key_info = pacu_main.key_info
     fetch_data = pacu_main.fetch_data
     ######
@@ -91,21 +93,32 @@ def main(args, pacu_main):
             client = pacu_main.get_boto3_client('iam')
             try:
                 user = client.get_user()
-            except ClientError as error:
-                print('  Unable to get current user identity')
-                if error.response['Error']['Code'] == 'AccessDenied':
-                    print('    FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+                active_aws_key.update(
+                    pacu_main.database,
+                    user_name=user['User']['UserName'],
+                    user_arn=identity['Arn'],
+                    user_id=identity['UserId'],
+                    account_id=identity['Account']
+                )
+            except botocore.exceptions.ClientError:
+                username = input('Failed to discover the current users username, enter it now or Ctrl+C to exit the module: ').strip()
+                if username:
+                    active_aws_key.update(
+                        pacu_main.database,
+                        user_name=username,
+                        user_arn=identity['Arn'],
+                        user_id=identity['UserId'],
+                        account_id=identity['Account']
+                    )
                 else:
-                    print('    {}'.format(error.response['Error']['Code']))
-                print('')
-                return summary_data
-            active_aws_key.update(
-                pacu_main.database,
-                user_name=user['User']['UserName'],
-                user_arn=identity['Arn'],
-                user_id=identity['UserId'],
-                account_id=identity['Account']
-            )
+                    # Update the information from get_caller_identity and exit
+                    active_aws_key.update(
+                        pacu_main.database,
+                        user_arn=identity['Arn'],
+                        user_id=identity['UserId'],
+                        account_id=identity['Account']
+                    )
+                    return False
         elif re.match(r'arn:aws:sts::\d{12}:assumed-role/', identity['Arn']) is not None:
             # TODO: Find role info
             active_aws_key.update(
@@ -303,7 +316,7 @@ def main(args, pacu_main):
             if user['PermissionsConfirmed']:
                 summary_data['users_confirmed'] += 1
 
-            if args.user_name is None and args.all_users is False:  # TODO: If this runs and gets all permissions, replace the current set under user['Permissions'] rather than add to it in this module
+            if args.user_name is None and args.all_users is False:
                 print('  Confirmed Permissions for {}'.format(user['UserName']))
                 active_aws_key.update(
                     pacu_main.database,
@@ -394,7 +407,7 @@ def get_attached_policy(client, policy_arn):
 
 
 def parse_document(document, user):
-    """ Loop permissions and the resources they apply to """
+    """ Loop permissions, resources, and conditions """
     if isinstance(document['Statement'], dict):
         document['Statement'] = [document['Statement']]
 
@@ -407,56 +420,68 @@ def parse_document(document, user):
                 for action in statement['Action']:
                     if action in user['Permissions']['Allow']:
                         if isinstance(statement['Resource'], list):
-                            user['Permissions']['Allow'][action] += statement['Resource']
+                            user['Permissions']['Allow'][action]['Resources'] += statement['Resource']
                         else:
-                            user['Permissions']['Allow'][action].append(statement['Resource'])
+                            user['Permissions']['Allow'][action]['Resources'].append(statement['Resource'])
                     else:
+                        user['Permissions']['Allow'][action] = {'Resources': [], 'Conditions': []}
                         if isinstance(statement['Resource'], list):
-                            user['Permissions']['Allow'][action] = statement['Resource']
+                            user['Permissions']['Allow'][action]['Resources'] = statement['Resource']
                         else:
-                            user['Permissions']['Allow'][action] = [statement['Resource']]
-                    user['Permissions']['Allow'][action] = list(set(user['Permissions']['Allow'][action]))  # Remove duplicate resources
+                            user['Permissions']['Allow'][action]['Resources'] = [statement['Resource']]
+                    if 'Condition' in statement:
+                            user['Permissions']['Allow'][action]['Conditions'].append(statement['Condition'])
+                    user['Permissions']['Allow'][action]['Resources'] = list(set(user['Permissions']['Allow'][action]['Resources']))  # Remove duplicate resources
 
             elif 'Action' in statement and isinstance(statement['Action'], str):
                 if statement['Action'] in user['Permissions']['Allow']:
                     if isinstance(statement['Resource'], list):
-                        user['Permissions']['Allow'][statement['Action']] += statement['Resource']
+                        user['Permissions']['Allow'][statement['Action']]['Resources'] += statement['Resource']
                     else:
-                        user['Permissions']['Allow'][statement['Action']].append(statement['Resource'])
+                        user['Permissions']['Allow'][statement['Action']]['Resources'].append(statement['Resource'])
                 else:
+                    user['Permissions']['Allow'][statement['Action']] = {'Resources': [], 'Conditions': []}
                     if isinstance(statement['Resource'], list):
-                        user['Permissions']['Allow'][statement['Action']] = statement['Resource']
+                        user['Permissions']['Allow'][statement['Action']]['Resources'] = statement['Resource']
                     else:
-                        user['Permissions']['Allow'][statement['Action']] = [statement['Resource']]  # Make sure that resources are always arrays
-                user['Permissions']['Allow'][statement['Action']] = list(set(user['Permissions']['Allow'][statement['Action']]))  # Remove duplicate resources
+                        user['Permissions']['Allow'][statement['Action']]['Resources'] = [statement['Resource']]  # Make sure that resources are always arrays
+                if 'Condition' in statement:
+                    user['Permissions']['Allow'][statement['Action']]['Conditions'].append(statement['Condition'])
+                user['Permissions']['Allow'][statement['Action']]['Resources'] = list(set(user['Permissions']['Allow'][statement['Action']]['Resources']))  # Remove duplicate resources
 
             if 'NotAction' in statement and isinstance(statement['NotAction'], list):  # NotAction is reverse, so allowing a NotAction is denying that action basically
                 statement['NotAction'] = list(set(statement['NotAction']))  # Remove duplicates to stop the circular reference JSON error
                 for not_action in statement['NotAction']:
-                    if not_action in user['Permissions']['Deny']:
+                    if '!{}'.format(not_action) in user['Permissions']['Allow']:
                         if isinstance(statement['Resource'], list):
-                            user['Permissions']['Deny'][not_action] += statement['Resource']
+                            user['Permissions']['Allow']['!{}'.format(not_action)]['Resources'] += statement['Resource']
                         else:
-                            user['Permissions']['Deny'][not_action].append(statement['Resource'])
+                            user['Permissions']['Allow']['!{}'.format(not_action)]['Resources'].append(statement['Resource'])
                     else:
+                        user['Permissions']['Allow']['!{}'.format(not_action)] = {'Resources': [], 'Conditions': []}
                         if isinstance(statement['Resource'], list):
-                            user['Permissions']['Deny'][not_action] = statement['Resource']
+                            user['Permissions']['Allow']['!{}'.format(not_action)]['Resources'] = statement['Resource']
                         else:
-                            user['Permissions']['Deny'][not_action] = [statement['Resource']]
-                    user['Permissions']['Deny'][not_action] = list(set(user['Permissions']['Deny'][not_action]))  # Remove duplicate resources
+                            user['Permissions']['Allow']['!{}'.format(not_action)]['Resources'] = [statement['Resource']]
+                    if 'Condition' in statement:
+                        user['Permissions']['Allow']['!{}'.format(not_action)]['Conditions'].append(statement['Condition'])
+                    user['Permissions']['Allow']['!{}'.format(not_action)]['Resources'] = list(set(user['Permissions']['Allow']['!{}'.format(not_action)]['Resources']))  # Remove duplicate resources
 
             elif 'NotAction' in statement and isinstance(statement['NotAction'], str):
-                if statement['NotAction'] in user['Permissions']['Deny']:
+                if '!{}'.format(statement['NotAction']) in user['Permissions']['Allow']:
                     if isinstance(statement['Resource'], list):
-                        user['Permissions']['Deny'][statement['NotAction']] += statement['Resource']
+                        user['Permissions']['Allow']['!{}'.format(statement['NotAction'])]['Resources'] += statement['Resource']
                     else:
-                        user['Permissions']['Deny'][statement['NotAction']].append(statement['Resource'])
+                        user['Permissions']['Allow']['!{}'.format(statement['NotAction'])]['Resources'].append(statement['Resource'])
                 else:
+                    user['Permissions']['Allow']['!{}'.format(statement['NotAction'])] = {'Resources': [], 'Conditions': []}
                     if isinstance(statement['Resource'], list):
-                        user['Permissions']['Deny'][statement['NotAction']] = statement['Resource']
+                        user['Permissions']['Allow']['!{}'.format(statement['NotAction'])]['Resources'] = statement['Resource']
                     else:
-                        user['Permissions']['Deny'][statement['NotAction']] = [statement['Resource']]  # Make sure that resources are always arrays
-                user['Permissions']['Deny'][statement['NotAction']] = list(set(user['Permissions']['Deny'][statement['NotAction']]))  # Remove duplicate resources
+                        user['Permissions']['Allow']['!{}'.format(statement['NotAction'])]['Resources'] = [statement['Resource']]  # Make sure that resources are always arrays
+                if 'Condition' in statement:
+                    user['Permissions']['Allow']['!{}'.format(statement['NotAction'])]['Conditions'].append(statement['Condition'])
+                user['Permissions']['Allow']['!{}'.format(statement['NotAction'])]['Resources'] = list(set(user['Permissions']['Allow']['!{}'.format(statement['NotAction'])]['Resources']))  # Remove duplicate resources
 
         if statement['Effect'] == 'Deny':
 
@@ -465,55 +490,67 @@ def parse_document(document, user):
                 for action in statement['Action']:
                     if action in user['Permissions']['Deny']:
                         if isinstance(statement['Resource'], list):
-                            user['Permissions']['Deny'][action] += statement['Resource']
+                            user['Permissions']['Deny'][action]['Resources'] += statement['Resource']
                         else:
-                            user['Permissions']['Deny'][action].append(statement['Resource'])
+                            user['Permissions']['Deny'][action]['Resources'].append(statement['Resource'])
                     else:
+                        user['Permissions']['Deny'][action] = {'Resources': [], 'Conditions': []}
                         if isinstance(statement['Resource'], list):
-                            user['Permissions']['Deny'][action] = statement['Resource']
+                            user['Permissions']['Deny'][action]['Resources'] = statement['Resource']
                         else:
-                            user['Permissions']['Deny'][action] = [statement['Resource']]
-                    user['Permissions']['Deny'][action] = list(set(user['Permissions']['Deny'][action]))  # Remove duplicate resources
+                            user['Permissions']['Deny'][action]['Resources'] = [statement['Resource']]
+                    if 'Condition' in statement:
+                        user['Permissions']['Deny'][action]['Conditions'].append(statement['Condition'])
+                    user['Permissions']['Deny'][action]['Resources'] = list(set(user['Permissions']['Deny'][action]['Resources']))  # Remove duplicate resources
 
             elif 'Action' in statement and isinstance(statement['Action'], str):
                 if statement['Action'] in user['Permissions']['Deny']:
                     if isinstance(statement['Resource'], list):
-                        user['Permissions']['Deny'][statement['Action']] += statement['Resource']
+                        user['Permissions']['Deny'][statement['Action']]['Resources'] += statement['Resource']
                     else:
-                        user['Permissions']['Deny'][statement['Action']].append(statement['Resource'])
+                        user['Permissions']['Deny'][statement['Action']]['Resources'].append(statement['Resource'])
                 else:
+                    user['Permissions']['Deny'][statement['Action']] = {'Resources': [], 'Conditions': []}
                     if isinstance(statement['Resource'], list):
-                        user['Permissions']['Deny'][statement['Action']] = statement['Resource']
+                        user['Permissions']['Deny'][statement['Action']]['Resources'] = statement['Resource']
                     else:
-                        user['Permissions']['Deny'][statement['Action']] = [statement['Resource']]  # Make sure that resources are always arrays
-                user['Permissions']['Deny'][statement['Action']] = list(set(user['Permissions']['Deny'][statement['Action']]))  # Remove duplicate resources
+                        user['Permissions']['Deny'][statement['Action']]['Resources'] = [statement['Resource']]  # Make sure that resources are always arrays
+                if 'Condition' in statement:
+                    user['Permissions']['Deny'][statement['Action']]['Conditions'].append(statement['Condition'])
+                user['Permissions']['Deny'][statement['Action']]['Resources'] = list(set(user['Permissions']['Deny'][statement['Action']]['Resources']))  # Remove duplicate resources
 
             if 'NotAction' in statement and isinstance(statement['NotAction'], list):  # NotAction is reverse, so allowing a NotAction is denying that action basically
                 statement['NotAction'] = list(set(statement['NotAction']))  # Remove duplicates to stop the circular reference JSON error
                 for not_action in statement['NotAction']:
-                    if not_action in user['Permissions']['Allow']:
+                    if '!{}'.format(not_action) in user['Permissions']['Deny']:
                         if isinstance(statement['Resource'], list):
-                            user['Permissions']['Allow'][not_action] += statement['Resource']
+                            user['Permissions']['Deny']['!{}'.format(not_action)]['Resources'] += statement['Resource']
                         else:
-                            user['Permissions']['Allow'][not_action].append(statement['Resource'])
+                            user['Permissions']['Deny']['!{}'.format(not_action)]['Resources'].append(statement['Resource'])
                     else:
+                        user['Permissions']['Deny']['!{}'.format(not_action)] = {'Resources': [], 'Conditions': []}
                         if isinstance(statement['Resource'], list):
-                            user['Permissions']['Allow'][not_action] = statement['Resource']
+                            user['Permissions']['Deny']['!{}'.format(not_action)]['Resources'] = statement['Resource']
                         else:
-                            user['Permissions']['Allow'][not_action] = [statement['Resource']]
-                    user['Permissions']['Allow'][not_action] = list(set(user['Permissions']['Allow'][not_action]))  # Remove duplicate resources
+                            user['Permissions']['Deny']['!{}'.format(not_action)]['Resources'] = [statement['Resource']]
+                    if 'Condition' in statement:
+                        user['Permissions']['Deny']['!{}'.format(not_action)]['Conditions'].append(statement['Condition'])
+                    user['Permissions']['Deny']['!{}'.format(not_action)]['Resources'] = list(set(user['Permissions']['Deny']['!{}'.format(not_action)]['Resources']))  # Remove duplicate resources
 
             elif 'NotAction' in statement and isinstance(statement['NotAction'], str):
-                if statement['NotAction'] in user['Permissions']['Allow']:
+                if '!{}'.format(statement['NotAction']) in user['Permissions']['Deny']:
                     if isinstance(statement['Resource'], list):
-                        user['Permissions']['Allow'][statement['NotAction']] += statement['Resource']
+                        user['Permissions']['Deny']['!{}'.format(statement['NotAction'])]['Resources'] += statement['Resource']
                     else:
-                        user['Permissions']['Allow'][statement['NotAction']].append(statement['Resource'])
+                        user['Permissions']['Deny']['!{}'.format(statement['NotAction'])]['Resources'].append(statement['Resource'])
                 else:
+                    user['Permissions']['Deny']['!{}'.format(statement['NotAction'])] = {'Resources': [], 'Conditions': []}
                     if isinstance(statement['Resource'], list):
-                        user['Permissions']['Allow'][statement['NotAction']] = statement['Resource']
+                        user['Permissions']['Deny']['!{}'.format(statement['NotAction'])]['Resources'] = statement['Resource']
                     else:
-                        user['Permissions']['Allow'][statement['NotAction']] = [statement['Resource']]  # Make sure that resources are always arrays
-                user['Permissions']['Allow'][statement['NotAction']] = list(set(user['Permissions']['Allow'][statement['NotAction']]))  # Remove duplicate resources
+                        user['Permissions']['Deny']['!{}'.format(statement['NotAction'])]['Resources'] = [statement['Resource']]  # Make sure that resources are always arrays
+                if 'Condition' in statement:
+                    user['Permissions']['Deny']['!{}'.format(statement['NotAction'])]['Conditions'].append(statement['Condition'])
+                user['Permissions']['Deny']['!{}'.format(statement['NotAction'])]['Resources'] = list(set(user['Permissions']['Deny']['!{}'.format(statement['NotAction'])]['Resources']))  # Remove duplicate resources
 
     return user

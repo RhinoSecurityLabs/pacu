@@ -15,10 +15,10 @@ module_info = {
     'category': 'recon_enum_with_keys',
 
     # One liner description of the module functionality. This shows up when a user searches for modules.
-    'one_liner': 'Enumerates data About the account itself',
+    'one_liner': 'Enumerates data About the account itself.',
 
     # Full description about what the module does and how it works
-    'description': 'Determines information about the AWS account itself',
+    'description': 'Determines information about the AWS account itself.',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['IAM'],

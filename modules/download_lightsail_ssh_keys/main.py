@@ -41,7 +41,7 @@ def main(args, pacu_main):
     summary_data = {'region_key_pairs': []}
     regions = get_regions('lightsail')
 
-    dl_path = Path.cwd() / 'sessions' / session.name / 'downloads' /'download_lightsail_ssh_keys'
+    dl_path = Path.cwd() / 'sessions' / session.name / 'downloads' / 'download_lightsail_ssh_keys'
     if not dl_path.exists():
         dl_path.mkdir()
     summary_data['dl_path'] = str(dl_path.relative_to(Path.cwd() / 'sessions' / session.name))

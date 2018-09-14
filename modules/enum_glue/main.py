@@ -47,6 +47,7 @@ parser.add_argument('--databases', required=False, default=False, action='store_
 parser.add_argument('--dev-endpoints', required=False, default=False, action='store_true', help='Enumerate Glue development endpoints.')
 parser.add_argument('--jobs', required=False, default=False, action='store_true', help='Enumerate Glue jobs.')
 
+
 def fetch_glue_data(client, func, key, print, **kwargs):
     caller = getattr(client, func)
     try:
@@ -142,7 +143,7 @@ def main(args, pacu_main):
                 continue
             if not getattr(args, var):
                 del summary_data[var]
-        
+
     glue_data = deepcopy(session.Glue)
     glue_data['Connections'] = all_connections
     glue_data['Crawlers'] = all_crawlers

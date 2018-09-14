@@ -66,19 +66,20 @@ parser.add_argument('--vpcs', required=False, default=False, action='store_true'
 parser.add_argument('--vpc-endpoints', required=False, default=False, action='store_true', help='Enumerate EC2 VPC endpoints')
 
 ARG_FIELD_MAPPER = {
-    'instances':'Instances',
-    'security_groups':'SecurityGroups',
-    'elastic_ips':'ElasticIPs',
-    'customer_gateways':'VPNCustomerGateways',
-    'dedicated_hosts':'DedicatedHosts',
-    'network_acls':'NetworkACLs',
-    'nat_gateways':'NATGateways',
-    'network_interfaces':'NetworkInterfaces',
-    'route_tables':'RouteTables',
-    'subnets':'Subnets',
-    'vpcs':'VPCs',
-    'vpc_endpoints':'VPCEndpoints',
+    'instances': 'Instances',
+    'security_groups': 'SecurityGroups',
+    'elastic_ips': 'ElasticIPs',
+    'customer_gateways': 'VPNCustomerGateways',
+    'dedicated_hosts': 'DedicatedHosts',
+    'network_acls': 'NetworkACLs',
+    'nat_gateways': 'NATGateways',
+    'network_interfaces': 'NetworkInterfaces',
+    'route_tables': 'RouteTables',
+    'subnets': 'Subnets',
+    'vpcs': 'VPCs',
+    'vpc_endpoints': 'VPCEndpoints',
 }
+
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -427,7 +428,6 @@ def main(args, pacu_main):
             all_vpc_endpoints += vpc_endpoints
 
         print('')  # Break the line after each region. This isn't on the end of another print because they won't always be all used and isn't before the region print because it would double break lines at the beginning
-
 
     gathered_data = {
         'Instances': all_instances,

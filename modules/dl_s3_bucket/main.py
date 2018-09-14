@@ -105,7 +105,7 @@ def extract_from_file(pacu, file):
 def write_bucket_keys_to_file(pacu, objects):
     pacu.print('  Writing file names to disk...')
     session = pacu.get_active_session()
-    file = 'sessions/{}/downloads/{}/'.format(session.name, module_info['name'])    
+    file = 'sessions/{}/downloads/{}/'.format(session.name, module_info['name'])
     if not os.path.exists(file):
         os.makedirs(file)
     file += '{}_file_names.txt'.format(module_info['name'])

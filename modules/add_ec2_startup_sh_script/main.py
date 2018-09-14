@@ -133,7 +133,7 @@ def start_instance(client, instance_id, print):
     print('Starting {}'.format(instance_id))
     try:
         client.start_instances(InstanceIds=[instance_id])
-        result = True
+        return True
     except ClientError as error:
         code = error.response['Error']['Code']
         if code == 'UnauthorizedOperation':
@@ -141,6 +141,7 @@ def start_instance(client, instance_id, print):
         else:
             print('  FAILURE: {}'.format(code))
     return False
+
 
 def prepare_user_data(client, instance_id, script):  # Replace this with a fetch_data of download_ec2_userdata
     response = client.describe_instance_attribute(

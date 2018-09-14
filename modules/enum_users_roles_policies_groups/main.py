@@ -70,7 +70,7 @@ def main(args, pacu_main):
                     users.append(user)
 
                 is_truncated = response['IsTruncated']
-                
+
             print('Found {} users'.format(len(users)))
         except ClientError:
             print('No Users Found')

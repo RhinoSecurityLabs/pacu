@@ -105,7 +105,7 @@ def main(args, pacu_main):
     return summary_data
 
 
-def summary(data, pacu_main):    
+def summary(data, pacu_main):
     out = '  Regions Enumerated:\n'
     for region in data['regions']:
         out += '    {}\n'.format(region)

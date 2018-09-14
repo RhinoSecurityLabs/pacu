@@ -109,7 +109,6 @@ def main(args, pacu_main):
                         csv_file.write('{},{},{}\n'.format(load_balancer['LoadBalancerName'], load_balancer['LoadBalancerArn'], load_balancer['Region']))
                         summary_data['logless'] += 1
 
-
     print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 

@@ -54,7 +54,8 @@ def main(args, pacu_main):
 
     for region in regions:
         events = []
-        print('Starting region {}. This may take a while...'.format(region))
+        print('Downloading logs from {}:'.format(region))
+        print(' This may take a while...')
         client = pacu_main.get_boto3_client('cloudtrail', region)
 
         event_history = client.lookup_events(
@@ -71,14 +72,14 @@ def main(args, pacu_main):
             events += event_history['Events']
 
         summary_data[region] = len(events)
-        print('Finished finding events for region: {}'.format(region))
+        print('Finished enumerating {}'.format(region))
 
         now = time.time()
         with open('sessions/{}/downloads/cloudtrail_{}_event_history_{}.json'.format(session.name, region, now), 'w+') as json_file:
             json.dump(events, json_file, indent=2, default=str)
-        print('  Event history written to ./sessions/{}/downloads/cloudtrail_{}_event_history_{}.json\n'.format(session.name, region, now))
+        print('  Events written to ./sessions/{}/downloads/cloudtrail_{}_event_history_{}.json'.format(session.name, region, now))
 
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

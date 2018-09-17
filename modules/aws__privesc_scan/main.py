@@ -249,8 +249,8 @@ def main(args, pacu_main):
             folder = 'sessions/{}/downloads/confirmed_permissions/'.format(session.name)
             print('No --folder argument passed to offline mode, using the default: ./{}\n'.format(folder))
             if os.path.isdir(folder) is False:
-                print('sessions/{}/downloads/confirmed_permissions/ not found! Maybe you have not run confirm_permissions yet...\n'.format(session.name))
-                if fetch_data(['All users permissions'], 'confirm_permissions', '--all-users') is False:
+                print('sessions/{}/downloads/confirmed_permissions/ not found! Maybe you have not run iam__enum_permissions yet...\n'.format(session.name))
+                if fetch_data(['All users permissions'], 'iam__enum_permissions', '--all-users') is False:
                     print('Pre-req module not run. Exiting...')
                     return
 
@@ -313,7 +313,7 @@ def main(args, pacu_main):
         # Have any permissions been enumerated?
         if user['Permissions']['Allow'] == {} and user['Permissions']['Deny'] == {}:
             print('No permissions detected yet.')
-            if fetch_data(['User', 'Permissions'], 'confirm_permissions', '') is False:
+            if fetch_data(['User', 'Permissions'], 'iam__enum_permissions', '') is False:
                 print('Pre-req module not run successfully. Exiting...')
                 return
             user = key_info()
@@ -513,7 +513,7 @@ def CreateNewPolicyVersion(pacu_main, print, input, fetch_data):
                 return False
 
             elif fetch.strip().lower() == 'y':
-                if fetch_data(None, 'confirm_permissions', '', force=True) is False:
+                if fetch_data(None, 'iam__enum_permissions', '', force=True) is False:
                     print('Pre-req module not run successfully. Skipping method...')
                     return False
                 return CreateNewPolicyVersion(pacu_main, print, input, fetch_data)
@@ -927,7 +927,7 @@ def CreateLoginProfile(pacu_main, print, input, fetch_data):
     print('  Starting method CreatingLoginProfile...\n')
 
     username = input('    Is there a specific user you want to target? They must not already have a login profile (password for logging into the AWS Console). Enter their user name now or just hit enter to enumerate users and view a list of options: ')
-    if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies_groups', '--users') is False:
+    if fetch_data(['IAM', 'Users'], 'iam__enum_users_roles_policies_groups', '--users') is False:
         print('Pre-req module not run successfully. Exiting...')
         return False
     users = session.IAM['Users']
@@ -949,9 +949,9 @@ def CreateLoginProfile(pacu_main, print, input, fetch_data):
             for user in users:
                 user_string = '{},{}'.format(user_string, user['UserName'])  # Prepare username list for backdoor_users_password
             user_string = user_string[1:]  # Remove first comma
-            fetch_data(None, 'backdoor_users_password', '--usernames {}'.format(user_string), force=True)
+            fetch_data(None, 'iam__backdoor_users_password', '--usernames {}'.format(user_string), force=True)
         else:
-            fetch_data(None, 'backdoor_users_password', '--usernames {}'.format(username), force=True)
+            fetch_data(None, 'iam__backdoor_users_password', '--usernames {}'.format(username), force=True)
     except Exception as e:
         print('      Failed to create a login profile for user {}: {}'.format(username, e))
         again = input('    Do you want to try another user (y) or continue to the next privilege escalation method (n)? ')
@@ -969,7 +969,7 @@ def UpdateLoginProfile(pacu_main, print, input, fetch_data):
     print('  Starting method UpdateLoginProfile...\n')
 
     username = input('    Is there a specific user you want to target? They must already have a login profile (password for logging into the AWS Console). Enter their user name now or just hit enter to enumerate users and view a list of options: ')
-    if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies_groups', '--users') is False:
+    if fetch_data(['IAM', 'Users'], 'iam__enum_users_roles_policies_groups', '--users') is False:
         print('Pre-req module not run successfully. Exiting...')
         return False
     users = session.IAM['Users']
@@ -990,9 +990,9 @@ def UpdateLoginProfile(pacu_main, print, input, fetch_data):
             for user in users:
                 user_string = '{},{}'.format(user_string, user['UserName'])  # Prepare username list for backdoor_users_password
             user_string = user_string[1:]  # Remove first comma
-            fetch_data(None, 'backdoor_users_password', '--update --usernames {}'.format(user_string), force=True)
+            fetch_data(None, 'iam__backdoor_users_password', '--update --usernames {}'.format(user_string), force=True)
         else:
-            fetch_data(None, 'backdoor_users_password', '--update --usernames {}'.format(username), force=True)
+            fetch_data(None, 'iam__backdoor_users_password', '--update --usernames {}'.format(username), force=True)
         return True
     except Exception as e:
         print('      Failed to update the login profile for user {}: {}'.format(username, e))
@@ -1076,7 +1076,7 @@ def AttachRolePolicy(pacu_main, print, input, fetch_data):
     target_role = input('    Is there a specific role to target? Enter the name now or just press enter to enumerate a list of possible roles to choose from: ')
 
     if not target_role:
-        if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles', force=True) is False:
+        if fetch_data(['IAM', 'Roles'], 'iam__enum_users_roles_policies_groups', '--roles', force=True) is False:
             print('Pre-req module not run successfully. Exiting...')
             return False
         roles = deepcopy(session.IAM['Roles'])
@@ -1168,7 +1168,7 @@ def PutRolePolicy(pacu_main, print, input, fetch_data):
     target_role = input('    Is there a specific role to target? Enter the name now or just press enter to enumerate a list of possible roles to choose from: ')
 
     if not target_role:
-        if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles', force=True) is False:
+        if fetch_data(['IAM', 'Roles'], 'iam__enum_users_roles_policies_groups', '--roles', force=True) is False:
             print('Pre-req module not run successfully. Exiting...')
             return False
         roles = deepcopy(session.IAM['Roles'])
@@ -1204,7 +1204,7 @@ def AddUserToGroup(pacu_main, print, input, fetch_data):
 
     group_name = input('    Is there a specific group you want to add your user to? Enter the name now or just press enter to enumerate a list of possible groups to choose from: ')
     if group_name == '':
-        if fetch_data(['IAM', 'Groups'], 'enum_users_roles_policies_groups', '--groups') is False:
+        if fetch_data(['IAM', 'Groups'], 'iam__enum_users_roles_policies_groups', '--groups') is False:
             print('Pre-req module not run successfully. Exiting...')
             return False
         groups = session.IAM['Groups']
@@ -1244,7 +1244,7 @@ def UpdateRolePolicyToAssumeIt(pacu_main, print, input, fetch_data):
     target_role = input('    Is there a specific role to target? Enter the name now or just press enter to enumerate a list of possible roles to choose from: ')
 
     if not target_role:
-        if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles', force=True) is False:
+        if fetch_data(['IAM', 'Roles'], 'iam__enum_users_roles_policies_groups', '--roles', force=True) is False:
             print('Pre-req module not run successfully. Exiting...')
             return False
         roles = deepcopy(session.IAM['Roles'])
@@ -1258,7 +1258,7 @@ def UpdateRolePolicyToAssumeIt(pacu_main, print, input, fetch_data):
     print('Targeting role {}. Trying to backdoor access to it from the current user...'.format(target_role))
 
     try:
-        if fetch_data(['Backdooring Roles'], 'backdoor_assume_role', '--role-names {}'.format(target_role), force=True) is False:
+        if fetch_data(['Backdooring Roles'], 'iam__backdoor_assume_role', '--role-names {}'.format(target_role), force=True) is False:
             print('Pre-req module not run successfully. Exiting...')
             return False
         print('Successfully updated the assume-role-policy-document for role {}. You should now be able to assume that role to gain its privileges.\n'.format(target_role))
@@ -1489,7 +1489,7 @@ def pass_existing_role_to_lambda(pacu_main, print, input, fetch_data, zip_file='
     target_role_arn = input('  Is there a specific role to use? Enter the ARN now or just press enter to enumerate a list of possible roles to choose from: ')
 
     if not target_role_arn:
-        if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles', force=True) is False:
+        if fetch_data(['IAM', 'Roles'], 'iam__enum_users_roles_policies_groups', '--roles', force=True) is False:
             print('Pre-req module not run successfully. Exiting...')
             return False
         roles = deepcopy(session.IAM['Roles'])
@@ -1560,7 +1560,7 @@ def PassExistingRoleToNewGlueDevEndpoint(pacu_main, print, input, fetch_data):
     target_role_arn = input('    Is there a specific role to use? Enter the ARN now or just press enter to enumerate a list of possible roles to choose from: ')
 
     if not target_role_arn:
-        if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles', force=True) is False:
+        if fetch_data(['IAM', 'Roles'], 'iam__enum_users_roles_policies_groups', '--roles', force=True) is False:
             print('Pre-req module not run successfully. Exiting...')
             return False
         roles = deepcopy(session.IAM['Roles'])
@@ -1623,7 +1623,7 @@ def UpdateExistingGlueDevEndpoint(pacu_main, print, input, fetch_data):
 
     choice = 0
     if endpoint_name == '':
-        if fetch_data(['Glue', 'DevEndpoints'], 'enum_glue', '--dev-endpoints', force=True) is False:
+        if fetch_data(['Glue', 'DevEndpoints'], 'glue__enum', '--dev-endpoints', force=True) is False:
             print('Pre-req module not run successfully. Exiting...')
             return False
         dev_endpoints = session.Glue['DevEndpoints']
@@ -1665,7 +1665,7 @@ def PassExistingRoleToNewCloudFormation(pacu_main, print, input, fetch_data):
     target_role_arn = input('    Is there a specific role to use? Enter the ARN now or just press enter to enumerate a list of possible roles to choose from: ')
 
     if not target_role_arn:
-        if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles', force=True) is False:
+        if fetch_data(['IAM', 'Roles'], 'iam__enum_users_roles_policies_groups', '--roles', force=True) is False:
             print('Pre-req module not run successfully. Exiting...')
             return False
         roles = deepcopy(session.IAM['Roles'])
@@ -1768,7 +1768,7 @@ def PassExistingRoleToNewDataPipeline(pacu_main, print, input, fetch_data):
 def EditExistingLambdaFunctionWithRole(pacu_main, print, input, fetch_data):
     print('  Starting method EditExistingLambdaFunctionWithRole...\n')
 
-    if fetch_data(['Lambda', 'Functions'], 'enum_lambda', '', force=True) is False:
+    if fetch_data(['Lambda', 'Functions'], 'lambda__enum', '', force=True) is False:
         print('Pre-req module not run successfully. Exiting...')
         return False
 

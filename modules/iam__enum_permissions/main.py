@@ -60,7 +60,7 @@ def main(args, pacu_main):
 
     users = []
     if args.all_users is True:
-        if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies_groups', '--users') is False:
+        if fetch_data(['IAM', 'Users'], 'iam__enum_users_roles_policies_groups', '--users') is False:
             print('FAILURE')
             print('  SUB-MODULE EXECUTION FAILED')
             return

@@ -76,7 +76,7 @@ def main(args, pacu_main):
         print('Invalid arguments received. No command argument was passed in and PacuProxy is not listening, so there is no default. Either start PacuProxy and run again or run again with the --command argument.\n')
         return
 
-    if fetch_data(['EC2', 'Instances'], 'enum_ec2', '--instances') is False:
+    if fetch_data(['EC2', 'Instances'], 'ec2__enum', '--instances') is False:
         print('Pre-req module not run successfully. Exiting...\n')
         return
     instances = session.EC2['Instances']
@@ -155,7 +155,7 @@ def main(args, pacu_main):
         )['Policy']
 
         if ssm_policy['AttachmentCount'] > 0:
-            if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles') is False:
+            if fetch_data(['IAM', 'Roles'], 'iam__enum_users_roles_policies_groups', '--roles') is False:
                 print('Pre-req module not run successfully. Exiting...\n')
                 return
             roles = session.IAM['Roles']

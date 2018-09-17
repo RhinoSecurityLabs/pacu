@@ -99,7 +99,7 @@ def main(args, pacu_main):
                 })
     else:
         print('Targeting all Lightsail instances...')
-        if fetch_data(['Lightsail'], 'enum_lightsail', '--instances') is False:
+        if fetch_data(['Lightsail'], 'lightsail__enum', '--instances') is False:
             print('Pre-req module not run successfully. Exiting...')
             return
         for region in session.Lightsail:

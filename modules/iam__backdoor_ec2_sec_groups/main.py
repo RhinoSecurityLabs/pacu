@@ -23,7 +23,7 @@ module_info = {
     'services': ['EC2'],
 
     # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
-    'prerequisite_modules': ['enum_ec2_sec_groups'],
+    'prerequisite_modules': ['ec2__enum'],
 
     # Module arguments to autocomplete when the user hits tab
     'arguments_to_autocomplete': ['--ip', '--port-range', '--protocol', '--groups'],
@@ -71,7 +71,7 @@ def main(args, pacu_main):
                 'Region': group.split('@')[1]
             })
     else:
-        if fetch_data(['EC2', 'SecurityGroups'], 'enum_ec2', '--security-groups') is False:
+        if fetch_data(['EC2', 'SecurityGroups'], 'ec2__enum', '--security-groups') is False:
             print('FAILURE')
             print('  SUB-MODULE EXECUTION FAILED')
             return

@@ -4,7 +4,7 @@ from botocore.exceptions import ClientError
 
 module_info = {
     # Name of the module (should be the same as the filename)
-    'name': 'cloudtail__csv_injection',
+    'name': 'cloudtrail__csv_injection',
 
     # Name and any other notes about the author
     'author': 'Spencer Gietzen of Rhino Security Labs',

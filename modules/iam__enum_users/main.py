@@ -4,7 +4,7 @@ import botocore
 
 
 module_info = {
-    'name': 'iam__enum_iam_users',
+    'name': 'iam__enum_users',
 
     'author': 'Spencer Gietzen of Rhino Security Labs',
 

@@ -27,7 +27,7 @@ module_info = {
     'services': ['EC2'],
 
     # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
-    'prerequisite_modules': ['ec2__enum'],
+    'prerequisite_modules': ['ec2__enum', 'iam__enum_users_roles_policies_groups'],
 
     # Module arguments to autocomplete when the user hits tab
     'arguments_to_autocomplete': ['--command', '--target-os', '--all-instances', '--replace', '--ip-name'],
@@ -155,7 +155,7 @@ def main(args, pacu_main):
         )['Policy']
 
         if ssm_policy['AttachmentCount'] > 0:
-            if fetch_data(['IAM', 'Roles'], 'iam__enum_users_roles_policies_groups', '--roles') is False:
+            if fetch_data(['IAM', 'Roles'], module_info['prerequisite_modules'][1], '--roles') is False:
                 print('Pre-req module not run successfully. Exiting...\n')
                 return
             roles = session.IAM['Roles']

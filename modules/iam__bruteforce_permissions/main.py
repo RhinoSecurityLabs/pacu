@@ -13,7 +13,7 @@ from . import param_generator
 
 
 module_info = {
-    'name': 'iam__enum_permissions_bruteforce',
+    'name': 'iam__bruteforce_permissions',
     'author': 'Alexander Morgenstern at RhinoSecurityLabs',
     'category': 'ENUM',
     'one_liner': 'Enumerates permissions using brute force',

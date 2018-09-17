@@ -10,7 +10,7 @@ from botocore.exceptions import ClientError
 module_info = {
     'name': 'ebs__explore_snapshots',
     'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
-    'category': 'EXFIL',
+    'category': 'EXPLOIT',
     'one_liner': 'Restores and attaches EBS volumes/snapshots to an EC2 instance of your choice.',
     'description': 'This module will cycle through existing EBS volumes and create snapshots of them, then restore those snapshots and existing snapshots to new EBS volumes, which will then be attached to the supplied EC2 instance for you to mount. This will give you access to the files on the various volumes, where you can then look for sensitive information. Afterwards, it will cleanup the created volumes and snapshots by detaching them from your instance and removing them from the AWS account.',
     'services': ['EC2'],

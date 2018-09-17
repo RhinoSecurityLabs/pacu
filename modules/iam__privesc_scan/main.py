@@ -14,7 +14,7 @@ from utils import remove_empty_from_dict
 
 module_info = {
     # Name of the module (should be the same as the filename)
-    'name': 'aws__privesc_scan',
+    'name': 'iam__privesc_scan',
 
     # Name and any other notes about the author
     'author': 'Spencer Gietzen of Rhino Security Labs',

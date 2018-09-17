@@ -5,7 +5,7 @@ from botocore.exceptions import ClientError
 
 module_info = {
     # Name of the module (should be the same as the filename)
-    'name': 'iam__backdoor_ec2_sec_groups',
+    'name': 'ec2__backdoor_ec2_sec_groups',
 
     # Name and any other notes about the author
     'author': 'Spencer Gietzen of Rhino Security Labs based on the idea from https://github.com/dagrz/aws_pwn/blob/master/persistence/backdoor_all_security_groups.py',

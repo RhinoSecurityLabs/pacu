@@ -8,13 +8,13 @@ from threading import Thread
 
 module_info = {
     # Name of the module (should be the same as the filename)
-    'name': 's3_finder',
+    'name': 's3__bucket_finder',
 
     # Name and any other notes about the author
     'author': 'Dwight Hohnstein',
 
     # Category of the module. Make sure the name matches an existing category.
-    'category': 'recon_enum_no_keys',
+    'category': 'RECON_UNAUTH',
 
     # One liner description of the module functionality. This shows up when a user searches for modules.
     'one_liner': 'Enumerates/bruteforces S3 buckets based on different parameters.',

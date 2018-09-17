@@ -6,11 +6,11 @@ import string
 
 
 module_info = {
-    'name': 'enum_assume_role',
+    'name': 'iam__enum_account_ids',
 
     'author': 'Spencer Gietzen of Rhino Security Labs',
 
-    'category': 'recon_enum_no_keys',
+    'category': 'RECON_UNAUTH',
 
     'one_liner': 'Enumerates existing roles in other AWS accounts to try and gain access via misconfigurations.',
 

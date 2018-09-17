@@ -8,7 +8,7 @@ module_info = {
 
     'author': 'Spencer Gietzen of Rhino Security Labs',
 
-    'category': 'recon_enum_no_keys',
+    'category': 'RECON_UNAUTH',
 
     'one_liner': 'Enumerates IAM users in a separate AWS account, given the account ID.',
 

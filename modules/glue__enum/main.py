@@ -7,13 +7,13 @@ from botocore.exceptions import ClientError
 
 module_info = {
     # Name of the module (should be the same as the filename)
-    'name': 'enum_glue',
+    'name': 'glue__enum',
 
     # Name and any other notes about the author
     'author': 'Spencer Gietzen of Rhino Security Labs',
 
     # Category of the module. Make sure the name matches an existing category.
-    'category': 'recon_enum_with_keys',
+    'category': 'ENUM',
 
     # One liner description of the module functionality. This shows up when a user searches for modules.
     'one_liner': 'Enumerates Glue connections, crawlers, databases, development endpoints, and jobs.',

@@ -72,7 +72,7 @@ def main(args, pacu_main):
                 'Region': instance.split('@')[1]
             })
     else:
-        if fetch_data(['EC2', 'Instances'], 'enum_ec2', '--instances') is False:
+        if fetch_data(['EC2', 'Instances'], 'ec2__enum', '--instances') is False:
             print('Pre-req module not run successfully. Exiting...')
             return None
         instances = session.EC2['Instances']

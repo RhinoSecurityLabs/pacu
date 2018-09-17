@@ -45,7 +45,7 @@ def main(args, pacu_main):
         regions = list(set(regions))
     else:
         regions = get_regions('GuardDuty')
-        if fetch_data(['GuardDuty', 'Detectors'], 'enum_monitoring', '--guard-duty') is False:
+        if fetch_data(['GuardDuty', 'Detectors'], 'detection__enumerate_services', '--guard-duty') is False:
             print('Pre-req module failed.')
             return
         detectors = copy.deepcopy(session.GuardDuty['Detectors'])

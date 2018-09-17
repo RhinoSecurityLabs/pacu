@@ -24,7 +24,7 @@ module_info = {
     'services': ['Lightsail'],
 
     # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
-    'prerequisite_modules': ['enum_lightsail'],
+    'prerequisite_modules': ['lightsail__enum'],
 
     # External resources that the module depends on. Valid options are either a GitHub URL (must end in .git) or single file URL.
     'external_dependencies': [],
@@ -99,7 +99,7 @@ def main(args, pacu_main):
                 })
     else:
         print('Targeting all Lightsail instances...')
-        if fetch_data(['Lightsail'], 'lightsail__enum', '--instances') is False:
+        if fetch_data(['Lightsail'], module_info['prerequisite_modules'][0], '--instances') is False:
             print('Pre-req module not run successfully. Exiting...')
             return
         for region in session.Lightsail:

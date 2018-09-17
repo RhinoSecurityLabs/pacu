@@ -13,7 +13,7 @@ module_info = {
     'one_liner': 'Adds an IP address to the list of trusted IPs in GuardDuty.',
     'description': 'This module accepts a file containing IPv4 addresses and adds them to the GuardDuty list of trusted IPs to basically disable security alerts against these IPs. A remote file location is required for this list, as that is what the GuardDuty API requires. Note: This will not erase any existing GuardDuty findings, it will only prevent future findings related to the included IP addresses. WARNING: Only one list of trusted IP addresses is allowed per GuardDuty detector. This module will prompt you to delete an existing list if you would like, but doing so could have unintended bad consequences on the target AWS environment.',
     'services': ['GuardDuty'],
-    'prerequisite_modules': [],
+    'prerequisite_modules': ['detection__enumerate_services'],
     'external_dependencies': [],
     'arguments_to_autocomplete': ['--path', '--regions', '--targets'],
 }
@@ -45,7 +45,7 @@ def main(args, pacu_main):
         regions = list(set(regions))
     else:
         regions = get_regions('GuardDuty')
-        if fetch_data(['GuardDuty', 'Detectors'], 'detection__enumerate_services', '--guard-duty') is False:
+        if fetch_data(['GuardDuty', 'Detectors'], module_info['prerequisite_modules'][0], '--guard-duty') is False:
             print('Pre-req module failed.')
             return
         detectors = copy.deepcopy(session.GuardDuty['Detectors'])

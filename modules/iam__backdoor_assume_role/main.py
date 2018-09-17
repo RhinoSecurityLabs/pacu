@@ -60,7 +60,7 @@ def main(args, pacu_main):
 
     if args.role_names is None:
         print('Fetching Roles... ')
-        if fetch_data(['IAM', 'Roles'], 'iam__enum_users_roles_policies_groups', '--roles') is False:
+        if fetch_data(['IAM', 'Roles'], module_info['prerequisite_modules'][0], '--roles') is False:
             print('Sub-module Execution Failed')
             print('  Exiting...')
             return

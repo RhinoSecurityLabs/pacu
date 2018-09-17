@@ -14,7 +14,7 @@ module_info = {
     'one_liner': 'Restores and attaches EBS volumes/snapshots to an EC2 instance of your choice.',
     'description': 'This module will cycle through existing EBS volumes and create snapshots of them, then restore those snapshots and existing snapshots to new EBS volumes, which will then be attached to the supplied EC2 instance for you to mount. This will give you access to the files on the various volumes, where you can then look for sensitive information. Afterwards, it will cleanup the created volumes and snapshots by detaching them from your instance and removing them from the AWS account.',
     'services': ['EC2'],
-    'prerequisite_modules': [],
+    'prerequisite_modules': ['ec2__enum', 'ebs__enum_volumes_snapshots'],
     'arguments_to_autocomplete': ['--instance-id', '--zone'],
 }
 
@@ -166,7 +166,7 @@ def get_instances(pacu):
     ec2_data = deepcopy(pacu.get_active_session().EC2)
     if 'Instances' not in ec2_data:
         fields = ['EC2', 'Instances']
-        module = 'ec2__enum'
+        module = module_info['prerequisite_modules'][0]
         args = '--instances'
         fetched_ec2_instances = pacu.fetch_data(fields, module, args)
         if fetched_ec2_instances is False:
@@ -186,7 +186,7 @@ def get_snapshots(pacu):
     ec2_data = deepcopy(pacu.get_active_session().EC2)
     if 'Snapshots' not in ec2_data or not ec2_data['Snapshots']:
         fields = ['EC2', 'Snapshots']
-        module = 'ebs__enum_volumes_snapshots'
+        module = module_info['prerequisite_modules'][1]
         args = '--snaps'
         fetched_snapshots = pacu.fetch_data(fields, module, args)
         if fetched_snapshots is False:
@@ -207,7 +207,7 @@ def get_volumes(pacu):
     if 'Volumes' not in ec2_data or not ec2_data['Volumes']:
         pacu.print('Fetching Volume data...')
         fields = ['EC2', 'Volumes']
-        module = 'ebs__enum_volumes_snapshots'
+        module = module_info['prerequisite_modules'][1]
         args = '--vols'
         fetched_volumes = pacu.fetch_data(fields, module, args)
         if fetched_volumes is False:

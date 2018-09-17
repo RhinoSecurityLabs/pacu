@@ -26,7 +26,7 @@ module_info = {
     'services': ['EC2'],
 
     # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
-    'prerequisite_modules': ['enum_ec2'],
+    'prerequisite_modules': ['ec2__enum'],
 
     # Module arguments to autocomplete when the user hits tab
     'arguments_to_autocomplete': ['--script', '--instance-ids'],
@@ -83,7 +83,7 @@ def main(args, pacu_main):
             })
     else:
         print('Targeting all EC2 instances...')
-        if fetch_data(['EC2', 'Instances'], 'ec2__enum', '--instances') is False:
+        if fetch_data(['EC2', 'Instances'], module_info['prerequisite_modules'][0], '--instances') is False:
             print('Sub-module run failed')
             return
         for instance in session.EC2['Instances']:

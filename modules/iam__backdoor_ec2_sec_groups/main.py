@@ -71,7 +71,7 @@ def main(args, pacu_main):
                 'Region': group.split('@')[1]
             })
     else:
-        if fetch_data(['EC2', 'SecurityGroups'], 'ec2__enum', '--security-groups') is False:
+        if fetch_data(['EC2', 'SecurityGroups'], module_info['prerequisite_modules'][0], '--security-groups') is False:
             print('FAILURE')
             print('  SUB-MODULE EXECUTION FAILED')
             return

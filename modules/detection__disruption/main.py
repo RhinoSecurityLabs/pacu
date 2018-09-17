@@ -23,7 +23,7 @@ module_info = {
     'services': ['GuardDuty', 'CloudTrail', 'EC2', 'Config', 'monitoring'],  # CloudWatch needs to be "monitoring" and VPC needs to be "EC2" here for "ls" to work
 
     # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
-    'prerequisite_modules': ['enum_monitoring'],
+    'prerequisite_modules': ['detection__enumerate_services'],
 
     # Module arguments to autocomplete when the user hits tab
     'arguments_to_autocomplete': ['--trails', '--detectors', '--config-rules', '--config-recorders', '--config-aggregators', '--alarms', '--flow-logs'],
@@ -190,7 +190,7 @@ def main(args, pacu_main):
 
         # If there is missing data, run enum_monitoring
         if len(arguments) > 0:
-            if fetch_data(['Logging/Monitoring Data'], 'detection__enumerate_services', ' '.join(arguments)) is False:
+            if fetch_data(['Logging/Monitoring Data'], module_info['prerequisite_modules'][0], ' '.join(arguments)) is False:
                 print('Pre-req module not run successfully. Only targeting services that currently have valid data...\n')
             else:
                 trails = deepcopy(session.CloudTrail['Trails'])

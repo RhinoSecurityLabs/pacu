@@ -1162,7 +1162,7 @@ class Main:
                             found_modules_by_category[category].append('    {}\n'.format(module.module_info['one_liner']))
 
         if found_modules_by_category:
-            PRINT_ORDER = ['ENUM', 'ESCALATE', 'LATERAL_MOVE', 'EXPLOIT', 'PERSIST', 'EVADE', 'EXFIL']
+            PRINT_ORDER = ['RECON_UNAUTH', 'ENUM', 'ESCALATE', 'LATERAL_MOVE', 'EXPLOIT', 'PERSIST', 'EXFIL', 'EVADE']
             for category in PRINT_ORDER:
                 if category in found_modules_by_category:
                     search_results = '\n'.join(found_modules_by_category[category]).strip('\n')

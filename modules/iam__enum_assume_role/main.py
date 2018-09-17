@@ -6,7 +6,7 @@ import string
 
 
 module_info = {
-    'name': 'iam__enum_account_ids',
+    'name': 'iam__enum_assume_role',
 
     'author': 'Spencer Gietzen of Rhino Security Labs',
 

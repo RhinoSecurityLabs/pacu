@@ -190,7 +190,7 @@ def main(args, pacu_main):
 
         # If there is missing data, run enum_monitoring
         if len(arguments) > 0:
-            if fetch_data(['Logging/Monitoring Data'], 'enum_monitoring', ' '.join(arguments)) is False:
+            if fetch_data(['Logging/Monitoring Data'], 'detection__enumerate_services', ' '.join(arguments)) is False:
                 print('Pre-req module not run successfully. Only targeting services that currently have valid data...\n')
             else:
                 trails = deepcopy(session.CloudTrail['Trails'])

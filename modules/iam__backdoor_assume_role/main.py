@@ -26,7 +26,7 @@ module_info = {
     'services': ['IAM'],
 
     # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
-    'prerequisite_modules': ['enum_users_roles_policies_groups'],
+    'prerequisite_modules': ['iam__enum_users_roles_policies_groups'],
 
     # Module arguments to autocomplete when the user hits tab
     'arguments_to_autocomplete': ['--role-names', '--user-arns', '--no-random'],
@@ -60,7 +60,7 @@ def main(args, pacu_main):
 
     if args.role_names is None:
         print('Fetching Roles... ')
-        if fetch_data(['IAM', 'Roles'], 'enum_users_roles_policies_groups', '--roles') is False:
+        if fetch_data(['IAM', 'Roles'], 'iam__enum_users_roles_policies_groups', '--roles') is False:
             print('Sub-module Execution Failed')
             print('  Exiting...')
             return

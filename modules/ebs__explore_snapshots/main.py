@@ -166,7 +166,7 @@ def get_instances(pacu):
     ec2_data = deepcopy(pacu.get_active_session().EC2)
     if 'Instances' not in ec2_data:
         fields = ['EC2', 'Instances']
-        module = 'enum_ec2'
+        module = 'ec2__enum'
         args = '--instances'
         fetched_ec2_instances = pacu.fetch_data(fields, module, args)
         if fetched_ec2_instances is False:
@@ -186,7 +186,7 @@ def get_snapshots(pacu):
     ec2_data = deepcopy(pacu.get_active_session().EC2)
     if 'Snapshots' not in ec2_data or not ec2_data['Snapshots']:
         fields = ['EC2', 'Snapshots']
-        module = 'enum_ebs_volumes_snapshots'
+        module = 'ebs__enum_volumes_snapshots'
         args = '--snaps'
         fetched_snapshots = pacu.fetch_data(fields, module, args)
         if fetched_snapshots is False:
@@ -207,7 +207,7 @@ def get_volumes(pacu):
     if 'Volumes' not in ec2_data or not ec2_data['Volumes']:
         pacu.print('Fetching Volume data...')
         fields = ['EC2', 'Volumes']
-        module = 'enum_ebs_volumes_snapshots'
+        module = 'ebs__enum_volumes_snapshots'
         args = '--vols'
         fetched_volumes = pacu.fetch_data(fields, module, args)
         if fetched_volumes is False:

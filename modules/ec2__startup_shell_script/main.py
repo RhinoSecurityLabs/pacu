@@ -83,7 +83,7 @@ def main(args, pacu_main):
             })
     else:
         print('Targeting all EC2 instances...')
-        if fetch_data(['EC2', 'Instances'], 'enum_ec2', '--instances') is False:
+        if fetch_data(['EC2', 'Instances'], 'ec2__enum', '--instances') is False:
             print('Sub-module run failed')
             return
         for instance in session.EC2['Instances']:

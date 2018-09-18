@@ -1162,9 +1162,11 @@ class Main:
                             found_modules_by_category[category].append('    {}\n'.format(module.module_info['one_liner']))
 
         if found_modules_by_category:
-            for key in sorted(found_modules_by_category.keys()):
-                search_results = '\n'.join(found_modules_by_category[key]).strip('\n')
-                print('\n[Category: {}]\n\n{}'.format(key, search_results))
+            PRINT_ORDER = ['RECON_UNAUTH', 'ENUM', 'ESCALATE', 'LATERAL_MOVE', 'EXPLOIT', 'PERSIST', 'EXFIL', 'EVADE']
+            for category in PRINT_ORDER:
+                if category in found_modules_by_category:
+                    search_results = '\n'.join(found_modules_by_category[category]).strip('\n')
+                    print('\n[Category: {}]\n\n{}'.format(category, search_results))
         else:
             print('\nNo modules found.')
         print('')
@@ -1577,7 +1579,6 @@ class Main:
 """)
                     except UnicodeEncodeError as error:
                         pass
-
 
                     configure_settings.copy_settings_template_into_settings_file_if_not_present()
                     set_sigint_handler(exit_text='\nA database must be created for Pacu to work properly.')

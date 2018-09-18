@@ -17,12 +17,6 @@ Pacu is a fairly lightweight program, as it requires only [Python3.5+](https://w
 
 For a more detailed and user-friendly set of user instructions, please check out the Wiki's [installation guide](https://github.com/RhinoSecurityLabs/pacu/wiki/Installation).
 
-## Key Features
-
-* **Comprehensive AWS security-testing toolkit**, supported by a leading cybersecurity firm.
-* **Wide range of powerful scanning and exploitation capabilities* offer by 36 modules (and counting)** which can be chained together.
-* **Open-source and modular** structure allows easy auditing and community-driven improvement.
-
 ## Pacu's Modular Power
 
 Pacu uses a range of [plug-in modules](https://github.com/RhinoSecurityLabs/pacu/wiki/Module-Details) to assist an attacker in enumeration, privilege escalation, data exfiltration, service exploitation, and log manipulation within AWS environments. At present, Pacu has 36 modules for executing AWS attacks, but we'll be working hard to add more modules in the future, and suggestions for new modules (or even contributions of whole completed modules) are welcome.
@@ -33,7 +27,7 @@ We'll be working on improve Pacu's core capabilities and building out a well-doc
 
 ## Community
 
-We're always happy to get bugs reports in the Pacu framework itself, as well as testing and feedback on different modules, and generally critical feedback to help refine the framework. We hope to see this grow into a key open-source tool for testing AWS security, and we need your help to make that happen! Any support towards this effort, through use and testing, improvement, or just by spreading the word, would be very much appreciated. If you have a feature request, an idea, or a bug to report, please [submit them here](https://github.com/RhinoSecurityLabs/pacu/issues/new?title=Briefly%20describe%20your%20idea%20or%20bug%20&body=Bug%20reports%3A%20please%20make%20sure%20to%20describe%20what%20happened%2C%20what%20you%20expected%20to%20happen%20instead%2C%20the%20steps%20that%20you%20took%20to%20trigger%20the%20bug%20(if%20any)%2C%20and%20provide%20any%20screenshots%20that%20you%20can.%20Error%20logs%20and%20sessions%20are%20also%20very%20helpful%2C%20but%20please%20make%20sure%20to%20remove%20any%20confidential%20information%20from%20them%20before%20upload.%0A%0AIdeas%20for%20new%20features%3A%20please%20provide%20as%20much%20detail%20as%20you%20can%2C%20including%20mockups%2C%20screenshots%2C%20pseduo-code%2C%20and%20most%20importantly%20why%20you%20think%20your%20idea%20would%20benefit%20Pacu.%0A%0ALastly%2C%20thank%20you%20-%20your%20contribution%20is%20appreciated!). Note that Pacu creates error logs within each session's folder, as well as a global error log for out-of-session errors which is created in the main directory. If you can, please include these logs with your bug reports, as it will dramatically simplify the debugging process.
+We're always happy to get bugs reports in the Pacu framework itself, as well as testing and feedback on different modules, and generally critical feedback to help refine the framework. We hope to see this grow into a key open-source tool for testing AWS security, and we need your help to make that happen! Any support towards this effort through use, testing, improvement, or just by spreading the word, would be very much appreciated. 
 
 If you're interested in contributing directly to the Pacu Framework itself, please read our [contribution guidelines](https://github.com/RhinoSecurityLabs/pacu/wiki/Contribution-Guidelines) for code conventions and git flow notes.
 
@@ -50,12 +44,6 @@ If you're interested in writing your own modules for Pacu, check out our [Module
   * Allow use of standalone config files
   * Plugin architecture improvements
 
-## Upcoming Pacu Modules
-
-* PinPoint SMS/Email/Mobile Push Abuse
-* S3 Item Interception
-* And many more.
-
 ## Notes
 
 * Pacu is officially supported in OSX and Linux.
@@ -69,69 +57,19 @@ Modules require an AWS key, which grant you minimal access to an AWS environment
 
 If you are ever stuck, `help` will bring up a list of commands that are available.
 
-For a more thorough tutorial, including some example attack paths to try out, please check out our [Quick-Start Guide](https://github.com/RhinoSecurityLabs/pacu/wiki/Quick-Start-Guide) on the wiki.
-
-### Basic Commands in Pacu
+## Basic Commands in Pacu
 
 * `list` will list the available modules for the regions that were set in the current session.
 * `help module_name` will return the applicable help information for the specified module.
 * `run module_name` will run the specified module with its default parameters.
 * `run module_name --regions eu-west-1,us-west-1` will run the specified module against the eu-west-1 and us-west-1 regions (for modules that support the --regions argument)
 
-### Module List
+## Submitting Requests / Bug Reports
 
-Pacu's capabilities will increase dramatically as the number of modules grows, as each module's findings are available for other modules to leverage during their own execution. Below is a summary list of the current modules in Pacu, but For a more thorough description of each module, please visit the [modules page](https://github.com/RhinoSecurityLabs/pacu/wiki/Module-Details) on the wiki.
-
-#### Unauthenticated Modules
-
-- `s3_finder` - Enumerates/bruteforces S3 buckets based on different parameters.
-
-#### Authenticated Modules
-
-##### Recon Modules
-- `confirm_permissions` - Tries to get a confirmed list of permissions for the current user.
-- `download_ec2_userdata` - Downloads user data from EC2 instances.
-- `enum_account` -  Enumerates concerning the account itself.
-- `enum_codebuild` - Enumerates CodeBuild builds and projects while looking for sensitive data.
-- `enum_ebs_volumes_snapshots` - Enumerates EBS volumes and snapshots and logs any without encryption.
-- `enum_ec2` - Enumerates a ton of relevant EC2 info.
-- `enum_ec2_termination_protection` - Collects a list of EC2 instances without termination protection.
-- `enum_elb_logging` - Collects a list of Elastic Load Balancers without access logging.
-- `enum_glue` - Enumerates Glue connections, crawlers, databases, development endpoints, and jobs.
-- `enum_lambda` - Pulls data related to Lambda Functions, source code, aliases, event source mappings, versions, tags, and policies.
-- `enum_lateral_movement` - Looks for Network Plane lateral movement opportunities.
-- `enum_lightsail` - Examines Lightsail data fields and automatically enumerates them for all available regions.
-- `enum_monitoring` - Detects monitoring and logging capabilities.
-- `enum_permissions_bruteforce` - Enumerates permissions using brute force
-- `enum_spend` - Enumerates account spend by service.
-- `enum_users_roles_policies_groups` - Enumerates users, roles, customer-managed policies, and groups.
-- `enum_waf` - Detects rules and rule groups for WAF.
-- `get_credential_report` - Generates and downloads an IAM credential report.
-- `inspector_report_fetcher` - Captures vulnerabilities found when running a preconfigured inspector report.
- - `s3_bucket_dump` - Enumerate and dumps files from S3 buckets.
-
-##### Post Exploitation Modules
-- `add_ec2_startup_sh_script` - Stops and restarts EC2 instances to execute code.
-- `backdoor_ec2_sec_groups` - Adds backdoor rules to EC2 security groups.
-- `cloudtrail_csv_injection` - Inject malicious formulas/data into CloudTrail event history.
-- `create_api_gateway_keys` - Attempts to create an API gateway key for a (or all) rest APIs that are defined.
-- `download_lightsail_ssh_keys` - Downloads Lightsails default SSH key pairs.
-- `generate_lightsail_ssh_keys` - Creates SSH keys for available regions in AWS Lightsail.
-- `generate_temp_lightsail_access` - Creates temporary SSH keys for available instances in AWS Lightsail.
-- `sysman_ec2_rce` - Tries to execute code as root/SYSTEM on EC2 instances.
-
-##### Escalation Modules
-- `backdoor_assume_role` - Creates assume-role trust relationships between users and roles.
-- `privesc_scan` - An IAM privilege escalation path finder and abuser.
-
-##### Persistence Modules
-- `backdoor_users_keys` - Adds API keys to other users.
-- `backdoor_users_password` - Adds a password to users without one.
-
-##### Logging Modules
-- `dl_cloudtrail_event_history` - Downloads CloudTrail event history to JSON files.
-- `dl_cloudwatch_logs` - Downloads CloudWatch logs within a specific time period to the session downloads directory.
-- `disrupt_monitoring` - Disables, deletes, or minimizes various logging/monitoring services.
+- Report vulnerabilities in Pacu directly to us via email: pacu@rhinosecuritylabs.com.
+- Pacu creates error logs within each session's folder, as well as a global error log for out-of-session errors which is created in the main directory. If you can, please include these logs with your bug reports, as it will dramatically simplify the debugging process.
+- If you have a feature request, an idea, or a bug to report, please [submit them here](https://github.com/RhinoSecurityLabs/pacu/issues/new/choose). 
+  - Please include a description sufficient to reproduce the bug you found, including tracebacks and reproduction steps, and check for other reports of your bug before filing a new bug report. Don't submit duplicates.
 
 ## Wiki
 

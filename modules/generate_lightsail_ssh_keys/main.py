@@ -77,9 +77,9 @@ def main(args, pacu_main):
         except ClientError as error:
             code = error.response['Error']['Code']
             if code == 'AccessDeniedException':
-                print('Unauthorized to add key pair to Lightsail.')
+                print('    Unauthorized to add key pair to Lightsail.')
             elif 'already in use' in str(error):
-                print('Key name "{}" already in use.'.format(name))
+                print('    Key name "{}" already in use.'.format(name))
                 continue
             break
         except client.exceptions.InvalidInputException as error:
@@ -99,7 +99,7 @@ def main(args, pacu_main):
         except IOError:
             print('Error writing key pair {} to file'.format(created_keys[region]['name']))
             continue
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
 
     summary_data = {
         'keys': len(created_keys.keys()),

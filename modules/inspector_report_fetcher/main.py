@@ -39,7 +39,8 @@ def main(args, pacu_main):
     complete_data = {}
     summary_data = {
         'reports': 0,
-        'findings': 0
+        'findings': 0,
+        'regions': regions,
     }
     if args.download_reports:
         summary_data['reports_location'] = 'sessions/{}/downloads/inspector_assessments/'.format(session.name)
@@ -89,9 +90,10 @@ def main(args, pacu_main):
                 continue
         try:
             if len(findings) < 1:
-                print('  No findings found for {}.'.format(region))
+                print('  No findings found')
                 continue
             else:
+                print('  {} findings found'.format(len(findings)))
                 summary_data['findings'] += len(findings)
             descriptions = client.describe_findings(findingArns=findings)['findings']
             complete_data[region] = descriptions
@@ -99,12 +101,14 @@ def main(args, pacu_main):
             if error.response['Error']['Code'] == 'AccessDeniedException':
                 print('Access Denied for describe-findings')
     session.update(pacu_main.database, Inspector=complete_data)
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
 def summary(data, pacu_main):
-    out = ''
+    out = '  Regions Enumerated:\n'
+    for region in data['regions']:
+        out += '    {}\n'.format(region)
     if 'reports_location' in data:
         out += '  Reports saved to: {}\n'.format(data['reports_location'])
     out += '  {} reports found.\n'.format(data['reports'])

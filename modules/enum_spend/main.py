@@ -102,7 +102,7 @@ def main(args, pacu_main):
 
     session.update(pacu_main.database, AccountSpend=service_spend)
 
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return service_spend
 
 

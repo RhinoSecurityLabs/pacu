@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
-import json
-
+from pathlib import Path
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -34,6 +33,7 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 
 def main(args, pacu_main):
     ###### Don't modify these. They can be removed if you are not using the function.
+    session = pacu_main.get_active_session()
     args = parser.parse_args(args)
     print = pacu_main.print
     get_regions = pacu_main.get_regions
@@ -41,22 +41,39 @@ def main(args, pacu_main):
     summary_data = {'region_key_pairs': []}
     regions = get_regions('lightsail')
 
+    dl_path = Path.cwd() / 'sessions' / session.name / 'downloads' / 'download_lightsail_ssh_keys'
+    if not dl_path.exists():
+        dl_path.mkdir()
+    summary_data['dl_path'] = str(dl_path.relative_to(Path.cwd() / 'sessions' / session.name))
     for region in regions:
+        print('  Downloading default keys for {}...'.format(region))
+        cur_path = dl_path / region
+        if not cur_path.exists():
+            cur_path.mkdir()
         client = pacu_main.get_boto3_client('lightsail', region)
         downloaded_keys = client.download_default_key_pair()
         restructured_keys = {
             'publicKey': downloaded_keys['publicKeyBase64'],
             'privateKey': downloaded_keys['privateKeyBase64']
         }
-        print('Region: {}\n{}\n'.format(region, json.dumps(restructured_keys)))
+
+        private_path = cur_path / 'default'
+        with private_path.open('w', encoding='utf-8') as key_file:
+            key_file.write(restructured_keys['privateKey'])
+        public_path = cur_path / 'default.pub'
+        with public_path.open('w', encoding='utf-8') as key_file:
+            key_file.write(restructured_keys['publicKey'])
+
         summary_data['region_key_pairs'].append(region)
 
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
 def summary(data, pacu_main):
-    out = '  Downloaded Key Pairs for the following regions: \n'
+    out = '  Keys downloaded to:\n'
+    out += '    ' + data['dl_path'] + '\n'
+    out += '  Downloaded Key Pairs for the following regions: \n'
     for region in sorted(data['region_key_pairs']):
         out += '    {}\n'.format(region)
     return out

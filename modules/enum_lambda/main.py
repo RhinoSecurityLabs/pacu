@@ -29,7 +29,7 @@ module_info = {
     'external_dependencies': [],
 
     # Module arguments to autocomplete when the user hits tab
-    'arguments_to_autocomplete': ['--versions-all'],
+    'arguments_to_autocomplete': ['--versions-all', '--regions'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
@@ -37,13 +37,12 @@ parser.add_argument('--versions-all', required=False, default=False, action='sto
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all session regions.')
 
 
-def fetch_lambda_data(client, func, key, **kwargs):
+def fetch_lambda_data(client, func, key, print, **kwargs):
     caller = getattr(client, func)
     try:
-        print('  Starting enumeration of {}'.format(key))
         response = caller(**kwargs)
         data = response[key]
-        if isinstance(data, dict) or isinstance(data, str):
+        if isinstance(data, (dict, str)):
             print('    Found {} data'.format(key))
             return data
         while 'nextMarker' in response:
@@ -54,11 +53,23 @@ def fetch_lambda_data(client, func, key, **kwargs):
     except client.exceptions.ResourceNotFoundException:
         print('    No valid {} found'.format(key))
     except ClientError as error:
-        if error.response['Error']['Code'] == 'AccessDeniedException':
-            print('AccessDenied for: {}'.format(func))
+        print('  FAILURE:')
+        code = error.response['Error']['Code']
+        if code == 'AccessDeniedException':
+            print('    MISSING NEEDED PERMISSIONS')
         else:
-            print('Unknown Error:\n{}'.format(error))
+            print(code)
     return []
+
+
+def full_region_prompt(print, input, regions):
+    print('Automatically targeting region(s):')
+    for region in regions:
+        print('  {}'.format(region))
+    selection = input('Do you wish to continue? (y/n) ')
+    if selection.lower() == 'y':
+        return True
+    return False
 
 
 def main(args, pacu_main):
@@ -67,10 +78,16 @@ def main(args, pacu_main):
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = pacu_main.print
+    input = pacu_main.input
     get_regions = pacu_main.get_regions
     ######
 
-    regions = args.regions.split(',') if args.regions else get_regions('Lambda')
+    if args.regions:
+        regions = args.regions.split(',')
+    else:
+        regions = get_regions('Lambda')
+        if not full_region_prompt(print, input, regions):
+            return
 
     lambda_data = {}
     summary_data = {}
@@ -82,8 +99,8 @@ def main(args, pacu_main):
 
         try:
             account_settings = client.get_account_settings()
-            # pop any ResponseMetaData to have cleaner account_settings response
-            account_settings.pop('ResponseMetadata', None)
+            # Delete any ResponseMetaData to have cleaner account_settings response
+            del account_settings['ResponseMetadata']
             for key in account_settings:
                 lambda_data[key] = account_settings[key]
         except ClientError as error:
@@ -92,24 +109,25 @@ def main(args, pacu_main):
             else:
                 print(error)
 
-        lambda_functions = fetch_lambda_data(client, 'list_functions', 'Functions')
+        lambda_functions = fetch_lambda_data(client, 'list_functions', 'Functions', print)
 
         for func in lambda_functions:
             print('  Enumerating data for {}'.format(func['FunctionName']))
             func_arn = func['FunctionArn']
-            func['Code'] = fetch_lambda_data(client, 'get_function', 'Code', FunctionName=func_arn)
-            func['Aliases'] = fetch_lambda_data(client, 'list_aliases', 'Aliases', FunctionName=func_arn)
-            func['EventSourceMappings'] = fetch_lambda_data(client, 'list_event_source_mappings', 'EventSourceMappings', FunctionName=func_arn)
-            func['Tags'] = fetch_lambda_data(client, 'list_tags', 'Tags', Resource=func_arn)
-            func['Policy'] = fetch_lambda_data(client, 'get_policy', 'Policy', FunctionName=func_arn)
+            func['Region'] = region
+            func['Code'] = fetch_lambda_data(client, 'get_function', 'Code', print, FunctionName=func_arn)
+            func['Aliases'] = fetch_lambda_data(client, 'list_aliases', 'Aliases', print, FunctionName=func_arn)
+            func['EventSourceMappings'] = fetch_lambda_data(client, 'list_event_source_mappings', 'EventSourceMappings', print, FunctionName=func_arn)
+            func['Tags'] = fetch_lambda_data(client, 'list_tags', 'Tags', print, Resource=func_arn)
+            func['Policy'] = fetch_lambda_data(client, 'get_policy', 'Policy', print, FunctionName=func_arn)
             if args.versions_all:
-                func['Versions'] = fetch_lambda_data(client, 'list_versions_by_function', 'Versions', FunctionName=func_arn)
+                func['Versions'] = fetch_lambda_data(client, 'list_versions_by_function', 'Versions', print, FunctionName=func_arn)
         lambda_data['Functions'] += lambda_functions
-        if len(lambda_functions) > 0:
+        if lambda_functions:
             summary_data[region] = len(lambda_functions)
     session.update(pacu_main.database, Lambda=lambda_data)
 
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
@@ -117,4 +135,6 @@ def summary(data, pacu_main):
     out = ''
     for region in sorted(data):
         out += '  {} functions found in {}.\n'.format(data[region], region)
+    if not out:
+        out = '  Nothing was enumerated'
     return out

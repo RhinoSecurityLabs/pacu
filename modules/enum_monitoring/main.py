@@ -82,7 +82,7 @@ def main(args, pacu_main):
 
         except ClientError as error:
             code = error.response['Error']['Code']
-            print('  Error getting Shield Info: {}\n'.format(code))
+            print('  Error getting Shield info: {}\n'.format(code))
     if args.cloud_trail or enum_all:
         print('Starting CloudTrail...')
         cloudtrail_regions = get_regions('cloudtrail')
@@ -91,7 +91,7 @@ def main(args, pacu_main):
         for region in cloudtrail_regions:
             if not cloudtrail_permission:
                 print('  No Valid Permissions Found')
-                print('    Skipping Subsequent Enumerations for remaining regions...')
+                print('    Skipping subsequent enumerations for remaining regions...')
                 break
             print('  Starting region {}...'.format(region))
 
@@ -101,12 +101,12 @@ def main(args, pacu_main):
                 for trail in trails['trailList']:
                     trail['Region'] = region
                     all_trails.append(trail)
-                print('    {} trails found.'.format(len(trails['trailList'])))
+                print('    {} trail(s) found.'.format(len(trails['trailList'])))
             except ClientError as error:
                 code = error.response['Error']['Code']
                 if code == 'AccessDeniedException':
                     print('    ACCESS DENIED: DescribeTrails')
-                    print('       Skipping Subsequent Enumerations...')
+                    print('       Skipping subsequent enumerations...')
                     cloudtrail_permission = False
                 else:
                     print('    {}'.format(code))
@@ -114,7 +114,7 @@ def main(args, pacu_main):
         cloudtrail_data = deepcopy(session.CloudTrail)
         cloudtrail_data['Trails'] = all_trails
         session.update(pacu_main.database, CloudTrail=cloudtrail_data)
-        print('  {} total CloudTrail trails found.\n'.format(len(session.CloudTrail['Trails'])))
+        print('  {} total CloudTrail trail(s) found.'.format(len(session.CloudTrail['Trails'])))
         summary_data['CloudTrails'] = len(session.CloudTrail['Trails'])
     if args.guard_duty or enum_all:
         print('Starting GuardDuty...')
@@ -126,7 +126,7 @@ def main(args, pacu_main):
         for region in guard_duty_regions:
             if not guard_duty_permission:
                 print('  No Valid Permissions Found')
-                print('    Skipping Subsequent Enumerations for remaining regions...')
+                print('    Skipping subsequent enumerations for remaining regions...')
                 break
             detectors = []
             print('  Starting region {}...'.format(region))
@@ -145,13 +145,13 @@ def main(args, pacu_main):
                         })
                         if not master:
                             master_count += 1
-                print('    {} GuardDuty Detectors found.'.format(len(detectors)))
+                print('    {} GuardDuty Detector(s) found.'.format(len(detectors)))
                 all_detectors.extend(detectors)
             except ClientError as error:
                 code = error.response['Error']['Code']
                 if code == 'AccessDeniedException':
                     print('    ACCESS DENIED: ListDetectors')
-                    print('       Skipping Subsequent Enumerations...')
+                    print('       Skipping subsequent enumerations...')
                     guard_duty_permission = False
                 else:
                     print('    {}'.format(code))
@@ -160,8 +160,9 @@ def main(args, pacu_main):
         guardduty_data = deepcopy(session.GuardDuty)
         guardduty_data['Detectors'] = all_detectors
         session.update(pacu_main.database, GuardDuty=guardduty_data)
-        print('  {} total GuardDuty Detectors found.\n'.format(len(session.GuardDuty['Detectors'])))
+        print('  {} total GuardDuty Detector(s) found.\n'.format(len(session.GuardDuty['Detectors'])))
         summary_data['Detectors'] = len(session.GuardDuty['Detectors'])
+
     if args.config or enum_all:
         print('Starting Config...')
         config_regions = get_regions('config')
@@ -178,7 +179,7 @@ def main(args, pacu_main):
         for region in config_regions:
             if not any([permissions[action] for action in permissions]):
                 print('  No Valid Permissions Found')
-                print('    Skipping Subsequent Enumerations for remaining regions...')
+                print('    Skipping subsequent enumerations for remaining regions...')
                 break
             print('  Starting region {}...'.format(region))
 
@@ -193,12 +194,12 @@ def main(args, pacu_main):
                         rules.extend(page['ConfigRules'])
                     for rule in rules:
                         rule['Region'] = region
-                    print('    {} rules found.'.format(len(rules)))
+                    print('    {} rule(s) found.'.format(len(rules)))
                 except ClientError as error:
                     code = error.response['Error']['Code']
                     if code == 'AccessDeniedException':
                         print('    ACCESS DENIED: DescribeConfigRules')
-                        print('      Skipping Subsequent Enumerations...')
+                        print('      Skipping subsequent enumerations...')
                         permissions['rules'] = False
                     else:
                         print('    {}'.format(code))
@@ -223,13 +224,13 @@ def main(args, pacu_main):
                             if channel['name'] == status['name']:
                                 channel.update(status)  # Merge the channel "status" fields into the actual channel for the DB
                                 break
-                    print('    {} delivery channels found.'.format(len(delivery_channels)))
+                    print('    {} delivery channel(s) found.'.format(len(delivery_channels)))
                     all_delivery_channels.extend(delivery_channels)
                 except ClientError as error:
                     code = error.response['Error']['Code']
                     if code == 'AccessDeniedException':
                         print('    ACCESS DENIED: DescribeDeliveryChannels')
-                        print('      Skipping Subsequent Enumerations...')
+                        print('      Skipping subsequent enumerations...')
                         permissions['delivery_channels'] = False
                     else:
                         print('    {}'.format(code))
@@ -252,13 +253,13 @@ def main(args, pacu_main):
                             if recorder['name'] == status['name']:
                                 recorder.update(status)  # Merge the recorder "status" fields into the actual recorder for the DB
                                 break
-                    print('    {} configuration recorders found.'.format(len(configuration_recorders)))
+                    print('    {} configuration recorder(s) found.'.format(len(configuration_recorders)))
                     all_configuration_recorders.extend(configuration_recorders)
                 except ClientError as error:
                     code = error.response['Error']['Code']
                     if code == 'AccessDeniedException':
                         print('    ACCESS DENIED: DescribeConfigurationRecorders')
-                        print('      Skipping Subsequent Enumerations...')
+                        print('      Skipping subsequent enumerations...')
                         permissions['recorders'] = False
                     else:
                         print('    {}'.format(code))
@@ -266,8 +267,9 @@ def main(args, pacu_main):
             # The following regions lack support for configuration aggregators.
             BAD_AGGREGATION_REGIONS = ['eu-west-2', 'ca-central-1', 'eu-west-3', 'sa-east-1', 'ap-south-1', 'ap-northeast-2']
             if region in BAD_AGGREGATION_REGIONS:
-                print('    Skipping Unsupported Aggregator Region...')
+                print('    Skipping unsupported aggregator region...')
                 continue
+
             if permissions['aggregators']:
                 configuration_aggregators = []
                 kwargs = {}
@@ -278,7 +280,7 @@ def main(args, pacu_main):
                         code = error.response['Error']['Code']
                         if code == 'AccessDeniedException':
                             print('    ACCESS DENIED: DescribeConfigurationAggregators')
-                            print('      Skipping Subsequent Enumerations...')
+                            print('      Skipping subsequent enumerations...')
                             permissions['aggregators'] = False
                         else:
                             print('    {}'.format(code))
@@ -289,7 +291,7 @@ def main(args, pacu_main):
                     else:
                         for aggregator in configuration_aggregators:
                             aggregator['Region'] = region
-                        print('    {} configuration aggregators found.'.format(len(configuration_aggregators)))
+                        print('    {} configuration aggregator(s) found.'.format(len(configuration_aggregators)))
                         all_configuration_aggregators.extend(configuration_aggregators)
                         break
 
@@ -299,10 +301,11 @@ def main(args, pacu_main):
         config_data['DeliveryChannels'] = all_delivery_channels
         config_data['Aggregators'] = all_configuration_aggregators
         session.update(pacu_main.database, Config=config_data)
-        print('  {} total Config rules found.'.format(len(session.Config['Rules'])))
-        print('  {} total Config recorders found.'.format(len(session.Config['Recorders'])))
-        print('  {} total Config delivery channels found.'.format(len(session.Config['DeliveryChannels'])))
-        print('  {} total Config aggregators found.\n'.format(len(session.Config['Aggregators'])))
+
+        print('  {} total Config rule(s) found.'.format(len(session.Config['Rules'])))
+        print('  {} total Config recorder(s) found.'.format(len(session.Config['Recorders'])))
+        print('  {} total Config delivery channel(s) found.'.format(len(session.Config['DeliveryChannels'])))
+        print('  {} total Config aggregator(s) found.\n'.format(len(session.Config['Aggregators'])))
         summary_data.update({
             'config': {
                 'rules': len(all_rules),
@@ -311,6 +314,7 @@ def main(args, pacu_main):
                 'aggregators': len(all_configuration_aggregators),
             }
         })
+
     if args.cloud_watch or enum_all:
         print('Starting CloudWatch...')
         cw_regions = get_regions('monitoring')
@@ -319,7 +323,7 @@ def main(args, pacu_main):
         for region in cw_regions:
             if not cloudwatch_permission:
                 print('  No Valid Permissions Found')
-                print('    Skipping Subsequent Enumerations for remaining regions...')
+                print('    Skipping subsequent enumerations for remaining regions...')
                 break
 
             print('  Starting region {}...'.format(region))
@@ -335,7 +339,7 @@ def main(args, pacu_main):
                 code = error.response['Error']['Code']
                 if code == 'AccessDenied':
                     print('    ACCESS DENIED: DescribeAlarms')
-                    print('      Skipping Subsequent Enumerations...')
+                    print('      Skipping subsequent enumerations...')
                     cloudwatch_permission = False
                 else:
                     print('    {}'.format(code))
@@ -346,7 +350,7 @@ def main(args, pacu_main):
         cw_data = deepcopy(session.CloudWatch)
         cw_data['Alarms'] = all_alarms
         session.update(pacu_main.database, CloudWatch=cw_data)
-        print('  {} total CloudWatch alarms found.\n'.format(len(session.CloudWatch['Alarms'])))
+        print('  {} total CloudWatch alarm(s) found.'.format(len(session.CloudWatch['Alarms'])))
         summary_data['alarms'] = len(all_alarms)
     if args.vpc or enum_all:
         print('Starting VPC...')
@@ -357,7 +361,7 @@ def main(args, pacu_main):
         for region in vpc_regions:
             if not flow_log_permission:
                 print('  No Valid Permissions Found')
-                print('    Skipping Subsequent Enumerations for remaining regions...')
+                print('    Skipping subsequent enumerations for remaining regions...')
                 break
             print('  Starting region {}...'.format(region))
 
@@ -371,7 +375,7 @@ def main(args, pacu_main):
                     code = error.response['Error']['Code']
                     if code == 'UnauthorizedOperation':
                         print('    ACCESS DENIED: DescribeFlowLogs')
-                        print('      Skipping Subsequent Enumerations...')
+                        print('      Skipping subsequent enumerations...')
                         flow_log_permission = False
                     else:
                         print('    {}'.format(code))
@@ -380,7 +384,7 @@ def main(args, pacu_main):
                 if 'NextToken' in response:
                     kwargs['NextToken'] = response['NextToken']
                 else:
-                    print('    {} flow logs found.'.format(len(flow_logs)))
+                    print('    {} flow log(s) found.'.format(len(flow_logs)))
                     break
             for flow_log in flow_logs:
                 flow_log['Region'] = region
@@ -390,10 +394,10 @@ def main(args, pacu_main):
         vpc_data = deepcopy(session.VPC)
         vpc_data['FlowLogs'] = all_flow_logs
         session.update(pacu_main.database, VPC=vpc_data)
-        print('  {} total VPC flow logs found.\n'.format(len(session.VPC['FlowLogs'])))
+        print('  {} total VPC flow log(s) found.'.format(len(session.VPC['FlowLogs'])))
         summary_data['flowlogs'] = len(all_flow_logs)
 
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
@@ -412,14 +416,14 @@ def summary(data, pacu_main):
         out += '  {} Master GuardDuty Detector(s) found.\n'.format(data['MasterDetectors'])
     if 'config' in data:
         out += '  AWS Config Data:\n'
-        out += '    {} Rules found.\n'.format(data['config']['rules'])
-        out += '    {} Recorders found.\n'.format(data['config']['recorders'])
-        out += '    {} Delivery Channels found.\n'.format(data['config']['delivery_channels'])
-        out += '    {} Aggregators found.\n'.format(data['config']['aggregators'])
+        out += '    {} Rule(s) found.\n'.format(data['config']['rules'])
+        out += '    {} Recorder(s) found.\n'.format(data['config']['recorders'])
+        out += '    {} Delivery Channel(s) found.\n'.format(data['config']['delivery_channels'])
+        out += '    {} Aggregator(s) found.\n'.format(data['config']['aggregators'])
     if 'alarms' in data:
         out += '  {} CloudWatch Alarm(s) found.\n'.format(data['alarms'])
     if 'flowlogs' in data:
-        out += '  {} VPC flow logs found.\n'.format(data['flowlogs'])
+        out += '  {} VPC flow log(s) found.\n'.format(data['flowlogs'])
 
     if not out:
         return '  No data could be found'

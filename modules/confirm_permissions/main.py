@@ -5,6 +5,8 @@ import os
 import re
 import botocore
 
+from botocore.exceptions import ClientError
+
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -59,7 +61,8 @@ def main(args, pacu_main):
     users = []
     if args.all_users is True:
         if fetch_data(['IAM', 'Users'], 'enum_users_roles_policies_groups', '--users') is False:
-            print('Pre-req module not run successfully. Exiting...')
+            print('FAILURE')
+            print('  SUB-MODULE EXECUTION FAILED')
             return
         fetched_users = session.IAM['Users']
         for user in fetched_users:
@@ -149,7 +152,11 @@ def main(args, pacu_main):
 
     client = pacu_main.get_boto3_client('iam')
 
+    print('Permission Document Location:')
+    print('  sessions/{}/downloads/confirmed_permissions/'.format(session.name))
+    print('Confirming Permissions for Users...')
     for user in users:
+        print('  {}...'.format(user['UserName']))
         user['Groups'] = []
         user['Policies'] = []
         try:
@@ -167,8 +174,12 @@ def main(args, pacu_main):
                         Marker=response['Marker']
                     )
                     user['Groups'] += response['Groups']
-            except Exception as error:
-                print('List groups for user failed: {}\n'.format(error))
+            except ClientError as error:
+                print('    List groups for user failed')
+                if error.response['Error']['Code'] == 'AccessDenied':
+                    print('      FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+                else:
+                    print('      {}'.format(error.response['Error']['Code']))
                 user['PermissionsConfirmed'] = False
 
             # Get inline and attached group policies
@@ -186,8 +197,12 @@ def main(args, pacu_main):
                             Marker=response['Marker']
                         )
                         policies += response['PolicyNames']
-                except Exception as error:
-                    print('List group policies failed: {}\n'.format(error))
+                except ClientError as error:
+                    print('     List group policies failed')
+                    if error.response['Error']['Code'] == 'AccessDenied':
+                        print('      FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+                    else:
+                        print('      {}'.format(error.response['Error']['Code']))
                     user['PermissionsConfirmed'] = False
 
                 # Get document for each inline policy
@@ -200,8 +215,12 @@ def main(args, pacu_main):
                             GroupName=group['GroupName'],
                             PolicyName=policy
                         )['PolicyDocument']
-                    except Exception as error:
-                        print('Get group policy failed: {}\n'.format(error))
+                    except ClientError as error:
+                        print('     Get group policy failed')
+                        if error.response['Error']['Code'] == 'AccessDenied':
+                            print('      FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+                        else:
+                            print('      {}'.format(error.response['Error']['Code']))
                         user['PermissionsConfirmed'] = False
                     user = parse_document(document, user)
 
@@ -219,8 +238,12 @@ def main(args, pacu_main):
                         )
                         attached_policies += response['AttachedPolicies']
                     group['Policies'] += attached_policies
-                except Exception as error:
-                    print('List attached group policies failed: {}\n'.format(error))
+                except ClientError as error:
+                    print('    List attached group policies failed')
+                    if error.response['Error']['Code'] == 'AccessDenied':
+                        print('      FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+                    else:
+                        print('      {}'.format(error.response['Error']['Code']))
                     user['PermissionsConfirmed'] = False
                 user = parse_attached_policies(client, attached_policies, user)
 
@@ -243,8 +266,12 @@ def main(args, pacu_main):
                     user['Policies'].append({
                         'PolicyName': policy
                     })
-            except Exception as error:
-                print('List user policies failed: {}\n'.format(error))
+            except ClientError as error:
+                print('    List user policies failed')
+                if error.response['Error']['Code'] == 'AccessDenied':
+                    print('      FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+                else:
+                    print('      {}'.format(error.response['Error']['Code']))
                 user['PermissionsConfirmed'] = False
 
             # Get document for each inline policy
@@ -254,8 +281,12 @@ def main(args, pacu_main):
                         UserName=user['UserName'],
                         PolicyName=policy
                     )['PolicyDocument']
-                except Exception as error:
-                    print('Get user policy failed: {}\n'.format(error))
+                except ClientError as error:
+                    print('    Get user policy failed')
+                    if error.response['Error']['Code'] == 'AccessDenied':
+                        print('      FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+                    else:
+                        print('      {}'.format(error.response['Error']['Code']))
                     user['PermissionsConfirmed'] = False
                 user = parse_document(document, user)
 
@@ -273,15 +304,20 @@ def main(args, pacu_main):
                     )
                     attached_policies += response['AttachedPolicies']
                 user['Policies'] += attached_policies
-            except Exception as error:
-                print('List attached user policies failed: {}\n'.format(error))
+            except ClientError as error:
+                print('    List attached user policies failed')
+                if error.response['Error']['Code'] == 'AccessDenied':
+                    print('      FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+                else:
+                    print('      {}'.format(error.response['Error']['Code']))
                 user['PermissionsConfirmed'] = False
 
             user = parse_attached_policies(client, attached_policies, user)
-
-            summary_data['users_confirmed'] += 1
+            if user['PermissionsConfirmed']:
+                summary_data['users_confirmed'] += 1
 
             if args.user_name is None and args.all_users is False:
+                print('  Confirmed Permissions for {}'.format(user['UserName']))
                 active_aws_key.update(
                     pacu_main.database,
                     user_name=user['UserName'],
@@ -300,11 +336,15 @@ def main(args, pacu_main):
                 with open('sessions/{}/downloads/confirmed_permissions/{}.json'.format(session.name, user['UserName']), 'w+') as user_permissions_file:
                     json.dump(user, user_permissions_file, indent=2, default=str)
 
-                print('User details stored in ./sessions/{}/downloads/confirmed_permissions/{}.json\n'.format(session.name, user['UserName']))
-        except Exception as error:
-            print('Error, skipping user {}:\n{}\n'.format(user['UserName'], error))
+                print('    {}\'s permissions stored in {}.json'.format(user['UserName'], user['UserName']))
+        except ClientError as error:
+            if error.response['Error']['Code'] == 'AccessDenied':
+                print('  FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+            else:
+                print('  {}'.format(error.response['Error']['Code']))
+            print('Skipping {}'.format(user['UserName'], error))
 
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
@@ -368,24 +408,24 @@ def get_attached_policy(client, policy_arn):
 
 def parse_document(document, user):
     """ Loop permissions, resources, and conditions """
-    if type(document['Statement']) is dict:
+    if isinstance(document['Statement'], dict):
         document['Statement'] = [document['Statement']]
 
     for statement in document['Statement']:
 
         if statement['Effect'] == 'Allow':
 
-            if 'Action' in statement and type(statement['Action']) is list:  # Check if the action is a single action (str) or multiple (list)
+            if 'Action' in statement and isinstance(statement['Action'], list):  # Check if the action is a single action (str) or multiple (list)
                 statement['Action'] = list(set(statement['Action']))  # Remove duplicates to stop the circular reference JSON error
                 for action in statement['Action']:
                     if action in user['Permissions']['Allow']:
-                        if type(statement['Resource']) is list:
+                        if isinstance(statement['Resource'], list):
                             user['Permissions']['Allow'][action]['Resources'] += statement['Resource']
                         else:
                             user['Permissions']['Allow'][action]['Resources'].append(statement['Resource'])
                     else:
                         user['Permissions']['Allow'][action] = {'Resources': [], 'Conditions': []}
-                        if type(statement['Resource']) is list:
+                        if isinstance(statement['Resource'], list):
                             user['Permissions']['Allow'][action]['Resources'] = statement['Resource']
                         else:
                             user['Permissions']['Allow'][action]['Resources'] = [statement['Resource']]
@@ -393,15 +433,15 @@ def parse_document(document, user):
                             user['Permissions']['Allow'][action]['Conditions'].append(statement['Condition'])
                     user['Permissions']['Allow'][action]['Resources'] = list(set(user['Permissions']['Allow'][action]['Resources']))  # Remove duplicate resources
 
-            elif 'Action' in statement and type(statement['Action']) is str:
+            elif 'Action' in statement and isinstance(statement['Action'], str):
                 if statement['Action'] in user['Permissions']['Allow']:
-                    if type(statement['Resource']) is list:
+                    if isinstance(statement['Resource'], list):
                         user['Permissions']['Allow'][statement['Action']]['Resources'] += statement['Resource']
                     else:
                         user['Permissions']['Allow'][statement['Action']]['Resources'].append(statement['Resource'])
                 else:
                     user['Permissions']['Allow'][statement['Action']] = {'Resources': [], 'Conditions': []}
-                    if type(statement['Resource']) is list:
+                    if isinstance(statement['Resource'], list):
                         user['Permissions']['Allow'][statement['Action']]['Resources'] = statement['Resource']
                     else:
                         user['Permissions']['Allow'][statement['Action']]['Resources'] = [statement['Resource']]  # Make sure that resources are always arrays
@@ -409,17 +449,17 @@ def parse_document(document, user):
                     user['Permissions']['Allow'][statement['Action']]['Conditions'].append(statement['Condition'])
                 user['Permissions']['Allow'][statement['Action']]['Resources'] = list(set(user['Permissions']['Allow'][statement['Action']]['Resources']))  # Remove duplicate resources
 
-            if 'NotAction' in statement and type(statement['NotAction']) is list:  # NotAction is reverse, so allowing a NotAction is denying that action basically
+            if 'NotAction' in statement and isinstance(statement['NotAction'], list):  # NotAction is reverse, so allowing a NotAction is denying that action basically
                 statement['NotAction'] = list(set(statement['NotAction']))  # Remove duplicates to stop the circular reference JSON error
                 for not_action in statement['NotAction']:
                     if '!{}'.format(not_action) in user['Permissions']['Allow']:
-                        if type(statement['Resource']) is list:
+                        if isinstance(statement['Resource'], list):
                             user['Permissions']['Allow']['!{}'.format(not_action)]['Resources'] += statement['Resource']
                         else:
                             user['Permissions']['Allow']['!{}'.format(not_action)]['Resources'].append(statement['Resource'])
                     else:
                         user['Permissions']['Allow']['!{}'.format(not_action)] = {'Resources': [], 'Conditions': []}
-                        if type(statement['Resource']) is list:
+                        if isinstance(statement['Resource'], list):
                             user['Permissions']['Allow']['!{}'.format(not_action)]['Resources'] = statement['Resource']
                         else:
                             user['Permissions']['Allow']['!{}'.format(not_action)]['Resources'] = [statement['Resource']]
@@ -427,15 +467,15 @@ def parse_document(document, user):
                         user['Permissions']['Allow']['!{}'.format(not_action)]['Conditions'].append(statement['Condition'])
                     user['Permissions']['Allow']['!{}'.format(not_action)]['Resources'] = list(set(user['Permissions']['Allow']['!{}'.format(not_action)]['Resources']))  # Remove duplicate resources
 
-            elif 'NotAction' in statement and type(statement['NotAction']) is str:
+            elif 'NotAction' in statement and isinstance(statement['NotAction'], str):
                 if '!{}'.format(statement['NotAction']) in user['Permissions']['Allow']:
-                    if type(statement['Resource']) is list:
+                    if isinstance(statement['Resource'], list):
                         user['Permissions']['Allow']['!{}'.format(statement['NotAction'])]['Resources'] += statement['Resource']
                     else:
                         user['Permissions']['Allow']['!{}'.format(statement['NotAction'])]['Resources'].append(statement['Resource'])
                 else:
                     user['Permissions']['Allow']['!{}'.format(statement['NotAction'])] = {'Resources': [], 'Conditions': []}
-                    if type(statement['Resource']) is list:
+                    if isinstance(statement['Resource'], list):
                         user['Permissions']['Allow']['!{}'.format(statement['NotAction'])]['Resources'] = statement['Resource']
                     else:
                         user['Permissions']['Allow']['!{}'.format(statement['NotAction'])]['Resources'] = [statement['Resource']]  # Make sure that resources are always arrays
@@ -445,17 +485,17 @@ def parse_document(document, user):
 
         if statement['Effect'] == 'Deny':
 
-            if 'Action' in statement and type(statement['Action']) is list:
+            if 'Action' in statement and isinstance(statement['Action'], list):
                 statement['Action'] = list(set(statement['Action']))  # Remove duplicates to stop the circular reference JSON error
                 for action in statement['Action']:
                     if action in user['Permissions']['Deny']:
-                        if type(statement['Resource']) is list:
+                        if isinstance(statement['Resource'], list):
                             user['Permissions']['Deny'][action]['Resources'] += statement['Resource']
                         else:
                             user['Permissions']['Deny'][action]['Resources'].append(statement['Resource'])
                     else:
                         user['Permissions']['Deny'][action] = {'Resources': [], 'Conditions': []}
-                        if type(statement['Resource']) is list:
+                        if isinstance(statement['Resource'], list):
                             user['Permissions']['Deny'][action]['Resources'] = statement['Resource']
                         else:
                             user['Permissions']['Deny'][action]['Resources'] = [statement['Resource']]
@@ -463,15 +503,15 @@ def parse_document(document, user):
                         user['Permissions']['Deny'][action]['Conditions'].append(statement['Condition'])
                     user['Permissions']['Deny'][action]['Resources'] = list(set(user['Permissions']['Deny'][action]['Resources']))  # Remove duplicate resources
 
-            elif 'Action' in statement and type(statement['Action']) is str:
+            elif 'Action' in statement and isinstance(statement['Action'], str):
                 if statement['Action'] in user['Permissions']['Deny']:
-                    if type(statement['Resource']) is list:
+                    if isinstance(statement['Resource'], list):
                         user['Permissions']['Deny'][statement['Action']]['Resources'] += statement['Resource']
                     else:
                         user['Permissions']['Deny'][statement['Action']]['Resources'].append(statement['Resource'])
                 else:
                     user['Permissions']['Deny'][statement['Action']] = {'Resources': [], 'Conditions': []}
-                    if type(statement['Resource']) is list:
+                    if isinstance(statement['Resource'], list):
                         user['Permissions']['Deny'][statement['Action']]['Resources'] = statement['Resource']
                     else:
                         user['Permissions']['Deny'][statement['Action']]['Resources'] = [statement['Resource']]  # Make sure that resources are always arrays
@@ -479,17 +519,17 @@ def parse_document(document, user):
                     user['Permissions']['Deny'][statement['Action']]['Conditions'].append(statement['Condition'])
                 user['Permissions']['Deny'][statement['Action']]['Resources'] = list(set(user['Permissions']['Deny'][statement['Action']]['Resources']))  # Remove duplicate resources
 
-            if 'NotAction' in statement and type(statement['NotAction']) is list:  # NotAction is reverse, so allowing a NotAction is denying that action basically
+            if 'NotAction' in statement and isinstance(statement['NotAction'], list):  # NotAction is reverse, so allowing a NotAction is denying that action basically
                 statement['NotAction'] = list(set(statement['NotAction']))  # Remove duplicates to stop the circular reference JSON error
                 for not_action in statement['NotAction']:
                     if '!{}'.format(not_action) in user['Permissions']['Deny']:
-                        if type(statement['Resource']) is list:
+                        if isinstance(statement['Resource'], list):
                             user['Permissions']['Deny']['!{}'.format(not_action)]['Resources'] += statement['Resource']
                         else:
                             user['Permissions']['Deny']['!{}'.format(not_action)]['Resources'].append(statement['Resource'])
                     else:
                         user['Permissions']['Deny']['!{}'.format(not_action)] = {'Resources': [], 'Conditions': []}
-                        if type(statement['Resource']) is list:
+                        if isinstance(statement['Resource'], list):
                             user['Permissions']['Deny']['!{}'.format(not_action)]['Resources'] = statement['Resource']
                         else:
                             user['Permissions']['Deny']['!{}'.format(not_action)]['Resources'] = [statement['Resource']]
@@ -497,15 +537,15 @@ def parse_document(document, user):
                         user['Permissions']['Deny']['!{}'.format(not_action)]['Conditions'].append(statement['Condition'])
                     user['Permissions']['Deny']['!{}'.format(not_action)]['Resources'] = list(set(user['Permissions']['Deny']['!{}'.format(not_action)]['Resources']))  # Remove duplicate resources
 
-            elif 'NotAction' in statement and type(statement['NotAction']) is str:
+            elif 'NotAction' in statement and isinstance(statement['NotAction'], str):
                 if '!{}'.format(statement['NotAction']) in user['Permissions']['Deny']:
-                    if type(statement['Resource']) is list:
+                    if isinstance(statement['Resource'], list):
                         user['Permissions']['Deny']['!{}'.format(statement['NotAction'])]['Resources'] += statement['Resource']
                     else:
                         user['Permissions']['Deny']['!{}'.format(statement['NotAction'])]['Resources'].append(statement['Resource'])
                 else:
                     user['Permissions']['Deny']['!{}'.format(statement['NotAction'])] = {'Resources': [], 'Conditions': []}
-                    if type(statement['Resource']) is list:
+                    if isinstance(statement['Resource'], list):
                         user['Permissions']['Deny']['!{}'.format(statement['NotAction'])]['Resources'] = statement['Resource']
                     else:
                         user['Permissions']['Deny']['!{}'.format(statement['NotAction'])]['Resources'] = [statement['Resource']]  # Make sure that resources are always arrays

@@ -64,7 +64,7 @@ def main(args, pacu_main):
                 region_projects = client.batch_get_projects(
                     names=project_names
                 )['projects']
-                print('  Found {} projects.'.format(len(region_projects)))
+                print('  Found {} projects'.format(len(region_projects)))
                 summary_data[region]['Projects'] = len(region_projects)
                 all_projects.extend(region_projects)
 
@@ -83,7 +83,7 @@ def main(args, pacu_main):
                 region_builds = client.batch_get_builds(
                     ids=build_ids
                 )['builds']
-                print('  Found {} builds.\n'.format(len(region_builds)))
+                print('  Found {} builds'.format(len(region_builds)))
                 summary_data[region]['Builds'] = len(region_builds)
                 all_builds.extend(region_builds)
         if not summary_data[region]:
@@ -116,7 +116,7 @@ def main(args, pacu_main):
 
     session.update(pacu_main.database, CodeBuild=codebuild_data)
 
-    print('{} completed.\n'.format(module_info['name']))
+    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

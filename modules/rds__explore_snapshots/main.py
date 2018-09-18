@@ -6,9 +6,9 @@ import json
 from botocore.exceptions import ClientError
 
 module_info = {
-    'name': 'rds__explorer_snapshots',
+    'name': 'rds__explore_snapshots',
     'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
-    'category': 'EXPLOIT',
+    'category': 'EXFIL',
     'one_liner': 'Creates copies of running RDS databases to access protected information',
     'description': 'Creates a snapshot of all database instances, restores new database instances from those snapshots, and then changes the master password to allow access to the copied database. After the database has been created, the connection information is given. After interactions with the database are complete, the temporary resources are deleted. If there is an unexpected crash during the module\'s execution, the subsequent run of the module will attempt to clean up any leftover temporary resources.',
     'services': ['RDS'],
@@ -112,6 +112,8 @@ def main(args, pacu):
             delete_instance(client, temp_instance, pacu.print)
             delete_snapshot(client, temp_snapshot, pacu.print)
             summary_data['instances'] += 1
+    if not cleanup(pacu):
+        summary_data['fail'] = 'Failed to delete temporary data.'
     return summary_data
 
 
@@ -241,7 +243,8 @@ def get_all_region_instances(client, print):
 
 def summary(data, pacu_main):
     if 'fail' in data:
-        return data['fail']
-    out = '  No issues cleaning up temporary data\n'
-    out += '  {} Instance(s) Copies Launched'.format(data['instances'])
+        out = data['fail'] + '\n'
+    else:
+        out = '  No issues cleaning up temporary data\n'
+    out += '  {} Copy Instance(s) Launched'.format(data['instances'])
     return out

@@ -66,7 +66,7 @@ If you are ever stuck, `help` will bring up a list of commands that are availabl
 
 ## Submitting Requests / Bug Reports
 
-- Report vulnerabilities in Pacu directly to us via email: pacu@rhinosecuritylabs.com.
+- Report vulnerabilities in Pacu directly to us via email: [pacu@rhinosecuritylabs.com](mailto:pacu@rhinosecuritylabs.com) .
 - Pacu creates error logs within each session's folder, as well as a global error log for out-of-session errors which is created in the main directory. If you can, please include these logs with your bug reports, as it will dramatically simplify the debugging process.
 - If you have a feature request, an idea, or a bug to report, please [submit them here](https://github.com/RhinoSecurityLabs/pacu/issues/new/choose). 
   - Please include a description sufficient to reproduce the bug you found, including tracebacks and reproduction steps, and check for other reports of your bug before filing a new bug report. Don't submit duplicates.
@@ -77,7 +77,7 @@ For walkthroughs and full documentation, please visit the [Pacu wiki](https://gi
 
 ## Contact Us
 
-* We'd love to hear from you, whatever the reason. Shoot us an email at [pacu-beta@rhinosecuritylabs.com](mailto:pacu-beta@rhinosecuritylabs.com) anytime!
+* We'd love to hear from you, whatever the reason. Shoot us an email at [pacu@rhinosecuritylabs.com](mailto:pacu@rhinosecuritylabs.com) anytime!
 
 ## Disclaimers, and the AWS Acceptable Use Policy
 

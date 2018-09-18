@@ -17,12 +17,7 @@ module_info = {
     'author': 'Alexander Morgenstern at RhinoSecurityLabs',
     'category': 'ENUM',
     'one_liner': 'Enumerates permissions using brute force',
-    'description':
-        """
-        This module will automatically run through all possible
-        API calls of supported services in order to enumerate
-        permissions without the use of the IAM API.
-        """,
+    'description': "This module will automatically run through all possible API calls of supported services in order to enumerate permissions without the use of the IAM API.",
     'services': ['all'],
     'prerequisite_modules': [],
     'external_dependencies': [],

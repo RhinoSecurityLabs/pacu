@@ -13,13 +13,7 @@ module_info = {
     'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
     'category': 'EVADE',
     'one_liner': 'Captures CloudWatch logs and downloads them to the session downloads folder',
-    'description': """
-        This module examines all logs for all regions and saves them as CSV files. By default,
-        only events that were logged in the past 24 hours will be captured. Otherwise, they will
-        be captured based on the passed time arguments. The files will be downloaded in a similar
-        format to pacu/sessions/{session}/downloads/cloud_watch_logs/{timestamp}, with session
-        being the active session, and timestamp being the start of this module's execution.
-        """,
+    'description': "This module examines all logs for all regions and saves them as CSV files. By default, only events that were logged in the past 24 hours will be captured. Otherwise, they will be captured based on the passed time arguments. The files will be downloaded in a similar format to pacu/sessions/{session}/downloads/cloud_watch_logs/{timestamp}, with session being the active session, and timestamp being the start of this module's execution.",
     'services': ['logs'],
     'external_dependencies': [],
     'arguments_to_autocomplete': [

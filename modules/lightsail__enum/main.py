@@ -20,12 +20,7 @@ module_info = {
     'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
     'category': 'ENUM',
     'one_liner': 'Captures common data associated with Lightsail',
-    'description': """
-        This module examines Lightsail data fields and automatically enumerates
-        them for all available regions. Available fields can be passed upon execution
-        to only look at certain types of data. By default, all Lightsail fields will
-        captured.
-        """,
+    'description': "This module examines Lightsail data fields and automatically enumerates them for all available regions. Available fields can be passed upon execution to only look at certain types of data. By default, all Lightsail fields will be captured.",
     'services': ['Lightsail'],
     'external_dependencies': [],
     'arguments_to_autocomplete': ['--' + field for field in MASTER_FIELDS],

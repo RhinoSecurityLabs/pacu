@@ -23,7 +23,7 @@ module_info = {
     'services': ['GuardDuty', 'CloudTrail', 'EC2', 'Config', 'monitoring'],  # CloudWatch needs to be "monitoring" and VPC needs to be "EC2" here for "ls" to work
 
     # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
-    'prerequisite_modules': ['detection__enumerate_services'],
+    'prerequisite_modules': ['detection__enum_services'],
 
     # Module arguments to autocomplete when the user hits tab
     'arguments_to_autocomplete': ['--trails', '--detectors', '--config-rules', '--config-recorders', '--config-aggregators', '--alarms', '--flow-logs'],

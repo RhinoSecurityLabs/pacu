@@ -6,7 +6,7 @@ from botocore.exceptions import ClientError
 
 module_info = {
     # Name of the module (should be the same as the filename)
-    'name': 'detection__enumerate_services',
+    'name': 'detection__enum_services',
 
     # Name and any other notes about the author
     'author': 'Spencer Gietzen of Rhino Security Labs',

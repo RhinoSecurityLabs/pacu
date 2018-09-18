@@ -2,6 +2,8 @@
 import argparse
 from pathlib import Path
 import json
+import random
+import string
 
 from botocore.exceptions import ClientError
 
@@ -123,7 +125,8 @@ def process_instance(pacu, client, instance):
         DBInstanceIdentifier=instance['DBInstanceIdentifier'],
         WaiterConfig=WAIT_CONFIG,
     )
-    password = pacu.input('    Set Master Password for current instance: ')
+    password = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+    pacu.print('    Master Password for current instance: {}'.format(password))
     if modify_master_password(client, instance, password, pacu.print):
         pacu.print('      Password Change Successful')
     else:

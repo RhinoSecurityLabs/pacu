@@ -125,7 +125,7 @@ def process_instance(pacu, client, instance):
         DBInstanceIdentifier=instance['DBInstanceIdentifier'],
         WaiterConfig=WAIT_CONFIG,
     )
-    password = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+    password = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(20))
     pacu.print('    Master Password for current instance: {}'.format(password))
     if modify_master_password(client, instance, password, pacu.print):
         pacu.print('      Password Change Successful')

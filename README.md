@@ -27,7 +27,7 @@ We'll be working on improve Pacu's core capabilities and building out a well-doc
 
 ## Community
 
-We're always happy to get bugs reports in the Pacu framework itself, as well as testing and feedback on different modules, and generally critical feedback to help refine the framework. We hope to see this grow into a key open-source tool for testing AWS security, and we need your help to make that happen! Any support towards this effort, through use and testing, improvement, or just by spreading the word, would be very much appreciated. 
+We're always happy to get bugs reports in the Pacu framework itself, as well as testing and feedback on different modules, and generally critical feedback to help refine the framework. We hope to see this grow into a key open-source tool for testing AWS security, and we need your help to make that happen! Any support towards this effort through use, testing, improvement, or just by spreading the word, would be very much appreciated. 
 
 If you're interested in contributing directly to the Pacu Framework itself, please read our [contribution guidelines](https://github.com/RhinoSecurityLabs/pacu/wiki/Contribution-Guidelines) for code conventions and git flow notes.
 
@@ -57,7 +57,7 @@ Modules require an AWS key, which grant you minimal access to an AWS environment
 
 If you are ever stuck, `help` will bring up a list of commands that are available.
 
-### Basic Commands in Pacu
+## Basic Commands in Pacu
 
 * `list` will list the available modules for the regions that were set in the current session.
 * `help module_name` will return the applicable help information for the specified module.
@@ -68,7 +68,8 @@ If you are ever stuck, `help` will bring up a list of commands that are availabl
 
 - Report vulnerabilities in Pacu directly to us via email: pacu@rhinosecuritylabs.com.
 - Pacu creates error logs within each session's folder, as well as a global error log for out-of-session errors which is created in the main directory. If you can, please include these logs with your bug reports, as it will dramatically simplify the debugging process.
-- If you have a feature request, an idea, or a bug to report, please [submit them here](https://github.com/RhinoSecurityLabs/pacu/issues/new?title=Briely%20describe%20your%20idea%20or%20bug%20&body=Bug%20reports%3A%20please%20make%20sure%20to%20describe%20what%20happened%2C%20what%20you%20expected%20to%20happen%20instead%2C%20the%20steps%20that%20you%20took%20to%20trigger%20the%20bug%20(if%20any)%2C%20and%20provide%20any%20screenshots%20that%20you%20can.%20Error%20logs%20and%20sessions%20are%20also%20very%20helpful%2C%20but%20please%20make%20sure%20to%20remove%20any%20confidential%20information%20from%20them%20before%20upload.%0A%0AIdeas%20for%20new%20features%3A%20please%20provide%20as%20much%20detail%20as%20you%20can%2C%20including%20mockups%2C%20screenshots%2C%20pseduo-code%2C%20and%20most%20importantly%20why%20you%20think%20your%20idea%20would%20benefit%20Pacu.%0A%0ALastly%2C%20thank%20you%20-%20your%20contribution%20is%20appreciated!). Please include a description sufficient to reproduce the bug you found, including tracebacks and reproduction steps, and check for other reports of your bug before filing a new bug report. Don't submit duplicates.
+- If you have a feature request, an idea, or a bug to report, please [submit them here](https://github.com/RhinoSecurityLabs/pacu/issues/new/choose). 
+  - Please include a description sufficient to reproduce the bug you found, including tracebacks and reproduction steps, and check for other reports of your bug before filing a new bug report. Don't submit duplicates.
 
 ## Wiki
 

@@ -41,7 +41,7 @@ parser.add_argument('--regions', required=False, default=None, help='One or more
 
 def write_keys_to_file(created_keys, session):
     for region in created_keys:
-        ssh_key_dir = os.path.join(os.getcwd(), 'sessions', session.name, 'downloads', 'generate_temp_lightsail_access', region)
+        ssh_key_dir = os.path.join(os.getcwd(), 'sessions', session.name, 'downloads', module_info['name'], region)
         if not os.path.exists(ssh_key_dir):
             os.makedirs(ssh_key_dir)
         for credential in created_keys[region]:
@@ -80,9 +80,7 @@ def main(args, pacu_main):
 
     args = parser.parse_args(args)
     regions = args.regions.split(',') if args.regions else get_regions('lightsail')
-    instances = {}
-    for region in regions:
-        instances[region] = []
+    instances = []
 
     if args.instances is not None:  # need to update this to include the regions of these IDs
         for instance in args.instances.split(','):
@@ -93,54 +91,51 @@ def main(args, pacu_main):
                 print('  {} is not a valid region'.format(region))
                 continue
             else:
-                instances[region].append({
+                instances.append({
                     'name': instance_name,
-                    'protocol': protocol
+                    'protocol': protocol,
+                    'region': region,
                 })
     else:
         print('Targeting all Lightsail instances...')
         if fetch_data(['Lightsail'], module_info['prerequisite_modules'][0], '--instances') is False:
             print('Pre-req module not run successfully. Exiting...')
             return
-        for region in session.Lightsail:
-            if region in regions:
-                for instance in session.Lightsail[region]['instances']:
-                    protocol = 'rdp' if 'Windows' in instance['blueprintName'] else 'ssh'
-                    instances[region].append({
-                        'name': instance['name'],
-                        'protocol': protocol
-                    })
+        for instance in session.Lightsail['instances']:
+            if instance['region'] in regions:
+                protocol = 'rdp' if 'Windows' in instance['blueprintName'] else 'ssh'
+                instances.append({
+                    'name': instance['name'],
+                    'protocol': protocol,
+                    'region': instance['region'],
+                })
 
     temp_keys = {}
-    for region in instances:
-        temp_keys[region] = []
-        print('  {}...'.format(region))
-        client = pacu_main.get_boto3_client('lightsail', region)
-        for instance in instances[region]:
-            print('    Instance {}'.format(instance['name']))
-            try:
-                name = instance['name']
-                protocol = instance['protocol']
-                response = client.get_instance_access_details(
-                    instanceName=name,
-                    protocol=protocol
-                )
-                temp_keys[region].append(response['accessDetails'])
-                print('    Successfully created temporary access for {}'.format(name))
-            except ClientError as error:
-                code = error.response['Error']['Code']
-                if code == 'AccessDeniedException':
-                    print('      Unauthorized to generate temporary access.')
-                    return
-                elif code == 'OperationFailureException':
-                    print('      FAILED: Unable to interact with non-running instance.')
-                    continue
-                else:
-                    print(error)
-                break
+    for instance in instances:
+        temp_keys[instance['region']] = []
+    for instance in instances:
+        client = pacu_main.get_boto3_client('lightsail', instance['region'])
+        print('    Instance {}'.format(instance['name']))
+        try:
+            response = client.get_instance_access_details(
+                instanceName=instance['name'],
+                protocol=instance['protocol']
+            )
+            temp_keys[instance['region']].append(response['accessDetails'])
+            print('    Successfully created temporary access for {}'.format(instance['name']))
+        except ClientError as error:
+            code = error.response['Error']['Code']
+            if code == 'AccessDeniedException':
+                print('      Unauthorized to generate temporary access.')
+                return
+            elif code == 'OperationFailureException':
+                print('      FAILED: Unable to interact with non-running instance.')
+                continue
+            else:
+                print(error)
+            break
 
     write_keys_to_file(temp_keys, session)
-    print('\n{} completed.\n'.format(module_info['name']))
 
     windows_count = 0
     ssh_count = 0
@@ -152,7 +147,7 @@ def main(args, pacu_main):
                 ssh_count += 1
 
     if windows_count or ssh_count:
-        written_file_path = os.path.join('sessions', session.name, 'downloads', 'generate_temp_lightsail_access')
+        written_file_path = os.path.join('sessions', session.name, 'downloads', module_info['name'])
     else:
         written_file_path = None
 

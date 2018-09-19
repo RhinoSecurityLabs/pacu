@@ -212,7 +212,6 @@ def main(args, pacu_main):
                     break
                 ignore = True
     print('All buckets have been analyzed.')
-    print('{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

@@ -168,8 +168,6 @@ def main(args, pacu_main):
         waf_data.update(waf_global_data)
         session.update(pacu_main.database, WAF=waf_data)
 
-    print('\n{} completed.\n'.format(module_info['name']))
-
     summary_data = {}
     for func, key in METHODS:
         summary_data[key] = len(waf_global_data[key]) + len(waf_regional_data[key])

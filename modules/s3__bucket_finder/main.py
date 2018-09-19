@@ -162,7 +162,6 @@ def main(args, pacu_main):
             if any(x in output for x in keywords):
                 print('[!] Found sensitive file on bucket {} in region {}'.format(domain, region))
 
-    print('{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

@@ -344,7 +344,6 @@ def main(args, pacu_main):
                 print('  {}'.format(error.response['Error']['Code']))
             print('Skipping {}'.format(user['UserName'], error))
 
-    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

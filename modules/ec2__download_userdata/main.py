@@ -110,7 +110,6 @@ def main(args, pacu_main):
         else:
             print('  {}@{}: No User Data found'.format(instance_id, region))
 
-    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

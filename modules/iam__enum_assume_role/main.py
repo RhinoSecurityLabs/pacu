@@ -106,7 +106,6 @@ def main(args, pacu_main):
                 print('Found restricted role: {}\n'.format(role_arn))
                 data['enumerated'].append(role_arn)
 
-    print('{} completed.\n'.format(module_info['name']))
     return data
 
 

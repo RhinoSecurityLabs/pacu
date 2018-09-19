@@ -96,7 +96,6 @@ def main(args, pacu_main):
             if error.response['Error']['Code'] == 'AccessDeniedException':
                 print('Access Denied for describe-findings')
     session.update(pacu_main.database, Inspector=complete_data)
-    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

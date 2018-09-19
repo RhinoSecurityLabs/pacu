@@ -478,7 +478,6 @@ def main(args, pacu_main):
     else:
         print('No flow logs found. Skipping VPC...\n')
 
-    print('{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

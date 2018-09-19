@@ -421,7 +421,6 @@ def main(args, pacu_main):
         print('No privilege escalation paths found.')
         summary_data['success'] = False
 
-    print('{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

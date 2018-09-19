@@ -397,7 +397,6 @@ def main(args, pacu_main):
         print('  {} total VPC flow log(s) found.'.format(len(session.VPC['FlowLogs'])))
         summary_data['flowlogs'] = len(all_flow_logs)
 
-    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

@@ -503,7 +503,6 @@ def main(args, pacu_main):
         print('Successfully attacked the following instances: {}\n'.format(attacked_instances))
         summary_data['all'] = True
 
-    print('{} completed.'.format(os.path.basename(__file__)))
     return
 
 

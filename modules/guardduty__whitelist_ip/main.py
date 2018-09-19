@@ -94,7 +94,6 @@ def main(args, pacu_main):
                     else:
                         print('      Error: {}'.format(str(error)))
 
-    print('{} completed.\n'.format(module_info['name']))
     return data
 
 

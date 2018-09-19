@@ -350,6 +350,8 @@ def main(args, pacu_main):
 
 def summary(data, pacu_main):
     out = ''
+    if not data:
+        return '  Unable to Find Users to Confirm Perssions\n'
     if data['users_confirmed'] == 1:
         out += '  Confirmed Permissions for: {}.\n'.format(data['single_user'])
     else:

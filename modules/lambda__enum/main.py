@@ -43,15 +43,13 @@ def fetch_lambda_data(client, func, key, print, **kwargs):
         response = caller(**kwargs)
         data = response[key]
         if isinstance(data, (dict, str)):
-            print('    Found {} data'.format(key))
             return data
         while 'nextMarker' in response:
             response = caller({**kwargs, **{'NextMarker': response['nextMarker']}})
             data.extend(response[key])
-        print('    Found {} {}'.format(len(data), key))
         return data
     except client.exceptions.ResourceNotFoundException:
-        print('    No valid {} found'.format(key))
+        pass
     except ClientError as error:
         print('  FAILURE:')
         code = error.response['Error']['Code']
@@ -60,16 +58,6 @@ def fetch_lambda_data(client, func, key, print, **kwargs):
         else:
             print(code)
     return []
-
-
-def full_region_prompt(print, input, regions):
-    print('Automatically targeting region(s):')
-    for region in regions:
-        print('  {}'.format(region))
-    selection = input('Do you wish to continue? (y/n) ')
-    if selection.lower() == 'y':
-        return True
-    return False
 
 
 def main(args, pacu_main):
@@ -86,8 +74,6 @@ def main(args, pacu_main):
         regions = args.regions.split(',')
     else:
         regions = get_regions('Lambda')
-        if not full_region_prompt(print, input, regions):
-            return
 
     lambda_data = {}
     summary_data = {}
@@ -126,8 +112,6 @@ def main(args, pacu_main):
         if lambda_functions:
             summary_data[region] = len(lambda_functions)
     session.update(pacu_main.database, Lambda=lambda_data)
-
-    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

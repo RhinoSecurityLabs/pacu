@@ -41,7 +41,7 @@ def main(args, pacu_main):
     summary_data = {'region_key_pairs': []}
     regions = get_regions('lightsail')
 
-    dl_path = Path.cwd() / 'sessions' / session.name / 'downloads' / 'download_lightsail_ssh_keys'
+    dl_path = Path.cwd() / 'sessions' / session.name / 'downloads' / module_info['name']
     if not dl_path.exists():
         dl_path.mkdir()
     summary_data['dl_path'] = str(dl_path.relative_to(Path.cwd() / 'sessions' / session.name))
@@ -65,8 +65,6 @@ def main(args, pacu_main):
             key_file.write(restructured_keys['publicKey'])
 
         summary_data['region_key_pairs'].append(region)
-
-    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

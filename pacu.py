@@ -487,6 +487,11 @@ class Main:
 
     def parse_command(self, command):
         command = command.strip()
+
+        if command.split(' ')[0] == 'aws':
+            self.run_aws_cli_command(command)
+            return
+
         try:
             command = shlex.split(command)
         except ValueError:
@@ -526,6 +531,14 @@ class Main:
         else:
             print('  Error: Unrecognized command')
         return
+
+    def run_aws_cli_command(self, command):
+        try:
+            result = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT).decode('utf-8')
+        except subprocess.CalledProcessError as error:
+            result = error.output.decode('utf-8')
+
+        self.print(result)
 
     def parse_data_command(self, command):
         session = self.get_active_session()
@@ -1059,6 +1072,8 @@ class Main:
             self.display_proxy_help()
         elif command_name == 'list' or command_name == 'ls':
             print('\n    list/ls\n        List all modules\n')
+        elif command_name == 'aws':
+            print('\n    aws\n        Use the AWS CLI directly\n')
         elif command_name == 'search':
             print('\n    search [cat[egory]] <search term>\n        Search the list of available modules by name or category\n')
         elif command_name == 'help':

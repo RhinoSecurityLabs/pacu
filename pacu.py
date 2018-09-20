@@ -878,6 +878,15 @@ class Main:
                                                   previously been set for this session
             exit/quit                           Exit Pacu
 
+        Other command info:
+            aws <command>                       Run an AWS CLI command directly. Note: If Pacu detects "aws"
+                                                  as the first word of the command, the whole command will
+                                                  instead be run in a shell so that you can use the AWS CLI
+                                                  from within Pacu. Due to the command running in a shell,
+                                                  this enables you to pipe output where needed. An example
+                                                  would be to run an AWS CLI command and pipe it into "jq"
+                                                  to parse the data returned.
+
         [ADVANCED] PacuProxy command info:
             proxy [help]                        Control PacuProxy/display help
                 start <ip> [port]                 Start the PacuProxy listener - port 80 by default.

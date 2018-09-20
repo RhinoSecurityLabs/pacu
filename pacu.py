@@ -885,7 +885,7 @@ class Main:
                                                   from within Pacu. Due to the command running in a shell,
                                                   this enables you to pipe output where needed. An example
                                                   would be to run an AWS CLI command and pipe it into "jq"
-                                                  to parse the data returned.
+                                                  to parse the data returned
 
         [ADVANCED] PacuProxy command info:
             proxy [help]                        Control PacuProxy/display help

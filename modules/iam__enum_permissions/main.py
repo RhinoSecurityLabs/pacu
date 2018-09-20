@@ -151,10 +151,10 @@ def main(args, pacu_main):
     # get-role-policy
 
     client = pacu_main.get_boto3_client('iam')
-
-    print('Permission Document Location:')
-    print('  sessions/{}/downloads/confirmed_permissions/'.format(session.name))
-    print('Confirming Permissions for Users...')
+    if args.all_users or args.user_name:
+        print('Permission Document Location:')
+        print('  sessions/{}/downloads/confirmed_permissions/'.format(session.name))
+    print('Confirming Permissions for Users:')
     for user in users:
         print('  {}...'.format(user['UserName']))
         user['Groups'] = []
@@ -317,7 +317,7 @@ def main(args, pacu_main):
                 summary_data['users_confirmed'] += 1
 
             if args.user_name is None and args.all_users is False:
-                print('  Confirmed Permissions for {}'.format(user['UserName']))
+                print('    Confirmed Permissions for {}'.format(user['UserName']))
                 active_aws_key.update(
                     pacu_main.database,
                     user_name=user['UserName'],
@@ -350,6 +350,8 @@ def main(args, pacu_main):
 
 def summary(data, pacu_main):
     out = ''
+    if not data:
+        return '  Unable to Find Users to Confirm Perssions\n'
     if data['users_confirmed'] == 1:
         out += '  Confirmed Permissions for: {}.\n'.format(data['single_user'])
     else:

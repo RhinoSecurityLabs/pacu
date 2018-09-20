@@ -1082,7 +1082,7 @@ class Main:
         elif command_name == 'list' or command_name == 'ls':
             print('\n    list/ls\n        List all modules\n')
         elif command_name == 'aws':
-            print('\n    aws <command>\n        Use the AWS CLI directly. This command runs in your local shell to use the AWS CLI.\n')
+            print('\n    aws <command>\n        Use the AWS CLI directly. This command runs in your local shell to use the AWS CLI\n')
         elif command_name == 'search':
             print('\n    search [cat[egory]] <search term>\n        Search the list of available modules by name or category\n')
         elif command_name == 'help':

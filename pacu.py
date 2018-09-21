@@ -975,9 +975,17 @@ class Main:
                 regions['all'] = list(partition['regions'].keys())
                 for service in partition['services']:
                     regions[service] = partition['services'][service]
+            elif partition['partition'] == 'aws-us-gov':
+                gov_regions = dict()
+                gov_regions['all'] = list(partion['regions'].keys())
+                for service in partition['services']:
+                    gov_regions[service] = partition['services'][service]
 
         with open('modules/service_regions.json', 'w+') as services_file:
             json.dump(regions, services_file, default=str, sort_keys=True)
+
+        with open('modules/gov_service_regions.json', 'w+') as gov_services_file:
+            json.dump(gov_regions, gov_services_file, default=str, sort_keys=True)
 
         self.print('  Region list updated to the latest version!')
 

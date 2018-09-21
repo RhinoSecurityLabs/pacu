@@ -38,8 +38,8 @@ except ModuleNotFoundError as error:
 class Main:
     COMMANDS = [
         'aws', 'data', 'exec', 'exit', 'help', 'list', 'ls', 'proxy', 'quit',
-        'regions', 'run', 'search', 'services', 'set_keys', 'set_regions',
-        'swap_keys', 'update_regions', 'whoami'
+        'regions', 'run', 'search', 'services', 'set_gov_mode', 'set_keys',
+        'set_regions', 'swap_keys', 'update_regions', 'whoami'
     ]
 
     def __init__(self):
@@ -205,28 +205,48 @@ class Main:
 
         service = service.lower()
 
-        with open('./modules/service_regions.json', 'r+') as regions_file:
-            regions = json.load(regions_file)
+        if session.is_gov_cloud_session is False:
+            with open('./modules/service_regions.json', 'r+') as regions_file:
+                regions = json.load(regions_file)
 
-        # TODO: Add an option for GovCloud regions
+            if service == 'all':
+                return regions['all']
+            if 'aws-global' in regions[service]['endpoints']:
+                return [None]
 
-        if service == 'all':
-            return regions['all']
-        if 'aws-global' in regions[service]['endpoints']:
-            return [None]
-        if 'all' in session.session_regions:
             valid_regions = list(regions[service]['endpoints'].keys())
-            if 'local' in valid_regions:
-                valid_regions.remove('local')
-            return valid_regions
-        else:
-            valid_regions = list(regions[service]['endpoints'].keys())
-            if 'local' in valid_regions:
-                valid_regions.remove('local')
-            if check_session is True:
-                return [region for region in valid_regions if region in session.session_regions]
-            else:
+            if 'all' in session.session_regions:
+                if 'local' in valid_regions:
+                    valid_regions.remove('local')
                 return valid_regions
+            else:
+                if 'local' in valid_regions:
+                    valid_regions.remove('local')
+                if check_session is True:
+                    return [region for region in valid_regions if region in session.session_regions]
+                else:
+                    return valid_regions
+        else:
+            with open('./modules/gov_service_regions.json', 'r+') as regions_file:
+                regions = json.load(regions_file)
+
+            if service == 'all':
+                return regions['all']
+            if 'aws-us-gov-global' in regions[service]['endpoints']:
+                return [None]
+
+            valid_regions = list(regions[service]['endpoints'].keys())
+            if 'all' in session.session_regions:
+                if 'local' in valid_regions:
+                    valid_regions.remove('local')
+                return valid_regions
+            else:
+                if 'local' in valid_regions:
+                    valid_regions.remove('local')
+                if check_session is True:
+                    return [region for region in valid_regions if region in session.session_regions]
+                else:
+                    return valid_regions
 
     def display_all_regions(self, command):
         for region in sorted(self.get_regions('all')):
@@ -518,6 +538,8 @@ class Main:
             self.print_all_service_data(command)
         elif command[0] == 'set_keys':
             self.set_keys()
+        elif command[0] == 'set_gov_mode':
+            self.set_gov_mode(command)
         elif command[0] == 'set_regions':
             self.parse_set_regions_command(command)
         elif command[0] == 'swap_keys':
@@ -539,6 +561,21 @@ class Main:
             result = error.output.decode('utf-8')
 
         self.print(result)
+
+    def set_gov_mode(self, command):
+        if len(command) == 2:
+            session = self.get_active_session()
+
+            if command[1].lower() == 'on':
+                session.update(self.database, is_gov_cloud_session=True, session_regions=['all'])
+                self.print('  GovCloud mode turned on! Session regions reset to "all".')
+            elif command[1].lower() == 'off':
+                session.update(self.database, is_gov_cloud_session=False, session_regions=['all'])
+                self.print('  GovCloud mode turned off! Session regions reset to "all".')
+            else:
+                self.print('  Error: "set_gov_mode" accepts one of two possible arguments: "on" or "off".')
+        else:
+            self.print('  Error: "set_gov_mode" accepts one of two possible arguments: "on" or "off".')
 
     def parse_data_command(self, command):
         session = self.get_active_session()
@@ -865,6 +902,12 @@ class Main:
             regions                             Display a list of all valid AWS regions
             update_regions                      Run a script to update the regions database to the newest
                                                   version
+            set_gov_mode on|off                 Enable or disable Pacu GovCloud mode. When GovCloud mode is
+                                                  enabled, the only available regions will be AWS GovCloud
+                                                  regions. This means if GovCloud mode is enabled, you won't
+                                                  be able to target normal regions and if it is disabled, you
+                                                  won't be able to target GovCloud regions. Note: Toggling
+                                                  this value will reset your session regions to 'all'!
             set_regions <region> [<region>...]  Set the default regions for this session. These space-separated
                                                   regions will be used for modules where regions are required,
                                                   but not supplied by the user. The default set of regions is
@@ -977,7 +1020,7 @@ class Main:
                     regions[service] = partition['services'][service]
             elif partition['partition'] == 'aws-us-gov':
                 gov_regions = dict()
-                gov_regions['all'] = list(partion['regions'].keys())
+                gov_regions['all'] = list(partition['regions'].keys())
                 for service in partition['services']:
                     gov_regions[service] = partition['services'][service]
 
@@ -999,14 +1042,21 @@ class Main:
         return None
 
     def all_region_prompt(self):
-        print('Automatically targeting region(s):')
-        for region in self.get_regions('all'):
-            print('  {}'.format(region))
-        response = input('Continue? (y/n) ')
-        if response.lower() == 'y':
-            return True
-        else:
-            return False
+        regions = self.get_regions('all')
+
+        # Don't all_region_prompt if only one region shows up
+        # under "all" regions. This is for GovMode, as without
+        # it, you get a prompt to target one region
+        if len(regions) > 1:
+            print('Automatically targeting region(s):')
+            for region in regions:
+                print('  {}'.format(region))
+            response = input('Continue? (y/n) ')
+            if response.lower() == 'y':
+                return True
+            else:
+                return False
+        return True
 
     ###### Some module notes
     # For any argument that needs a value and a region for that value, use the form
@@ -1105,6 +1155,8 @@ class Main:
             print('\n    regions\n        Display a list of all valid AWS regions\n')
         elif command_name == 'update_regions':
             print('\n    update_regions\n        Run a script to update the regions database to the newest version\n')
+        elif command_name == 'set_gov_mode':
+            print('\n    set_gov_mode on|off\n        Enable or disable Pacu GovCloud mode. While enabled, you can target AWS GovCloud regions, but no others. While disabled, you can target all normal regions, but no GovCloud regions. Note: Toggling GovCloud mode will reset your session regions.\n')
         elif command_name == 'set_regions':
             print('\n    set_regions <region> [<region>...]\n        Set the default regions for this session. These space-separated regions will be used for modules where\n          regions are required, but not supplied by the user. The default set of regions is every supported\n          region for the service. Supply "all" to this command to reset the region set to the default of all\n          supported regions\n')
         elif command_name == 'run' or command_name == 'exec':

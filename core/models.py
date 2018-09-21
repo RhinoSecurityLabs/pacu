@@ -130,6 +130,7 @@ class PacuSession(Base, ModelUpdateMixin):
     access_key_id = Column(Text)
     secret_access_key = Column(Text)
     session_token = Column(Text)
+    is_gov_cloud_session = Column(Boolean, nullable=False, default=False)
     session_regions = Column(JSONType, nullable=False, default=['all'])
 
     APIGateway = Column(JSONType, nullable=False, default=dict)
@@ -204,7 +205,7 @@ class PacuSession(Base, ModelUpdateMixin):
             elif column.key == 'secret_access_key':
                 text.append('secret_access_key: "******" (Censored)')
 
-            elif cleaned_value:
+            elif cleaned_value or cleaned_value is False:
                 text.append('{}: {}'.format(column.key, json.dumps(cleaned_value, indent=4, default=str)))
 
         if text:

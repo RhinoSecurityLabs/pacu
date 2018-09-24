@@ -1205,7 +1205,7 @@ class Main:
                 self.set_keys('Agent{}/{}'.format(target, time.strftime("%m-%d@%I-%M%p")), keys['AccessKeyId'], keys['SecretAccessKey'], keys['Token'])
                 self.print('Keys successfully fetched from agent {}\'s EC2 meta-data and set as the active key pair. They will expire at {}.\n'.format(target, keys["Expiration"]))
                 return
-        self.print('Failed to fetch AWS keys, this agent is either not an EC2 instance or it does not have a valid instance profile attached to it.\n')
+        self.print('Failed to fetch AWS keys, target is either not an EC2 instance or it does not have a valid instance profile attached to it.\n')
         return
 
     def set_keys(self, key_alias=None, access_key_id=None, secret_access_key=None, session_token=None):
@@ -1215,10 +1215,10 @@ class Main:
         # otherwise it means it is set programmatically and we don't want any prompts if it is
         # done programatically
         if key_alias is None:
-            self.print('Setting AWS Keys.')
+            self.print('Setting AWS Keys...')
             self.print('Press enter to keep the value currently stored.')
             self.print('Enter the letter C to clear the value, rather than set it.')
-            self.print('If you enter an existing key_alias, that key\'s fields will be updated instead of added.')
+            self.print('If you enter an existing key_alias, that key\'s fields will be updated instead of added.\n')
 
         # Key alias
         if key_alias is None:
@@ -1288,7 +1288,7 @@ class Main:
         self.database.commit()
 
         if key_alias is None:
-            self.print('Configuration variables set.\n')
+            self.print('\nConfiguration variables set.\n')
 
     def swap_keys(self):
         session = self.get_active_session()

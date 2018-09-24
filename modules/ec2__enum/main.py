@@ -457,7 +457,7 @@ def main(args, pacu_main):
         'VPCEndpoints': all_vpc_endpoints,
     }
 
-    
+
     for var in vars(args):
         if var == 'regions':
             continue

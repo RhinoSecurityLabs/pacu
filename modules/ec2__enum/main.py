@@ -136,7 +136,7 @@ def main(args, pacu_main):
             if not str(error).find('UnauthorizedOperation') == -1:
                 args.elastic_ips = False
                 print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeAddresses"')
-                print('    Skipping enumeration of Addresses...')
+                print('    Skipping enumeration of Elastic IPs...')
     # VPN Customer Gateways
     if args.customer_gateways:
         try:
@@ -147,7 +147,7 @@ def main(args, pacu_main):
             if not str(error).find('UnauthorizedOperation') == -1:
                 args.customer_gateways = False
                 print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeCustomerGateways')
-                print('    Skipping enumeration of Customer Gateways...')
+                print('    Skipping enumeration of VPN Customer Gateways...')
     # Dedicated Hosts
     if args.dedicated_hosts:
         try:
@@ -158,7 +158,7 @@ def main(args, pacu_main):
             if not str(error).find('UnauthorizedOperation') == -1:
                 args.dedicated_hosts = False
                 print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeHosts"')
-                print('    Skipping enumeration of Hosts...')
+                print('    Skipping enumeration of Dedicated Hosts...')
     # Network ACLs
     if args.network_acls:
         try:

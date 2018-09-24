@@ -103,7 +103,6 @@ def main(args, pacu_main):
                     instance_count += 1
                 else:
                     print('  {}@{} FAILED'.format(instance['InstanceId'], instance['Region']))
-    print('\n{} completed.\n'.format(module_info['name']))
     return {'Instances': instance_count}
 
 

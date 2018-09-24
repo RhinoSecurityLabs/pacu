@@ -114,7 +114,6 @@ def main(args, pacu_main):
         print('    Password successfully changed')
         print('    Password: {}'.format(password))
         summary_data['backdoored_password_count'] += 1
-    print('{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

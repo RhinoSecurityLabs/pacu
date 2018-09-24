@@ -79,7 +79,6 @@ def main(args, pacu_main):
             json.dump(events, json_file, indent=2, default=str)
         print('  Events written to ./sessions/{}/downloads/cloudtrail_{}_event_history_{}.json'.format(session.name, region, now))
 
-    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

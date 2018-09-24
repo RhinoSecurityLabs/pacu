@@ -116,7 +116,6 @@ def main(args, pacu_main):
 
     session.update(pacu_main.database, CodeBuild=codebuild_data)
 
-    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

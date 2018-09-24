@@ -182,7 +182,6 @@ def main(args, pacu_main):
         'vpcs_found': vpcs_found,
         'vpcs_total': len(session.VPC)
     })
-    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

@@ -103,7 +103,6 @@ def main(args, pacu_main):
             else:
                 print('      UNKNOWN:')
                 print('        {}'.format(error.response['Error']['Code']))
-    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

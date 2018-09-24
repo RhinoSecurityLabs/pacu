@@ -78,10 +78,8 @@ def main(args, pacu_main):
     get_regions = pacu_main.get_regions
     ######
 
-    all = False
     if args.connections is False and args.databases is False and args.crawlers is False and args.jobs is False and args.dev_endpoints is False:
-        all = True
-
+        args.connections = args.databases = args.crawlers = args.jobs = args.dev_endpoints = True
     if args.regions is None:
         regions = get_regions('glue')
         if regions is None or regions == [] or regions == '' or regions == {}:
@@ -100,31 +98,31 @@ def main(args, pacu_main):
         client = pacu_main.get_boto3_client('glue', region)
 
         # Connections
-        if args.connections is True or all is True:
+        if args.connections:
             connections = fetch_glue_data(client, 'get_connections', 'ConnectionList', print)
             print('  {} connection(s) found.'.format(len(connections)))
             all_connections += connections
 
         # Crawlers
-        if args.crawlers is True or all is True:
+        if args.crawlers:
             crawlers = fetch_glue_data(client, 'get_crawlers', 'Crawlers', print)
             print('  {} crawler(s) found.'.format(len(crawlers)))
             all_crawlers += crawlers
 
         # Databases
-        if args.databases is True or all is True:
+        if args.databases:
             databases = fetch_glue_data(client, 'get_databases', 'DatabaseList', print)
             print('  {} database(s) found.'.format(len(databases)))
             all_databases += databases
 
         # Development Endpoints
-        if args.dev_endpoints is True or all is True:
+        if args.dev_endpoints:
             dev_endpoints = fetch_glue_data(client, 'get_dev_endpoints', 'DevEndpoints', print)
             print('  {} development endpoint(s) found.'.format(len(dev_endpoints)))
             all_dev_endpoints += dev_endpoints
 
         # Jobs
-        if args.jobs is True or all is True:
+        if args.jobs:
             jobs = fetch_glue_data(client, 'get_jobs', 'Jobs', print)
             print('  {} job(s) found.'.format(len(jobs)))
             all_jobs += jobs
@@ -137,12 +135,11 @@ def main(args, pacu_main):
         'jobs': len(all_jobs),
     }
 
-    if not all:
-        for var in vars(args):
-            if var == 'regions':
-                continue
-            if not getattr(args, var):
-                del summary_data[var]
+    for var in vars(args):
+        if var == 'regions':
+            continue
+        if not getattr(args, var):
+            del summary_data[var]
 
     glue_data = deepcopy(session.Glue)
     glue_data['Connections'] = all_connections
@@ -152,7 +149,6 @@ def main(args, pacu_main):
     glue_data['Jobs'] = all_jobs
     session.update(pacu_main.database, Glue=glue_data)
 
-    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 
@@ -160,5 +156,5 @@ def summary(data, pacu_main):
     out = ''
     for key in data:
         out += '  {} total {}(s) found.\n'.format(data[key], key[:-1])
-    out += '  Glue resources saved in Pacu database.\n'
+    out += '\n  Glue resources saved in Pacu database.\n'
     return out

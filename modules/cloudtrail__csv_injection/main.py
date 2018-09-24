@@ -100,7 +100,6 @@ def main(args, pacu_main):
                 else:
                     print('    ' + str(code))
         summary_data['fails'] += 1
-    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

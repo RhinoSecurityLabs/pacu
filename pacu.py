@@ -678,9 +678,9 @@ class Main:
                 self.server.quit(int(command[2]), self.server.all_connections[int(command[2])])
                 self.print('** Agent killed **')
             elif len(command) == 2:
-                print('** Error: Excepted an agent ID, received nothing. Use format: proxy kill <agent_id> **')
+                print('** Error: Expected an agent ID, received nothing. Use format: proxy kill <agent_id> **')
             else:
-                print('** Error: Excepted an agent ID, received: {}'.format(command[2:]))
+                print('** Error: Expected an agent ID, received: {}'.format(command[2:]))
         elif command[1] == 'stager':
             if len(command) == 3:
                 self.print(self.get_proxy_stager(proxy_ip, proxy_port, command[2]))
@@ -1295,7 +1295,7 @@ class Main:
         aws_keys = session.aws_keys.all()
 
         if not aws_keys:
-            self.print('\nNo AWS keys set for this session. Use set_keys to add AWS keys.\n')
+            self.print('\nNo AWS keys set for this session. Run "set_keys" to add AWS keys.\n')
             return
 
         self.print('\nSwapping AWS Keys. Press enter to keep the currently active key.')

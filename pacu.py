@@ -236,6 +236,11 @@ class Main:
             if service == 'all':
                 return regions['all']
 
+            # if service not in regions is for AWS services
+            # that aren't supported in GovCloud and will
+            # cause a KeyError here. Need to come up with
+            # a better solution to hide those modules and
+            # prevent their execution
             if service not in regions or 'aws-us-gov-global' in regions[service]['endpoints']:
                 return [None]
 

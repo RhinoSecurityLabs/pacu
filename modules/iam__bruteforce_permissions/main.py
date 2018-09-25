@@ -378,7 +378,6 @@ def main(args, pacu_main):
     summary_data['allow'] = sum([len(allow_permissions[region]) for region in allow_permissions])
     summary_data['deny'] = sum([len(deny_permissions[region]) for region in deny_permissions])
 
-    print('{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

@@ -87,7 +87,6 @@ def main(args, pacu_main):
             print('    {}'.format(user))
         print('')
 
-    print('{} completed.\n'.format(module_info['name']))
     return data
 
 

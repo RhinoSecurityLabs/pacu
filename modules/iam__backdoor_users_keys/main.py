@@ -85,7 +85,6 @@ def main(args, pacu_main):
                 else:
                     print('    FAILURE: {}'.format(code))
 
-    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

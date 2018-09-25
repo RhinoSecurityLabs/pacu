@@ -321,7 +321,6 @@ def main(args, pacu_main):
             summary_data['snapshot-permissions-path'] = path
     session.update(pacu_main.database, EC2=ec2_data)
 
-    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

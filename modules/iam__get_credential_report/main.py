@@ -97,7 +97,6 @@ def main(args, pacu_main):
     else:
         print('\n  Unable to generate report.')
 
-    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

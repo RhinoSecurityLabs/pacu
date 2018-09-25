@@ -118,7 +118,6 @@ def main(args, pacu_main):
                 else:
                     print('        {}'.format(code))
     summary_data['RoleCount'] = backdoored_role_count
-    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

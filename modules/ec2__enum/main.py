@@ -91,6 +91,7 @@ def main(args, pacu_main):
     if args.instances is False and args.security_groups is False and args.elastic_ips is False and args.customer_gateways is False and args.dedicated_hosts is False and args.network_acls is False and args.nat_gateways is False and args.network_interfaces is False and args.route_tables is False and args.subnets is False and args.vpcs is False and args.vpc_endpoints is False:
         args.instances = args.security_groups = args.elastic_ips = args.customer_gateways = args.dedicated_hosts = args.network_acls = args.nat_gateways = args.network_interfaces = args.route_tables = args.subnets = args.vpcs = args.vpc_endpoints = True
 
+
     if args.regions is None:
         regions = get_regions('ec2')
         if regions is None or regions == [] or regions == '' or regions == {}:
@@ -112,7 +113,8 @@ def main(args, pacu_main):
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
                 args.instances = False
-                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_instances". Skipping instance enumeration.\n')
+                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeInstances"')
+                print('    Skipping enumeration of Instances...')
     # Security Groups
     if args.security_groups:
         try:
@@ -122,7 +124,8 @@ def main(args, pacu_main):
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
                 args.security_groups = False
-                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_security_groups". Skipping security group enumeration.\n')
+                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeSecurityGroups"')
+                print('    Skipping enumeration of Security Groups...')
     # Elastic IPs
     if args.elastic_ips:
         try:
@@ -132,7 +135,8 @@ def main(args, pacu_main):
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
                 args.elastic_ips = False
-                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_addresses". Skipping elastic IP enumeration.\n')
+                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeAddresses"')
+                print('    Skipping enumeration of Elastic IPs...')
     # VPN Customer Gateways
     if args.customer_gateways:
         try:
@@ -142,7 +146,8 @@ def main(args, pacu_main):
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
                 args.customer_gateways = False
-                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_customer_gateways". Skipping VPN customer gateway enumeration.\n')
+                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeCustomerGateways')
+                print('    Skipping enumeration of VPN Customer Gateways...')
     # Dedicated Hosts
     if args.dedicated_hosts:
         try:
@@ -152,7 +157,8 @@ def main(args, pacu_main):
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
                 args.dedicated_hosts = False
-                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_hosts". Skipping dedicated host enumeration.\n')
+                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeHosts"')
+                print('    Skipping enumeration of Dedicated Hosts...')
     # Network ACLs
     if args.network_acls:
         try:
@@ -162,7 +168,8 @@ def main(args, pacu_main):
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
                 args.network_acls = False
-                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_network_acls". Skipping network ACL enumeration.\n')
+                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeNetworkAcls"')
+                print('    Skipping enumeration of Network ACLs...')
     # NAT Gateways
     if args.nat_gateways:
         try:
@@ -172,7 +179,8 @@ def main(args, pacu_main):
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
                 args.nat_gateways = False
-                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_nat_gateways". Skipping NAT gateway enumeration.\n')
+                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeNatGateways"')
+                print('    Skipping enumeration of NAT Gateways...')
     # Network Interfaces
     if args.network_interfaces:
         try:
@@ -182,7 +190,8 @@ def main(args, pacu_main):
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
                 args.network_interfaces = False
-                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_network_interfaces". Skipping network interface enumeration.\n')
+                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeNetworkInterfaces"')
+                print('    Skipping enumeration of Network Interfaces...')
     # Route Tables
     if args.route_tables:
         try:
@@ -192,7 +201,8 @@ def main(args, pacu_main):
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
                 args.route_tables = False
-                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_route_tables". Skipping route table enumeration.\n')
+                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeRouteTables"')
+                print('    Skipping enumeration of Route Tables...')
     # Subnets
     if args.subnets:
         try:
@@ -202,7 +212,8 @@ def main(args, pacu_main):
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
                 args.subnets = False
-                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_subnets". Skipping subnet enumeration.\n')
+                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeSubnets"')
+                print('    Skipping enumeration of Subnets...')
     # VPCs
     if args.vpcs:
         try:
@@ -212,7 +223,8 @@ def main(args, pacu_main):
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
                 args.vpcs = False
-                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_vpcs". Skipping VPC enumeration.\n')
+                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeVPCs"')
+                print('    Skipping enumeration of VPCs...')
     # VPC Endpoints
     if args.vpc_endpoints:
         try:
@@ -222,7 +234,8 @@ def main(args, pacu_main):
         except ClientError as error:
             if not str(error).find('UnauthorizedOperation') == -1:
                 args.vpc_endpoints = False
-                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_vpc_endpoints". Skipping VPC endpoint enumeration.\n')
+                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeVpcEndpoints"')
+                print('    Skipping enumeration of VPC Endpoints...')
 
     all_instances = []
     all_security_groups = []
@@ -444,12 +457,12 @@ def main(args, pacu_main):
         'VPCEndpoints': all_vpc_endpoints,
     }
 
-    if not all:
-        for var in vars(args):
-            if var == 'regions':
-                continue
-            if not getattr(args, var):
-                del gathered_data[ARG_FIELD_MAPPER[var]]
+
+    for var in vars(args):
+        if var == 'regions':
+            continue
+        if not getattr(args, var):
+            del gathered_data[ARG_FIELD_MAPPER[var]]
 
     ec2_data = deepcopy(session.EC2)
     for key, value in gathered_data.items():
@@ -458,10 +471,6 @@ def main(args, pacu_main):
 
     # Add regions to gathered_data for summary output
     gathered_data['regions'] = regions
-
-    print('All data has been saved to the current session.\n')
-
-    print('{} completed.\n'.format(module_info['name']))
 
     return gathered_data
 
@@ -511,4 +520,5 @@ def summary(data, pacu_main):
     if 'VPCEndpoints' in data:
         results.append('    {} total VPC endpoint(s) found.'.format(len(data['VPCEndpoints'])))
 
+    results.append('\n  EC2 Resources Saved in Pacu database.')
     return '\n'.join(results)

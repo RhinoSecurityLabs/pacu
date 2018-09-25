@@ -271,7 +271,7 @@ class Main:
 
         if current is None or current == '' or current == [] or current == {} or current is False:
             if force is False:
-                run_prereq = self.input('The required data ({}) has not been found in this session, do you want to run the module "{}" to fetch that data? If not, re-run this module with the correct argument(s) specifying the values for this data. (y/n) '.format(' > '.join(data), module), session_name=session.name)
+                run_prereq = self.input('Data ({}) not found, run module "{}" to fetch it? (y/n) '.format(' > '.join(data), module), session_name=session.name)
             else:
                 run_prereq = 'y'
             if run_prereq == 'n':
@@ -310,7 +310,7 @@ class Main:
     def install_dependencies(self, external_dependencies):
         if len(external_dependencies) < 1:
             return True
-        answer = self.input('This module requires the external dependencies listed here: {}\n\nWould you like to install them now? (y/n) '.format(external_dependencies))
+        answer = self.input('This module requires external dependencies: {}\n\nInstall them now? (y/n) '.format(external_dependencies))
         if answer == 'n':
             self.print('Not installing dependencies, exiting...')
             return False
@@ -322,19 +322,19 @@ class Main:
                 name = name.split('.')[0]
                 author = split[-2]
                 if os.path.exists('./dependencies/{}/{}'.format(author, name)):
-                    self.print('  Dependency {}/{} is already installed.'.format(author, name))
+                    self.print('  Dependency {}/{} already installed.'.format(author, name))
                 else:
                     try:
                         self.print('  Installing dependency {}/{} from {}...'.format(author, name, dependency))
                         subprocess.run(['git', 'clone', dependency, './dependencies/{}/{}'.format(author, name)])
                     except Exception as error:
-                        self.print('    {} has failed, view the error below. If you are unsure, some potential causes are that you are missing "git" on your command line, your git credentials are not properly set or the GitHub link does not exist.'.format(error.cmd))
-                        self.print('    Output from the command: {}\nstderr from the command: {}'.format(error.cmd, error.stderr))
+                        self.print('    {} failed, view the error below. If you are unsure, some potential causes are that you are missing "git" on your command line, your git credentials are not properly set, or the GitHub link does not exist.'.format(error.cmd))
+                        self.print('    stdout: {}\nstderr: {}'.format(error.cmd, error.stderr))
                         self.print('  Exiting module...')
                         return False
             else:
                 if os.path.exists('./dependencies/{}'.format(name)):
-                    self.print('  Dependency {} is already installed.'.format(name))
+                    self.print('  Dependency {} already installed.'.format(name))
                 else:
                     try:
                         self.print('  Installing dependency {}...'.format(name))
@@ -351,7 +351,7 @@ class Main:
                         self.print('  Exiting module...')
 
                         return False
-        self.print('Dependencies have finished installing.')
+        self.print('Dependencies finished installing.')
         return True
 
     def get_active_session(self):
@@ -419,12 +419,12 @@ class Main:
         elif os == 'ps':  # Windows one-liner (uses `" to escape inline double-quotes)
             return 'Start-Process -FilePath "python" -Verb open -WindowStyle Hidden -ArgumentList "-c {}"'.format('exec(`\"`\"`\"{}`\"`\"`\")'.format(python_stager))
         else:
-            return 'Incorrect input, expected target operating system ("sh" or "ps"), received: {}'.format(os)
+            return 'Error: Expected target operating system ("sh" or "ps"), received: {}'.format(os)
 
     def get_ssh_user(self, ssh_username, ssh_password=None):
         user_id = ''
         if ssh_username is None or ssh_username == '':
-            new_user = self.input('No SSH user found to create the reverse connection back from the target agent. An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with a random 25 character password and a /bin/false shell. Do you want to generate that user now? (y/n) ')
+            new_user = self.input('No SSH user found to create the reverse connection back from the target agent. An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with a random 25 character password and a /bin/false shell. Generate that user now? (y/n) ')
 
             if new_user == 'y':
                 # Create a random username that is randomly 3-9 characters
@@ -437,7 +437,7 @@ class Main:
                     try:
                         user_id = subprocess.check_output('id -u {}'.format(username), shell=True).decode('utf-8')
                         if 'no such user' in user_id:
-                            self.print('[0] Failed to find user after creation. Here is the output from the command "id -u {}": {}\n'.format(username, user_id))
+                            self.print('[0] Failed to find user after creation. Output from command "id -u {}": {}\n'.format(username, user_id))
                             return None, None, False
                         self.print('User {} created! Adding a password...\n'.format(username))
                         password = ''.join(random.choices(string.ascii_lowercase + string.ascii_uppercase + string.digits, k=25))
@@ -449,7 +449,7 @@ class Main:
                             return username, None, True
                         return username, password, self.update_sshd_config()
                     except Exception as error:
-                        self.print('Failed to find user after creation. Here is the output from the command "id -u {}": {}\n'.format(username, user_id))
+                        self.print('Failed to find user after creation. Output from command "id -u {}": {}\n'.format(username, user_id))
                         return None, None, False
 
                 except Exception as error:
@@ -463,7 +463,7 @@ class Main:
             try:
                 user_id = subprocess.check_output('id -u {}'.format(ssh_username), shell=True).decode('utf-8')
                 if 'no such user' in user_id:
-                    self.print('Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}\n'.format(ssh_username, user_id))
+                    self.print('Failed to find a valid SSH user. Output from command "id -u {}": {}\n'.format(ssh_username, user_id))
                     new_user = self.input('An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with a random 25 character password and a /bin/false shell. Do you want to generate that user now? (y/n) ')
                     if new_user == 'y':
                         return self.get_ssh_user(None, None)
@@ -472,7 +472,7 @@ class Main:
                 else:
                     return ssh_username, ssh_password, False
             except Exception as error:
-                self.print('Failed to find a valid SSH user. Here is the output from the command "id -u {}": {}\n'.format(ssh_username, user_id))
+                self.print('Failed to find a valid SSH user. Output from command "id -u {}": {}\n'.format(ssh_username, user_id))
                 new_user = self.input('An SSH user on the PacuProxy server is required to create a valid socks proxy routing through the remote agent. The user will be created with a random 25 character password and a /bin/false shell. Do you want to generate that user now? (y/n) ')
                 if new_user == 'y':
                     return self.get_ssh_user(None, None)
@@ -609,7 +609,7 @@ class Main:
             elif command[1] not in session.aws_data_field_names:
                 print('  Service not found.')
             elif getattr(session, command[1]) == {} or getattr(session, command[1]) == [] or getattr(session, command[1]) == '':
-                print('  No data has been collected yet for the specified service.')
+                print('  No data found.')
             else:
                 print(json.dumps(getattr(session, command[1]), indent=2, sort_keys=True, default=str))
 
@@ -626,9 +626,9 @@ class Main:
                     print('  {} is not a valid region.\n  Session regions not changed.'.format(region))
                     return
             session.update(self.database, session_regions=command[1:])
-            print('  The region set for this session has been changed: {}'.format(session.session_regions))
+            print('  Session regions changed: {}'.format(session.session_regions))
         else:
-            print('  The set_regions command requires either the argument "all", or at least one region, to be specified. Try using the "regions" command to view available regions.')
+            print('  Error: set_regions requires either "all" or at least one region to be specified. Try the "regions" command to view all regions.')
 
     def parse_help_command(self, command):
         if len(command) <= 1:
@@ -678,22 +678,22 @@ class Main:
                 proxy_settings.update(self.database, listening=proxy_listening)
                 return
             else:
-                print('There already seems to be a listener running: {}'.format(self.server))
+                print('Listener already running: {}'.format(self.server))
         elif command[1] == 'list' or command[1] == 'ls':  # List active agent connections
             self.server.list_connections()
         elif command[1] == 'shell':  # Run shell command on an agent
             if len(command) > 3:
                 self.server.run_cmd(int(command[2]), self.server.all_connections[int(command[2])], ' '.join(command[3:]))
             else:
-                print('** Incorrect input, expected an agent ID and a shell command. Use the format: proxy shell <agent_id> <shell command> **')
+                print('** Error: Expected an agent ID and a shell command. Use the format: proxy shell <agent_id> <shell command> **')
         elif command[1] == 'fetch_ec2_keys':
             if len(command) == 3:
                 self.fetch_ec2_keys(int(command[2]), self.server.all_connections[int(command[2])])
             else:
-                self.print('** Incorrect input, expect an agent ID. Use the format: proxy fetch_ec2_keys <agent_id> **')
+                self.print('** Error: Expected an agent ID. Use the format: proxy fetch_ec2_keys <agent_id> **')
         elif command[1] == 'stop':  # Stop proxy server
             if proxy_listening is False:
-                print('There does not seem to be a listener running currently.')
+                print('No listeners are running.')
             else:
                 if not proxy_target_agent == []:
                     if proxy_target_agent[-1].startswith('Windows'):
@@ -715,14 +715,14 @@ class Main:
                 self.server.quit(int(command[2]), self.server.all_connections[int(command[2])])
                 self.print('** Agent killed **')
             elif len(command) == 2:
-                print('** Incorrect input, excepted an agent ID, received nothing. Use format: proxy kill <agent_id> **')
+                print('** Error: Expected an agent ID, received nothing. Use format: proxy kill <agent_id> **')
             else:
-                print('** Incorrect input, excepted an agent ID, received: {}'.format(command[2:]))
+                print('** Error: Expected an agent ID, received: {}'.format(command[2:]))
         elif command[1] == 'stager':
             if len(command) == 3:
                 self.print(self.get_proxy_stager(proxy_ip, proxy_port, command[2]))
             else:
-                self.print('** Incorrect input, expected target operating system ("sh" or "ps"), received: {}'.format(command[2:]))
+                self.print('** Error: Expected target operating system ("sh" or "ps"), received: {}'.format(command[2:]))
         elif command[1] == 'use':
             if len(command) == 3:
                 try:
@@ -740,13 +740,13 @@ class Main:
                     else:
                         proxy_target_agent = self.server.all_addresses[int(command[2])]
                         if platform.system() == 'Windows':
-                            self.print('** Windows hosts do not currently support module proxying. Run the PacuProxy server on a Linux host for full module proxying capability. **')
+                            self.print('** Windows hosts do not support module proxying. Run PacuProxy on a Linux host for full module proxying capability. **')
                             return
 
                         try:
                             test = int(command[2])
                         except:
-                            self.print('** Invalid agent ID, expected an integer or "none", received: {} **'.format(command[2]))
+                            self.print('** Error: Invalid agent ID, expected an integer or "none", received: {} **'.format(command[2]))
                             return
 
                         print('Setting proxy target to agent {}...'.format(command[2]))
@@ -773,7 +773,7 @@ class Main:
                                 subprocess.run('service sshd restart', shell=True)
                                 time.sleep(5)
 
-                        self.print('Telling remote agent to connect back...')
+                        self.print('Instructing remote agent to connect back...')
 
                         if proxy_target_agent[-1].startswith('Windows'):
                             self.print('Windows hosts not supported yet (coming soon!)')
@@ -803,7 +803,7 @@ class Main:
                                     httpd = server_class(server_address, handler_class)
                                 except OSError as error:
                                     if 'Cannot assign requested address' in str(error):
-                                        print('Failed to listen on http://{}:{}. This is a known error.'.format(proxy_ip, port))
+                                        print('Failed to listen on http://{}:{}.'.format(proxy_ip, port))
                                         print('Listening on http://0.0.0.0:{} instead...'.format(port))
                                         server_address = ('0.0.0.0', port)
                                         httpd = server_class(server_address, handler_class)
@@ -852,9 +852,9 @@ class Main:
                         self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[int(command[2])], connect_back_cmd)
                         self.print('Remote agent instructed to connect!')
                 except Exception as error:
-                    self.print('** Invalid agent ID, expected an integer or "none": {} **'.format(error))
+                    self.print('** Error: Invalid agent ID, expected an integer or "none": {} **'.format(error))
             else:
-                self.print('** Incorrect input, excepted an agent ID, received: {}'.format(command[2:]))
+                self.print('** Error: Excepted an agent ID, received: {}'.format(command[2:]))
         else:
             self.print('** Unrecognized proxy command: {} **'.format(command[1]))
         proxy_settings.update(self.database, ssh_username=proxy_ssh_username, ssh_password=proxy_ssh_password, ssh_shm_name=shm_name, listening=proxy_listening, target_agent=proxy_target_agent)
@@ -928,7 +928,11 @@ class Main:
                                                   from within Pacu. Due to the command running in a shell,
                                                   this enables you to pipe output where needed. An example
                                                   would be to run an AWS CLI command and pipe it into "jq"
-                                                  to parse the data returned
+                                                  to parse the data returned. Warning: The AWS CLI's
+                                                  authentication is not related to Pacu. Be careful to
+                                                  ensure that you are using the keys you want when using
+                                                  the AWS CLI. It is suggested to use AWS CLI profiles
+                                                  to solve this problem
 
         [ADVANCED] PacuProxy command info:
             proxy [help]                        Control PacuProxy/display help
@@ -988,19 +992,19 @@ class Main:
         py_executable = sys.executable
         # Update boto3 and botocore to fetch the latest version of the AWS region_list
         try:
-            self.print('  Using pip to update botocore, so we have the latest region list...\n')
+            self.print('  Fetching latest botocore...\n')
             subprocess.run([py_executable, '-m', 'pip', 'install', '--upgrade', 'botocore'])
         except:
-            pip = self.input('  Could not use pip3 or pip to update botocore to the latest version. Enter the name of your pip binary or press Ctrl+C to exit: ').strip()
+            pip = self.input('  Could not use pip3 or pip to update botocore to the latest version. Enter the name of your pip binary to continue: ').strip()
             subprocess.run(['{}'.format(pip), 'install', '--upgrade', 'botocore'])
 
         path = ''
 
         try:
-            self.print('  Using pip3 to locate botocore on the operating system...\n')
+            self.print('  Using pip3 to locate botocore...\n')
             output = subprocess.check_output('{} -m pip show botocore'.format(py_executable), shell=True)
         except:
-            path = self.input('  Could not use pip to determine botocore\'s location. Enter the path to your Python "dist-packages" folder (example: /usr/local/bin/python3.6/lib/dist-packages) or press Ctrl+C to exit: ').strip()
+            path = self.input('  Could not use pip to determine botocore\'s location. Enter the path to your Python "dist-packages" folder (example: /usr/local/bin/python3.6/lib/dist-packages): ').strip()
 
         if path == '':
             # Account for Windows \r and \\ in file path (Windows)
@@ -1048,7 +1052,7 @@ class Main:
         # under "all" regions. This is for GovMode, as without
         # it, you get a prompt to target one region
         if len(regions) > 1:
-            print('Automatically targeting region(s):')
+            print('Automatically targeting regions:')
             for region in regions:
                 print('  {}'.format(region))
             response = input('Continue? (y/n) ')
@@ -1112,6 +1116,7 @@ class Main:
                         raise ValueError('The {} module\'s summary is too long ({} characters). Reduce it to 1000 characters or fewer.'.format(module.module_info['name'], len(summary)))
                     if not isinstance(summary, str):
                         raise TypeError(' The {} module\'s summary is {}-type instead of str. Make summary return a string.'.format(module.module_info['name'], type(summary)))
+                    self.print('{} completed.\n'.format(module.module_info['name']))
                     self.print('MODULE SUMMARY:\n\n{}\n'.format(summary.strip('\n')))
             except SystemExit as error:
                 exception_type, exception_value, tb = sys.exc_info()
@@ -1140,7 +1145,7 @@ class Main:
         elif command_name == 'list' or command_name == 'ls':
             print('\n    list/ls\n        List all modules\n')
         elif command_name == 'aws':
-            print('\n    aws <command>\n        Use the AWS CLI directly. This command runs in your local shell to use the AWS CLI\n')
+            print('\n    aws <command>\n        Use the AWS CLI directly. This command runs in your local shell to use the AWS CLI. Warning: The AWS CLI\'s authentication is not related to Pacu. Be careful to ensure that you are using the keys you want when using the AWS CLI. It is suggested to use AWS CLI profiles to help solve this problem\n')
         elif command_name == 'search':
             print('\n    search [cat[egory]] <search term>\n        Search the list of available modules by name or category\n')
         elif command_name == 'help':
@@ -1264,7 +1269,7 @@ class Main:
                 self.set_keys('Agent{}/{}'.format(target, time.strftime("%m-%d@%I-%M%p")), keys['AccessKeyId'], keys['SecretAccessKey'], keys['Token'])
                 self.print('Keys successfully fetched from agent {}\'s EC2 meta-data and set as the active key pair. They will expire at {}.\n'.format(target, keys["Expiration"]))
                 return
-        self.print('Failed to fetch AWS keys from the EC2 meta-data, this agent is either not an EC2 instance or it does not have a valid instance profile attached to it to fetch the keys from.\n')
+        self.print('Failed to fetch AWS keys, target is either not an EC2 instance or it does not have a valid instance profile attached to it.\n')
         return
 
     def set_keys(self, key_alias=None, access_key_id=None, secret_access_key=None, session_token=None):
@@ -1274,7 +1279,10 @@ class Main:
         # otherwise it means it is set programmatically and we don't want any prompts if it is
         # done programatically
         if key_alias is None:
-            self.print('Setting AWS Keys. Press enter to keep the value currently stored. Enter the letter C to clear the value, rather than set it. If you enter an existing key_alias, that key\'s fields will be updated with the information provided.')
+            self.print('Setting AWS Keys...')
+            self.print('Press enter to keep the value currently stored.')
+            self.print('Enter the letter C to clear the value, rather than set it.')
+            self.print('If you enter an existing key_alias, that key\'s fields will be updated instead of added.\n')
 
         # Key alias
         if key_alias is None:
@@ -1344,19 +1352,19 @@ class Main:
         self.database.commit()
 
         if key_alias is None:
-            self.print('Configuration variables have been set.\n')
+            self.print('\nConfiguration variables set.\n')
 
     def swap_keys(self):
         session = self.get_active_session()
         aws_keys = session.aws_keys.all()
 
         if not aws_keys:
-            self.print('\nNo AWS keys have been set for this session. Use set_keys to add AWS keys.\n')
+            self.print('\nNo AWS keys set for this session. Run "set_keys" to add AWS keys.\n')
             return
 
         self.print('\nSwapping AWS Keys. Press enter to keep the currently active key.')
 
-        print('AWS keys associated with this session:')
+        print('AWS keys in this session:')
 
         for index, aws_key in enumerate(aws_keys, 1):
             if aws_key.key_alias == session.key_alias:
@@ -1462,13 +1470,13 @@ class Main:
             ua = boto3_session._session.user_agent()
             if 'kali' in ua.lower():  # If the local OS is Kali Linux
                 # GuardDuty triggers a finding around API calls made from Kali Linux, so let's avoid that...
-                self.print('Detected the current operating system as Kali Linux. Modifying user agent to hide that from GuardDuty...')
+                self.print('Detected environment as Kali Linux. Modifying user agent to hide that from GuardDuty...')
                 with open('./user_agents.txt', 'r') as file:
                     user_agents = file.readlines()
                 user_agents = [agent.strip() for agent in user_agents]  # Remove random \n's and spaces
                 new_ua = random.choice(user_agents)
                 session.update(self.database, boto_user_agent=new_ua)
-                self.print('  The user agent for this Pacu session has been set to:')
+                self.print('  User agent for this session set to:')
                 self.print('    {}'.format(new_ua))
 
     def get_boto3_client(self, service, region=None, user_agent=None, socks_port=8001, parameter_validation=True):
@@ -1722,7 +1730,7 @@ class Main:
                     )
 
                 if not idle_ready:
-                    print('Pacu is unable to start. Try copying Pacu\'s sqlite.db file and deleting the old version. If the error persists, try reinstalling Pacu in a new directory.')
+                    print('Pacu is unable to start. Try backing up Pacu\'s sqlite.db file and deleting the old version. If the error persists, try reinstalling Pacu in a new directory.')
                     return
 
 

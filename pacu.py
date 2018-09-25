@@ -230,6 +230,9 @@ class Main:
             with open('./modules/gov_service_regions.json', 'r+') as regions_file:
                 regions = json.load(regions_file)
 
+            if len(regions['all']) > 1:
+                raise('ERROR: New GovCloud region detected! Confirm this has not been fix in the latest version of Pacu, then please open an issue on GitHub about this for a fix.')
+
             if service == 'all':
                 return regions['all']
             if 'aws-us-gov-global' in regions[service]['endpoints']:
@@ -1499,7 +1502,10 @@ class Main:
 
         return boto3.client(
             service,
-            region_name=region,  # Whether region has a value or is None, it will work here
+            # Whether region has a value or is None, it will work here
+            # If GovCloud is enabled, hardcode the one region in
+            # This will need a fix if another GovCloud region is added
+            region_name=region if not session.is_gov_cloud_session else self.get_regions('All')[0],
             aws_access_key_id=session.access_key_id,
             aws_secret_access_key=session.secret_access_key,
             aws_session_token=session.session_token,
@@ -1522,7 +1528,7 @@ class Main:
 
         return boto3.resource(
             service,
-            region_name=region,
+            region_name=region if not session.is_gov_cloud_session else self.get_regions('All')[0],
             aws_access_key_id=session.access_key_id,
             aws_secret_access_key=session.secret_access_key,
             aws_session_token=session.session_token,

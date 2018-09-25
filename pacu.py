@@ -235,7 +235,8 @@ class Main:
 
             if service == 'all':
                 return regions['all']
-            if 'aws-us-gov-global' in regions[service]['endpoints']:
+
+            if service not in regions or 'aws-us-gov-global' in regions[service]['endpoints']:
                 return [None]
 
             valid_regions = list(regions[service]['endpoints'].keys())

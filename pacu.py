@@ -885,7 +885,11 @@ class Main:
                                                   from within Pacu. Due to the command running in a shell,
                                                   this enables you to pipe output where needed. An example
                                                   would be to run an AWS CLI command and pipe it into "jq"
-                                                  to parse the data returned
+                                                  to parse the data returned. Warning: The AWS CLI's
+                                                  authentication is not related to Pacu. Be careful to
+                                                  ensure that you are using the keys you want when using
+                                                  the AWS CLI. It is suggested to use AWS CLI profiles
+                                                  to solve this problem
 
         [ADVANCED] PacuProxy command info:
             proxy [help]                        Control PacuProxy/display help
@@ -1083,7 +1087,7 @@ class Main:
         elif command_name == 'list' or command_name == 'ls':
             print('\n    list/ls\n        List all modules\n')
         elif command_name == 'aws':
-            print('\n    aws <command>\n        Use the AWS CLI directly. This command runs in your local shell to use the AWS CLI\n')
+            print('\n    aws <command>\n        Use the AWS CLI directly. This command runs in your local shell to use the AWS CLI. Warning: The AWS CLI\'s authentication is not related to Pacu. Be careful to ensure that you are using the keys you want when using the AWS CLI. It is suggested to use AWS CLI profiles to help solve this problem\n')
         elif command_name == 'search':
             print('\n    search [cat[egory]] <search term>\n        Search the list of available modules by name or category\n')
         elif command_name == 'help':

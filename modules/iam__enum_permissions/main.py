@@ -39,10 +39,10 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--all-users', required=False, default=False, action='store_true', help='Run this module against every user in the account and store the results to ./sessions/[current_session_name]/downloads/confirmed_permissions/[user_name].json. This data can then be run against the privesc_scan module with the --offline flag enabled.')
-parser.add_argument('--user-name', required=False, default=None, help='A single username of a user to run this module against. By default, the user to which the active AWS keys belong to will be used.')
-# parser.add_argument('--group-name', required=False, default=None, help='The name of a group to run this module against. By default, this module will be run against the user which the active AWS keys belong to.')
-# parser.add_argument('--policy-name', required=False, default=None, help='The name of a specific policy to run this module against. By default, this module will be run against the user which the active AWS keys belong to.')
+parser.add_argument('--all-users', required=False, default=False, action='store_true', help='Run this module against every user in the account and store the results to ./sessions/[current_session_name]/downloads/confirmed_permissions/user-[user_name].json. This data can then be run against the privesc_scan module with the --offline flag enabled.')
+parser.add_argument('--user-name', required=False, default=None, help='A single user name of a user to run this module against. By default, the active AWS keys will be used.')
+parser.add_argument('--all-roles', required=False, default=False, action='store_true', help='Run this module against every role in the account and store the results to ./sessions/[current_session_name]/downloads/confirmed_permissions/role-[role_name].json. This data can then be run against the privesc_scan module with the --offline flag enabled.')
+parser.add_argument('--role-name', required=False, default=None, help='A single role name of a role to run this module against. By default, the active AWS keys will be used.')
 
 
 def main(args, pacu_main):
@@ -56,9 +56,14 @@ def main(args, pacu_main):
     fetch_data = pacu_main.fetch_data
     ######
 
-    summary_data = {'users_confirmed': 0}
+    summary_data = {
+        'users_confirmed': 0,
+        'roles_confirmed': 0
+    }
 
     users = []
+    roles = []
+
     if args.all_users is True:
         if fetch_data(['IAM', 'Users'], module_info['prerequisite_modules'][0], '--users') is False:
             print('FAILURE')
@@ -84,19 +89,49 @@ def main(args, pacu_main):
             }
         })
         summary_data['single_user'] = args.user_name
-    else:
+
+    if args.all_roles is True:
+        if fetch_data(['IAM', 'Roles'], module_info['prerequisite_modules'][0], '--roles') is False:
+            print('FAILURE')
+            print('  SUB-MODULE EXECUTION FAILED')
+            return
+        fetched_roles = session.IAM['Roles']
+        for role in fetched_roles:
+            roles.append({
+                'RoleName': role['RoleName'],
+                'PermissionsConfirmed': True,
+                'Permissions': {
+                    'Allow': {},
+                    'Deny': {}
+                }
+            })
+    elif args.role_name is not None:
+        roles.append({
+            'RoleName': args.role_name,
+            'PermissionsConfirmed': True,
+            'Permissions': {
+                'Allow': {},
+                'Deny': {}
+            }
+        })
+        summary_data['single_role'] = args.role_name
+
+    is_user = is_role = False
+
+    if not any([args.all_users, args.user_name, args.all_roles, args.role_name]):
         client = pacu_main.get_boto3_client('sts')
         identity = client.get_caller_identity()
         active_aws_key = session.get_active_aws_key(pacu_main.database)
 
         if re.match(r'arn:aws:iam::\d{12}:user/', identity['Arn']) is not None:
+            is_user = True
             client = pacu_main.get_boto3_client('iam')
             try:
                 user = client.get_user()
                 active_aws_key.update(
                     pacu_main.database,
                     user_name=user['User']['UserName'],
-                    user_arn=identity['Arn'],
+                    arn=identity['Arn'],
                     user_id=identity['UserId'],
                     account_id=identity['Account']
                 )
@@ -106,7 +141,7 @@ def main(args, pacu_main):
                     active_aws_key.update(
                         pacu_main.database,
                         user_name=username,
-                        user_arn=identity['Arn'],
+                        arn=identity['Arn'],
                         user_id=identity['UserId'],
                         account_id=identity['Account']
                     )
@@ -114,28 +149,39 @@ def main(args, pacu_main):
                     # Update the information from get_caller_identity and exit
                     active_aws_key.update(
                         pacu_main.database,
-                        user_arn=identity['Arn'],
+                        arn=identity['Arn'],
                         user_id=identity['UserId'],
                         account_id=identity['Account']
                     )
                     return False
         elif re.match(r'arn:aws:sts::\d{12}:assumed-role/', identity['Arn']) is not None:
-            # TODO: Find role info
+            is_role = True
             active_aws_key.update(
                 pacu_main.database,
-                user_name=identity['User']['UserName'],
-                user_arn=identity['Arn'],
+                role_name=identity['Arn'].split(':assumed-role/')[1].split('/')[0],
+                role_arn=identity['Arn'],
                 user_id=identity['UserId'],
                 account_id=identity['Account']
             )
         else:
             print('Not an IAM user or role. Exiting...\n')
             return False
-        user = key_info(alias=session.key_alias)
-        user['PermissionsConfirmed'] = True
-        user['Permissions'] = {'Allow': {}, 'Deny': {}}
-        users.append(user)
-        summary_data['single_user'] = user['UserName']
+
+        if is_user:
+            user = key_info(alias=session.key_alias)
+            user['PermissionsConfirmed'] = True
+            user['Permissions'] = {'Allow': {}, 'Deny': {}}
+            users.append(user)
+            summary_data['single_user'] = user['UserName']
+        elif is_role:
+            roles.append({
+                'RoleName': role['RoleName'],
+                'PermissionsConfirmed': True,
+                'Permissions': {
+                    'Allow': {},
+                    'Deny': {}
+                }
+            })
 
     # list-groups-for-user
     # list-user-policies
@@ -321,7 +367,7 @@ def main(args, pacu_main):
                 active_aws_key.update(
                     pacu_main.database,
                     user_name=user['UserName'],
-                    user_arn=user['UserArn'],
+                    arn=user['Arn'],
                     user_id=user['UserId'],
                     groups=user['Groups'],
                     policies=user['Policies'],
@@ -333,10 +379,10 @@ def main(args, pacu_main):
                 if not os.path.exists('sessions/{}/downloads/confirmed_permissions/'.format(session.name)):
                     os.makedirs('sessions/{}/downloads/confirmed_permissions/'.format(session.name))
 
-                with open('sessions/{}/downloads/confirmed_permissions/{}.json'.format(session.name, user['UserName']), 'w+') as user_permissions_file:
+                with open('sessions/{}/downloads/confirmed_permissions/user-{}.json'.format(session.name, user['UserName']), 'w+') as user_permissions_file:
                     json.dump(user, user_permissions_file, indent=2, default=str)
 
-                print('    {}\'s permissions stored in {}.json'.format(user['UserName'], user['UserName']))
+                print('    {}\'s permissions stored in user-{}.json'.format(user['UserName'], user['UserName']))
         except ClientError as error:
             if error.response['Error']['Code'] == 'AccessDenied':
                 print('  FAILURE: MISSING REQUIRED AWS PERMISSIONS')

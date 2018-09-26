@@ -372,11 +372,11 @@ def main(args, pacu_main):
                     elif file_name.startswith('role-'):
                         role = json.load(confirmed_permissions_file)
 
-                name = 'User: {}'.format(user['UserName']) if user else 'Role: {}'.format(role['RoleName'])
+                name = '(User) {}'.format(user['UserName']) if user else '(Role) {}'.format(role['RoleName'])
 
                 if user:
                     if '*' in user['Permissions']['Allow'] and user['Permissions']['Allow']['*']['Resources'] == ['*']:  # If the user is already an admin, skip them
-                        print('  User {} already has administrator permissions.'.format(name))
+                        print('  {} already has administrator permissions.'.format(name))
                         continue
 
                     potential_methods[name] = []
@@ -406,7 +406,7 @@ def main(args, pacu_main):
                             potential_methods[name].append(method)
                 elif role:
                     if '*' in role['Permissions']['Allow'] and role['Permissions']['Allow']['*']['Resources'] == ['*']:  # If the role is already an admin, skip them
-                        print('  Role {} already has administrator permissions.'.format(name))
+                        print('  {} already has administrator permissions.'.format(name))
                         continue
 
                     potential_methods[name] = []
@@ -442,14 +442,20 @@ def main(args, pacu_main):
             with open('sessions/{}/downloads/offline_privesc_scan_{}.json'.format(session.name, now), 'w+') as scan_results_file:
                 json.dump(potential_methods, scan_results_file, indent=2, default=str)
 
-            print('Completed offline privesc_scan of directory ./{}. Results stored in ./sessions/{}/downloads/offline_privesc_scan_{}.json'.format(folder, session.name, now))
-            return
+            summary_data['offline'] = {
+                'scanned_dir': folder,
+                'output_file': './sessions/{}/downloads/offline_privesc_scan_{}.json'.format(session.name, now)
+            }
+            return summary_data
 
         except Exception as e:
             print('Error accessing folder {}: {}\nExiting...'.format(folder, e))
             return
 
     # It is online if it has reached here
+
+
+    # TODO: SUPPORT ROLES
 
     user = key_info()
 
@@ -564,6 +570,8 @@ def main(args, pacu_main):
 def summary(data, pacu_main):
     if data['scan_only']:
         return '  Scan Complete'
+    elif 'offline' in data and data['offline']:
+        return '  Completed offline scan of:\n    ./{}\n\n  Results stored in:\n    {}'.format(data['offline']['scanned_dir'], data['offline']['output_file'])
     else:
         if 'success' in data and data['success']:
             out = '  Privilege escalation was successful'

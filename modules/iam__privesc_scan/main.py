@@ -454,36 +454,33 @@ def main(args, pacu_main):
 
     # It is online if it has reached here
 
-
-    # TODO: SUPPORT ROLES
-
-    user = key_info()
+    target = key_info()
 
     # Preliminary check to see if these permissions have already been enumerated in this session
-    if 'Permissions' in user and 'Allow' in user['Permissions']:
+    if 'Permissions' in target and 'Allow' in target['Permissions']:
         # Have any permissions been enumerated?
-        if user['Permissions']['Allow'] == {} and user['Permissions']['Deny'] == {}:
+        if target['Permissions']['Allow'] == {} and target['Permissions']['Deny'] == {}:
             print('No permissions detected yet.')
-            if fetch_data(['User', 'Permissions'], module_info['prerequisite_modules'][0], '') is False:
+            if fetch_data(['Current User/Role', 'Permissions'], module_info['prerequisite_modules'][0], '') is False:
                 print('Pre-req module not run successfully. Exiting...')
                 return
-            user = key_info()
+            target = key_info()
 
         # Are they an admin already?
-        if '*' in user['Permissions']['Allow'] and user['Permissions']['Allow']['*']['Resources'] == ['*']:
+        if '*' in target['Permissions']['Allow'] and target['Permissions']['Allow']['*']['Resources'] == ['*']:
             print('You already have admin permissions (Action: * on Resource: *)! Exiting...')
             return
 
         for perm in all_perms:
             for effect in ['Allow', 'Deny']:
-                if perm in user['Permissions'][effect]:
-                    checked_perms[effect][perm] = user['Permissions'][effect][perm]
+                if perm in target['Permissions'][effect]:
+                    checked_perms[effect][perm] = target['Permissions'][effect][perm]
                 else:
-                    for user_perm in user['Permissions'][effect].keys():
-                        if '*' in user_perm:
-                            pattern = re.compile(user_perm.replace('*', '.*'))
+                    for target_perm in target['Permissions'][effect].keys():
+                        if '*' in target_perm:
+                            pattern = re.compile(target_perm.replace('*', '.*'))
                             if pattern.search(perm) is not None:
-                                checked_perms[effect][perm] = user['Permissions'][effect][user_perm]
+                                checked_perms[effect][perm] = target['Permissions'][effect][target_perm]
 
     checked_methods = {
         'Potential': [],
@@ -491,35 +488,69 @@ def main(args, pacu_main):
     }
 
     # Ditch each escalation method that has been confirmed not to be possible
-    for method in user_escalation_methods.keys():
-        potential = True
-        confirmed = True
 
-        for perm in user_escalation_methods[method]:
-            if user_escalation_methods[method][perm] is True:  # If this permission is required
-                if 'PermissionsConfirmed' in user and user['PermissionsConfirmed'] is True:  # If permissions are confirmed
-                    if perm not in checked_perms['Allow']:  # If this permission isn't Allowed, then this method won't work
-                        potential = confirmed = False
-                        break
-                    elif perm in checked_perms['Deny'] and perm in checked_perms['Allow']:  # Permission is both Denied and Allowed, leave as potential, not confirmed
-                        confirmed = False
+    if target['UserName']:  # If they are a user
+        print('Escalation methods for current user:')
+        for method in user_escalation_methods.keys():
+            potential = True
+            confirmed = True
 
-                else:
-                    if perm in checked_perms['Allow'] and perm in checked_perms['Deny']:  # If it is Allowed and Denied, leave as potential, not confirmed
-                        confirmed = False
-                    elif perm not in checked_perms['Allow'] and perm in checked_perms['Deny']:  # If it isn't Allowed and IS Denied
-                        potential = confirmed = False
-                        break
-                    elif perm not in checked_perms['Allow'] and perm not in checked_perms['Deny']:  # If its not Allowed and not Denied
-                        confirmed = False
+            for perm in user_escalation_methods[method]:
+                if user_escalation_methods[method][perm] is True:  # If this permission is required
+                    if 'PermissionsConfirmed' in user and user['PermissionsConfirmed'] is True:  # If permissions are confirmed
+                        if perm not in checked_perms['Allow']:  # If this permission isn't Allowed, then this method won't work
+                            potential = confirmed = False
+                            break
+                        elif perm in checked_perms['Deny'] and perm in checked_perms['Allow']:  # Permission is both Denied and Allowed, leave as potential, not confirmed
+                            confirmed = False
 
-        if confirmed is True:
-            print('CONFIRMED: {}\n'.format(method))
-            checked_methods['Confirmed'].append(method)
+                    else:
+                        if perm in checked_perms['Allow'] and perm in checked_perms['Deny']:  # If it is Allowed and Denied, leave as potential, not confirmed
+                            confirmed = False
+                        elif perm not in checked_perms['Allow'] and perm in checked_perms['Deny']:  # If it isn't Allowed and IS Denied
+                            potential = confirmed = False
+                            break
+                        elif perm not in checked_perms['Allow'] and perm not in checked_perms['Deny']:  # If its not Allowed and not Denied
+                            confirmed = False
 
-        elif potential is True:
-            print('POTENTIAL: {}\n'.format(method))
-            checked_methods['Potential'].append(method)
+            if confirmed is True:
+                print('  CONFIRMED: {}'.format(method))
+                checked_methods['Confirmed'].append(method)
+
+            elif potential is True:
+                print('  POTENTIAL: {}'.format(method))
+                checked_methods['Potential'].append(method)
+    elif target['RoleName']:
+        print('Escalation methods for current role:')
+        for method in role_escalation_methods.keys():
+            potential = True
+            confirmed = True
+
+            for perm in role_escalation_methods[method]:
+                if role_escalation_methods[method][perm] is True:  # If this permission is required
+                    if 'PermissionsConfirmed' in target and target['PermissionsConfirmed'] is True:  # If permissions are confirmed
+                        if perm not in checked_perms['Allow']:  # If this permission isn't Allowed, then this method won't work
+                            potential = confirmed = False
+                            break
+                        elif perm in checked_perms['Deny'] and perm in checked_perms['Allow']:  # Permission is both Denied and Allowed, leave as potential, not confirmed
+                            confirmed = False
+
+                    else:
+                        if perm in checked_perms['Allow'] and perm in checked_perms['Deny']:  # If it is Allowed and Denied, leave as potential, not confirmed
+                            confirmed = False
+                        elif perm not in checked_perms['Allow'] and perm in checked_perms['Deny']:  # If it isn't Allowed and IS Denied
+                            potential = confirmed = False
+                            break
+                        elif perm not in checked_perms['Allow'] and perm not in checked_perms['Deny']:  # If its not Allowed and not Denied
+                            confirmed = False
+
+            if confirmed is True:
+                print('  CONFIRMED: {}'.format(method))
+                checked_methods['Confirmed'].append(method)
+
+            elif potential is True:
+                print('  POTENTIAL: {}'.format(method))
+                checked_methods['Potential'].append(method)
 
     # If --scan-only wasn't passed in and there is at least one Confirmed or Potential method to try
     if args.scan_only is False and (len(checked_methods['Confirmed']) > 0 or len(checked_methods['Potential']) > 0):
@@ -561,13 +592,14 @@ def main(args, pacu_main):
                 print('No potential privilege escalation methods worked.')
         summary_data['success'] = escalated
     elif len(checked_methods['Confirmed']) == 0 and len(checked_methods['Potential']) == 0:
-        print('No privilege escalation paths found.')
+        print('  None found')
         summary_data['success'] = False
 
     return summary_data
 
 
 def summary(data, pacu_main):
+    print('')
     if data['scan_only']:
         return '  Scan Complete'
     elif 'offline' in data and data['offline']:
@@ -581,7 +613,7 @@ def summary(data, pacu_main):
 
 
 # Functions for individual privesc methods
-# Their names match their key names under the user_escalation_methods object so I can invoke a method by running globals()[method]()
+# Their names match their key names under the user_escalation_methods/role_escalation_methods objects so I can invoke a method by running globals()[method]()
 # Each of these will return True if successful and False is failed
 
 def CreateNewPolicyVersion(pacu_main, print, input, fetch_data):

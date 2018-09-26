@@ -182,6 +182,7 @@ def main(args, pacu_main):
                     'Deny': {}
                 }
             })
+            summary_data['single_role'] = active_aws_key.role_name
 
     # list-groups-for-user
     # list-user-policies

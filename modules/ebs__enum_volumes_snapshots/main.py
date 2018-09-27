@@ -126,7 +126,7 @@ def main(args, pacu_main):
                     session_aws_key.update(
                         pacu_main.database,
                         account_id=identity['Account'],
-                        user_arn=identity['Arn'],
+                        arn=identity['Arn'],
                         user_id=identity['UserId'],
                     )
                 except Exception as error:

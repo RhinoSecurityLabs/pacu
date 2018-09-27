@@ -120,7 +120,7 @@ def main(args, pacu_main):
                 Rule=function_name,
                 Targets=[
                     {
-                        'Id': 0,
+                        'Id': '0',
                         'Arn': lambda_arn
                     }
                 ]

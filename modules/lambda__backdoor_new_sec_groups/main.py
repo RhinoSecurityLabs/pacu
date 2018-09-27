@@ -3,6 +3,7 @@ import argparse
 from botocore.exceptions import ClientError
 from copy import deepcopy
 import subprocess
+import random
 
 
 module_info = {

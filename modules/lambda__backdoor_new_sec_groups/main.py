@@ -4,6 +4,7 @@ from botocore.exceptions import ClientError
 from copy import deepcopy
 import subprocess
 import random
+import string
 
 
 module_info = {

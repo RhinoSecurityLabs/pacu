@@ -79,7 +79,8 @@ def main(args, pacu_main):
 
      # Zip the Lambda function
     try:
-        subprocess.run('zip ./modules/{}/lambda_function.zip ./modules/{}/lambda_function.py'.format(module_info['name'], module_info['name']), shell=True)
+        print('  Zipping the Lambda function...\n')
+        subprocess.run('cd ./modules/{}/ && rm -f lambda_function.zip && zip lambda_function.zip lambda_function.py && cd ../../'.format(module_info['name']), shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception as error:
         print('Failed to zip the Lambda function locally: {}\n'.format(error))
         return data
@@ -97,7 +98,7 @@ def main(args, pacu_main):
                 FunctionName=function_name,
                 Runtime='python3.6',
                 Role=target_role_arn,
-                Handler='a',
+                Handler='lambda_function.lambda_handler',
                 Code={
                     'ZipFile': zip_file_bytes
                 }

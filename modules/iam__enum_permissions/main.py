@@ -301,7 +301,7 @@ def main(args, pacu_main):
                     print('  {}'.format(error.response['Error']['Code']))
                 print('Skipping {}'.format(role['RoleName']))
         if users:
-            print('')
+            print()
 
     if users:
         print('Confirming permissions for users:')

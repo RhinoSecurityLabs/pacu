@@ -16,7 +16,7 @@ module_info = {
 
     'services': ['Lambda', 'Events', 'EC2'],
 
-    'prerequisite_modules': [],
+    'prerequisite_modules': ['iam__enum_users_roles_policies_groups'],
 
     'external_dependencies': [],
 
@@ -39,6 +39,7 @@ def main(args, pacu_main):
     print = pacu_main.print
     input = pacu_main.input
     get_regions = pacu_main.get_regions
+    fetch_data = pacu_main.fetch_data
     ######
 
     data = {'functions_created': 0, 'rules_created': 0, 'successes': 0}
@@ -52,7 +53,7 @@ def main(args, pacu_main):
 
     target_role_arn = input('  What role should be used? Note: The role should allow Lambda to assume it and have at least the EC2 AuthorizeSecurityGroupIngress permission. Enter the ARN now or just press enter to enumerate a list of possible roles to choose from: ')
     if not target_role_arn:
-        if fetch_data(['IAM', 'Roles'], module_info['prerequisite_modules'][1], '--roles') is False:
+        if fetch_data(['IAM', 'Roles'], module_info['prerequisite_modules'][0], '--roles') is False:
             print('Pre-req module not run successfully. Exiting...')
             return False
         roles = deepcopy(session.IAM['Roles'])

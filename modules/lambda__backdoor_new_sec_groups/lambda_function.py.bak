@@ -1,5 +1,5 @@
 import boto3
-def a(event, context):
+def lambda_handler(event, context):
     if event['detail']['eventName'] == 'CreateSecurityGroup':
         rule=[{'FromPort':FROM_PORT,'ToPort':TO_PORT,'CidrIp':'IP_RANGE','IpProtocol':'IP_PROTOCOL'}]
         name=event['detail']['requestParameters']['groupName']

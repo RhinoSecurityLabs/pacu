@@ -117,6 +117,14 @@ def main(args, pacu_main):
             print('  Created CloudWatch Events rule: {}'.format(response['RuleArn']))
             data['rules_created'] += 1
 
+            client.add_permission(
+                FunctionName=function_name,
+                StatementId=''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10)),
+                Action='lambda:InvokeFunction',
+                Principal='events.amazonaws.com',
+                SourceArn=response['RuleArn']
+            )
+
             response = client.put_targets(
                 Rule=function_name,
                 Targets=[

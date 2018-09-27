@@ -117,6 +117,8 @@ def main(args, pacu_main):
             print('  Created CloudWatch Events rule: {}'.format(response['RuleArn']))
             data['rules_created'] += 1
 
+            client = pacu_main.get_boto3_client('lambda', region)
+
             client.add_permission(
                 FunctionName=function_name,
                 StatementId=''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10)),
@@ -124,6 +126,8 @@ def main(args, pacu_main):
                 Principal='events.amazonaws.com',
                 SourceArn=response['RuleArn']
             )
+
+            client = pacu_main.get_boto3_client('events', region)
 
             response = client.put_targets(
                 Rule=function_name,

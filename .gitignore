@@ -516,3 +516,5 @@ settings.py
 
 # Module-specific
 modules/privesc_scan/lambda_function.zip
+modules/lambda__backdoor_new_sec_groups/lambda_function.py
+modules/lambda__backdoor_new_sec_groups/lambda_function.zip

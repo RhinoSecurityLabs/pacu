@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 from botocore.exceptions import ClientError
+from copy import deepcopy
 
 
 module_info = {
@@ -53,7 +54,7 @@ def main(args, pacu_main):
 
     target_role_arn = input('  What role should be used? Note: The role should allow Lambda to assume it and have at least the EC2 AuthorizeSecurityGroupIngress permission. Enter the ARN now or just press enter to enumerate a list of possible roles to choose from: ')
     if not target_role_arn:
-        if fetch_data(['IAM', 'Roles'], module_info['prerequisite_modules'][0], '--roles') is False:
+        if fetch_data(['IAM', 'Roles'], module_info['prerequisite_modules'][0], '--roles', force=True) is False:
             print('Pre-req module not run successfully. Exiting...')
             return False
         roles = deepcopy(session.IAM['Roles'])

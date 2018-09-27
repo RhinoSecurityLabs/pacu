@@ -599,7 +599,7 @@ def main(args, pacu_main):
 
 
 def summary(data, pacu_main):
-    print('')
+    print()
     if data['scan_only']:
         return '  Scan Complete'
     elif 'offline' in data and data['offline']:
@@ -614,7 +614,7 @@ def summary(data, pacu_main):
 
 # Functions for individual privesc methods
 # Their names match their key names under the user_escalation_methods/role_escalation_methods objects so I can invoke a method by running globals()[method]()
-# Each of these will return True if successful and False is failed
+# Each of these will return True if successful and False if failed
 
 def CreateNewPolicyVersion(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
@@ -816,7 +816,7 @@ def SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data):
                 PolicyArn=policy_arn
             )
             versions = response['Versions']
-            while 'IsTruncated' in response and response['IsTruncated'] is True:
+            while response.get('IsTruncated'):
                 response = client.list_policy_versions(
                     PolicyArn=policy_arn,
                     Marker=response['Marker']
@@ -846,7 +846,7 @@ def SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data):
             print('Version: {}\n'.format(version['VersionId']))
 
         print(version_document)
-        print('')
+        print()
     new_version = input('What version would you like to switch to (example: v1)? Just press enter to keep it as the default: ')
     if not new_version:
         print('  Keeping the default version as is.\n')
@@ -916,7 +916,7 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
 
     response = client.list_instance_profiles()
     instance_profiles = response['InstanceProfiles']
-    while 'IsTruncated' in response and response['IsTruncated'] is True:
+    while response.get('IsTruncated'):
         response = client.list_instance_profiles(
             Marker=response['Marker']
         )

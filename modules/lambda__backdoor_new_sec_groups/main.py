@@ -118,10 +118,12 @@ def main(args, pacu_main):
 
             response = client.put_targets(
                 Rule=function_name,
-                Targets={
-                    'Id': 0,
-                    'Arn': lambda_arn
-                }
+                Targets=[
+                    {
+                        'Id': 0,
+                        'Arn': lambda_arn
+                    }
+                ]
             )
             if response['FailedEntryCount'] > 0:
                 print('Failed to add the Lambda function as a target to the CloudWatch rule. Failed entries:')

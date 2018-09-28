@@ -90,6 +90,10 @@ def main(args, pacu_main):
                 print('  Deleting rule {} in region {}...'.format(name, region))
                 client = pacu_main.get_boto3_client('events', region)
                 try:
+                    client.remove_targets(
+                        Rule=name,
+                        Ids=['0']
+                    )
                     client.delete_rule(
                         Name=name
                     )

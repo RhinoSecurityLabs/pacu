@@ -234,6 +234,8 @@ def main(args, pacu_main):
         with open('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']), 'w+') as f:
             f.write('\n'.join(created_resources['CWERules']))
 
+    print('Warning: For the backdoors to trigger, CloudTrail must be enabled in the regions that the Lambda functions are in.')
+
     return data
 
 

@@ -230,7 +230,7 @@ def main(args, pacu_main):
 
 
 def summary(data, pacu_main):
-    if 'some_relevant_key' in data.keys():
-        return 'This module compromised {} instances in the SomeRelevantKey service.'.format(len(data['some_relevant_key']))
-    else:
-        return 'No instances of the SomeRelevantKey service were compromised.'
+    if data.get('cleanup'):
+        return '  Completed cleanup of Lambda functions and CloudWatch Events rules.'
+
+    return '  Lambda functions created: {}\n  CloudWatch Events rules created: {}\n  Successful backdoor deployments: {}\n'.format(data['functions_created'], data['rules_created'], data['successes'])

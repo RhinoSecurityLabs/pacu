@@ -62,7 +62,7 @@ def main(args, pacu_main):
         if created_lambda_functions:
             delete_function_file = True
             for function in created_lambda_functions:
-                name, region = function.split('@')
+                name, region = function.rstrip().split('@')
                 print('  Deleting function {} in region {}...'.format(name, region))
                 client = pacu_main.get_boto3_client('lambda', region)
                 try:
@@ -86,7 +86,7 @@ def main(args, pacu_main):
         if created_cwe_rules:
             delete_cwe_file = True
             for rule in created_cwe_rules:
-                name, region = rule.split('@')
+                name, region = rule.rstrip().split('@')
                 print('  Deleting rule {} in region {}...'.format(name, region))
                 client = pacu_main.get_boto3_client('events', region)
                 try:

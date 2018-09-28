@@ -11,7 +11,7 @@ import os
 module_info = {
     'name': 'lambda__backdoor_new_users',
 
-    'author': 'Spencer Gietzen of Rhino Security Labs based on the idea from https://github.com/dagrz/aws_pwn/blob/master/persistence/backdoor_created_users_lambda/backdoor_created_users_lambda.py',
+    'author': 'Spencer Gietzen of Rhino Security Labs based on code from Daniel Grzelak (https://github.com/dagrz/aws_pwn/blob/master/persistence/backdoor_created_users_lambda/backdoor_created_users_lambda.py)',
 
     'category': 'PERSIST',
 

@@ -5,6 +5,7 @@ from copy import deepcopy
 import subprocess
 import random
 import string
+import os
 
 
 module_info = {
@@ -24,7 +25,7 @@ module_info = {
 
     'external_dependencies': [],
 
-    'arguments_to_autocomplete': ['--regions', '--ip-range', '--port-range', '--protocol'],
+    'arguments_to_autocomplete': ['--regions', '--ip-range', '--port-range', '--protocol', '--cleanup'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
@@ -33,6 +34,7 @@ parser.add_argument('--regions', required=False, default=None, help='One or more
 parser.add_argument('--ip-range', required=True, help='The IP range to allow backdoor access to. This would most likely be your own IP address in the format: 127.0.0.1/32')
 parser.add_argument('--port-range', required=False, default='1-65535', help='The port range to give yourself access to in the format: starting-ending (ex: 200-800). By default, all ports are allowed (1-65535).')
 parser.add_argument('--protocol', required=False, default='tcp', help='The protocol for the IP range specified. Options are: TCP, UDP, ICMP, or ALL. The default is TCP. WARNING: When supplying ALL, AWS will automatically allow traffic on all ports, regardless of the range specified. More information is available here: https://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.Client.authorize_security_group_ingress')
+parser.add_argument('--cleanup', required=False, default=False, action='store_true', help='Run the module in cleanup mode. This will remove any known backdoors that the module added from the account.')
 
 
 def main(args, pacu_main):
@@ -46,7 +48,71 @@ def main(args, pacu_main):
     fetch_data = pacu_main.fetch_data
     ######
 
+    if args.cleanup:
+        created_lambda_functions = []
+        created_cwe_rules = []
+
+        if os.path.isfile('./modules/{}/created-lambda-functions.txt'.format(module_info['name'])):
+            with open('./modules/{}/created-lambda-functions.txt'.format(module_info['name']), 'r') as f:
+                created_lambda_functions = f.readlines()
+        if os.path.isfile('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name'])):
+            with open('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']), 'r') as f:
+                created_cwe_rules = f.readlines()
+
+        if created_lambda_functions:
+            delete_function_file = True
+            for function in created_lambda_functions:
+                name, region = function.split('@')
+                print('  Deleting function {} in region {}...'.format(name, region))
+                client = pacu_main.get_boto3_client('lambda', region)
+                try:
+                    client.delete_function(
+                        FunctionName=name
+                    )
+                except ClientError as error:
+                    code = error.response['Error']['Code']
+                    if code == 'AccessDeniedException':
+                        print('  FAILURE: MISSING NEEDED PERMISSIONS')
+                    else:
+                        print(code)
+                    delete_function_file = False
+                    break
+            if delete_function_file:
+                try:
+                    os.remove('./modules/{}/created-lambda-functions.txt'.format(module_info['name']))
+                except Exception as error:
+                    print('  Failed to remove ./modules/{}/created-lambda-functions.txt'.format(module_info['name']))
+
+        if created_cwe_rules:
+            delete_cwe_file = True
+            for rule in created_cwe_rules:
+                name, region = rule.split('@')
+                print('  Deleting rule {} in region {}...'.format(name, region))
+                client = pacu_main.get_boto3_client('events', region)
+                try:
+                    client.delete_rule(
+                        Name=name
+                    )
+                except ClientError as error:
+                    code = error.response['Error']['Code']
+                    if code == 'AccessDeniedException':
+                        print('  FAILURE: MISSING NEEDED PERMISSIONS')
+                    else:
+                        print(code)
+                    delete_cwe_file = False
+                    break
+            if delete_cwe_file:
+                try:
+                    os.remove('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']))
+                except Exception as error:
+                    print('  Failed to remove ./modules/{}/created-lambda-functions.txt'.format(module_info['name']))
+
+        print('Completed cleanup mode.\n')
+        return {'cleanup': True}
+
     data = {'functions_created': 0, 'rules_created': 0, 'successes': 0}
+
+    created_resources = {'LambdaFunctions': [], 'CWERules': []}
 
     if not args.regions:
         regions = get_regions('Lambda')
@@ -106,6 +172,7 @@ def main(args, pacu_main):
             lambda_arn = response['FunctionArn']
             print('  Created Lambda function: {}'.format(function_name))
             data['functions_created'] += 1
+            created_resources['LambdaFunctions'].append('{}@{}'.format(function_name, region))
 
             client = pacu_main.get_boto3_client('events', region)
 
@@ -144,7 +211,7 @@ def main(args, pacu_main):
             else:
                 print('  Added Lambda target to CloudWatch Events rule.')
                 data['successes'] += 1
-
+                created_resources['CWERules'].append('{}@{}'.format(function_name, region))
         except ClientError as error:
             code = error.response['Error']['Code']
             if code == 'AccessDeniedException':
@@ -152,7 +219,12 @@ def main(args, pacu_main):
             else:
                 print(code)
 
-
+    if created_resources['LambdaFunctions']:
+        with open('./modules/{}/created-lambda-functions.txt'.format(module_info['name']), 'w+') as f:
+            f.write('\n'.join(created_resources['LambdaFunctions']))
+    if created_resources['CWERules']:
+        with open('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']), 'w+') as f:
+            f.write('\n'.join(created_resources['CWERules']))
 
     return data
 

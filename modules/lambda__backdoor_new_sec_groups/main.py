@@ -143,7 +143,7 @@ def main(args, pacu_main):
     with open('./modules/{}/lambda_function.py'.format(module_info['name']), 'w+') as f:
         f.write(code)
 
-     # Zip the Lambda function
+    # Zip the Lambda function
     try:
         print('  Zipping the Lambda function...\n')
         subprocess.run('cd ./modules/{}/ && rm -f lambda_function.zip && zip lambda_function.zip lambda_function.py && cd ../../'.format(module_info['name']), shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

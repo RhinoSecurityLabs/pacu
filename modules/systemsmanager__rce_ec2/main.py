@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import copy
-import os
 import re
 import time
 from botocore.exceptions import ClientError

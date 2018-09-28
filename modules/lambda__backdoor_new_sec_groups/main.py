@@ -17,7 +17,7 @@ module_info = {
 
     'one_liner': 'Creates a Lambda function and CloudWatch Events rule to backdoor new security groups.',
 
-    'description': 'This module creates a new Lambda function and an accompanying CloudWatch Events rule that will trigger upon a new EC2 security group being created in the account. The function will automatically add a backdoor rule to that security group with your supplied IP address as the source. Important: Your backdoor will not execute if the account does not have an active CloudTrail trail in the region it was deployed to.',
+    'description': 'This module creates a new Lambda function and an accompanying CloudWatch Events rule that will trigger upon a new EC2 security group being created in the account. The function will automatically add a backdoor rule to that security group with your supplied IP address as the source. Warning: Your backdoor will not execute if the account does not have an active CloudTrail trail in the region it was deployed to.',
 
     'services': ['Lambda', 'Events', 'EC2'],
 
@@ -234,7 +234,7 @@ def main(args, pacu_main):
         with open('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']), 'w+') as f:
             f.write('\n'.join(created_resources['CWERules']))
 
-    print('Warning: For the backdoors to trigger, CloudTrail must be enabled in the regions that the Lambda functions are in.')
+    print('Warning: Your backdoor will not execute if the account does not have an active CloudTrail trail in the region it was deployed to.')
 
     return data
 

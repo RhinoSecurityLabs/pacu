@@ -1,4 +1,5 @@
-import boto3,requests
+import boto3
+from botocore.vendored import requests
 
 def lambda_handler(event, context):
     if event['detail']['eventName']=='CreateUser':

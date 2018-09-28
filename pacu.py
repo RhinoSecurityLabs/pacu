@@ -116,7 +116,7 @@ class Main:
     # @output: String - where to output the message: both, file, or screen
     # @output_type: String - format for message when written to file: plain or xml
     # @is_cmd: boolean - Is the log the initial command that was run (True) or output (False)? Devs won't touch this most likely
-    def print(self, message, output='both', output_type='plain', is_cmd=False, session_name=''):
+    def print(self, message='', output='both', output_type='plain', is_cmd=False, session_name=''):
         session = self.get_active_session()
 
         if session_name == '':
@@ -1198,7 +1198,7 @@ class Main:
                     print('\n[Category: {}]\n\n{}'.format(category, search_results))
         else:
             print('\nNo modules found.')
-        print('')
+        print()
 
     def fetch_ec2_keys(self, target, conn):
         instance_profile = self.server.run_cmd(target, conn, 'curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/', mute=True)

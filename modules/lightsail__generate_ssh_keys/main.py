@@ -86,7 +86,7 @@ def main(args, pacu_main):
             print('Invalid key format provided.')
             break
     for region in created_keys:
-        ssh_key_dir = os.path.join(os.getcwd(), 'sessions', session.name, 'downloads', 'generate_lightsail_ssh_keys', region)
+        ssh_key_dir = os.path.join(os.getcwd(), 'sessions', session.name, 'downloads', module_info['name'], region)
         if not os.path.exists(ssh_key_dir):
             os.makedirs(ssh_key_dir)
         private_key_file_dir = os.path.join(ssh_key_dir, created_keys[region]['name'])
@@ -99,7 +99,6 @@ def main(args, pacu_main):
         except IOError:
             print('Error writing key pair {} to file'.format(created_keys[region]['name']))
             continue
-    print('\n{} completed.\n'.format(module_info['name']))
 
     summary_data = {
         'keys': len(created_keys.keys()),
@@ -110,7 +109,7 @@ def main(args, pacu_main):
 
 def summary(data, pacu_main):
     if data['imports'] > 0:
-        out = '  {} keys imported'.format(data['imports'])
+        out = '  {} key(s) imported'.format(data['imports'])
     else:
-        out = '  {} keys created'.format(data['keys'])
+        out = '  {} key(s) created'.format(data['keys'])
     return out

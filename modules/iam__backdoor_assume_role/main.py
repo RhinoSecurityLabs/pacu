@@ -72,16 +72,16 @@ def main(args, pacu_main):
 
     if args.user_arns is None:
         # Find out the current users ARN
-        # This should be moved into the creds array in the "UserArn" parameter for those set of keys that are running this module
+        # This should be moved into the creds array in the "Arn" parameter for those set of keys that are running this module
         user = key_info()
         active_aws_key = get_aws_key_by_alias(session.key_alias)
 
-        if 'UserArn' not in user or user['UserArn'] is None:
+        if 'Arn' not in user or user['Arn'] is None:
             client = pacu_main.get_boto3_client('sts')
             user_info = client.get_caller_identity()
-            active_aws_key.update(pacu_main.database, user_arn=user_info['Arn'], user_id=user_info['UserId'], account_id=user_info['Account'])
+            active_aws_key.update(pacu_main.database, arn=user_info['Arn'], user_id=user_info['UserId'], account_id=user_info['Account'])
 
-        user_arns.append(active_aws_key.user_arn)
+        user_arns.append(active_aws_key.arn)
     else:
         if ',' in args.user_arns:
             user_arns.extend(args.user_arns.split(','))
@@ -118,7 +118,6 @@ def main(args, pacu_main):
                 else:
                     print('        {}'.format(code))
     summary_data['RoleCount'] = backdoored_role_count
-    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

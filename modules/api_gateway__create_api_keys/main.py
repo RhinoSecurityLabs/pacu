@@ -110,7 +110,6 @@ def main(args, pacu_main):
             api_gateway_data[region] = api_keys[region]
     session.update(pacu_main.database, APIGateway=api_gateway_data)
 
-    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

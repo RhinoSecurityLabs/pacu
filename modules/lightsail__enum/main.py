@@ -106,7 +106,6 @@ def main(args, pacu_main):
         summary_data[field] = len(lightsail_data[field])
 
     session.update(pacu_main.database, Lightsail=lightsail_data)
-    print('{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

@@ -163,7 +163,6 @@ def main(args, pacu_main):
         }
     dl_root = 'sessions/' + session.name + '/downloads/cloud_watch_logs/'
     summary_data['log_download_path'] = '{}{}'.format(dl_root, scan_time)
-    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

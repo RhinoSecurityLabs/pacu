@@ -59,14 +59,14 @@ def main(args, pacu_main):
             InstanceId=instances[0]['InstanceId']
         )
     except ClientError as error:
-        print('  FAILURE: ')
-        if error.response['Error']['Code'] == 'UnauthorizedOperation':
-            print('    MISSING NEEDED PERMISSIONS')
-        else:
-            print(error.response['Error']['Code'])
-        # Print newline for spacing
-        print('')
-        return summary_data
+        code = error.response['Error']['Code']
+        if code != 'DryRunOperation':
+            print('  FAILURE: ')
+            if code == 'UnauthorizedOperation':
+                print('    MISSING NEEDED PERMISSIONS\n')
+            else:
+                print('    {}\n'.format(code))
+            return summary_data
 
     now = time.time()
     csv_file_path = 'sessions/{}/downloads/termination_protection_disabled_{}.csv'.format(session.name, now)
@@ -96,7 +96,6 @@ def main(args, pacu_main):
     ec2_data = deepcopy(session.EC2)
     ec2_data['Instances'] = instances
     session.update(pacu_main.database, EC2=ec2_data)
-    print('\n{} completed.\n'.format(module_info['name']))
     return summary_data
 
 

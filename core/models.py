@@ -21,7 +21,8 @@ class AWSKey(Base, ModelUpdateMixin):
     session_id = Column(Integer, ForeignKey('pacu_session.id', ondelete='CASCADE'))
 
     user_name = Column(Text)
-    user_arn = Column(Text)
+    role_name = Column(Text)
+    arn = Column(Text)
     account_id = Column(Text)
     user_id = Column(Text)
     roles = Column(JSONType)
@@ -42,7 +43,8 @@ class AWSKey(Base, ModelUpdateMixin):
         # Deep copy because Permissions->allow_permissions and deny_permissions were dicts that were being passed as reference
         return copy.deepcopy({
             'UserName': self.user_name,
-            'UserArn': self.user_arn,
+            'RoleName': self.role_name,
+            'Arn': self.arn,
             'AccountId': self.account_id,
             'UserId': self.user_id,
             'Roles': self.roles,

@@ -13,7 +13,7 @@ module_info = {
 
     'one_liner': 'Checks if the active set of keys are known to be honeytokens.',
 
-    'description': 'This module checks if the active set of keys are known to be honeytokens and in the process, it enumerates some identifying information about the keys. All of this is done without ever leaving a log in CloudTrail, because it uses AWS AppStream 2.0 for enumeration, which CloudTrail does not support. Note: Even if you know your keys are not honey keys, this module can be used to enumerate information like the account ID, user/role path, user/role name, and role session name if there is one.',
+    'description': 'This module checks if the active set of keys are known to be honeytokens and in the process, it enumerates some identifying information about the keys. All of this is done without ever leaving a log in CloudTrail, because it uses AWS AppStream 2.0 for enumeration, which CloudTrail does not support. Note: Even if you know your keys are not honey keys, this module can be used to enumerate information like the account ID, user/role path, user/role name, and role session name if there is one. Check out the Wired article here: WIRED_ARTICLE and the blog post here: RHINO_BLOG_POST',
 
     'services': ['IAM', 'AppStream2'],
 

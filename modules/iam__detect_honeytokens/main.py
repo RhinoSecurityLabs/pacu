@@ -64,7 +64,7 @@ def main(args, pacu_main):
                 data['summary'] = 'WARNING: Keys are confirmed canary/honey keys from CanaryTokens.org! Do not use them!'
             elif 'arn:aws:iam::' in message and '/SpaceCrab/' in message:
                 data['summary'] = 'WARNING: Keys are confirmed canary/honey keys from SpaceCrab! Do not use them!'
-            elif 'arn:aws:iam::534261010715:user/' in message:
+            elif 'arn:aws:iam::534261010715:' in message or 'arn:aws:sts::534261010715:' in message:
                 data['summary'] = 'WARNING: Keys belong to an AWS account owned by CanaryTokens.org! Do not use them!'
             else:
                 data['summary'] = 'Keys appear to be real (not canary/honey keys)!'

@@ -84,11 +84,12 @@ def main(args, pacu_main):
 
     if args.instance_ids is not None:
         for instance in args.instance_ids.split(','):
+            instance_id, region = instance.split('@')
             instances.append({
-                'InstanceId': instance.split('@')[0],
-                'Region': instance.split('@')[1]
+                'InstanceId': instance_id,
+                'Region': region
             })
-    else:
+    elif args.template_ids is None:
         if fetch_data(['EC2', 'Instances'], module_info['prerequisite_modules'][0], '--instances') is False:
             print('Pre-req module not run successfully. Exiting...')
             return None
@@ -96,11 +97,12 @@ def main(args, pacu_main):
 
     if args.template_ids is not None:
         for template in args.template_ids.split(','):
+            template_id, region = template.split('@')
             templates.append({
-                'LaunchTemplateId': template_ids.split('@')[0],
-                'Region': template_ids.split('@')[1]
+                'LaunchTemplateId': template_id,
+                'Region': region
             })
-    else:
+    elif args.instance_ids is None:
         if fetch_data(['EC2', 'LaunchTemplates'], module_info['prerequisite_modules'][0], '--launch-templates') is False:
             print('Pre-req module not run successfully. Exiting...')
             return None

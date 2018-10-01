@@ -17,7 +17,7 @@ module_info = {
     'category': 'ENUM',
 
     # One liner description of the module functionality. This shows up when a user searches for modules.
-    'one_liner': 'Downloads User Data from EC2 instances.',
+    'one_liner': 'Downloads User Data from EC2 instances/launch templates.',
 
     # Description about what the module does and how it works
     'description': 'This module will take a list of EC2 instance IDs and/or EC2 launch template IDs and request then download the User Data associated with each instance/template. All of the data will be saved to ./sessions/[session_name]/downloads/ec2_user_data/.',
@@ -48,6 +48,7 @@ def main(args, pacu_main):
     ######
 
     instances = []
+    templates = []
     summary_data = {'userdata_downloads': 0}
     # Check permissions before doing anything
     try:
@@ -62,7 +63,22 @@ def main(args, pacu_main):
         if code != 'DryRunOperation':
             print('FAILURE: ')
             if code == 'AccessDenied':
-                print('  MISSING NEEDED PERMISSIONS')
+                print('  Access denied to DescribeInstanceAttribute.')
+            else:
+                print('  ' + code)
+
+    try:
+        client = pacu_main.get_boto3_client('ec2', pacu_main.get_regions('ec2')[0])
+        client.describe_launch_template_versions(
+            DryRun=True,
+            LaunchTemplateName='asdf'
+        )
+    except ClientError as error:
+        code = error.response['Error']['Code']
+        if code != 'DryRunOperation':
+            print('FAILURE: ')
+            if code == 'AccessDenied':
+                print('  Access denied to DescribeLaunchTemplateVersions.')
             else:
                 print('  ' + code)
 
@@ -78,38 +94,99 @@ def main(args, pacu_main):
             return None
         instances = session.EC2['Instances']
 
+    if args.template_ids is not None:
+        for template in args.template_ids.split(','):
+            templates.append({
+                'LaunchTemplateId': template_ids.split('@')[0],
+                'Region': template_ids.split('@')[1]
+            })
+    else:
+        if fetch_data(['EC2', 'LaunchTemplates'], module_info['prerequisite_modules'][0], '--launch-templates') is False:
+            print('Pre-req module not run successfully. Exiting...')
+            return None
+        templates = session.EC2['LaunchTemplates']
+
     if not os.path.exists('sessions/{}/downloads/ec2_user_data/'.format(session.name)):
         os.makedirs('sessions/{}/downloads/ec2_user_data/'.format(session.name))
 
-    print('Targeting {} instance(s)...'.format(len(instances)))
-    for instance in instances:
-        instance_id = instance['InstanceId']
-        region = instance['Region']
-        client = pacu_main.get_boto3_client('ec2', region)
+    if instances:
+        print('Targeting {} instance(s)...'.format(len(instances)))
+        for instance in instances:
+            instance_id = instance['InstanceId']
+            region = instance['Region']
+            client = pacu_main.get_boto3_client('ec2', region)
 
-        user_data = client.describe_instance_attribute(
-            InstanceId=instance_id,
-            Attribute='userData'
-        )['UserData']
+            user_data = client.describe_instance_attribute(
+                InstanceId=instance_id,
+                Attribute='userData'
+            )['UserData']
 
-        if 'Value' in user_data.keys():
-            formatted_user_data = '{}@{}:\n{}\n\n'.format(
-                instance_id,
-                region,
-                base64.b64decode(user_data['Value']).decode('utf-8')
+            if 'Value' in user_data.keys():
+                formatted_user_data = '{}@{}:\n{}\n\n'.format(
+                    instance_id,
+                    region,
+                    base64.b64decode(user_data['Value']).decode('utf-8')
+                )
+                print('  {}@{}: User Data found'.format(instance_id, region))
+
+                # Write to the "all" file
+                with open('sessions/{}/downloads/ec2_user_data/all_user_data.txt'.format(session.name), 'a+') as data_file:
+                    data_file.write(formatted_user_data)
+                # Write to the individual file
+                with open('sessions/{}/downloads/ec2_user_data/{}.txt'.format(session.name, instance_id), 'w+') as data_file:
+                    data_file.write(formatted_user_data.replace('\\t', '\t').replace('\\n', '\n').rstrip())
+                summary_data['userdata_downloads'] += 1
+
+            else:
+                print('  {}@{}: No User Data found'.format(instance_id, region))
+    else:
+        print('No instances to target.')
+
+    if templates:
+        print('Targeting {} launch templates(s)...'.format(len(templates)))
+        for template in templates:
+            template_id = template['LaunchTemplateId']
+            region = template['Region']
+            client = pacu_main.get_boto3_client('ec2', region)
+
+            all_versions = []
+            response = client.describe_launch_template_versions(
+                LaunchTemplateId=template_id,
+                MaxResults=200
             )
-            print('  {}@{}: User Data found'.format(instance_id, region))
+            all_versions.extend(response['LaunchTemplateVersions'])
 
-            # Write to the "all" file
-            with open('sessions/{}/downloads/ec2_user_data/all_user_data.txt'.format(session.name), 'a+') as data_file:
-                data_file.write(formatted_user_data)
-            # Write to the individual file
-            with open('sessions/{}/downloads/ec2_user_data/{}.txt'.format(session.name, instance_id), 'w+') as data_file:
-                data_file.write(formatted_user_data.replace('\\t', '\t').replace('\\n', '\n').rstrip())
-            summary_data['userdata_downloads'] += 1
+            while response.get('NextToken'):
+                response = client.describe_launch_template_versions(
+                    LaunchTemplateId=template_id,
+                    MaxResults=200,
+                    NextToken=response['NextToken']
+                )
+                all_versions.extend(response['LaunchTemplateVersions'])
 
-        else:
-            print('  {}@{}: No User Data found'.format(instance_id, region))
+            for version in all_versions:
+                if version.get('UserData'):
+                    user_data = version.get('UserData')
+                    formatted_user_data = '{}-version-{}@{}:\n{}\n\n'.format(
+                        template_id,
+                        version['VersionNumber'],
+                        region,
+                        base64.b64decode(user_data['Value']).decode('utf-8')
+                    )
+                    print('  {}-version-{}@{}: User Data found'.format(template_id, version['VersionNumber'], region))
+
+                    # Write to the "all" file
+                    with open('sessions/{}/downloads/ec2_user_data/all_user_data.txt'.format(session.name), 'a+') as data_file:
+                        data_file.write(formatted_user_data)
+                    # Write to the individual file
+                    with open('sessions/{}/downloads/ec2_user_data/{}.txt'.format(session.name, template_id), 'w+') as data_file:
+                        data_file.write(formatted_user_data.replace('\\t', '\t').replace('\\n', '\n').rstrip())
+                    summary_data['userdata_downloads'] += 1
+
+                else:
+                    print('  {}-version-{}@{}: No User Data found'.format(template_id, version['VersionNumber'], region))
+    else:
+        print('No launch templates to target.')
 
     return summary_data
 

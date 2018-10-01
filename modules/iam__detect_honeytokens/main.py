@@ -39,10 +39,7 @@ def main(args, pacu_main):
 
     data = {}
 
-    if args.region:
-        client = pacu_main.get_boto3_client('appstream', args.region)
-    else:
-        client = pacu_main.get_boto3_client('appstream', 'us-east-1')
+    client = pacu_main.get_boto3_client('appstream', args.region)
 
     print('Making test API request...\n')
 

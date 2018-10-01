@@ -505,7 +505,7 @@ class Main:
         elif command[0] == 'help':
             self.parse_help_command(command)
         elif command[0] == 'import_keys':
-            self.import_awscli_keys(command)
+            self.parse_awscli_keys_import(command)
         elif command[0] == 'list' or command[0] == 'ls':
             self.parse_list_command(command)
         elif command[0] == 'proxy':
@@ -534,15 +534,15 @@ class Main:
             print('  Error: Unrecognized command')
         return
 
-    def import_awscli_keys(self, command):
+    def parse_awscli_keys_import(self, command):
         if len(command) == 1:
             self.display_command_help('import_keys')
             return
 
-        session = boto3.session.Session()
+        boto3_session = boto3.session.Session()
 
         if command[1] == '--all':
-            profiles = session.available_profiles
+            profiles = boto3_session.available_profiles
             for profile_name in profiles:
                 self.import_awscli_key(profile_name)
             return
@@ -551,13 +551,13 @@ class Main:
 
     def import_awscli_key(self, profile_name):
         try:
-            session = boto3.session.Session(profile_name=profile_name)
-            creds = session.get_credentials()
+            boto3_session = boto3.session.Session(profile_name=profile_name)
+            creds = boto3_session.get_credentials()
             self.set_keys(key_alias='imported-{}'.format(profile_name), access_key_id=creds.access_key, secret_access_key=creds.secret_key, session_token=creds.token)
             self.print('  Imported keys as "imported-{}"'.format(profile_name))
         except botocore.exceptions.ProfileNotFound as error:
             self.print('\n  Did not find the AWS CLI profile: {}\n'.format(profile_name))
-            session = boto3.session.Session()
+            boto3_session = boto3.session.Session()
             print('  Profiles that are available:\n    {}\n'.format('\n    '.join(session.available_profiles)))
 
     def run_aws_cli_command(self, command):

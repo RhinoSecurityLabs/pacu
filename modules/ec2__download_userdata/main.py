@@ -20,7 +20,7 @@ module_info = {
     'one_liner': 'Downloads User Data from EC2 instances.',
 
     # Description about what the module does and how it works
-    'description': 'This module will take a list of EC2 instance IDs and request then download the User Data associated with each instance. All of the data will be saved to ./sessions/[session_name]/downloads/user_data.txt.',
+    'description': 'This module will take a list of EC2 instance IDs and/or EC2 launch template IDs and request then download the User Data associated with each instance/template. All of the data will be saved to ./sessions/[session_name]/downloads/ec2_user_data/.',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['EC2'],
@@ -29,12 +29,13 @@ module_info = {
     'prerequisite_modules': ['ec2__enum'],
 
     # Module arguments to autocomplete when the user hits tab
-    'arguments_to_autocomplete': ['--instance-ids'],
+    'arguments_to_autocomplete': ['--instance-ids', '--template-ids'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--instance-ids', required=False, default=None, help='One or more (comma separated) EC2 instance IDs with their regions in the format instance_id@region. Defaults to all EC2 instances.')
+parser.add_argument('--instance-ids', required=False, default=None, help='One or more (comma separated) EC2 instance IDs with their regions in the format instance_id@region. Defaults to all EC2 instances in the database.')
+parser.add_argument('--template-ids', required=False, default=None, help='One or more (comma separated) EC2 launch template IDs with their regions in the format template_id@region. Defaults to all EC2 launch templates in the database.')
 
 
 def main(args, pacu_main):

@@ -46,6 +46,7 @@ module_info = {
         '--subnets',
         '--vpcs',
         '--vpc-endpoints',
+        '--launch-templates',
     ],
 }
 
@@ -64,6 +65,7 @@ parser.add_argument('--route-tables', required=False, default=False, action='sto
 parser.add_argument('--subnets', required=False, default=False, action='store_true', help='Enumerate EC2 subnets')
 parser.add_argument('--vpcs', required=False, default=False, action='store_true', help='Enumerate EC2 VPCs')
 parser.add_argument('--vpc-endpoints', required=False, default=False, action='store_true', help='Enumerate EC2 VPC endpoints')
+parser.add_argument('--launch-templates', required=False, default=False, action='store_true', help='Enumerate EC2 launch templates')
 
 ARG_FIELD_MAPPER = {
     'instances': 'Instances',
@@ -78,6 +80,7 @@ ARG_FIELD_MAPPER = {
     'subnets': 'Subnets',
     'vpcs': 'VPCs',
     'vpc_endpoints': 'VPCEndpoints',
+    'launch_templates': 'LaunchTemplates',
 }
 
 

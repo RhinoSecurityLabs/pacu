@@ -49,7 +49,7 @@ def main(args, pacu_main):
 
     instances = []
     templates = []
-    summary_data = {'userdata_downloads': 0}
+    summary_data = {'instance_downloads': 0, 'template_downloads': 0}
     # Check permissions before doing anything
     try:
         client = pacu_main.get_boto3_client('ec2', pacu_main.get_regions('ec2')[0])
@@ -135,15 +135,16 @@ def main(args, pacu_main):
                 # Write to the individual file
                 with open('sessions/{}/downloads/ec2_user_data/{}.txt'.format(session.name, instance_id), 'w+') as data_file:
                     data_file.write(formatted_user_data.replace('\\t', '\t').replace('\\n', '\n').rstrip())
-                summary_data['userdata_downloads'] += 1
+                summary_data['instance_downloads'] += 1
 
             else:
                 print('  {}@{}: No User Data found'.format(instance_id, region))
+        print()
     else:
-        print('No instances to target.')
+        print('No instances to target.\n')
 
     if templates:
-        print('Targeting {} launch templates(s)...'.format(len(templates)))
+        print('Targeting {} launch template(s)...'.format(len(templates)))
         for template in templates:
             template_id = template['LaunchTemplateId']
             region = template['Region']
@@ -151,27 +152,25 @@ def main(args, pacu_main):
 
             all_versions = []
             response = client.describe_launch_template_versions(
-                LaunchTemplateId=template_id,
-                MaxResults=200
+                LaunchTemplateId=template_id
             )
             all_versions.extend(response['LaunchTemplateVersions'])
 
             while response.get('NextToken'):
                 response = client.describe_launch_template_versions(
                     LaunchTemplateId=template_id,
-                    MaxResults=200,
                     NextToken=response['NextToken']
                 )
                 all_versions.extend(response['LaunchTemplateVersions'])
 
             for version in all_versions:
-                if version.get('UserData'):
-                    user_data = version.get('UserData')
+                if version['LaunchTemplateData'].get('UserData'):
+                    user_data = version['LaunchTemplateData']['UserData']
                     formatted_user_data = '{}-version-{}@{}:\n{}\n\n'.format(
                         template_id,
                         version['VersionNumber'],
                         region,
-                        base64.b64decode(user_data['Value']).decode('utf-8')
+                        base64.b64decode(user_data).decode('utf-8')
                     )
                     print('  {}-version-{}@{}: User Data found'.format(template_id, version['VersionNumber'], region))
 
@@ -179,19 +178,20 @@ def main(args, pacu_main):
                     with open('sessions/{}/downloads/ec2_user_data/all_user_data.txt'.format(session.name), 'a+') as data_file:
                         data_file.write(formatted_user_data)
                     # Write to the individual file
-                    with open('sessions/{}/downloads/ec2_user_data/{}.txt'.format(session.name, template_id), 'w+') as data_file:
+                    with open('sessions/{}/downloads/ec2_user_data/{}-version-{}.txt'.format(session.name, template_id, version['VersionNumber']), 'w+') as data_file:
                         data_file.write(formatted_user_data.replace('\\t', '\t').replace('\\n', '\n').rstrip())
-                    summary_data['userdata_downloads'] += 1
+                    summary_data['template_downloads'] += 1
 
                 else:
                     print('  {}-version-{}@{}: No User Data found'.format(template_id, version['VersionNumber'], region))
+        print()
     else:
-        print('No launch templates to target.')
+        print('No launch templates to target.\n')
 
     return summary_data
 
 
 def summary(data, pacu_main):
     session = pacu_main.get_active_session()
-    out = '  Downloaded EC2 User Data for {} instance(s) to ./sessions/{}/downloads/ec2_user_data/.\n'.format(data['userdata_downloads'], session.name)
+    out = '  Downloaded EC2 User Data for {} instance(s) and {} launch template(s) to ./sessions/{}/downloads/ec2_user_data/.\n'.format(data['instance_downloads'], data['template_downloads'], session.name)
     return out

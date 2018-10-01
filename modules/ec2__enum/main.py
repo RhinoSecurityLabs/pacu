@@ -91,8 +91,8 @@ def main(args, pacu_main):
     print = pacu_main.print
     get_regions = pacu_main.get_regions
 
-    if args.instances is False and args.security_groups is False and args.elastic_ips is False and args.customer_gateways is False and args.dedicated_hosts is False and args.network_acls is False and args.nat_gateways is False and args.network_interfaces is False and args.route_tables is False and args.subnets is False and args.vpcs is False and args.vpc_endpoints is False:
-        args.instances = args.security_groups = args.elastic_ips = args.customer_gateways = args.dedicated_hosts = args.network_acls = args.nat_gateways = args.network_interfaces = args.route_tables = args.subnets = args.vpcs = args.vpc_endpoints = True
+    if args.instances is False and args.security_groups is False and args.elastic_ips is False and args.customer_gateways is False and args.dedicated_hosts is False and args.network_acls is False and args.nat_gateways is False and args.network_interfaces is False and args.route_tables is False and args.subnets is False and args.vpcs is False and args.vpc_endpoints is False and args.launch_templates is False:
+        args.instances = args.security_groups = args.elastic_ips = args.customer_gateways = args.dedicated_hosts = args.network_acls = args.nat_gateways = args.network_interfaces = args.route_tables = args.subnets = args.vpcs = args.vpc_endpoints = args.launch_templates = True
 
 
     if args.regions is None:
@@ -239,6 +239,17 @@ def main(args, pacu_main):
                 args.vpc_endpoints = False
                 print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeVpcEndpoints"')
                 print('    Skipping enumeration of VPC Endpoints...')
+    # Launch Templates
+    if args.launch_templates:
+        try:
+            client.describe_launch_templates(
+                DryRun=True
+            )
+        except ClientError as error:
+            if not str(error).find('UnauthorizedOperation') == -1:
+                args.vpc_endpoints = False
+                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeLaunchTemplates"')
+                print('    Skipping enumeration of Launch Templates...')
 
     all_instances = []
     all_security_groups = []
@@ -252,6 +263,7 @@ def main(args, pacu_main):
     all_subnets = []
     all_vpcs = []
     all_vpc_endpoints = []
+    all_launch_templates = []
     for region in regions:
         instances = []
         security_groups = []
@@ -265,6 +277,7 @@ def main(args, pacu_main):
         subnets = []
         vpcs = []
         vpc_endpoints = []
+        launch_templates = []
 
         print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('ec2', region)
@@ -443,7 +456,26 @@ def main(args, pacu_main):
             print('  {} VPC endpoint(s) found.'.format(len(vpc_endpoints)))
             all_vpc_endpoints += vpc_endpoints
 
-        print('')  # Break the line after each region. This isn't on the end of another print because they won't always be all used and isn't before the region print because it would double break lines at the beginning
+        # Launch Templates
+        if args.launch_templates:
+            response = None
+            next_token = False
+            while (response is None or 'NextToken' in response):
+                if next_token is False:
+                    response = client.describe_launch_templates()
+                else:
+                    response = client.describe_launch_templates(
+                        NextToken=next_token
+                    )
+                if 'NextToken' in response:
+                    next_token = response['NextToken']
+                for template in response['LaunchTemplates']:
+                    template['Region'] = region
+                    launch_templates.append(template)
+            print('  {} launch template(s) found.'.format(len(launch_templates)))
+            all_launch_templates += launch_templates
+
+        print()  # Break the line after each region. This isn't on the end of another print because they won't always be all used and isn't before the region print because it would double break lines at the beginning
 
     gathered_data = {
         'Instances': all_instances,
@@ -458,6 +490,7 @@ def main(args, pacu_main):
         'Subnets': all_subnets,
         'VPCs': all_vpcs,
         'VPCEndpoints': all_vpc_endpoints,
+        'LaunchTemplates': all_launch_templates,
     }
 
 
@@ -522,6 +555,9 @@ def summary(data, pacu_main):
 
     if 'VPCEndpoints' in data:
         results.append('    {} total VPC endpoint(s) found.'.format(len(data['VPCEndpoints'])))
+
+    if 'LaunchTemplates' in data:
+        results.append('    {} total launch template(s) found.'.format(len(data['LaunchTemplates'])))
 
     results.append('\n  EC2 Resources Saved in Pacu database.')
     return '\n'.join(results)

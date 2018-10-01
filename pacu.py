@@ -558,7 +558,7 @@ class Main:
         except botocore.exceptions.ProfileNotFound as error:
             self.print('\n  Did not find the AWS CLI profile: {}\n'.format(profile_name))
             boto3_session = boto3.session.Session()
-            print('  Profiles that are available:\n    {}\n'.format('\n    '.join(session.available_profiles)))
+            print('  Profiles that are available:\n    {}\n'.format('\n    '.join(boto3_session.available_profiles)))
 
     def run_aws_cli_command(self, command):
         try:
@@ -687,14 +687,15 @@ class Main:
                 print('No listeners are running.')
             else:
                 if not proxy_target_agent == []:
-                    if proxy_target_agent[-1].startswith('Windows'):
-                        pass
-                    #    for i, conn in enumerate(self.server.all_connections):
-                    #        if self.server.all_addresses[i][0] == proxy_target_agent[0]:
-                    #            self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[i], 'Stop-PortForwardJobs')
-                    #            break
-                    else:
-                        self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[i], 'kill -9 $! && rm /dev/shm/{}'.format(shm_name))
+                    for i, conn in enumerate(self.server.all_connections):
+                        if self.server.all_addresses[i][0] == proxy_target_agent[0]:
+                            if proxy_target_agent[-1].startswith('Windows'):
+                                pass
+                                # self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[i], 'Stop-PortForwardJobs')
+                                # break
+                            else:
+                                self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[i], 'kill -9 $! && rm /dev/shm/{}'.format(shm_name))
+                                break
                 self.server.quit_gracefully()
                 self.queue.put(5)
                 self.server = None
@@ -719,14 +720,15 @@ class Main:
                 try:
                     if command[2] == 'none':
                         self.print('** No longer using a remote PacuProxy agent to route commands. **')
-                        if proxy_target_agent[-1].startswith('Windows'):
-                            pass
-                        #    for i, conn in enumerate(self.server.all_connections):
-                        #        if self.server.all_addresses[i][0] == proxy_target_agent[0]:
-                        #            self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[i], 'powershell Stop-PortForwardJobs')
-                        #            break
-                        else:
-                            self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[i], 'kill -9 $! && rm /dev/shm/{}'.format(shm_name))
+                        for i, conn in enumerate(self.server.all_connections):
+                            if self.server.all_addresses[i][0] == proxy_target_agent[0]:
+                                if proxy_target_agent[-1].startswith('Windows'):
+                                    pass
+                                    # self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[i], 'Stop-PortForwardJobs')
+                                    # break
+                                else:
+                                    self.server.run_cmd(proxy_target_agent[0], self.server.all_connections[i], 'kill -9 $! && rm /dev/shm/{}'.format(shm_name))
+                                    break
                         proxy_target_agent = []
                     else:
                         proxy_target_agent = self.server.all_addresses[int(command[2])]

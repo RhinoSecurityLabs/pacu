@@ -60,9 +60,9 @@ def main(args, pacu_main):
         if created_lambda_functions:
             delete_function_file = True
             for function in created_lambda_functions:
-                name = function.rstrip()
+                name, region = function.rstrip().split('@')
                 print('  Deleting function {}...'.format(name))
-                client = pacu_main.get_boto3_client('lambda', 'us-east-1')
+                client = pacu_main.get_boto3_client('lambda', region)
                 try:
                     client.delete_function(
                         FunctionName=name

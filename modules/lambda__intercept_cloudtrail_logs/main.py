@@ -203,8 +203,6 @@ def main(args, pacu_main):
             data['functions_created'] += 1
             created_resources['LambdaFunctions'].append('{}@{}'.format(function_name, region))
 
-            client = pacu_main.get_boto3_client('s3', region)
-
             for bucket in args.buckets.split(','):
                 bucket_name, bucket_region = bucket.split('@')
 
@@ -230,6 +228,8 @@ def main(args, pacu_main):
                             Principal='s3.amazonaws.com',
                             SourceArn='arn:aws:s3:::{}'.format(bucket_name)
                         )
+
+                    client = pacu_main.get_boto3_client('s3', region)
 
                     response = client.get_bucket_notification_configuration(
                         Bucket=bucket_name

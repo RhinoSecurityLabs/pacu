@@ -30,7 +30,7 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--buckets', required=True, help='Comma-separated list of the S3 bucket(s) and their regions to target in the format bucket_name@region. An event trigger will be added to each bucket and for every item that is put into that bucket, our Lambda function will be invoked. These buckets should be where CloudTrail trails are saving their logs in the account.')
+parser.add_argument('--buckets', required=False, default=None, help='Comma-separated list of the S3 bucket(s) and their regions to target in the format bucket_name@region. An event trigger will be added to each bucket and for every item that is put into that bucket, our Lambda function will be invoked. These buckets should be where CloudTrail trails are saving their logs in the account.')
 parser.add_argument('--user-name', required=False, default=None, help='The user name of the user that you want to remove logs for. The Lambda function will delete any logs from the CloudTrail output that originate from this user. One or both of either this argument or --role-name is required.')
 parser.add_argument('--role-name', required=False, default=None, help='The role name of the role that you want to remove logs for. The Lambda function will delete any logs from the CloudTrail output that originate from this role. One or both of either this argument or --user-name is required.')
 parser.add_argument('--cleanup', required=False, default=False, action='store_true', help='Run the module in cleanup mode. This will remove any known CloudTrail interceptors that the module added from the account.')
@@ -122,6 +122,10 @@ def main(args, pacu_main):
         print('Completed cleanup mode.\n')
         return {'cleanup': True}
 
+    if not args.buckets:
+        print('  --buckets is required if you are not running in cleanup mode!')
+        return
+
     if not args.user_name and not args.role_name:
         print('  One or both of either --user-name or --role-name is required if you are not running in cleanup mode!')
         return
@@ -208,6 +212,12 @@ def main(args, pacu_main):
                     response = client.get_bucket_notification_configuration(
                         Bucket=bucket_name
                     )
+
+                    print(response)
+
+                    if 'LambdaFunctionConfigurations' not in response:
+                        response['LambdaFunctionConfigurations'] = []
+
                     response['LambdaFunctionConfigurations'].append({
                         'Id': function_name,
                         'LambdaFunctionArn': lambda_arn,
@@ -215,6 +225,9 @@ def main(args, pacu_main):
                             's3:ObjectCreated:*'
                         ]
                     })
+
+                    print(response)
+
                     client.put_bucket_notification_configuration(
                         Bucket=bucket_name,
                         NotificationConfiguration=response

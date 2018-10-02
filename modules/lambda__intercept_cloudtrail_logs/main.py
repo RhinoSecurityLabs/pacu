@@ -219,7 +219,7 @@ def main(args, pacu_main):
                         Action='lambda:InvokeFunction',
                         Principal='s3.amazonaws.com',
                         SourceArn='arn:aws:s3:::{}'.format(bucket_name),
-                        SourceAccount=active_aws_key.account_id if active_aws_key.account_id else None
+                        SourceAccount=active_aws_key.account_id if active_aws_key.account_id else ''
                     )
 
                     response = client.get_bucket_notification_configuration(

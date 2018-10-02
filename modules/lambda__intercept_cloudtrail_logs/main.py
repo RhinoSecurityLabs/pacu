@@ -266,10 +266,10 @@ def main(args, pacu_main):
 
     if created_resources['LambdaFunctions']:
         with open('./modules/{}/created-lambda-functions.txt'.format(module_info['name']), 'a+') as f:
-            f.write('\n'.join(created_resources['LambdaFunctions']).rstrip())
+            f.write('{}\n'.format('\n'.join(created_resources['LambdaFunctions']).rstrip()))
     if created_resources['S3Triggers']:
         with open('./modules/{}/created-s3-event-triggers.txt'.format(module_info['name']), 'a+') as f:
-            f.write('\n'.join(created_resources['S3Triggers']).rstrip())
+            f.write('{}\n'.format('\n'.join(created_resources['S3Triggers']).rstrip()))
 
     return data
 

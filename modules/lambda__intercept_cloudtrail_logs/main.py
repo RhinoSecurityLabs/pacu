@@ -209,37 +209,6 @@ def main(args, pacu_main):
                 bucket_name, bucket_region = bucket.split('@')
 
                 if region == bucket_region:
-                    response = client.get_bucket_notification_configuration(
-                        Bucket=bucket_name
-                    )
-
-                    print(response)
-
-                    if 'ResponseMetadata' in response:
-                        del response['ResponseMetadata']
-
-                    print(response)
-
-                    if 'LambdaFunctionConfigurations' not in response:
-                        response['LambdaFunctionConfigurations'] = []
-
-                    response['LambdaFunctionConfigurations'].append({
-                        'Id': function_name,
-                        'LambdaFunctionArn': lambda_arn,
-                        'Events': [
-                            's3:ObjectCreated:*'
-                        ]
-                    })
-
-                    print(response)
-
-                    client.put_bucket_notification_configuration(
-                        Bucket=bucket_name,
-                        NotificationConfiguration=response
-                    )
-                    print('    Created S3 event trigger for bucket: {}'.format(bucket_name))
-                    data['triggers_created'] += 1
-
                     client = pacu_main.get_boto3_client('lambda', region)
 
                     active_aws_key = session.get_active_aws_key(pacu_main.database)
@@ -253,8 +222,33 @@ def main(args, pacu_main):
                         SourceAccount=active_aws_key.account_id if active_aws_key.account_id else None
                     )
 
-                    data['successes'] += 1
+                    response = client.get_bucket_notification_configuration(
+                        Bucket=bucket_name
+                    )
+
+                    if 'ResponseMetadata' in response:
+                        del response['ResponseMetadata']
+
+                    if 'LambdaFunctionConfigurations' not in response:
+                        response['LambdaFunctionConfigurations'] = []
+
+                    response['LambdaFunctionConfigurations'].append({
+                        'Id': function_name,
+                        'LambdaFunctionArn': lambda_arn,
+                        'Events': [
+                            's3:ObjectCreated:*'
+                        ]
+                    })
+
+                    client.put_bucket_notification_configuration(
+                        Bucket=bucket_name,
+                        NotificationConfiguration=response
+                    )
+                    print('    Created S3 event trigger for bucket: {}'.format(bucket_name))
+                    data['triggers_created'] += 1
                     created_resources['S3Triggers'].append('{}@{}@{}'.format(bucket_name, region, function_name))
+
+                    data['successes'] += 1
         except ClientError as error:
             code = error.response['Error']['Code']
             if code == 'AccessDeniedException':

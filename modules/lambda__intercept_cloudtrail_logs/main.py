@@ -213,7 +213,8 @@ def main(args, pacu_main):
                         Bucket=bucket_name
                     )
 
-                    print(response)
+                    if 'ResponseMetadata' in response:
+                        del response['ResponseMetadata']
 
                     if 'LambdaFunctionConfigurations' not in response:
                         response['LambdaFunctionConfigurations'] = []
@@ -225,8 +226,6 @@ def main(args, pacu_main):
                             's3:ObjectCreated:*'
                         ]
                     })
-
-                    print(response)
 
                     client.put_bucket_notification_configuration(
                         Bucket=bucket_name,

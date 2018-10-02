@@ -92,14 +92,13 @@ def main(args, pacu_main):
                         Bucket=bucket_name
                     )
 
-                    print(response)
+                    if 'ResponseMetadata' in response:
+                        del response['ResponseMetadata']
 
                     for i in range(0, len(response['LambdaFunctionConfigurations'])):
                         if response['LambdaFunctionConfigurations'][i]['Id'] == trigger_id:
                             del response['LambdaFunctionConfigurations'][i]
                             break
-
-                    print(response)
 
                     client.put_bucket_notification_configuration(
                         Bucket=bucket_name,

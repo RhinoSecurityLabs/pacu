@@ -106,7 +106,7 @@ def main(args, pacu_main):
                 try:
                     os.remove('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']))
                 except Exception as error:
-                    print('  Failed to remove ./modules/{}/created-lambda-functions.txt'.format(module_info['name']))
+                    print('  Failed to remove ./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']))
 
         print('Completed cleanup mode.\n')
         return {'cleanup': True}

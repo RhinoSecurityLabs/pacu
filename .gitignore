@@ -515,4 +515,6 @@ global_error_log.txt
 settings.py
 
 # Module-specific
-modules/privesc_scan/lambda_function.zip
+modules/iam__privesc_scan/lambda_function.zip
+modules/lambda__intercept_cloudtrail_logs/lambda_function.py
+modules/lambda__intercept_cloudtrail_logs/lambda_function.zip

@@ -14,10 +14,9 @@ def lambda_handler(event, context):
                 logs = json.loads(gzip.decompress(f.read()).decode('utf-8'))
             new_logs = {'Records': []}
             for log_record in logs['Records']:
-                if log_record['eventName'] == 'CreateLogStream':
+                if log_record['userAgent'] == 'awslambda-worker':
                     continue
-                if 'userName' in log_record['userIdentity'] and log_record['userIdentity']['userName'] == 'Spencer':
-                    continue
+                USER_PLACEHOLDERROLE_PLACEHOLDER
                 new_logs['Records'].append(log_record)
             with open('/tmp/{}'.format(key), 'wb+') as f:
                 f.write(gzip.compress(json.dumps(new_logs).encode()))

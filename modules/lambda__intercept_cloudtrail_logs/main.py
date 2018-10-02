@@ -261,6 +261,8 @@ def main(args, pacu_main):
             code = error.response['Error']['Code']
             if code == 'AccessDeniedException':
                 print('    FAILURE: MISSING NEEDED PERMISSIONS')
+            elif code == 'InvalidArgument':
+                print('    FAILURE: "InvalidArgument" error. This might mean there is already an S3 trigger setup to respond to "s3:ObjectCreated:*" on the target S3 bucket.')
             else:
                 print(code)
 

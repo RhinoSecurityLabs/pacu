@@ -13,7 +13,7 @@ module_info = {
 
     'one_liner': 'Checks if the active set of keys are known to be honeytokens.',
 
-    'description': 'This module checks if the active set of keys are known to be honeytokens and in the process, it enumerates some identifying information about the keys. All of this is done without ever leaving a log in CloudTrail, because it uses AWS AppStream 2.0 for enumeration, which CloudTrail does not support. Note: Even if you know your keys are not honey keys, this module can be used to enumerate information like the account ID, user/role path, user/role name, and role session name if there is one. Check out the Wired article here: WIRED_ARTICLE and the blog post here: RHINO_BLOG_POST',
+    'description': 'This module checks if the active set of keys are known to be honeytokens and in the process, it enumerates some identifying information about the keys. All of this is done without ever leaving a log in CloudTrail, because it uses AWS AppStream 2.0 for enumeration, which CloudTrail does not support. Note: Even if you know your keys are not honey keys, this module can be used to enumerate information like the account ID, user/role path, user/role name, and role session name if there is one.',
 
     'services': ['IAM', 'AppStream2'],
 
@@ -61,13 +61,13 @@ def main(args, pacu_main):
             message = error.response['Error']['Message']
 
             if 'arn:aws:iam::534261010715:user/canarytokens.com' in message:
-                data['summary'] = 'WARNING: Keys are confirmed canary/honey keys from CanaryTokens.org! Do not use them!'
+                data['summary'] = 'WARNING: Keys are confirmed honeytoken keys from Canarytokens.org! Do not use them!'
             elif 'arn:aws:iam::' in message and '/SpaceCrab/' in message:
-                data['summary'] = 'WARNING: Keys are confirmed canary/honey keys from SpaceCrab! Do not use them!'
+                data['summary'] = 'WARNING: Keys are confirmed honeytoken keys from SpaceCrab! Do not use them!'
             elif 'arn:aws:iam::534261010715:' in message or 'arn:aws:sts::534261010715:' in message:
-                data['summary'] = 'WARNING: Keys belong to an AWS account owned by CanaryTokens.org! Do not use them!'
+                data['summary'] = 'WARNING: Keys belong to an AWS account owned by Canarytokens.org! Do not use them!'
             else:
-                data['summary'] = 'Keys appear to be real (not canary/honey keys)!'
+                data['summary'] = 'Keys appear to be real (not honeytoken keys)!'
 
             match = re.search('arn:.* is not', message)
             if match:

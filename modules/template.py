@@ -113,7 +113,6 @@ def main(args, pacu_main):
         client = pacu_main.get_boto3_client('aws_service', region)
         data = client.do_something()
 
-    print('{} completed.\n'.format(module_info['name']))
     # Make sure your main function returns whatever data you need to construct
     # a module summary string.
     return data

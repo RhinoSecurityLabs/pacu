@@ -515,4 +515,10 @@ global_error_log.txt
 settings.py
 
 # Module-specific
-modules/privesc_scan/lambda_function.zip
+modules/iam__privesc_scan/lambda_function.zip
+modules/lambda__backdoor_new_sec_groups/lambda_function.py
+modules/lambda__backdoor_new_sec_groups/lambda_function.zip
+modules/lambda__backdoor_new_users/lambda_function.py
+modules/lambda__backdoor_new_users/lambda_function.zip
+modules/lambda__backdoor_new_roles/lambda_function.py
+modules/lambda__backdoor_new_roles/lambda_function.zip

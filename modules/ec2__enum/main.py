@@ -91,7 +91,6 @@ def main(args, pacu_main):
     if args.instances is False and args.security_groups is False and args.elastic_ips is False and args.customer_gateways is False and args.dedicated_hosts is False and args.network_acls is False and args.nat_gateways is False and args.network_interfaces is False and args.route_tables is False and args.subnets is False and args.vpcs is False and args.vpc_endpoints is False:
         args.instances = args.security_groups = args.elastic_ips = args.customer_gateways = args.dedicated_hosts = args.network_acls = args.nat_gateways = args.network_interfaces = args.route_tables = args.subnets = args.vpcs = args.vpc_endpoints = True
 
-
     if args.regions is None:
         regions = get_regions('ec2')
         if regions is None or regions == [] or regions == '' or regions == {}:
@@ -456,7 +455,6 @@ def main(args, pacu_main):
         'VPCs': all_vpcs,
         'VPCEndpoints': all_vpc_endpoints,
     }
-
 
     for var in vars(args):
         if var == 'regions':

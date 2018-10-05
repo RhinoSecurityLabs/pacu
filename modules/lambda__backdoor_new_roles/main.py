@@ -79,6 +79,7 @@ def main(args, pacu_main):
                     os.remove('./modules/{}/created-lambda-functions.txt'.format(module_info['name']))
                 except Exception as error:
                     print('  Failed to remove ./modules/{}/created-lambda-functions.txt'.format(module_info['name']))
+                    print('    {}: {}'.format(type(error), error))
 
         if created_cwe_rules:
             delete_cwe_file = True
@@ -107,6 +108,7 @@ def main(args, pacu_main):
                     os.remove('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']))
                 except Exception as error:
                     print('  Failed to remove ./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']))
+                    print('    {}: {}'.format(type(error), error))
 
         print('Completed cleanup mode.\n')
         return {'cleanup': True}
@@ -127,7 +129,7 @@ def main(args, pacu_main):
     if not target_role_arn:
         if fetch_data(['IAM', 'Roles'], module_info['prerequisite_modules'][0], '--roles', force=True) is False:
             print('Pre-req module not run successfully. Exiting...')
-            return False
+            return None
         roles = deepcopy(session.IAM['Roles'])
 
         print('Found {} roles. Choose one below.'.format(len(roles)))

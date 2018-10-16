@@ -1,0 +1,6 @@
+import boto3
+def lambda_handler(event, context):
+    if event['detail']['eventName']=='CreateSecurityGroup':
+        c=boto3.client('ec2')
+        c.authorize_security_group_ingress(GroupName=event['detail']['requestParameters']['groupName'],CidrIp='IP_RANGE',FromPort=FROM_PORT,ToPort=TO_PORT,IpProtocol='IP_PROTOCOL')
+    return

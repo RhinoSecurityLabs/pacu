@@ -158,7 +158,7 @@ def main(args, pacu_main):
             is_role = True
             active_aws_key.update(
                 pacu_main.database,
-                role_name=identity['Arn'].split(':assumed-role/')[1].split('/')[0],
+                role_name=identity['Arn'].split(':assumed-role/')[1].split('/')[-2],
                 arn=identity['Arn'],
                 user_id=identity['UserId'],
                 account_id=identity['Account']

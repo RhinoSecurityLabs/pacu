@@ -94,7 +94,6 @@ def main(args, pacu_main):
     if args.instances is False and args.security_groups is False and args.elastic_ips is False and args.customer_gateways is False and args.dedicated_hosts is False and args.network_acls is False and args.nat_gateways is False and args.network_interfaces is False and args.route_tables is False and args.subnets is False and args.vpcs is False and args.vpc_endpoints is False and args.launch_templates is False:
         args.instances = args.security_groups = args.elastic_ips = args.customer_gateways = args.dedicated_hosts = args.network_acls = args.nat_gateways = args.network_interfaces = args.route_tables = args.subnets = args.vpcs = args.vpc_endpoints = args.launch_templates = True
 
-
     if args.regions is None:
         regions = get_regions('ec2')
         if regions is None or regions == [] or regions == '' or regions == {}:
@@ -279,7 +278,8 @@ def main(args, pacu_main):
         vpc_endpoints = []
         launch_templates = []
 
-        print('Starting region {}...'.format(region))
+        if any([args.instances, args.security_groups, args.elastic_ips, args.customer_gateways, args.dedicated_hosts, args.network_acls, args.nat_gateways, args.network_interfaces, args.route_tables, args.subnets, args.vpcs, args.vpc_endpoints]):
+            print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('ec2', region)
 
         # Instances
@@ -493,7 +493,6 @@ def main(args, pacu_main):
         'LaunchTemplates': all_launch_templates,
     }
 
-
     for var in vars(args):
         if var == 'regions':
             continue
@@ -508,7 +507,11 @@ def main(args, pacu_main):
     # Add regions to gathered_data for summary output
     gathered_data['regions'] = regions
 
-    return gathered_data
+
+    if any([args.instances, args.security_groups, args.elastic_ips, args.customer_gateways, args.dedicated_hosts, args.network_acls, args.nat_gateways, args.network_interfaces, args.route_tables, args.subnets, args.vpcs, args.vpc_endpoints]):
+        return gathered_data
+    else:
+        return None
 
 
 def summary(data, pacu_main):
@@ -559,5 +562,4 @@ def summary(data, pacu_main):
     if 'LaunchTemplates' in data:
         results.append('    {} total launch template(s) found.'.format(len(data['LaunchTemplates'])))
 
-    results.append('\n  EC2 Resources Saved in Pacu database.')
     return '\n'.join(results)

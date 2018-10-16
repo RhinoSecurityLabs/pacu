@@ -2,6 +2,7 @@
 import argparse
 import base64
 import os
+import gzip
 
 from botocore.exceptions import ClientError
 
@@ -90,6 +91,9 @@ def main(args, pacu_main):
                 'Region': region
             })
     elif args.template_ids is None:
+        # If args.instance_ids was not passed in,
+        # only fetch instances if args.template_ids
+        # is also None
         if fetch_data(['EC2', 'Instances'], module_info['prerequisite_modules'][0], '--instances') is False:
             print('Pre-req module not run successfully. Exiting...')
             return None
@@ -103,6 +107,9 @@ def main(args, pacu_main):
                 'Region': region
             })
     elif args.instance_ids is None:
+        # If args.template_ids was not passed in,
+        # only fetch templates if args.instance_ids
+        # is also None
         if fetch_data(['EC2', 'LaunchTemplates'], module_info['prerequisite_modules'][0], '--launch-templates') is False:
             print('Pre-req module not run successfully. Exiting...')
             return None
@@ -124,21 +131,35 @@ def main(args, pacu_main):
             )['UserData']
 
             if 'Value' in user_data.keys():
-                formatted_user_data = '{}@{}:\n{}\n\n'.format(
-                    instance_id,
-                    region,
-                    base64.b64decode(user_data['Value']).decode('utf-8')
-                )
+                try:
+                    was_unzipped = False
+                    formatted_user_data = '{}@{}:\n{}\n\n'.format(
+                        instance_id,
+                        region,
+                        base64.b64decode(user_data['Value']).decode('utf-8')
+                    )
+                    print('  {}@{}: User Data found'.format(instance_id, region))
+
+                    # Write to the "all" file
+                    with open('sessions/{}/downloads/ec2_user_data/all_user_data.txt'.format(session.name), 'a+') as data_file:
+                        data_file.write(formatted_user_data)
+                    # Write to the individual file
+                    with open('sessions/{}/downloads/ec2_user_data/{}.txt'.format(session.name, instance_id), 'w+') as data_file:
+                        data_file.write(formatted_user_data.replace('\\t', '\t').replace('\\n', '\n').rstrip())
+                    summary_data['instance_downloads'] += 1
+                except UnicodeDecodeError as error:
+                    if 'codec can\'t decode byte 0x8b' in str(error):
+                        decoded = base64.b64decode(user_data['Value'])
+                        decompressed = gzip.decompress(decoded)
+                        formatted_user_data = '{}@{}:\n{}\n\n'.format(
+                            instance_id,
+                            region,
+                            decompressed.decode('utf-8')
+                        )
+                        was_unzipped = True
                 print('  {}@{}: User Data found'.format(instance_id, region))
-
-                # Write to the "all" file
-                with open('sessions/{}/downloads/ec2_user_data/all_user_data.txt'.format(session.name), 'a+') as data_file:
-                    data_file.write(formatted_user_data)
-                # Write to the individual file
-                with open('sessions/{}/downloads/ec2_user_data/{}.txt'.format(session.name, instance_id), 'w+') as data_file:
-                    data_file.write(formatted_user_data.replace('\\t', '\t').replace('\\n', '\n').rstrip())
-                summary_data['instance_downloads'] += 1
-
+                if was_unzipped:
+                    print('    Gzip decoded the User Data')
             else:
                 print('  {}@{}: No User Data found'.format(instance_id, region))
         print()

@@ -51,23 +51,6 @@ def main(args, pacu_main):
         return summary_data
     instances = session.EC2['Instances']
 
-    try:
-        client = pacu_main.get_boto3_client('ec2', instances[0]['Region'])
-        client.describe_instance_attribute(
-            DryRun=True,
-            Attribute='disableApiTermination',
-            InstanceId=instances[0]['InstanceId']
-        )
-    except ClientError as error:
-        code = error.response['Error']['Code']
-        if code != 'DryRunOperation':
-            print('  FAILURE: ')
-            if code == 'UnauthorizedOperation':
-                print('    MISSING NEEDED PERMISSIONS\n')
-            else:
-                print('    {}\n'.format(code))
-            return summary_data
-
     now = time.time()
     csv_file_path = 'sessions/{}/downloads/termination_protection_disabled_{}.csv'.format(session.name, now)
     summary_data['csv_file_path'] = csv_file_path
@@ -90,7 +73,14 @@ def main(args, pacu_main):
                                 break
                     csv_file.write('{},{},{}\n'.format(name, instance['InstanceId'], instance['Region']))
                     summary_data['instance_count'] += 1
-            except Exception as error:
+             except ClientError as error:
+                code = error.response['Error']['Code']
+                print('FAILURE: ')
+                if code == 'UnauthorizedOperation':
+                    print('  Access denied to DescribeInstanceAttribute.')
+                    break
+                else:
+                    print('  ' + code)
                 print('Failed to retrieve info for instance ID {}: {}'.format(instance['InstanceId'], error))
 
     ec2_data = deepcopy(session.EC2)

@@ -1024,16 +1024,17 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
             ssh_key_name = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10))
             try:
                 response = client.create_key_pair(
-                    KeyName=ssh_key_name,
-                    DryRun=True
+                    KeyName=ssh_key_name
                 )
             except ClientError as error:
-                if not str(error).find('UnauthorizedOperation') == -1:
-                    print('Dry run failed, you do not have permission to create an SSH key. Try a different method.\n')
-                    continue
-            response = client.create_key_pair(
-                KeyName=ssh_key_name
-            )
+                code = error.response['Error']['Code']
+                print('FAILURE: ')
+                if code == 'AccessDenied':
+                    print('  Access denied to CreateKeyPair.')
+                else:
+                    print('  ' + code)
+                print('Try a different method.\n')
+                continue
             ssh_private_key = response['KeyMaterial']
             ssh_fingerprint = response['KeyFingerprint']
 

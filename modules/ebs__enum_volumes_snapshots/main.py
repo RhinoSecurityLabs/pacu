@@ -178,7 +178,7 @@ def main(args, pacu_main):
                     except ClientError as error:
                         code = error.response['Error']['Code']
                         print('FAILURE: ')
-                        if code == 'AccessDenied':
+                        if code == 'UnauthorizedOperation':
                             print('  Access denied to DescribeVolumes.')
                         else:
                             print('  ' + code)
@@ -225,7 +225,7 @@ def main(args, pacu_main):
                     except ClientError as error:
                         code = error.response['Error']['Code']
                         print('FAILURE: ')
-                        if code == 'AccessDenied':
+                        if code == 'UnauthorizedOperation':
                             print('  Access denied to DescribeSnapshots.')
                         else:
                             print('  ' + code)

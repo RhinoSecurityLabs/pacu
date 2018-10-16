@@ -1029,7 +1029,7 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
             except ClientError as error:
                 code = error.response['Error']['Code']
                 print('FAILURE: ')
-                if code == 'AccessDenied':
+                if code == 'UnauthorizedOperation':
                     print('  Access denied to CreateKeyPair.')
                 else:
                     print('  ' + code)

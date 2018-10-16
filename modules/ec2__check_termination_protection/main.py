@@ -73,7 +73,7 @@ def main(args, pacu_main):
                                 break
                     csv_file.write('{},{},{}\n'.format(name, instance['InstanceId'], instance['Region']))
                     summary_data['instance_count'] += 1
-             except ClientError as error:
+            except ClientError as error:
                 code = error.response['Error']['Code']
                 print('FAILURE: ')
                 if code == 'UnauthorizedOperation':

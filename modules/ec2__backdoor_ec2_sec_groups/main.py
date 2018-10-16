@@ -82,7 +82,7 @@ def main(args, pacu_main):
             )
             print('    SUCCESS')
             summary_data['BackdooredCount'] += 1
-         except ClientError as error:
+        except ClientError as error:
             code = error.response['Error']['Code']
             print('FAILURE: ')
             if code == 'UnauthorizedOperation':

@@ -100,7 +100,7 @@ def stop_instance(client, instance_id, print):
     try:
         client.stop_instances(InstanceIds=[instance_id])
         return True
-     except ClientError as error:
+    except ClientError as error:
         code = error.response['Error']['Code']
         print('FAILURE: ')
         if code == 'UnauthorizedOperation':
@@ -115,7 +115,7 @@ def start_instance(client, instance_id, print):
     try:
         client.start_instances(InstanceIds=[instance_id])
         return True
-     except ClientError as error:
+    except ClientError as error:
         code = error.response['Error']['Code']
         print('FAILURE: ')
         if code == 'UnauthorizedOperation':

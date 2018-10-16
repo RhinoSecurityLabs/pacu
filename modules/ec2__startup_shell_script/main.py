@@ -77,6 +77,9 @@ def main(args, pacu_main):
     instances = []
     if args.instance_ids is not None:  # need to update this to include the regions of these IDs
         for instance in args.instance_ids.split(','):
+            if "@" not in instance:
+                print("Usage: <instance-id>@<region>   ex: i-abcdef12345@us-west-2")
+                return({"error": "invalid usage"})
             instances.append({
                 'InstanceId': instance.split('@')[0],
                 'Region': instance.split('@')[1]

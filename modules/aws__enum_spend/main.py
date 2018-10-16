@@ -66,6 +66,7 @@ def main(args, pacu_main):
             return
     except ClientError as e:
         print("ClientError getting spend: {}".format(e))
+        return({ "error": "<unauthorized>"})
 
     for s in services:
         try:

@@ -497,7 +497,7 @@ def main(args, pacu_main):
 
             for perm in user_escalation_methods[method]:
                 if user_escalation_methods[method][perm] is True:  # If this permission is required
-                    if 'PermissionsConfirmed' in user and user['PermissionsConfirmed'] is True:  # If permissions are confirmed
+                    if 'PermissionsConfirmed' in target and target['PermissionsConfirmed'] is True:  # If permissions are confirmed
                         if perm not in checked_perms['Allow']:  # If this permission isn't Allowed, then this method won't work
                             potential = confirmed = False
                             break

@@ -91,20 +91,11 @@ def main(args, pacu_main):
         ssm_instance_profile_name = ''
 
     if args.all_instances is False and args.target_instances is None:
-        # DryRun describe_images (don't need to DryRun this if args.all_instances is True)
-        try:
-            client = pacu_main.get_boto3_client('ec2', regions[0])
-            client.describe_images(
-                DryRun=True
-            )
-        except ClientError as error:
-            if not str(error).find('UnauthorizedOperation') == -1:
-                print('Dry run failed, the current AWS account does not have the necessary permissions to run "describe_images". Operating system enumeration is no longer trivial.\n')
-
         os_with_default_ssm_agent = [
-            '[\s\S]*Windows[\s\S]*Server[\s\S]*2016[\s\S]*',
+            '[\s\S]*Windows[\s\S]*Server[\s\S]*',
             '[\s\S]*Amazon[\s\S]*Linux[\s\S]*',
-            '[\s\S]*Ubuntu[\s\S]*Server[\s\S]*18\\.04[\s\S]*LTS[\s\S]*',
+            '[\s\S]*Ubuntu[\s\S]*Server[\s\S]*16\\.04[\s\S]*',
+            '[\s\S]*Ubuntu[\s\S]*Server[\s\S]*18\\.04[\s\S]*',
             # 'Windows Server 2003-2012 R2 released after November 2016'
         ]
 
@@ -123,9 +114,19 @@ def main(args, pacu_main):
             if image_ids == []:
                 print('  No images found.\n')
             else:
-                images = client.describe_images(
-                    ImageIds=list(set(image_ids))
-                )['Images']
+                try:
+                    images = client.describe_images(
+                        ImageIds=list(set(image_ids))
+                    )['Images']
+                except ClientError as error:
+                    code = error.response['Error']['Code']
+                    print('FAILURE: ')
+                    if code == 'AccessDenied':
+                        print('  Access denied to DescribeImages.')
+                    else:
+                        print('  ' + code)
+                    print('Consider manual operating system enumeration techniques and pass them to the --target-instances argument.')
+                    return None
 
                 # Iterate images and determine if they are possibly one of the
                 # operating systems with SSM agent installed by default

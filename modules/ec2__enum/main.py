@@ -262,7 +262,8 @@ def main(args, pacu_main):
         vpcs = []
         vpc_endpoints = []
 
-        print('Starting region {}...'.format(region))
+        if any([args.instances, args.security_groups, args.elastic_ips, args.customer_gateways, args.dedicated_hosts, args.network_acls, args.nat_gateways, args.network_interfaces, args.route_tables, args.subnets, args.vpcs, args.vpc_endpoints]):
+            print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('ec2', region)
 
         # Instances
@@ -470,7 +471,11 @@ def main(args, pacu_main):
     # Add regions to gathered_data for summary output
     gathered_data['regions'] = regions
 
-    return gathered_data
+
+    if any([args.instances, args.security_groups, args.elastic_ips, args.customer_gateways, args.dedicated_hosts, args.network_acls, args.nat_gateways, args.network_interfaces, args.route_tables, args.subnets, args.vpcs, args.vpc_endpoints]):
+        return gathered_data
+    else:
+        return None
 
 
 def summary(data, pacu_main):
@@ -518,5 +523,4 @@ def summary(data, pacu_main):
     if 'VPCEndpoints' in data:
         results.append('    {} total VPC endpoint(s) found.'.format(len(data['VPCEndpoints'])))
 
-    results.append('\n  EC2 Resources Saved in Pacu database.')
     return '\n'.join(results)

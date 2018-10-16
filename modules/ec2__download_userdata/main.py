@@ -2,6 +2,7 @@
 import argparse
 import base64
 import os
+import gzip
 
 from botocore.exceptions import ClientError
 
@@ -92,12 +93,23 @@ def main(args, pacu_main):
         )['UserData']
 
         if 'Value' in user_data.keys():
-            formatted_user_data = '{}@{}:\n{}\n\n'.format(
-                instance_id,
-                region,
-                base64.b64decode(user_data['Value']).decode('utf-8')
-            )
-            print('  {}@{}: User Data found'.format(instance_id, region))
+            try:
+                formatted_user_data = '{}@{}:\n{}\n\n'.format(
+                    instance_id,
+                    region,
+                    base64.b64decode(user_data['Value']).decode('utf-8')
+                )
+                print('  {}@{}: User Data found'.format(instance_id, region))
+            except UnicodeDecodeError as error:
+                if 'codec can\'t decode byte 0x8b' in str(error):
+                    decoded = base64.b64decode(user_data['Value'])
+                    decompressed = gzip.decompress(decoded)
+                    formatted_user_data = '{}@{}:\n{}\n\n'.format(
+                        instance_id,
+                        region,
+                        decompressed.decode('utf-8')
+                    )
+                    print('  {}@{}: User Data found'.format(instance_id, region))
 
             # Write to the "all" file
             with open('sessions/{}/downloads/ec2_user_data/all_user_data.txt'.format(session.name), 'a+') as data_file:

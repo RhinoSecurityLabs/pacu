@@ -148,28 +148,6 @@ def main(args, pacu_main):
 
     client = pacu_main.get_boto3_client('ec2', random.choice(regions))
 
-    # Check permissions before hammering through each region
-    if args.vols is True:
-        try:
-            client.describe_volumes(
-                DryRun=True
-            )
-        except ClientError as error:
-            if str(error).find('UnauthorizedOperation') != -1:
-                print('The current AWS credentials do not have the necessary permissions to run "describe_volumes".\nExiting module.')
-                return
-
-    if args.snaps is True and not account_ids == []:
-        try:
-            client.describe_snapshots(
-                OwnerIds=account_ids,
-                DryRun=True
-            )
-        except ClientError as error:
-            if str(error).find('UnauthorizedOperation') != -1:
-                print('The current AWS credentials do not have the necessary permissions to run "describe_snapshots".\nExiting module.')
-                return
-
     now = time.time()
 
     all_vols = []
@@ -193,9 +171,19 @@ def main(args, pacu_main):
 
             while (response is None or 'NextToken' in response):
                 if next_token is False:
-                    response = client.describe_volumes(
-                        MaxResults=500  # Using this as AWS can timeout the connection if there are too many volumes to return in one
-                    )
+                    try:
+                        response = client.describe_volumes(
+                            MaxResults=500  # Using this as AWS can timeout the connection if there are too many volumes to return in one
+                        )
+                    except ClientError as error:
+                        code = error.response['Error']['Code']
+                        print('FAILURE: ')
+                        if code == 'UnauthorizedOperation':
+                            print('  Access denied to DescribeVolumes.')
+                        else:
+                            print('  ' + code)
+                        print('Skipping volume enumeration...')
+                        break
                 else:
                     response = client.describe_volumes(
                         MaxResults=500,
@@ -229,10 +217,20 @@ def main(args, pacu_main):
 
             while (response is None or 'NextToken' in response):
                 if next_token is False:
-                    response = client.describe_snapshots(
-                        OwnerIds=account_ids,
-                        MaxResults=1000  # Using this as AWS can timeout the connection if there are too many snapshots to return in one
-                    )
+                    try:
+                        response = client.describe_snapshots(
+                            OwnerIds=account_ids,
+                            MaxResults=1000  # Using this as AWS can timeout the connection if there are too many snapshots to return in one
+                        )
+                    except ClientError as error:
+                        code = error.response['Error']['Code']
+                        print('FAILURE: ')
+                        if code == 'UnauthorizedOperation':
+                            print('  Access denied to DescribeSnapshots.')
+                        else:
+                            print('  ' + code)
+                        print('Skipping snapshot enumeration...')
+                        break
                 else:
                     response = client.describe_snapshots(
                         OwnerIds=account_ids,

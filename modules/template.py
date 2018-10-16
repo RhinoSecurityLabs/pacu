@@ -100,10 +100,6 @@ def main(args, pacu_main):
     if not install_dependencies(module_info['external_dependencies']):
         return
 
-    # IMPORTANT NOTE: It is suggested to always utilize the DryRun parameter
-    # for boto3 requests that support it. It will test the permissions of the
-    # action without actually executing it.
-
     # Use the get_regions function to fetch an array of supported regions for
     # the service that you pass into it.
     regions = get_regions('EC2')

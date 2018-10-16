@@ -51,37 +51,6 @@ def main(args, pacu_main):
     instances = []
     templates = []
     summary_data = {'instance_downloads': 0, 'template_downloads': 0}
-    # Check permissions before doing anything
-    try:
-        client = pacu_main.get_boto3_client('ec2', pacu_main.get_regions('ec2')[0])
-        client.describe_instance_attribute(
-            Attribute='userData',
-            DryRun=True,
-            InstanceId='1'
-        )
-    except ClientError as error:
-        code = error.response['Error']['Code']
-        if code != 'DryRunOperation':
-            print('FAILURE: ')
-            if code == 'AccessDenied':
-                print('  Access denied to DescribeInstanceAttribute.')
-            else:
-                print('  ' + code)
-
-    try:
-        client = pacu_main.get_boto3_client('ec2', pacu_main.get_regions('ec2')[0])
-        client.describe_launch_template_versions(
-            DryRun=True,
-            LaunchTemplateName='asdf'
-        )
-    except ClientError as error:
-        code = error.response['Error']['Code']
-        if code != 'DryRunOperation':
-            print('FAILURE: ')
-            if code == 'AccessDenied':
-                print('  Access denied to DescribeLaunchTemplateVersions.')
-            else:
-                print('  ' + code)
 
     if args.instance_ids is not None:
         for instance in args.instance_ids.split(','):
@@ -125,10 +94,20 @@ def main(args, pacu_main):
             region = instance['Region']
             client = pacu_main.get_boto3_client('ec2', region)
 
-            user_data = client.describe_instance_attribute(
-                InstanceId=instance_id,
-                Attribute='userData'
-            )['UserData']
+            try:
+                user_data = client.describe_instance_attribute(
+                    InstanceId=instance_id,
+                    Attribute='userData'
+                )['UserData']
+            except ClientError as error:
+                code = error.response['Error']['Code']
+                print('FAILURE: ')
+                if code == 'AccessDenied':
+                    print('  Access denied to DescribeInstanceAttribute.')
+                else:
+                    print('  ' + code)
+                print('Skipping the rest of the instances...')
+                break
 
             if 'Value' in user_data.keys():
                 try:
@@ -174,10 +153,21 @@ def main(args, pacu_main):
             client = pacu_main.get_boto3_client('ec2', region)
 
             all_versions = []
-            response = client.describe_launch_template_versions(
-                LaunchTemplateId=template_id
-            )
-            all_versions.extend(response['LaunchTemplateVersions'])
+
+            try:
+                response = client.describe_launch_template_versions(
+                    LaunchTemplateId=template_id
+                )
+                all_versions.extend(response['LaunchTemplateVersions'])
+            except ClientError as error:
+                code = error.response['Error']['Code']
+                print('FAILURE: ')
+                if code == 'AccessDenied':
+                    print('  Access denied to DescribeLaunchTemplateVersions.')
+                else:
+                    print('  ' + code)
+                print('Skipping the rest of the launch templates...\n')
+                break
 
             while response.get('NextToken'):
                 response = client.describe_launch_template_versions(

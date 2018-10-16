@@ -104,152 +104,6 @@ def main(args, pacu_main):
 
     client = pacu_main.get_boto3_client('ec2', choice(regions))
 
-    # Check permissions before hammering through each region
-
-    # Instances
-    if args.instances:
-        try:
-            client.describe_instances(
-                DryRun=True
-            )
-        except ClientError as error:
-            if not str(error).find('UnauthorizedOperation') == -1:
-                args.instances = False
-                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeInstances"')
-                print('    Skipping enumeration of Instances...')
-    # Security Groups
-    if args.security_groups:
-        try:
-            client.describe_security_groups(
-                DryRun=True
-            )
-        except ClientError as error:
-            if not str(error).find('UnauthorizedOperation') == -1:
-                args.security_groups = False
-                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeSecurityGroups"')
-                print('    Skipping enumeration of Security Groups...')
-    # Elastic IPs
-    if args.elastic_ips:
-        try:
-            client.describe_addresses(
-                DryRun=True
-            )
-        except ClientError as error:
-            if not str(error).find('UnauthorizedOperation') == -1:
-                args.elastic_ips = False
-                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeAddresses"')
-                print('    Skipping enumeration of Elastic IPs...')
-    # VPN Customer Gateways
-    if args.customer_gateways:
-        try:
-            client.describe_customer_gateways(
-                DryRun=True
-            )
-        except ClientError as error:
-            if not str(error).find('UnauthorizedOperation') == -1:
-                args.customer_gateways = False
-                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeCustomerGateways')
-                print('    Skipping enumeration of VPN Customer Gateways...')
-    # Dedicated Hosts
-    if args.dedicated_hosts:
-        try:
-            response = client.describe_hosts(
-                        MaxResults=500
-                    )
-        except ClientError as error:
-            if not str(error).find('UnauthorizedOperation') == -1:
-                args.dedicated_hosts = False
-                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeHosts"')
-                print('    Skipping enumeration of Dedicated Hosts...')
-    # Network ACLs
-    if args.network_acls:
-        try:
-            client.describe_network_acls(
-                DryRun=True
-            )
-        except ClientError as error:
-            if not str(error).find('UnauthorizedOperation') == -1:
-                args.network_acls = False
-                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeNetworkAcls"')
-                print('    Skipping enumeration of Network ACLs...')
-    # NAT Gateways
-    if args.nat_gateways:
-        try:
-            response = client.describe_nat_gateways(
-                        MaxResults=1000
-                    )
-        except ClientError as error:
-            if not str(error).find('UnauthorizedOperation') == -1:
-                args.nat_gateways = False
-                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeNatGateways"')
-                print('    Skipping enumeration of NAT Gateways...')
-    # Network Interfaces
-    if args.network_interfaces:
-        try:
-            client.describe_network_interfaces(
-                DryRun=True
-            )
-        except ClientError as error:
-            if not str(error).find('UnauthorizedOperation') == -1:
-                args.network_interfaces = False
-                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeNetworkInterfaces"')
-                print('    Skipping enumeration of Network Interfaces...')
-    # Route Tables
-    if args.route_tables:
-        try:
-            client.describe_route_tables(
-                DryRun=True
-            )
-        except ClientError as error:
-            if not str(error).find('UnauthorizedOperation') == -1:
-                args.route_tables = False
-                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeRouteTables"')
-                print('    Skipping enumeration of Route Tables...')
-    # Subnets
-    if args.subnets:
-        try:
-            client.describe_subnets(
-                DryRun=True
-            )
-        except ClientError as error:
-            if not str(error).find('UnauthorizedOperation') == -1:
-                args.subnets = False
-                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeSubnets"')
-                print('    Skipping enumeration of Subnets...')
-    # VPCs
-    if args.vpcs:
-        try:
-            client.describe_vpcs(
-                DryRun=True
-            )
-        except ClientError as error:
-            if not str(error).find('UnauthorizedOperation') == -1:
-                args.vpcs = False
-                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeVPCs"')
-                print('    Skipping enumeration of VPCs...')
-    # VPC Endpoints
-    if args.vpc_endpoints:
-        try:
-            client.describe_vpc_endpoints(
-                DryRun=True
-            )
-        except ClientError as error:
-            if not str(error).find('UnauthorizedOperation') == -1:
-                args.vpc_endpoints = False
-                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeVpcEndpoints"')
-                print('    Skipping enumeration of VPC Endpoints...')
-    # Launch Templates
-    if args.launch_templates:
-        try:
-            client.describe_launch_templates(
-                DryRun=True
-            )
-        except ClientError as error:
-            if not str(error).find('UnauthorizedOperation') == -1:
-                args.vpc_endpoints = False
-                print('  FAILURE: MISSING AWS PERMISSIONS: "DescribeLaunchTemplates"')
-                print('    Skipping enumeration of Launch Templates...')
-
     all_instances = []
     all_security_groups = []
     all_elastic_ips = []
@@ -288,9 +142,20 @@ def main(args, pacu_main):
             next_token = False
             while (response is None or 'NextToken' in response):
                 if next_token is False:
-                    response = client.describe_instances(
-                        MaxResults=1000  # To prevent timeouts if there are too many instances
-                    )
+                    try:
+                        response = client.describe_instances(
+                            MaxResults=1000  # To prevent timeouts if there are too many instances
+                        )
+                    except ClientError as error:
+                        code = error.response['Error']['Code']
+                        print('FAILURE: ')
+                        if code == 'UnauthorizedOperation':
+                            print('  Access denied to DescribeInstances.')
+                        else:
+                            print('  ' + code)
+                        print('  Skipping instance enumeration...')
+                        args.instances = False
+                        break
                 else:
                     response = client.describe_instances(
                         MaxResults=1000,
@@ -311,9 +176,20 @@ def main(args, pacu_main):
             next_token = False
             while (response is None or 'NextToken' in response):
                 if next_token is False:
-                    response = client.describe_security_groups(
-                        MaxResults=1000
-                    )
+                    try:
+                        response = client.describe_security_groups(
+                            MaxResults=1000
+                        )
+                    except ClientError as error:
+                        code = error.response['Error']['Code']
+                        print('FAILURE: ')
+                        if code == 'UnauthorizedOperation':
+                            print('  Access denied to DescribeSecurityGroups.')
+                        else:
+                            print('  ' + code)
+                        print('    Skipping security group enumeration...')
+                        args.security_groups = False
+                        break
                 else:
                     response = client.describe_security_groups(
                         NextToken=next_token,
@@ -329,19 +205,39 @@ def main(args, pacu_main):
 
         # Elastic IPs
         if args.elastic_ips:
-            response = client.describe_addresses()
-            for ip in response['Addresses']:
-                ip['Region'] = region
-                elastic_ips.append(ip)
+            try:
+                response = client.describe_addresses()
+                for ip in response['Addresses']:
+                    ip['Region'] = region
+                    elastic_ips.append(ip)
+            except ClientError as error:
+                code = error.response['Error']['Code']
+                print('FAILURE: ')
+                if code == 'UnauthorizedOperation':
+                    print('  Access denied to DescribeAddresses.')
+                else:
+                    print('  ' + code)
+                print('    Skipping elastic IP enumeration...')
+                args.elastic_ips = False
             print('  {} elastic IP address(es) found.'.format(len(elastic_ips)))
             all_elastic_ips += elastic_ips
 
         # VPN Customer Gateways
         if args.customer_gateways:
-            response = client.describe_customer_gateways()
-            for gateway in response['CustomerGateways']:
-                gateway['Region'] = region
-                vpn_customer_gateways.append(gateway)
+            try:
+                response = client.describe_customer_gateways()
+                for gateway in response['CustomerGateways']:
+                    gateway['Region'] = region
+                    vpn_customer_gateways.append(gateway)
+            except ClientError as error:
+                code = error.response['Error']['Code']
+                print('FAILURE: ')
+                if code == 'UnauthorizedOperation':
+                    print('  Access denied to DescribeCustomerGateways.')
+                else:
+                    print('  ' + code)
+                print('    Skipping VPN customer gateway enumeration...')
+                args.customer_gateways = False
             print('  {} VPN customer gateway(s) found.'.format(len(vpn_customer_gateways)))
             all_vpn_customer_gateways += vpn_customer_gateways
 
@@ -351,9 +247,20 @@ def main(args, pacu_main):
             next_token = False
             while (response is None or 'NextToken' in response):
                 if next_token is False:
-                    response = client.describe_hosts(
-                        MaxResults=500
-                    )
+                    try:
+                        response = client.describe_hosts(
+                            MaxResults=500
+                        )
+                    except ClientError as error:
+                        code = error.response['Error']['Code']
+                        print('FAILURE: ')
+                        if code == 'UnauthorizedOperation':
+                            print('  Access denied to DescribeHosts.')
+                        else:
+                            print('  ' + code)
+                        print('    Skipping dedicated host enumeration...')
+                        args.dedicated_hosts = False
+                        break
                 else:
                     response = client.describe_hosts(
                         NextToken=next_token,
@@ -369,10 +276,20 @@ def main(args, pacu_main):
 
         # Network ACLs
         if args.network_acls:
-            response = client.describe_network_acls()
-            for acl in response['NetworkAcls']:
-                acl['Region'] = region
-                network_acls.append(acl)
+            try:
+                response = client.describe_network_acls()
+                for acl in response['NetworkAcls']:
+                    acl['Region'] = region
+                    network_acls.append(acl)
+            except ClientError as error:
+                code = error.response['Error']['Code']
+                print('FAILURE: ')
+                if code == 'UnauthorizedOperation':
+                    print('  Access denied to DescribeNetworkACLs.')
+                else:
+                    print('  ' + code)
+                print('    Skipping network ACL enumeration...')
+                args.network_acls = False
             print('  {} network ACL(s) found.'.format(len(network_acls)))
             all_network_acls += network_acls
 
@@ -382,9 +299,20 @@ def main(args, pacu_main):
             next_token = False
             while (response is None or 'NextToken' in response):
                 if next_token is False:
-                    response = client.describe_nat_gateways(
-                        MaxResults=1000
-                    )
+                    try:
+                        response = client.describe_nat_gateways(
+                            MaxResults=1000
+                        )
+                    except ClientError as error:
+                        code = error.response['Error']['Code']
+                        print('FAILURE: ')
+                        if code == 'UnauthorizedOperation':
+                            print('  Access denied to DescribeNATGateways.')
+                        else:
+                            print('  ' + code)
+                        print('    Skipping NAT gateway enumeration...')
+                        args.nat_gateways = False
+                        break
                 else:
                     response = client.describe_nat_gateways(
                         NextToken=next_token,
@@ -400,37 +328,77 @@ def main(args, pacu_main):
 
         # Network Interfaces
         if args.network_interfaces:
-            response = client.describe_network_interfaces()
-            for interface in response['NetworkInterfaces']:
-                interface['Region'] = region
-                network_interfaces.append(interface)
+            try:
+                response = client.describe_network_interfaces()
+                for interface in response['NetworkInterfaces']:
+                    interface['Region'] = region
+                    network_interfaces.append(interface)
+            except ClientError as error:
+                code = error.response['Error']['Code']
+                print('FAILURE: ')
+                if code == 'UnauthorizedOperation':
+                    print('  Access denied to DescribeNetworkInterfaces.')
+                else:
+                    print('  ' + code)
+                print('    Skipping network interface enumeration...')
+                args.network_interfaces = False
             print('  {} network interface(s) found.'.format(len(network_interfaces)))
             all_network_interfaces += network_interfaces
 
         # Route Tables
         if args.route_tables:
-            response = client.describe_route_tables()
-            for table in response['RouteTables']:
-                table['Region'] = region
-                route_tables.append(table)
+            try:
+                response = client.describe_route_tables()
+                for table in response['RouteTables']:
+                    table['Region'] = region
+                    route_tables.append(table)
+            except ClientError as error:
+                code = error.response['Error']['Code']
+                print('FAILURE: ')
+                if code == 'UnauthorizedOperation':
+                    print('  Access denied to DescribeRouteTables.')
+                else:
+                    print('  ' + code)
+                print('    Skipping route table enumeration...')
+                args.route_tables = False
             print('  {} route table(s) found.'.format(len(route_tables)))
             all_route_tables += route_tables
 
         # Subnets
         if args.subnets:
-            response = client.describe_subnets()
-            for subnet in response['Subnets']:
-                subnet['Region'] = region
-                subnets.append(subnet)
+            try:
+                response = client.describe_subnets()
+                for subnet in response['Subnets']:
+                    subnet['Region'] = region
+                    subnets.append(subnet)
+            except ClientError as error:
+                code = error.response['Error']['Code']
+                print('FAILURE: ')
+                if code == 'UnauthorizedOperation':
+                    print('  Access denied to DescribeSubnets.')
+                else:
+                    print('  ' + code)
+                print('    Skipping subnet enumeration...')
+                args.subnets = False
             print('  {} subnet(s) found.'.format(len(subnets)))
             all_subnets += subnets
 
         # VPCs
         if args.vpcs:
-            response = client.describe_vpcs()
-            for vpc in response['Vpcs']:
-                vpc['Region'] = region
-                vpcs.append(vpc)
+            try:
+                response = client.describe_vpcs()
+                for vpc in response['Vpcs']:
+                    vpc['Region'] = region
+                    vpcs.append(vpc)
+            except ClientError as error:
+                code = error.response['Error']['Code']
+                print('FAILURE: ')
+                if code == 'UnauthorizedOperation':
+                    print('  Access denied to DescribeVPCs.')
+                else:
+                    print('  ' + code)
+                print('    Skipping VPC enumeration...')
+                args.vpcs = False
             print('  {} VPC(s) found.'.format(len(vpcs)))
             all_vpcs += vpcs
 
@@ -440,9 +408,20 @@ def main(args, pacu_main):
             next_token = False
             while (response is None or 'NextToken' in response):
                 if next_token is False:
-                    response = client.describe_vpc_endpoints(
-                        MaxResults=1000
-                    )
+                    try:
+                        response = client.describe_vpc_endpoints(
+                            MaxResults=1000
+                        )
+                    except ClientError as error:
+                        code = error.response['Error']['Code']
+                        print('FAILURE: ')
+                        if code == 'UnauthorizedOperation':
+                            print('  Access denied to DescribeVPCEndpoints.')
+                        else:
+                            print('  ' + code)
+                        print('    Skipping VPC endpoint enumeration...')
+                        args.vpc_endpoints = False
+                        break
                 else:
                     response = client.describe_vpc_endpoints(
                         NextToken=next_token,
@@ -462,7 +441,18 @@ def main(args, pacu_main):
             next_token = False
             while (response is None or 'NextToken' in response):
                 if next_token is False:
-                    response = client.describe_launch_templates()
+                    try:
+                        response = client.describe_launch_templates()
+                    except ClientError as error:
+                        code = error.response['Error']['Code']
+                        print('FAILURE: ')
+                        if code == 'UnauthorizedOperation':
+                            print('  Access denied to DescribeLaunchTemplates.')
+                        else:
+                            print('  ' + code)
+                        print('    Skipping launch template enumeration...')
+                        args.launch_templates = False
+                        break
                 else:
                     response = client.describe_launch_templates(
                         NextToken=next_token
@@ -474,8 +464,6 @@ def main(args, pacu_main):
                     launch_templates.append(template)
             print('  {} launch template(s) found.'.format(len(launch_templates)))
             all_launch_templates += launch_templates
-
-        print()  # Break the line after each region. This isn't on the end of another print because they won't always be all used and isn't before the region print because it would double break lines at the beginning
 
     gathered_data = {
         'Instances': all_instances,
@@ -510,6 +498,7 @@ def main(args, pacu_main):
     if any([args.instances, args.security_groups, args.elastic_ips, args.customer_gateways, args.dedicated_hosts, args.network_acls, args.nat_gateways, args.network_interfaces, args.route_tables, args.subnets, args.vpcs, args.vpc_endpoints]):
         return gathered_data
     else:
+        print('No data successfully enumerated.\n')
         return None
 
 

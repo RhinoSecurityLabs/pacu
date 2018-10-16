@@ -52,17 +52,6 @@ def main(args, pacu_main):
 
     client = pacu_main.get_boto3_client('ec2', 'us-east-1')
 
-    # Check permissions before hammering through each region
-    try:
-        client.authorize_security_group_ingress(
-            DryRun=True
-        )
-    except ClientError as error:
-        if error.response['Error']['Code'] == 'UnauthorizedOperation':
-            print('FAILURE: ')
-            print('  MISSING NEEDED PERMISSIONS')
-            return
-
     if args.groups is not None:
         groups_and_regions = args.groups.split(',')
         for group in groups_and_regions:
@@ -73,7 +62,7 @@ def main(args, pacu_main):
     else:
         if fetch_data(['EC2', 'SecurityGroups'], module_info['prerequisite_modules'][0], '--security-groups') is False:
             print('FAILURE')
-            print('  SUB-MODULE EXECUTION FAILED')
+            print('  Sub-module execution failed.')
             return
         groups = session.EC2['SecurityGroups']
     summary_data['BackdooredCount'] = 0
@@ -93,16 +82,16 @@ def main(args, pacu_main):
             )
             print('    SUCCESS')
             summary_data['BackdooredCount'] += 1
-        except ClientError as error:
-            print('    FAILURE: ')
-            error_code = error.response['Error']['Code']
-            if error_code == 'UnauthorizedOperation':
-                print('      MISSING NEEDED PERMISSIONS')
-            elif error_code == 'InvalidPermission.Duplicate':
-                print('      RULE ALREADY EXISTS')
+         except ClientError as error:
+            code = error.response['Error']['Code']
+            print('FAILURE: ')
+            if code == 'UnauthorizedOperation':
+                print('  Access denied to AuthorizeSecurityGroupIngress.')
+                break
+            elif code == 'InvalidPermission.Duplicate':
+                print('      Rule already exists.')
             else:
-                print('      UNKNOWN:')
-                print('        {}'.format(error.response['Error']['Code']))
+                print('  ' + code)
     return summary_data
 
 

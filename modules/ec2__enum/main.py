@@ -507,7 +507,6 @@ def main(args, pacu_main):
     # Add regions to gathered_data for summary output
     gathered_data['regions'] = regions
 
-
     if any([args.instances, args.security_groups, args.elastic_ips, args.customer_gateways, args.dedicated_hosts, args.network_acls, args.nat_gateways, args.network_interfaces, args.route_tables, args.subnets, args.vpcs, args.vpc_endpoints]):
         return gathered_data
     else:

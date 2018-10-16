@@ -89,7 +89,6 @@ def main(args, pacu_main):
             print("Unable to get Spend Data: {}".format(e))
             account_spend = "<ClientError>"
 
-
     try:
         org_client = pacu_main.get_boto3_client('organizations')
         org_response = org_client.describe_organization()
@@ -101,7 +100,6 @@ def main(args, pacu_main):
         else:
             print("Unable to get Organization Data: {}".format(e))
             org_data['error'] = "Error Getting Organization Data"
-
 
     account_data = {
         'account_id': account_id,

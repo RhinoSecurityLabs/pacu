@@ -138,15 +138,6 @@ def main(args, pacu_main):
                         region,
                         base64.b64decode(user_data['Value']).decode('utf-8')
                     )
-                    print('  {}@{}: User Data found'.format(instance_id, region))
-
-                    # Write to the "all" file
-                    with open('sessions/{}/downloads/ec2_user_data/all_user_data.txt'.format(session.name), 'a+') as data_file:
-                        data_file.write(formatted_user_data)
-                    # Write to the individual file
-                    with open('sessions/{}/downloads/ec2_user_data/{}.txt'.format(session.name, instance_id), 'w+') as data_file:
-                        data_file.write(formatted_user_data.replace('\\t', '\t').replace('\\n', '\n').rstrip())
-                    summary_data['instance_downloads'] += 1
                 except UnicodeDecodeError as error:
                     if 'codec can\'t decode byte 0x8b' in str(error):
                         decoded = base64.b64decode(user_data['Value'])
@@ -157,9 +148,18 @@ def main(args, pacu_main):
                             decompressed.decode('utf-8')
                         )
                         was_unzipped = True
+
                 print('  {}@{}: User Data found'.format(instance_id, region))
                 if was_unzipped:
                     print('    Gzip decoded the User Data')
+
+                # Write to the "all" file
+                with open('sessions/{}/downloads/ec2_user_data/all_user_data.txt'.format(session.name), 'a+') as data_file:
+                    data_file.write(formatted_user_data)
+                # Write to the individual file
+                with open('sessions/{}/downloads/ec2_user_data/{}.txt'.format(session.name, instance_id), 'w+') as data_file:
+                    data_file.write(formatted_user_data.replace('\\t', '\t').replace('\\n', '\n').rstrip())
+                summary_data['instance_downloads'] += 1
             else:
                 print('  {}@{}: No User Data found'.format(instance_id, region))
         print()
@@ -188,14 +188,28 @@ def main(args, pacu_main):
 
             for version in all_versions:
                 if version['LaunchTemplateData'].get('UserData'):
-                    user_data = version['LaunchTemplateData']['UserData']
-                    formatted_user_data = '{}-version-{}@{}:\n{}\n\n'.format(
-                        template_id,
-                        version['VersionNumber'],
-                        region,
-                        base64.b64decode(user_data).decode('utf-8')
-                    )
+                    try:
+                        was_unzipped = False
+                        user_data = version['LaunchTemplateData']['UserData']
+                        formatted_user_data = '{}-version-{}@{}:\n{}\n\n'.format(
+                            template_id,
+                            version['VersionNumber'],
+                            region,
+                            base64.b64decode(user_data).decode('utf-8')
+                        )
+                    except UnicodeDecodeError as error:
+                        if 'codec can\'t decode byte 0x8b' in str(error):
+                            decoded = base64.b64decode(user_data['Value'])
+                            decompressed = gzip.decompress(decoded)
+                            formatted_user_data = '{}@{}:\n{}\n\n'.format(
+                                instance_id,
+                                region,
+                                decompressed.decode('utf-8')
+                            )
+                            was_unzipped = True
                     print('  {}-version-{}@{}: User Data found'.format(template_id, version['VersionNumber'], region))
+                    if was_unzipped:
+                        print('    Gzip decoded the User Data')
 
                     # Write to the "all" file
                     with open('sessions/{}/downloads/ec2_user_data/all_user_data.txt'.format(session.name), 'a+') as data_file:
@@ -204,7 +218,6 @@ def main(args, pacu_main):
                     with open('sessions/{}/downloads/ec2_user_data/{}-version-{}.txt'.format(session.name, template_id, version['VersionNumber']), 'w+') as data_file:
                         data_file.write(formatted_user_data.replace('\\t', '\t').replace('\\n', '\n').rstrip())
                     summary_data['template_downloads'] += 1
-
                 else:
                     print('  {}-version-{}@{}: No User Data found'.format(template_id, version['VersionNumber'], region))
         print()

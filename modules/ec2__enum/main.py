@@ -132,7 +132,7 @@ def main(args, pacu_main):
         vpc_endpoints = []
         launch_templates = []
 
-        if any([args.instances, args.security_groups, args.elastic_ips, args.customer_gateways, args.dedicated_hosts, args.network_acls, args.nat_gateways, args.network_interfaces, args.route_tables, args.subnets, args.vpcs, args.vpc_endpoints]):
+        if any([args.instances, args.security_groups, args.elastic_ips, args.customer_gateways, args.dedicated_hosts, args.network_acls, args.nat_gateways, args.network_interfaces, args.route_tables, args.subnets, args.vpcs, args.vpc_endpoints, args.launch_templates]):
             print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('ec2', region)
 
@@ -495,7 +495,7 @@ def main(args, pacu_main):
     # Add regions to gathered_data for summary output
     gathered_data['regions'] = regions
 
-    if any([args.instances, args.security_groups, args.elastic_ips, args.customer_gateways, args.dedicated_hosts, args.network_acls, args.nat_gateways, args.network_interfaces, args.route_tables, args.subnets, args.vpcs, args.vpc_endpoints]):
+    if any([args.instances, args.security_groups, args.elastic_ips, args.customer_gateways, args.dedicated_hosts, args.network_acls, args.nat_gateways, args.network_interfaces, args.route_tables, args.subnets, args.vpcs, args.vpc_endpoints, args.launch_templates]):
         return gathered_data
     else:
         print('No data successfully enumerated.\n')

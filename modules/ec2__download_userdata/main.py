@@ -110,27 +110,23 @@ def main(args, pacu_main):
                 break
 
             if 'Value' in user_data.keys():
-                try:
-                    was_unzipped = False
+                decoded = base64.b64decode(user_data['Value'])
+
+                if decoded[0] == 139:  # Byte \x8b (139) indicates gzip compressed content
+                    decompressed = gzip.decompress(decoded)
                     formatted_user_data = '{}@{}:\n{}\n\n'.format(
                         instance_id,
                         region,
-                        base64.b64decode(user_data['Value']).decode('utf-8')
+                        decompressed.decode('utf-8', 'backslashreplace')
                     )
-                except UnicodeDecodeError as error:
-                    if 'codec can\'t decode byte 0x8b' in str(error):
-                        decoded = base64.b64decode(user_data['Value'])
-                        decompressed = gzip.decompress(decoded)
-                        formatted_user_data = '{}@{}:\n{}\n\n'.format(
-                            instance_id,
-                            region,
-                            decompressed.decode('utf-8')
-                        )
-                        was_unzipped = True
+                else:
+                    formatted_user_data = '{}@{}:\n{}\n\n'.format(
+                        instance_id,
+                        region,
+                        decoded.decode('utf-8', 'backslashreplace')
+                    )
 
                 print('  {}@{}: User Data found'.format(instance_id, region))
-                if was_unzipped:
-                    print('    Gzip decoded the User Data')
 
                 # Write to the "all" file
                 with open('sessions/{}/downloads/ec2_user_data/all_user_data.txt'.format(session.name), 'a+') as data_file:

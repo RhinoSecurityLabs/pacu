@@ -4,7 +4,7 @@ pysocks==1.6.8
 s3transfer==0.1.13
 flake8==3.5.0
 pytz==2018.5
-requests==2.18.4
+requests==2.20.0
 urllib3==1.22
 SQLAlchemy==1.2.8
 SQLAlchemy-Utils==0.33.3

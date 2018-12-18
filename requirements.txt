@@ -5,6 +5,6 @@ s3transfer==0.1.13
 flake8==3.5.0
 pytz==2018.5
 requests==2.18.4
-urllib3==1.22
+urllib3~=1.23
 SQLAlchemy==1.2.8
 SQLAlchemy-Utils==0.33.3

@@ -1161,7 +1161,7 @@ class Main:
                 print('External dependencies: {}\n'.format(module.module_info['external_dependencies']))
 
             parser_help = module.parser.format_help()
-            print(parser_help.replace(os.path.basename(__file__), 'exec {}'.format(module.module_info['name']), 1))
+            print(parser_help.replace(os.path.basename(__file__), 'run {}'.format(module.module_info['name']), 1))
             return
 
         else:

@@ -81,8 +81,9 @@ def main(args, pacu_main):
         # is also None
         if fetch_data(['EC2', 'LaunchTemplates'], module_info['prerequisite_modules'][0], '--launch-templates') is False:
             print('Pre-req module not run successfully. Exiting...')
-            return None
-        templates = session.EC2['LaunchTemplates']
+            templates = []
+        else:
+            templates = session.EC2['LaunchTemplates']
 
     if not os.path.exists('sessions/{}/downloads/ec2_user_data/'.format(session.name)):
         os.makedirs('sessions/{}/downloads/ec2_user_data/'.format(session.name))
@@ -104,10 +105,10 @@ def main(args, pacu_main):
                 print('FAILURE: ')
                 if code == 'AccessDenied':
                     print('  Access denied to DescribeInstanceAttribute.')
+                    print('Skipping the rest of the instances...')
+                    break
                 else:
                     print('  ' + code)
-                print('Skipping the rest of the instances...')
-                break
 
             if 'Value' in user_data.keys():
                 decoded = base64.b64decode(user_data['Value'])
@@ -160,10 +161,10 @@ def main(args, pacu_main):
                 print('FAILURE: ')
                 if code == 'AccessDenied':
                     print('  Access denied to DescribeLaunchTemplateVersions.')
+                    print('Skipping the rest of the launch templates...\n')
+                    break
                 else:
                     print('  ' + code)
-                print('Skipping the rest of the launch templates...\n')
-                break
 
             while response.get('NextToken'):
                 response = client.describe_launch_template_versions(

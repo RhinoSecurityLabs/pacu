@@ -906,6 +906,10 @@ class Main:
                                                   default
             swap_keys                           Change the currently active AWS key to another key that has
                                                   previously been set for this session
+            import_keys <profile name>|--all    Import AWS keys from the AWS CLI credentials file (located
+                                                  at ~/.aws/credentials) to the current sessions database. 
+                                                  Enter the name of a profile you would like to import or 
+                                                  supply --all to import all the credentials in the file.
             exit/quit                           Exit Pacu
 
         Other command info:
@@ -977,7 +981,7 @@ class Main:
 
     def update_regions(self):
         py_executable = sys.executable
-        # Update boto3 and botocore to fetch the latest version of the AWS region_list
+        # Update botocore to fetch the latest version of the AWS region_list
         try:
             self.print('  Fetching latest botocore...\n')
             subprocess.run([py_executable, '-m', 'pip', 'install', '--upgrade', 'botocore'])
@@ -1117,7 +1121,7 @@ class Main:
         elif command_name == 'list' or command_name == 'ls':
             print('\n    list/ls\n        List all modules\n')
         elif command_name == 'import_keys':
-            print('\n    import_keys <profile name>|--all\n      Import AWS keys from the AWS CLI credentials file (Located at ~/.aws/credentials) to the current sessions database. Enter the name of a profile you would like to import or supply --all to import all the credentials in the file.\n')
+            print('\n    import_keys <profile name>|--all\n      Import AWS keys from the AWS CLI credentials file (located at ~/.aws/credentials) to the current sessions database. Enter the name of a profile you would like to import or supply --all to import all the credentials in the file.\n')
         elif command_name == 'aws':
             print('\n    aws <command>\n        Use the AWS CLI directly. This command runs in your local shell to use the AWS CLI. Warning: The AWS CLI\'s authentication is not related to Pacu. Be careful to ensure that you are using the keys you want when using the AWS CLI. It is suggested to use AWS CLI profiles to help solve this problem\n')
         elif command_name == 'search':

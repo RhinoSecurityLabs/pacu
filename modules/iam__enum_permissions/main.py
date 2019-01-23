@@ -23,7 +23,7 @@ module_info = {
     'one_liner': 'Tries to get a confirmed list of permissions for the current (or all) user(s).',
 
     # Description about what the module does and how it works
-    'description': 'This module will attempt to use IAM APIs to enumerate a confirmed list of IAM permissions for the current user. This is done by checking attached and inline policies for the user and the groups they are in.',
+    'description': 'This module will attempt to use IAM APIs to enumerate a confirmed list of IAM permissions for users/roles in the account. By default, the owner of the active set of keys is targeted. This is done by checking attached and inline policies for the user and the groups they are in.',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['IAM'],
@@ -39,9 +39,9 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--all-users', required=False, default=False, action='store_true', help='Run this module against every user in the account and store the results to ./sessions/[current_session_name]/downloads/confirmed_permissions/user-[user_name].json. This data can then be run against the privesc_scan module with the --offline flag enabled.')
+parser.add_argument('--all-users', required=False, default=False, action='store_true', help='Run this module against every user in the account and store the results to ./sessions/[current_session_name]/downloads/confirmed_permissions/user-[user_name].json. This data can then be run against the iam__privesc_scan module with the --offline flag enabled.')
 parser.add_argument('--user-name', required=False, default=None, help='A single user name of a user to run this module against. By default, the active AWS keys will be used.')
-parser.add_argument('--all-roles', required=False, default=False, action='store_true', help='Run this module against every role in the account and store the results to ./sessions/[current_session_name]/downloads/confirmed_permissions/role-[role_name].json. This data can then be run against the privesc_scan module with the --offline flag enabled.')
+parser.add_argument('--all-roles', required=False, default=False, action='store_true', help='Run this module against every role in the account and store the results to ./sessions/[current_session_name]/downloads/confirmed_permissions/role-[role_name].json. This data can then be run against the iam__privesc_scan module with the --offline flag enabled.')
 parser.add_argument('--role-name', required=False, default=None, help='A single role name of a role to run this module against. By default, the active AWS keys will be used.')
 
 

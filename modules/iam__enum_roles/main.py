@@ -100,7 +100,7 @@ def main(args, pacu_main):
                     DurationSeconds=43200
                 )
 
-                print('  Successfully assumed role for 12 hours: {}\n'.format(role_arn))
+                print('  Successfully assumed role for 12 hours: {}\n'.format(role))
 
                 response.pop('ResponseMetadata', None)
                 print(response)
@@ -117,7 +117,7 @@ def main(args, pacu_main):
                         DurationSeconds=3600
                     )
 
-                    print('  Successfully assumed role for 1 hour: {}\n'.format(role_arn))
+                    print('  Successfully assumed role for 1 hour: {}\n'.format(role))
 
                     response.pop('ResponseMetadata', None)
                     print(response)

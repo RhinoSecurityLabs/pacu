@@ -89,7 +89,7 @@ def main(args, pacu_main):
     # This check will be false if the user declines to run the pre-requisite
     # module or it fails. Depending on the module, you may still want to
     # continue execution, so building the check is on you as a developer.
-    if fetch_data(['EC2', 'SecurityGroups'], 'enum_ec2_sec_groups', '') is False:
+    if fetch_data(['EC2', 'SecurityGroups'], 'ec2__enum', '--security-groups') is False:
         print('Pre-req module not run successfully. Exiting...')
         return
 

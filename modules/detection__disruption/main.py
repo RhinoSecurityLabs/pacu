@@ -17,7 +17,7 @@ module_info = {
     'one_liner': 'Disables, deletes, or minimizes various logging/monitoring services.',
 
     # Full description about what the module does and how it works
-    'description': 'This module will take enumerated CloudTrail trails, GuardDuty detectors, various Config settings, CloudWatch alarms, and VPC flow logs and present you with the option of disabling or deleting each one. For CloudTrail, you also have the option of minimizing it. Minimizing a trail leaves it enabled, but changes all the settings to their very basic level. These changes include: removing the associated SNS topic, disabling global service event logging, disabling multi-regional log collection, disabling log file validation, and removing the associated CloudWatch log group/role. The idea of this is to minimize the amount of logging in the environment without calling dangerous APIs like disable or delete.',
+    'description': 'This module will take enumerated CloudTrail trails, GuardDuty detectors, various Config settings, CloudWatch alarms, and VPC flow logs and present you with the option of disabling or deleting each one. For CloudTrail, you also have the option of minimizing it. Minimizing a trail leaves it enabled, but changes all the settings to their very basic level. These changes include: removing the associated SNS topic, disabling global service event logging, disabling multi-regional log collection, disabling log file validation, removing the associated CloudWatch log group/role, and disabling log file encryption. The idea of this is to minimize the amount of logging in the environment without calling dangerous APIs like disable or delete.',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['GuardDuty', 'CloudTrail', 'EC2', 'Config', 'monitoring'],  # CloudWatch needs to be "monitoring" and VPC needs to be "EC2" here for "ls" to work
@@ -290,7 +290,8 @@ def main(args, pacu_main):
                                 IsMultiRegionTrail=False,
                                 EnableLogFileValidation=False,
                                 CloudWatchLogsLogGroupArn='',
-                                CloudWatchLogsRoleArn=''
+                                CloudWatchLogsRoleArn='',
+                                KmsKeyId=''
                             )
                             print('        Successfully minimized trail {}!\n'.format(trail['Name']))
                             summary_data['cloudtrail']['minimized'] += 1

@@ -1,3 +1,16 @@
+####################################################################
+#                                                                  #
+#                         MODULE ARCHIVED                          #
+#                                                                  #
+#   Reason: AWS implemented changes to the STS AssumeRole API so   #
+#       that it no longer returns different verbose error messages #
+#       depending on whether a role exists or not, so this method  #
+#       of enumeration has been patched. For a new method that     #
+#       does the exact same thing, look at the iam__enum_roles     #
+#       module.                                                    #
+#                                                                  #
+####################################################################
+
 #!/usr/bin/env python3
 import argparse
 import botocore

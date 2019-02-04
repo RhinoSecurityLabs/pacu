@@ -9,7 +9,7 @@ check_python_version() {
 
     echo "$PYTHON_VERSION"
 
-    # This ensures the Python version is 3.6 or higher. https://regex101.com/
+    # This ensures the Python version is 3.5 or higher. https://regex101.com/
     VERSION_REGEX="^Python\ ((3\.[^0-4])|(3\.[1-9][0-9]+)|([4-9]+\.\d+))(.*)$"
 
     if [[ $PYTHON_VERSION =~ $VERSION_REGEX ]]; then

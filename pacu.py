@@ -838,7 +838,7 @@ class Main:
                             # Runs ssh to connect to the PacuProxy server over SSH while forwarding a port,
                             # without trying to open a shell, but keeping a persistent connection, and
                             # redirecting stderr to stdout (which then comes back to PacuProxy)
-                            connect = 'DISPLAY=dummy SSH_ASKPASS=/dev/shm/{} setsid ssh -o UserKnownHostsFile=/dev/null -f -N -R 8001 -o StrictHostKeyChecking=no {}@{} >/dev/null 2>&1 &'.format(shm_name, proxy_ssh_username@proxy_ip)
+                            connect = 'DISPLAY=dummy SSH_ASKPASS=/dev/shm/{} setsid ssh -o UserKnownHostsFile=/dev/null -f -N -R 8001 -o StrictHostKeyChecking=no {}@{} >/dev/null 2>&1 &'.format(shm_name, proxy_ssh_username, proxy_ip)
 
                             # Combine the commands into a one-liner
                             connect_back_cmd = '{} && {} && {}'.format(create_shm, add_permissions, connect)

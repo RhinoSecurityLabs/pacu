@@ -827,7 +827,7 @@ class Main:
                                 shm_name = ''.join(random.choices(string.ascii_lowercase + string.ascii_uppercase + string.digits, k=5))
 
                             # Create an in-memory file in /dev/shm that contains the password
-                            create_shm = 'echo "echo {}" > /dev/shm/{}'.format(shm_name)
+                            create_shm = 'echo "echo {}" > /dev/shm/{}'.format(shm_name, shm_name)
 
                             # Give the file 777 permissions
                             add_permissions = 'chmod 777 /dev/shm/{}'.format(shm_name)

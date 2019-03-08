@@ -1264,12 +1264,12 @@ class Main:
         if key_alias is None:
             new_value = self.input('Key alias [{}]: '.format(session.key_alias))
         else:
-            new_value = key_alias
+            new_value = key_alias.strip()
             self.print('Key alias [{}]: {}'.format(session.key_alias, new_value), output='file')
         if str(new_value.strip().lower()) == 'c':
             session.key_alias = None
         elif str(new_value) != '':
-            session.key_alias = new_value
+            session.key_alias = new_value.strip()
 
         # Access key ID
         if key_alias is None:
@@ -1280,7 +1280,7 @@ class Main:
         if str(new_value.strip().lower()) == 'c':
             session.access_key_id = None
         elif str(new_value) != '':
-            session.access_key_id = new_value
+            session.access_key_id = new_value.strip()
 
         # Secret access key (should not be entered in log files)
         if key_alias is None:
@@ -1294,7 +1294,7 @@ class Main:
         if str(new_value.strip().lower()) == 'c':
             session.secret_access_key = None
         elif str(new_value) != '':
-            session.secret_access_key = new_value
+            session.secret_access_key = new_value.strip()
 
         # Session token (optional)
         if key_alias is None:
@@ -1307,7 +1307,7 @@ class Main:
         if str(new_value.strip().lower()) == 'c':
             session.session_token = None
         elif str(new_value) != '':
-            session.session_token = new_value
+            session.session_token = new_value.strip()
 
         self.database.add(session)
 

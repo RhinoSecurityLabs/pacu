@@ -13,9 +13,9 @@ module_info = {
 
     'one_liner': 'Checks if the active set of keys are known to be honeytokens.',
 
-    'description': 'This module checks if the active set of keys are known to be honeytokens and in the process, it enumerates some identifying information about the keys. All of this is done without ever leaving a log in CloudTrail, because it uses AWS AppStream 2.0 for enumeration, which CloudTrail does not support. Note: Even if you know your keys are not honey keys, this module can be used to enumerate information like the account ID, user/role path, user/role name, and role session name if there is one.',
+    'description': 'This module checks if the active set of keys are known to be honeytokens and in the process, it enumerates some identifying information about the keys. All of this is done without ever leaving a log in CloudTrail, because it uses AWS SimpleDB for enumeration, which CloudTrail does not support. Note: Even if you know your keys are not honey keys, this module can be used to enumerate information like the account ID, user/role path, user/role name, and role session name if there is one.',
 
-    'services': ['IAM', 'AppStream2'],
+    'services': ['IAM', 'SDB'],
 
     'prerequisite_modules': [],
 
@@ -26,7 +26,7 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--region', required=False, default='us-east-1', help='If for some reason you want to target a specific region for the AppStream 2.0 API call. This shouldn\'t ever matter, because the API call is not logged to CloudTrail. The default is "us-east-1".')
+parser.add_argument('--region', required=False, default='us-east-1', help='If for some reason you want to target a specific region for the SimpleDB API call. This shouldn\'t ever matter, because the API call is not logged to CloudTrail. The default is "us-east-1".')
 
 
 def main(args, pacu_main):
@@ -39,28 +39,19 @@ def main(args, pacu_main):
 
     data = {}
 
-    client = pacu_main.get_boto3_client('appstream', args.region)
+    client = pacu_main.get_boto3_client('sdb', args.region)
 
     print('Making test API request...\n')
 
     try:
-        # This API doesn't validate ARNs, so I can pass
-        # in a garbage string and it will say access
-        # denied and disclose my ARN
-        client.tag_resource(
-            ResourceArn='asdfghjksdafsdfsfasdfasflmnop',
-            Tags={
-                'asd': 'asd'
-            }
-        )
+        client.list_domains()
 
-        # This should be impossible...
-        data['summary'] = 'API call was successful somehow, this shouldn\'t be possible!'
+        data['summary'] = 'API call was successful! This means you have the SimpleDB ListDomains permission and we could not get your ARN from the API call.'
     except ClientError as error:
-        if error.response['Error']['Code'] == 'AccessDeniedException':
+        if error.response['Error']['Code'] == 'AuthorizationFailure':
             message = error.response['Error']['Message']
 
-            if 'arn:aws:iam::534261010715:user/canarytokens.com' in message:
+            if 'canarytokens.com' in message or 'canarytokens.org' in message:
                 data['summary'] = 'WARNING: Keys are confirmed honeytoken keys from Canarytokens.org! Do not use them!'
             elif 'arn:aws:iam::' in message and '/SpaceCrab/' in message:
                 data['summary'] = 'WARNING: Keys are confirmed honeytoken keys from SpaceCrab! Do not use them!'
@@ -69,9 +60,9 @@ def main(args, pacu_main):
             else:
                 data['summary'] = 'Keys appear to be real (not honeytoken keys)!'
 
-            match = re.search('arn:.* is not', message)
+            match = re.search(r'User \(arn:.*\) does not have permission to perform', message)
             if match:
-                data['arn'] = match.group()[:-7]
+                data['arn'] = match.group().split('(')[1].split(')')[0]
 
                 active_aws_key = session.get_active_aws_key(pacu_main.database)
 

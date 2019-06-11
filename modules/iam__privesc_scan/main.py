@@ -580,7 +580,11 @@ def main(args, pacu_main):
             print('Attempting confirmed privilege escalation methods...\n')
 
             for confirmed_method in checked_methods['Confirmed']:
-                response = methods[confirmed_method](pacu_main, print, input, fetch_data)
+                try:
+                    response = methods[confirmed_method](pacu_main, print, input, fetch_data)
+                except Exception as error:
+                    print('Uncaught error, counting this method as a fail: {}'.format(error))
+                    response = False
 
                 if response is False:
                     print('  Method failed. Trying next potential method...')
@@ -598,7 +602,11 @@ def main(args, pacu_main):
             print('Attempting potential privilege escalation methods...')
 
             for potential_method in checked_methods['Potential']:
-                response = methods[potential_method](pacu_main, print, input, fetch_data)
+                try:
+                    response = methods[potential_method](pacu_main, print, input, fetch_data)
+                except Exception as error:
+                    print('Uncaught error, counting this method as a fail: {}'.format(error))
+                    response = False
 
                 if response is False:
                     print('  Method failed. Trying next potential method...')

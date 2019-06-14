@@ -24,3 +24,9 @@ aws-sdk-go/1.1.2 (go1.6; darwin; amd64) terraform/0.6.13
 Boto3/1.7.48 Python/3.5.0 Windows/ Botocore/1.10.48
 Boto3/1.7.61 Python/3.5.0 Windows/ Botocore/1.10.62
 Boto3/1.7.48 Python/3.7.0 Windows/10 Botocore/1.10.48
+Boto3/1.9.149 Python/3.7.0 Windows/10 Botocore/1.12.168
+aws-cli/1.16.178 Python/3.7.0 Windows/10 botocore/1.12.168
+aws-cli/1.16.145 Python/3.6.7 Linux/4.15.0-45-generic botocore/1.12.135
+Boto3/1.9.168 Python/3.6.7 Linux/4.15.0-45-generic Botocore/1.12.168
+aws-cli/1.16.145 Python/3.6.7 Linux/4.15.0-45-generic botocore/1.12.168
+aws-cli/1.16.178 Python/3.6.7 Linux/4.15.0-45-generic botocore/1.12.168

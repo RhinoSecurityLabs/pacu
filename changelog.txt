@@ -1,6 +1,0 @@
-26/06/2018
-----------
-- Version 0.1 Beta Release
-    - Pacu core
-    - @Alex - list all modules by their written English names
-    - Like Module: Download CloudTrail Event History

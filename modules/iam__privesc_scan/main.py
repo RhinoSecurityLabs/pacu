@@ -1978,7 +1978,7 @@ def PassExistingRoleToNewDataPipeline(pacu_main, print, input, fetch_data):
 
 
 def CodeStarCreateProjectFromTemplate(pacu_main, print, input, fetch_data):
-    print('No auto-exploitation setup for CodeStarCreateProjectFromTemplate, visit the blog for a standalone exploitation script: @REPLACEME')
+    print('No auto-exploitation setup for CodeStarCreateProjectFromTemplate, visit the blog on this privilege escalation method for a standalone exploitation script: https://rhinosecuritylabs.com/aws/escalating-aws-iam-privileges-undocumented-codestar-api')
     return
 
 

@@ -30,3 +30,5 @@ aws-cli/1.16.145 Python/3.6.7 Linux/4.15.0-45-generic botocore/1.12.135
 Boto3/1.9.168 Python/3.6.7 Linux/4.15.0-45-generic Botocore/1.12.168
 aws-cli/1.16.145 Python/3.6.7 Linux/4.15.0-45-generic botocore/1.12.168
 aws-cli/1.16.178 Python/3.6.7 Linux/4.15.0-45-generic botocore/1.12.168
+aws-cli/1.16.157 Python/3.7.3 Darwin/18.6.0 botocore/1.12.147
+Boto3/1.9.125 Python/3.7.3 Darwin/18.6.0 Botocore/1.12.147

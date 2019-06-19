@@ -1227,7 +1227,7 @@ def AttachUserPolicy(pacu_main, print, input, fetch_data):
     try:
         active_aws_key = session.get_active_aws_key(pacu_main.database)
         client.attach_user_policy(
-            UserName=active_aws_key['UserName'],
+            UserName=active_aws_key.user_name,
             PolicyArn='arn:aws:iam::aws:policy/AdministratorAccess'
         )
         print('  Successfully attached an administrator policy to the current user! You should now have administrator access.\n')
@@ -1433,7 +1433,7 @@ def AddUserToGroup(pacu_main, print, input, fetch_data):
         active_aws_key = session.get_active_aws_key(pacu_main.database)
         client.add_user_to_group(
             GroupName=group_name,
-            UserName=active_aws_key['UserName']
+            UserName=active_aws_key.user_name
         )
         print('  Successfully added the current user to the group {}! You should now have access to the permissions associated with that group.'.format(group_name))
         return True

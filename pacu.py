@@ -1446,9 +1446,9 @@ class Main:
         if session.boto_user_agent is None:  # If there is no user agent set for this session already
             boto3_session = boto3.session.Session()
             ua = boto3_session._session.user_agent()
-            if 'kali' in ua.lower():  # If the local OS is Kali Linux
+            if 'kali' in ua.lower() or 'parrot' in ua.lower() or 'pentoo' in ua.lower():  # If the local OS is Kali/Parrot/Pentoo Linux
                 # GuardDuty triggers a finding around API calls made from Kali Linux, so let's avoid that...
-                self.print('Detected environment as Kali Linux. Modifying user agent to hide that from GuardDuty...')
+                self.print('Detected environment as one of Kali/Parrot/Pentoo Linux. Modifying user agent to hide that from GuardDuty...')
                 with open('./user_agents.txt', 'r') as file:
                     user_agents = file.readlines()
                 user_agents = [agent.strip() for agent in user_agents]  # Remove random \n's and spaces

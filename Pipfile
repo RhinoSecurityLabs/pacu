@@ -1,0 +1,17 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+
+[packages]
+awscli = "*"
+flake8 = "*"
+pytz = "*"
+requests = "*"
+PySocks = "*"
+SQLAlchemy-Utils = "*"
+
+[requires]
+python_version = "3.6"

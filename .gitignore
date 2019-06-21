@@ -499,6 +499,9 @@ paket-files/
 
 # End of https://www.gitignore.io/api/osx,linux,python,windows,sublimetext,visualstudio,visualstudiocodes
 
+# vscode
+.vscode
+
 *.env
 other/
 output/

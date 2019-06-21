@@ -23,22 +23,26 @@ check_python_version() {
 
 install_pip_requirements() {
     echo "[ + ] Installing Pacu's Python package dependencies . . ."
-    echo "[ $ ] pip3 install -r requirements.txt"
+    echo "[ $ ] pip3 install pipenv"
+    echo "[ $ ] pipenv install"
 
-    PIP_OUTPUT=$(pip3 install -r requirements.txt)
+    PIP_OUTPUT=$(pip3 install pipenv)
     PIP_ERROR_CODE=$?
+    PIPENV_OUTPUT=$(pipenv install)
+    PIPENV_ERROR_CODE=$?
 
     echo "$PIP_OUTPUT"
+    echo "$PIPENV_OUTPUT"
 
-    if [ $PIP_ERROR_CODE = '0' ]; then
+    if [ $PIP_ERROR_CODE = '0' ] && [ $PIPENV_ERROR_CODE = '0' ]; then
         echo "[ + ] Pip install finished. (exit $PIP_ERROR_CODE)"
     else
         echo "\\033[38;5;202m[ - ] Pip raised an error while installing Pacu's Python package dependencies."
         echo "All Python packages used by Pacu should be installed before pacu.py is run."
-        echo "It may be helpful to try running \`pip install -r requirements.txt\` directly."
+        echo "It may be helpful to try running \`pipenv install\` directly."
         echo "For assistance troubleshooting pip installation problems, please provide the"
         echo "developers with as much information about this error as possible, including all"
-        echo "text output by install.sh. (exit $PIP_ERROR_CODE)\\033[38;5;00m"
+        echo "text output by install.sh. (pip exit $PIP_ERROR_CODE) (pipenv exit $PIPENV_ERROR_CODE)\\033[38;5;00m"
         exit 1
     fi
 }

@@ -552,7 +552,8 @@ class Main:
             for command in commands:
                 print("Executing command: {} ...".format(command))
                 command_without_space = command.strip()
-                self.parse_command(command_without_space)
+                if command_without_space:
+                    self.parse_command(command_without_space)
             
     def parse_awscli_keys_import(self, command):
         if len(command) == 1:

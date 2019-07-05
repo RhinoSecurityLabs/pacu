@@ -1171,7 +1171,7 @@ class Main:
         elif command_name == 'exit' or command_name == 'quit':
             print('\n    exit/quit\n        Exit Pacu\n')
         elif command_name == 'load_commands_file':
-            print('\n    load_commands_file\n <commands_file>        Load an existing file with a set of commands to execute')
+            print('\n    load_commands_file <commands_file>\n        Load an existing file with a set of commands to execute')
         else:
             print('Command or module not found. Is it spelled correctly? Try using the module search function.')
         return

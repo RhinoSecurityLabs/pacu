@@ -37,8 +37,8 @@ except ModuleNotFoundError as error:
 
 class Main:
     COMMANDS = [
-        'aws', 'data', 'exec', 'exit', 'help', 'import_keys', 'list', 'ls',
-        'proxy', 'quit', 'regions', 'run', 'search', 'services', 'set_keys',
+        'aws', 'data', 'exec', 'exit', 'help', 'import_keys', 'list', 'load_commands_file',
+        'ls', 'proxy', 'quit', 'regions', 'run', 'search', 'services', 'set_keys',
         'set_regions', 'swap_keys', 'update_regions', 'whoami'
     ]
 
@@ -508,6 +508,8 @@ class Main:
             self.parse_awscli_keys_import(command)
         elif command[0] == 'list' or command[0] == 'ls':
             self.parse_list_command(command)
+        elif command[0] == 'load_commands_file':
+            self.parse_commands_from_file(command)
         elif command[0] == 'proxy':
             self.parse_proxy_command(command)
         elif command[0] == 'regions':
@@ -534,6 +536,25 @@ class Main:
             print('  Error: Unrecognized command')
         return
 
+    def parse_commands_from_file(self, command):
+        if len(command) == 1:
+            self.display_command_help('load_commands_file')
+            return 
+        
+        commands_file = command[1]
+
+        if not os.path.isfile(commands_file):
+            self.display_command_help('load_commands_file')
+            return 
+        
+        with open(commands_file, 'r+') as f:
+            commands = f.readlines()
+            for command in commands:
+                print("Executing command: {} ...".format(command))
+                command_without_space = command.strip()
+                if command_without_space:
+                    self.parse_command(command_without_space)
+            
     def parse_awscli_keys_import(self, command):
         if len(command) == 1:
             self.display_command_help('import_keys')
@@ -882,6 +903,7 @@ class Main:
 
         Pacu command info:
             list/ls                             List all modules
+            load_commands_file <file>           Load an existing file with list of commands to execute
             search [cat[egory]] <search term>   Search the list of available modules by name or category
             help                                Display this page of information
             help <module name>                  Display information about a module
@@ -1148,6 +1170,8 @@ class Main:
             print('\n    swap_keys\n        Change the currently active AWS key to another key that has previously been set for this session\n')
         elif command_name == 'exit' or command_name == 'quit':
             print('\n    exit/quit\n        Exit Pacu\n')
+        elif command_name == 'load_commands_file':
+            print('\n    load_commands_file <commands_file>\n        Load an existing file with a set of commands to execute')
         else:
             print('Command or module not found. Is it spelled correctly? Try using the module search function.')
         return

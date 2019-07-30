@@ -36,12 +36,17 @@ For a more detailed and user-friendly set of user instructions, please check out
 $ docker run -it rhinosecuritylabs/pacu:latest
 ```
 
-### Option 2: Run withtout default entrypoint
+### Option 2: Run without default entrypoint
 ```console
 $ docker run -it --entrypoint /bin/sh rhinosecuritylabs/pacu:latest
 ```
 
 ### Option 3: Run with AWS config and credentials
+
+<aside class="notice">
+Warning: Running this command will mount your local AWS configuration files into the Docker container when it is launched. This means that any user with access to the container will have access to your host computer's AWS credentials.
+</aside>
+
 ```console
 $ docker run -it -v ~/.aws:/root/.aws rhinosecuritylabs/pacu:latest
 ```

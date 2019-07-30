@@ -1,4 +1,14 @@
-# Pacu
+# Quick reference
+- **Where to get help**:
+[the Pacu Community Slack](https://join.slack.com/t/pacu-cloudgoat/shared_invite/enQtNDE3OTk0MjA3NTA2LTRmOTVmZjEyYjIzOTYxMGJmZDc4ZDVkOGU3ZmJlOWZhNzdkYWQ2ZmQxNTFjZThjMmJlMDFmMTU4NzUwMDM2NmY), or [Stack Overflow](https://stackoverflow.com/search?tab=newest&q=pacu)
+
+- **Where to file issues**:
+[https://github.com/RhinoSecurityLabs/pacu/issues](https://github.com/RhinoSecurityLabs/pacu/issues)
+
+- **Maintained by**:
+[Rhino Security Labs](https://rhinosecuritylabs.com/)
+
+# What is Pacu?
 
 Pacu is an open source AWS exploitation framework, designed for offensive security testing against cloud environments. Created and maintained by Rhino Security Labs, Pacu allows penetration testers to exploit configuration flaws within an AWS account, using modules to easily expand its functionality. Current modules enable a range of attacks, including user privilege escalation, backdooring of IAM users, attacking vulnerable Lambda functions, and much more.
 
@@ -16,6 +26,25 @@ Pacu is a fairly lightweight program, as it requires only [Python3.5+](https://w
 ```
 
 For a more detailed and user-friendly set of user instructions, please check out the Wiki's [installation guide](https://github.com/RhinoSecurityLabs/pacu/wiki/Installation).
+
+## How to use Pacu's Docker image
+
+[![Try in PWD](https://github.com/play-with-docker/stacks/raw/cff22438cb4195ace27f9b15784bbb497047afa7/assets/images/button.png)](http://play-with-docker.com?stack=https://raw.githubusercontent.com/RhinoSecurityLabs/pacu/3a1713dfdae93ec339f6a47a6d55f58ba4bb8326/docker_stack.yml)
+
+### Option 1: Run with default entrypoint which directly runs  Pacu
+```console
+$ docker run -it rhinosecuritylabs/pacu:latest
+```
+
+### Option 2: Run withtout default entrypoint
+```console
+$ docker run -it --entrypoint /bin/sh rhinosecuritylabs/pacu:latest
+```
+
+### Option 3: Run with AWS config and credentials
+```console
+$ docker run -it -v ~/.aws:/root/.aws rhinosecuritylabs/pacu:latest
+```
 
 ## Pacu's Modular Power
 

@@ -1,0 +1,12 @@
+version: "3.7"
+
+services:
+  pacu:
+    image: rhinosecuritylabs/pacu:latest
+    restart: always
+    tty: true
+    networks:
+      - redteam
+
+networks:
+  redteam:

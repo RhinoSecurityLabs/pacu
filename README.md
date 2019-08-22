@@ -29,7 +29,7 @@ For a more detailed and user-friendly set of user instructions, please check out
 
 ## How to use Pacu's Docker image
 
-[![Try in PWD](https://github.com/play-with-docker/stacks/raw/cff22438cb4195ace27f9b15784bbb497047afa7/assets/images/button.png)](http://play-with-docker.com?stack=https://raw.githubusercontent.com/RhinoSecurityLabs/pacu/3a1713dfdae93ec339f6a47a6d55f58ba4bb8326/docker_stack.yml)
+[![Try in PWD](https://github.com/play-with-docker/stacks/raw/cff22438cb4195ace27f9b15784bbb497047afa7/assets/images/button.png)](http://play-with-docker.com?stack=https://raw.githubusercontent.com/RhinoSecurityLabs/pacu/master/docker_stack.yml)
 
 ### Option 1: Run with default entrypoint which directly runs  Pacu
 ```console

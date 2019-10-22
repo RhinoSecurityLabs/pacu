@@ -113,7 +113,7 @@ def main(args, pacu_main):
             if 'Value' in user_data.keys():
                 decoded = base64.b64decode(user_data['Value'])
 
-                if decoded[0] == 139:  # Byte \x8b (139) indicates gzip compressed content
+                if decoded[0] == 0x1F and decoded[1] == 0x8B:  # Magic bytes \x1f\x8b indicate gzip compressed content
                     decompressed = gzip.decompress(decoded)
                     formatted_user_data = '{}@{}:\n{}\n\n'.format(
                         instance_id,
@@ -186,7 +186,7 @@ def main(args, pacu_main):
                         )
                     except UnicodeDecodeError as error:
                         if 'codec can\'t decode byte 0x8b' in str(error):
-                            decoded = base64.b64decode(user_data['Value'])
+                            decoded = base64.b64decode(user_data)
                             decompressed = gzip.decompress(decoded)
                             formatted_user_data = '{}@{}:\n{}\n\n'.format(
                                 instance_id,

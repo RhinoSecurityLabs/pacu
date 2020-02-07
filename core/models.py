@@ -107,6 +107,7 @@ class PacuSession(Base, ModelUpdateMixin):
         'DataPipeline',
         'DynamoDB',
         'EC2',
+        'ECS',
         'Glue',
         'GuardDuty',
         'IAM',
@@ -142,6 +143,7 @@ class PacuSession(Base, ModelUpdateMixin):
     DataPipeline = Column(JSONType, nullable=False, default=dict)
     DynamoDB = Column(JSONType, nullable=False, default=dict)
     EC2 = Column(JSONType, nullable=False, default=dict)
+    ECS = Column(JSONType, nullable=False, default=dict)
     Glue = Column(JSONType, nullable=False, default=dict)
     GuardDuty = Column(JSONType, nullable=False, default=dict)
     IAM = Column(JSONType, nullable=False, default=dict)

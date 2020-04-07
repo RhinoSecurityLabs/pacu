@@ -1,7 +1,9 @@
+#!/usr/bin/env python3
 from botocore.exceptions import ClientError
 
 import argparse
 import os
+import json
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -30,7 +32,7 @@ module_info = {
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
-parser.add_argument('--task_definitions',required=False,default=None,help='A comma seperated list of ECS task defintion IDs')
+parser.add_argument('--task_definitions',required=False,default=None,help='A comma separated list of ECS task defintion ARNs (arn:aws:ecs:us-east-1:273486424706:task-definition/first-run-task-definition:latest)')
 
 def main(args, pacu_main):
     session = session = pacu_main.get_active_session()
@@ -78,15 +80,14 @@ def main(args, pacu_main):
                     break
                 else:
                     print('  ' + code)
-            container_data = [x for x in task_def_data["taskDefinition"]["containerDefinitions"]]
             
             formatted_data = "{}@{}\n{}\n\n".format(
                 task_def,
                 region,
-                container_data
+                json.dumps(task_def_data['taskDefinition'], indent=4)
             )
            
-            with open('sessions/{}/downloads/ecs_task_def_data/all_user_data.txt'.format(session.name), 'a+') as data_file:
+            with open('sessions/{}/downloads/ecs_task_def_data/all_task_def.txt'.format(session.name), 'a+') as data_file:
                 data_file.write(formatted_data)
             with open('sessions/{}/downloads/ecs_task_def_data/{}.txt'.format(session.name, task_def.split('/')[1].split(':')[0]), 'w+') as data_file:
                 data_file.write(formatted_data.replace('\\t', '\t').replace('\\n', '\n').rstrip())

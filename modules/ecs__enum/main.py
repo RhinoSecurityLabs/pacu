@@ -73,8 +73,6 @@ def main(args, pacu_main):
             return
     else:
         regions = args.regions.split(',')
-
-    client = pacu_main.get_boto3_client('ecs', choice(regions))
     
     all_clusters = []
     all_containers = []
@@ -98,131 +96,130 @@ def main(args, pacu_main):
 
         if args.clusters:
             response = None
-            next_token = False
-            while (response is None or 'NextToken' in response):
-                if next_token is False:
-                    try:
-                        response = client.list_clusters()
-                    except ClientError as error:
-                        code = error.response['Error']['Code']
-                        print('FAILURE: ')
-                        if code == 'UnauthorizedOperation':
-                            print('  Access denied to ListClusters.')
-                        else:
-                            print('  ' + code)
-                        print('    Skipping cluster enumeration...')
-                        #args.security_groups = False
+            #next_token = False
+            while (response is None):# or 'NextToken' in response):
+                #if next_token is False:
+                try:
+                    response = client.list_clusters()
+                except ClientError as error:
+                    code = error.response['Error']['Code']
+                    print('FAILURE: ')
+                    if code == 'UnauthorizedOperation':
+                        print('  Access denied to ListClusters.')
+                    else:
+                        print('  ' + code)
+                    print('    Skipping cluster enumeration...')
                         
                 else:
                     response = client.list_clusters()
-                if 'NextToken' in response:
-                    next_token = response['NextToken']
+
                 for arn in response['clusterArns']:
                     clusters.append(arn)
             print('  {} cluster arn(s) found.'.format(len(clusters)))
             all_clusters += clusters
 
-            if args.containers:
-                for cluster_arn in clusters:
-                    response = None
-                    next_token = False
-                    while (response is None or 'NextToken' in response):
-                        if next_token is False:
-                            try:
-                                response = client.list_container_instances(
-                                    cluster=cluster_arn,
-                                    maxResults=100  # To prevent timeouts if there are too many instances
-                                )
-                            except ClientError as error:
-                                code = error.response['Error']['Code']
-                                print('FAILURE: ')
-                                if code == 'UnauthorizedOperation':
-                                    print('  Access denied to ListAttributes.')
-                                else:
-                                    print('  ' + code)
-                                print('  Skipping container enumeration...')
-                                args.containers = False
-                                break
-                        else:
+        if args.containers:
+            for cluster_arn in clusters:
+                response = None
+                next_token = False
+                while (response is None or 'NextToken' in response):
+                    if next_token is False:
+                        try:
                             response = client.list_container_instances(
                                 cluster=cluster_arn,
-                                maxResults=100,
-                                nextToken=next_token
+                                maxResults=100  # To prevent timeouts if there are too many instances
                             )
-                        if 'NextToken' in response:
-                            next_token = response['NextToken']
-                    for container in response['containerInstanceArns']:
-                        clusters.append(container)
+                        except ClientError as error:
+                            code = error.response['Error']['Code']
+                            print('FAILURE: ')
+                            if code == 'UnauthorizedOperation':
+                                print('  Access denied to ListContainerInstances.')
+                            else:
+                                print('  ' + code)
+                            print('  Skipping container enumeration...')
+                            args.containers = False
+                            break
+                    else:
+                        response = client.list_container_instances(
+                            cluster=cluster_arn,
+                            maxResults=100,
+                            nextToken=next_token
+                        )
+                    if 'NextToken' in response:
+                        next_token = response['NextToken']
                 
-                print('  {} container(s) found.'.format(len(containers)))
-                all_containers += clusters
+                    for container in response['containerInstanceArns']:
+                        containers.append(container)
+            
+            print('  {} container(s) found.'.format(len(containers)))
+            all_containers += containers
 
-            if args.services:
-                for cluster_arn in clusters:
-                    response = None
-                    next_token = False
-                    while (response is None or 'NextToken' in response):
-                        if next_token is False:
-                            try:
-                                response = client.list_services(
-                                    cluster=cluster_arn,
-                                    maxResults=100  # To prevent timeouts if there are too many instances
-                                )
-                            except ClientError as error:
-                                code = error.response['Error']['Code']
-                                print('FAILURE: ')
-                                if code == 'UnauthorizedOperation':
-                                    print('  Access denied to ListServices.')
-                                else:
-                                    print('  ' + code)
-                                print('  Skipping instance enumeration...')
-                                args.services = False
-                                break
-                        else:
+        if args.services:
+            for cluster_arn in clusters:
+                response = None
+                next_token = False
+                while (response is None or 'NextToken' in response):
+                    if next_token is False:
+                        try:
                             response = client.list_services(
                                 cluster=cluster_arn,
-                                maxResults=100,
-                                nextToken=next_token
+                                maxResults=100  # To prevent timeouts if there are too many instances
                             )
-                        if 'nextToken' in response:
-                            next_token = response['nextToken']
-                        for service_arns in response['serviceArns']:
-                            services.append(service_arns)
+                        except ClientError as error:
+                            code = error.response['Error']['Code']
+                            print('FAILURE: ')
+                            if code == 'UnauthorizedOperation':
+                                print('  Access denied to ListServices.')
+                            else:
+                                print('  ' + code)
+                            print('  Skipping instance enumeration...')
+                            args.services = False
+                            break
+                    else:
+                        response = client.list_services(
+                            cluster=cluster_arn,
+                            maxResults=100,
+                            nextToken=next_token
+                        )
+                    if 'nextToken' in response:
+                        next_token = response['nextToken']
+                    for service_arns in response['serviceArns']:
+                        services.append(service_arns)
 
-                print('  {} service(s) found.'.format(len(services)))
-                all_services += services
+            print('  {} service(s) found.'.format(len(services)))
+            all_services += services
 
-                if args.taskdef:
-                    response = None
-                    next_token = False
-                    while (response is None or 'nextToken' in response):
-                        if next_token is False:
-                            try:
-                                response = client.list_task_definitions(
-                                    maxResults=100  # To prevent timeouts if there are too many instances
-                                )
-                            except ClientError as error:
-                                code = error.response['Error']['Code']
-                                print('FAILURE: ')
-                                if code == 'UnauthorizedOperation':
-                                    print('  Access denied to DescribeInstances.')
-                                else:
-                                    print('  ' + code)
-                                print('  Skipping instance enumeration...')
-                                args.taskdef = False
-                                break
-                        else:
+            if args.taskdef:
+                response = None
+                next_token = False
+                while (response is None or 'nextToken' in response):
+                    if next_token is False:
+                        try:
                             response = client.list_task_definitions(
-                                maxResults=100,
-                                nextToken=next_token
+                                maxResults=100  # To prevent timeouts if there are too many instances
                             )
-                        if 'nextToken' in response:
-                            next_token = response['nextToken']
-                        for task_def in response['taskDefinitionArns']:
-                            task_defs.append(task_def)
+                        except ClientError as error:
+                            code = error.response['Error']['Code']
+                            print('FAILURE: ')
+                            if code == 'UnauthorizedOperation':
+                                print('  Access denied to ListTaskDefinitions.')
+                            else:
+                                print('  ' + code)
+                            print('  Skipping instance enumeration...')
+                            args.taskdef = False
+                            break
+                    else:
+                        response = client.list_task_definitions(
+                            maxResults=100,
+                            nextToken=next_token
+                        )
+                    if 'nextToken' in response:
+                        next_token = response['nextToken']
+                    for task_def in response['taskDefinitionArns']:
+                        task_defs.append(task_def)
 
-                    print('  {} task definition(s) found.'.format(len(task_defs)))
-                    all_task_defs += task_defs
+                print('  {} task definition(s) found.'.format(len(task_defs)))
+                all_task_defs += task_defs
 
     gathered_data = {
         'Clusters': all_clusters,
@@ -271,7 +268,7 @@ def summary(data, pacu_main):
         results.append('    {} total service(s) found.'.format(len(data['Services'])))
 
     if 'TaskDefinitions' in data:
-        results.append('    {} total instance(s) found.'.format(len(data['TaskDefinitions'])))
+        results.append('    {} total task definition(s) found.'.format(len(data['TaskDefinitions'])))
 
     return '\n'.join(results)
 

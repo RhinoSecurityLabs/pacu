@@ -1,7 +1,7 @@
 import datetime
 import json
 import copy
-
+#adding this comment so I can get rid of my silly commit message
 from sqlalchemy import (
     Boolean, CheckConstraint, Column, DateTime, ForeignKey, inspect, Integer, Text
 )
@@ -233,3 +233,6 @@ class PacuSession(Base, ModelUpdateMixin):
                     all_data[attribute.key] = attribute.value
 
         return remove_empty_from_dict(all_data)
+
+    
+   

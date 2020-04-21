@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 check_python_version() {
     echo "[ + ] Checking Python version . . ."
     echo "[ $ ] python3 --version"

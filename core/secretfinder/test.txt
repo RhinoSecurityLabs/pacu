@@ -1,0 +1,12 @@
+ #!/bin/bash
+        apt-get update
+        10.0.0.1
+        curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+        DEBIAN_FRONTEND=noninteractive apt-get -y install nodejs unzip
+        npm install http express needle command-line-args
+        cd /home/ubuntu
+        EXPORT KEY=klj1j32987sdklj398a76sfjl489s7fo;j3p
+        aws_access_key_id = AKIAY2JDZBMMYYCFKKFM
+        aws_secret_access_key = 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
+-----BEGIN RSA PRIVATE KEY-----
+        echo -e "\n* * * * * root node /home/ubuntu/app/ssrf-demo-app.js &\n* * * * * root sleep 10; node /home/ubuntu/app/ssrf-demo-app.js &\n* * * * * root sleep 20; node /home/ubuntu/app/ssrf-demo-app.js &\n* * * * * root sleep 30; node /home/ubuntu/app/ssrf-demo-app.js &\n* * * * * root sleep 40; node /home/ubuntu/app/ssrf-demo-app.js &\n* * * * * root sleep 50; node /home/ubuntu/app/ssrf-demo-app.js &\n" >> /etc/crontab

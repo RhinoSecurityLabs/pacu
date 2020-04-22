@@ -4,6 +4,7 @@ from copy import deepcopy
 from random import choice
 
 from botocore.exceptions import ClientError
+from core.secretfinder.utils import regex_checker, Color
 
 
 module_info = {
@@ -167,6 +168,9 @@ def main(args, pacu_main):
                     for instance in reservation['Instances']:
                         instance['Region'] = region
                         instances.append(instance)
+                        #Scan ec2 tags for secerts
+                        scan_tags(instance)
+
             print('  {} instance(s) found.'.format(len(instances)))
             all_instances += instances
 
@@ -501,6 +505,13 @@ def main(args, pacu_main):
         print('No data successfully enumerated.\n')
         return None
 
+def scan_tags(instance):
+
+    try:
+        tags = instance['Tags']
+        [Color.print(Color.GREEN, f'\t Secret in Tag: {tag["Value"]}') for tag in tags if regex_checker(tag['Value'])]
+    except:
+        return
 
 def summary(data, pacu_main):
     results = []

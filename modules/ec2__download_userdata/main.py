@@ -5,6 +5,7 @@ import os
 import gzip
 
 from botocore.exceptions import ClientError
+from core.secretfinder.utils import regex_checker, Color
 
 
 module_info = {
@@ -129,6 +130,9 @@ def main(args, pacu_main):
 
                 print('  {}@{}: User Data found'.format(instance_id, region))
 
+                # Check for secrets in User Data
+                find_secrets(formatted_user_data)
+                
                 # Write to the "all" file
                 with open('sessions/{}/downloads/ec2_user_data/all_user_data.txt'.format(session.name), 'a+') as data_file:
                     data_file.write(formatted_user_data)
@@ -213,6 +217,10 @@ def main(args, pacu_main):
 
     return summary_data
 
+
+def find_secrets(userdata):
+    detections = regex_checker(userdata)
+    [Color.print(Color.GREEN, f'\tDetected {itemkey}: {" ,".join(detections[itemkey])} ') for itemkey in detections]
 
 def summary(data, pacu_main):
     session = pacu_main.get_active_session()

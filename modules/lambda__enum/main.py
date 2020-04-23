@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 import argparse
+import requests
+import zipfile
+import os
+import re
+
+from core.secretfinder.utils import contains_secret, Color
 from botocore.exceptions import ClientError
 
 
@@ -29,13 +35,15 @@ module_info = {
     'external_dependencies': [],
 
     # Module arguments to autocomplete when the user hits tab
-    'arguments_to_autocomplete': ['--versions-all', '--regions'],
+    'arguments_to_autocomplete': ['--versions-all', '--regions', '--checksource'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 parser.add_argument('--versions-all', required=False, default=False, action='store_true', help='Grab all versions instead of just the latest')
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all session regions.')
+parser.add_argument('--checksource', required=False, default=False, action='store_true', help='Download and scan all lambda functions for secrets. Warning this could effect perforamce.' )
 
+SOURCE_ENTROPY_THRESHOLD = 3.8
 
 def fetch_lambda_data(client, func, key, print, **kwargs):
     caller = getattr(client, func)
@@ -68,6 +76,8 @@ def main(args, pacu_main):
     print = pacu_main.print
     get_regions = pacu_main.get_regions
     ######
+
+    
 
     if args.regions:
         regions = args.regions.split(',')
@@ -107,17 +117,69 @@ def main(args, pacu_main):
             func['Policy'] = fetch_lambda_data(client, 'get_policy', 'Policy', print, FunctionName=func_arn)
             if args.versions_all:
                 func['Versions'] = fetch_lambda_data(client, 'list_versions_by_function', 'Versions', print, FunctionName=func_arn)
+
+            # Check for secrets in data
+            check_evn_secrets(func)
+            if args.checksource:
+                check_source_secrets(session.name, func)
+            
         lambda_data['Functions'] += lambda_functions
         if lambda_functions:
             summary_data[region] = len(lambda_functions)
     session.update(pacu_main.database, Lambda=lambda_data)
+   
     return summary_data
 
 
 def summary(data, pacu_main):
     out = ''
     for region in sorted(data):
-        out += '  {} functions found in {}.\n'.format(data[region], region)
+        out += '  {} functions found in {}. View more information in the DB \n'.format(data[region], region)
     if not out:
         out = '  Nothing was enumerated'
     return out
+
+
+def check_evn_secrets(function):
+    try:
+        env_vars = function['Environment']['Variables']
+        [Color.print(Color.GREEN, f'\t[+] Secret (EVN): {key}= {env_vars[key]}') for key in env_vars if contains_secret(env_vars[key])]
+    except KeyError:
+        return
+
+def check_source_secrets(session_name, function):
+    pattern = "(#.*|//.*|\\\".*\\\"|'.*'|/\\*.*|\".*\")"
+
+    source_data = get_function_source(session_name, function)
+
+    for key in source_data:
+        for line in re.findall(pattern, source_data[key]):
+            [Color.print(Color.GREEN, f"\t[+] Secret (SOURCE): {line}") for word in line.split()
+                if contains_secret(word, SOURCE_ENTROPY_THRESHOLD)]
+
+
+def get_function_source(session_name, func):
+    try:
+        # Get Link and setup file name
+        fname = func['FunctionArn'].split(':')
+        fname = fname[len(fname)-1]
+
+        code_url = func['Code']['Location']
+
+        # Download File from URL
+        r = requests.get(code_url, stream=True)
+
+        # Write Zip to output file
+        fname = os.path.join(f'sessions/{session_name}/downloads', f'lambda_{fname}.zip')
+        zfile = open(fname, 'wb')
+        zfile.write(r.content)
+        zfile.close()
+
+        # Load Zip contents into memory
+        lambda_zip = zipfile.ZipFile(fname)
+
+        return {id: lambda_zip.read(name).decode("utf-8") for name in lambda_zip.namelist()}
+
+    except KeyError:
+        print(Color.RED, f'Error getting {fname} Source')
+

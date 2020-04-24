@@ -130,7 +130,7 @@ def main(args, pacu_main):
 
                 print('  {}@{}: User Data found'.format(instance_id, region))
 
-                # Check for secrets in User Data
+                #check for secerts 
                 find_secrets(formatted_user_data)
 
                 # Write to the "all" file
@@ -216,7 +216,6 @@ def main(args, pacu_main):
         print('No launch templates to target.\n')
 
     return summary_data
-
 
 def find_secrets(userdata):
     detections = regex_checker(userdata)

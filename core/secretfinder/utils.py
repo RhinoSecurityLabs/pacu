@@ -1,6 +1,7 @@
 import math
 import json
 import re
+import os
 
 class Color:
     GREEN = '\033[92m'
@@ -25,20 +26,30 @@ def shannon_entropy(data):
             entropy += - px * math.log(px, 2)
     return entropy
 
-def regex_checker(data):
+def regex_checker(userdata):
+
+    results = {}
+    __location__ = os.path.realpath(
+    os.path.join(os.getcwd(), os.path.dirname(__file__)))
+
     try:
-        f = open('regexs.json', 'r')
-        regexes = json.loads(f.read())
-        results = {}
-        for key in regexes:
-            regex = re.compile(regexes[key])
-            result = regex.findall(data)
+        f =open(os.path.join(__location__, 'regexs.json'))
+        data = f.read()
+        regexs = json.loads(data)
+
+        for key in regexs:
+            regex = re.compile(regexs[key])
+            result = regex.findall(userdata)
+            
             if result:
                 results[key] = result
-        return results
+                
+    except Exception as e:
+        raise e
 
-    except FileNotFoundError:
-        return FileNotFoundError
+    f.close()
+
+    return results
 
 def contains_secret(data, THRESHOLD=3.5):
     return shannon_entropy(data) > THRESHOLD

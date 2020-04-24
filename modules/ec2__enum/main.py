@@ -506,11 +506,9 @@ def main(args, pacu_main):
         return None
 
 def scan_tags(instance):
-    try:
-        tags = instance['Tags']
-        [Color.print(Color.GREEN, f'\t Secret in Tag: {tag["Value"]}') for tag in tags if regex_checker(tag['Value'])]
-    except:
-        return
+    tags = instance['Tags']
+    [Color.print(Color.GREEN, f'\t Tag discovered {tag["Key"]}: {tag["Value"]}') for tag in tags if regex_checker(tag['Value'])]
+
 
 def summary(data, pacu_main):
     results = []

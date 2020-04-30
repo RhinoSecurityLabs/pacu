@@ -234,3 +234,6 @@ class PacuSession(Base, ModelUpdateMixin):
                     all_data[attribute.key] = attribute.value
 
         return remove_empty_from_dict(all_data)
+
+    
+   

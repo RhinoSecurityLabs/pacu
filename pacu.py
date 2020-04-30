@@ -15,6 +15,8 @@ import threading
 import time
 import traceback
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import argparse
+import sys
 
 try:
     import requests
@@ -1638,7 +1640,80 @@ class Main:
 
         self.idle()
 
-    def run(self):
+    def run_cli(self, *args):
+        self.database = get_database_connection(settings.DATABASE_CONNECTION_PATH)
+        sessions = self.database.query(PacuSession).all() 
+
+        arg = args[0]
+
+        session = arg.session
+        module_name = arg.module_name
+        service = arg.data
+        list_mods = arg.list_modules
+        list_cmd = ["ls"]
+
+        pacu_help = arg.pacu_help
+        pacu_help_cmd = ["help"]
+        module_help = arg.module_info
+
+        if session is not None:
+            session_names = [x.name for x in sessions]
+
+            if session not in session_names:
+                print("Session could not be found. Exiting...")
+                self.exit()
+
+            session_index = session_names.index(session)
+            sessions[session_index].is_active = True
+
+        if module_name is not None:
+            module = ["exec", module_name]
+
+            if arg.module_args is not None:
+                args_list = arg.module_args.split(' ')
+                for i in args_list:
+                    if i != '':
+                        module.append(i)
+
+            if arg.exec == True:
+                self.exec_module(module)
+
+        if service is not None:
+            if service == "all":
+                service_cmd = ["data"]
+            else:
+                service_cmd = ["data", service.upper()]
+            self.parse_data_command(service_cmd)
+
+        if list_mods == True:
+            self.parse_list_command(list_cmd)
+
+        if pacu_help == True:
+            self.parse_help_command(pacu_help_cmd)
+
+        if arg.module_info == True:
+            if module_name is None:
+                print("Specify a module to get information on")
+            pacu_help_cmd.append(module_name)
+            self.parse_help_command(pacu_help_cmd)
+
+        if arg.set_regions is not None:
+            regions = arg.set_regions
+            regions.insert(0,"set_regions")
+            self.parse_set_regions_command(regions)
+
+        if arg.whoami == True:
+            self.print_key_info()
+        
+
+
+        
+
+        
+       
+
+
+    def run_gui(self):
         idle_ready = False
 
         while True:
@@ -1734,6 +1809,35 @@ class Main:
                 if not idle_ready:
                     print('Pacu is unable to start. Try backing up Pacu\'s sqlite.db file and deleting the old version. If the error persists, try reinstalling Pacu in a new directory.')
                     return
+
+    def run(self):
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--session', required=False, default=None, help="<session name>", metavar="")
+        parser.add_argument('--module-name', required=False, default=None, help="<module name>", metavar="")
+        parser.add_argument('--data', required=False,default=None, help="<service name/all>", metavar="")
+        parser.add_argument('--module-args', default=None, help="<--module-args=\"--regions us-east-1,us-east-1\">", metavar="")
+        parser.add_argument('--list-modules', action="store_true", help="List arguments")
+        parser.add_argument('--pacu-help', action="store_true",help="List the Pacu help window")
+        parser.add_argument('--module-info', action="store_true", help="Get information on a specific module, use --module-name")
+        parser.add_argument('--exec', action="store_true", help="exec module")
+        parser.add_argument('--set-regions',nargs="+", default=None, help="<region1 region2 ...> or <all> for all", metavar="")
+        parser.add_argument('--whoami', action="store_true", help="Display information on current IAM user")
+        args = parser.parse_args()
+
+        if any([args.session,args.data,args.module_args,args.exec,args.set_regions,args.whoami]):
+            if args.session is None:
+                print("When running Pacu from the CLI, a session is necessary")
+                exit()
+            self.run_cli(args)
+            
+        elif any([args.list_modules,args.pacu_help,args.module_info]):
+            self.run_cli(args)
+
+        else:
+            self.run_gui()
+
+            
+                    
 
 
 if __name__ == '__main__':

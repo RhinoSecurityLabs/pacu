@@ -1679,7 +1679,10 @@ class Main:
                 self.exec_module(module)
 
         if service is not None:
-            service_cmd = ["data", service]
+            if service == "all":
+                service_cmd = ["data"]
+            else:
+                service_cmd = ["data", service]
             self.parse_data_command(service_cmd)
 
         if list_mods == True:

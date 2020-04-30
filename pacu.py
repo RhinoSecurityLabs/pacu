@@ -1682,7 +1682,7 @@ class Main:
             if service == "all":
                 service_cmd = ["data"]
             else:
-                service_cmd = ["data", service]
+                service_cmd = ["data", service.upper()]
             self.parse_data_command(service_cmd)
 
         if list_mods == True:

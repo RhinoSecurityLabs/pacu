@@ -1648,7 +1648,7 @@ class Main:
 
         session = arg.session
         module_name = arg.module_name
-        service = arg.service
+        service = arg.data
         list_mods = arg.list_modules
         list_cmd = ["ls"]
 
@@ -1814,7 +1814,7 @@ class Main:
         parser = argparse.ArgumentParser()
         parser.add_argument('--session', required=False, default=None, help="<session name>", metavar="")
         parser.add_argument('--module-name', required=False, default=None, help="<module name>", metavar="")
-        parser.add_argument('--service', required=False,default=None, help="<service name>", metavar="")
+        parser.add_argument('--data', required=False,default=None, help="<service name/all>", metavar="")
         parser.add_argument('--module-args', default=None, help="<--module-args=\"--regions us-east-1,us-east-1\">", metavar="")
         parser.add_argument('--list-modules', action="store_true", help="List arguments")
         parser.add_argument('--pacu-help', action="store_true",help="List the Pacu help window")
@@ -1824,7 +1824,7 @@ class Main:
         parser.add_argument('--whoami', action="store_true", help="Display information on current IAM user")
         args = parser.parse_args()
 
-        if any([args.session,args.service,args.module_args,args.exec,args.set_regions,args.whoami]):
+        if any([args.session,args.data,args.module_args,args.exec,args.set_regions,args.whoami]):
             if args.session is None:
                 print("When running Pacu from the CLI, a session is necessary")
                 exit()

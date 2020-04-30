@@ -1656,23 +1656,24 @@ class Main:
         pacu_help_cmd = ["help"]
         module_help = arg.module_info
 
-        session_names = [x.name for x in sessions]
+        if session is not None:
+            session_names = [x.name for x in sessions]
 
-        if session not in session_names:
-            print("Session could not be found. Exiting...")
-            self.exit()
+            if session not in session_names:
+                print("Session could not be found. Exiting...")
+                self.exit()
 
-        session_index = session_names.index(session)
-        sessions[session_index].is_active = True
+            session_index = session_names.index(session)
+            sessions[session_index].is_active = True
 
         if module_name is not None:
-            print(module_name)
             module = ["exec", module_name]
 
             if arg.module_args is not None:
                 args_list = arg.module_args.split(' ')
                 for i in args_list:
-                    module.append(i)
+                    if i != '':
+                        module.append(i)
 
             if arg.exec == True:
                 self.exec_module(module)
@@ -1811,7 +1812,7 @@ class Main:
         parser.add_argument('--session', required=False, default=None, help="<session name>", metavar="")
         parser.add_argument('--module-name', required=False, default=None, help="<module name>", metavar="")
         parser.add_argument('--service', required=False,default=None, help="<service name>", metavar="")
-        parser.add_argument('--module-args', default=None, help="<\"--regions us-east-1,us-east-1\">", metavar="")
+        parser.add_argument('--module-args', default=None, help="<--module-args=\"--regions us-east-1,us-east-1\">", metavar="")
         parser.add_argument('--list-modules', action="store_true", help="List arguments")
         parser.add_argument('--pacu-help', action="store_true",help="List the Pacu help window")
         parser.add_argument('--module-info', action="store_true", help="Get information on a specific module, use --module-name")
@@ -1820,11 +1821,13 @@ class Main:
         parser.add_argument('--whoami', action="store_true", help="Display information on current IAM user")
         args = parser.parse_args()
 
-        if any([args.session,args.module_name,args.service,args.module_args,args.list_modules,args.pacu_help,args.module_info,args.exec,args.set_regions,args.whoami]):
+        if any([args.session,args.service,args.module_args,args.exec,args.set_regions,args.whoami]):
             if args.session is None:
                 print("When running Pacu from the CLI, a session is necessary")
                 exit()
+            self.run_cli(args)
             
+        elif any([args.list_modules,args.pacu_help,args.module_info]):
             self.run_cli(args)
 
         else:

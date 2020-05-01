@@ -182,5 +182,5 @@ def get_function_source(session_name, func):
         return {id: lambda_zip.read(name).decode("utf-8", errors='ignore') for name in lambda_zip.namelist()}
 
     except KeyError:
-        print(Color.RED, f'Error getting {fname} Source')
+        print(Color.RED, 'Error getting {fname} Source'.format(fname))
 

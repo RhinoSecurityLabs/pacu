@@ -219,7 +219,7 @@ def main(args, pacu_main):
 
 def find_secrets(userdata):
     detections = regex_checker(userdata)
-    [Color.print(Color.GREEN, f'\tDetected {itemkey}: {detections[itemkey]} ') for itemkey in detections]
+    [Color.print(Color.GREEN, '\tDetected {}: {}'.format(itemkey, detections[itemkey])) for itemkey in detections]
 
 def summary(data, pacu_main):
     session = pacu_main.get_active_session()

@@ -508,7 +508,7 @@ def main(args, pacu_main):
 def scan_tags(instance):
     try:
         tags = instance['Tags']
-        [Color.print(Color.GREEN, f'\t Tag discovered {tag["Key"]}: {tag["Value"]}') for tag in tags if regex_checker(tag['Value'])]
+        [Color.print(Color.GREEN, '\tTag discovered {}: {}'.format(tag["Key"], tag["Value"] )) for tag in tags if regex_checker(tag['Value'])]
 
     except KeyError:
         return

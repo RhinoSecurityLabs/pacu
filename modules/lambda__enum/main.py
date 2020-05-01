@@ -5,7 +5,7 @@ import zipfile
 import os
 import re
 
-from core.secretfinder.utils import regex_checker, Color
+from core.secretfinder.utils import regex_checker, contains_secret, Color
 from botocore.exceptions import ClientError
 
 
@@ -143,7 +143,7 @@ def summary(data, pacu_main):
 def check_evn_secrets(function):
     try:
         env_vars = function['Environment']['Variables']
-        [Color.print(Color.GREEN, f'\t[+] Secret (EVN): {key}= {env_vars[key]}') for key in env_vars if contains_secret(env_vars[key])]
+        [Color.print(Color.GREEN, '\t[+] Secret (ENV): {}= {}'.format(key, env_vars[key])) for key in env_vars if contains_secret(env_vars[key])]
     except KeyError:
         return
 

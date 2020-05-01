@@ -66,12 +66,15 @@ def main(args, pacu_main):
                     reportFileFormat='HTML',
                     reportType='FULL'
                 )
-                if not os.path.exists('sessions/{}/downloads/inspector_assessments/'.format(session.name)):
-                    os.makedirs('sessions/{}/downloads/inspector_assessments/'.format(session.name))
-                file_name = 'sessions/{}/downloads/inspector_assessments/'.format(session.name) + str(run)[-10:] + '.html'
-                print('  Report saved to: ' + file_name)
-                with urllib.request.urlopen(response['url']) as response, open(file_name, 'a') as out_file:
-                    out_file.write(str(response.read()))
+                if response.get('url'):
+                    if not os.path.exists('sessions/{}/downloads/inspector_assessments/'.format(session.name)):
+                        os.makedirs('sessions/{}/downloads/inspector_assessments/'.format(session.name))
+                    file_name = 'sessions/{}/downloads/inspector_assessments/'.format(session.name) + str(run)[-10:] + '.html'
+                    print('  Report saved to: ' + file_name)
+                    with urllib.request.urlopen(response['url']) as response, open(file_name, 'a') as out_file:
+                        out_file.write(str(response.read()))
+                else:
+                    print('Failed to generate report for {} ({})...'.format(run, response['status']))
         findings = []
         try:
             response = client.list_findings()

@@ -5,7 +5,7 @@ import zipfile
 import os
 import re
 
-from core.secretfinder.utils import contains_secret, Color
+from core.secretfinder.utils import regex_checker, Color
 from botocore.exceptions import ClientError
 
 
@@ -154,9 +154,10 @@ def check_source_secrets(session_name, function):
 
     for key in source_data:
         for line in re.findall(pattern, source_data[key]):
-            [Color.print(Color.GREEN, f"\t[+] Secret (SOURCE): {line}") for word in line.split()
-                if contains_secret(word, SOURCE_ENTROPY_THRESHOLD)]
-
+            secrets = regex_checker(line)
+            if secrets:
+                [Color.print(Color.GREEN, "\t{}: {}".format(key, secrets[key])) for key in secrets]
+  
 
 def get_function_source(session_name, func):
     try:
@@ -178,7 +179,7 @@ def get_function_source(session_name, func):
         # Load Zip contents into memory
         lambda_zip = zipfile.ZipFile(fname)
 
-        return {id: lambda_zip.read(name).decode("utf-8") for name in lambda_zip.namelist()}
+        return {id: lambda_zip.read(name).decode("utf-8", errors='ignore') for name in lambda_zip.namelist()}
 
     except KeyError:
         print(Color.RED, f'Error getting {fname} Source')

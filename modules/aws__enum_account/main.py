@@ -51,11 +51,14 @@ def main(args, pacu_main):
     account_id = response['Account']
 
     iam_client = pacu_main.get_boto3_client('iam')
-    response = iam_client.list_account_aliases()
     try:
+        response = iam_client.list_account_aliases()
         account_iam_alias = response['AccountAliases'][0]
     except (KeyError, IndexError):
         account_iam_alias = "<No IAM Alias defined>"
+    except ClientError as e:
+        print("ClientError has occurred when getting AccountAliases: {}".format(e))
+        account_iam_alias = "<NotFound>"
 
     print('Enumerating Account: {}'.format(account_iam_alias))
     # All the billing seems to be in us-east-1. YMMV

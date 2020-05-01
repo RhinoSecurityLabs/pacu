@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 from copy import deepcopy
+from botocore.exceptions import ClientError
 
 
 module_info = {
@@ -52,40 +53,68 @@ def main(args, pacu_main):
         # Projects
         if enum_all is True or args.projects is True:
             project_names = []
-            response = client.list_projects()
-            project_names.extend(response['projects'])
-            while 'nextToken' in response:
-                response = client.list_projects(
-                    nextToken=response['nextToken']
-                )
+            response = {}
+            try:
+                response = client.list_projects()
                 project_names.extend(response['projects'])
+                while 'nextToken' in response:
+                    response = client.list_projects(
+                        nextToken=response['nextToken']
+                    )
+                    project_names.extend(response['projects'])
+    
+                if len(project_names) > 0:
+                    region_projects = client.batch_get_projects(
+                        names=project_names
+                    )['projects']
+                    print('Found {} projects'.format(len(region_projects)))
+                    summary_data[region]['Projects'] = len(region_projects)
+                    all_projects.extend(region_projects)
+            except ClientError as error:
+                if error.response['Error']['Code'] == 'AccessDeniedException':
+                    print('No projects got for region: {} - AccessDeniedException'.format(region))
+                    print('ClientError getting projects: {}'.format(error))
 
-            if len(project_names) > 0:
-                region_projects = client.batch_get_projects(
-                    names=project_names
-                )['projects']
-                print('  Found {} projects'.format(len(region_projects)))
-                summary_data[region]['Projects'] = len(region_projects)
-                all_projects.extend(region_projects)
 
         # Builds
         if enum_all is True or args.builds is True:
             build_ids = []
-            response = client.list_builds()
-            build_ids.extend(response['ids'])
-            while 'nextToken' in response:
-                response = client.list_builds(
-                    nextToken=response['nextToken']
-                )
+            response = {}
+            try:
+                response = client.list_builds()
                 build_ids.extend(response['ids'])
+            except ClientError as error:
+               if error.response['Error']['Code'] == 'AccessDeniedException':
+                   print('No code-builds builds got for region: {} - AccessDeniedException'.format(region))
+                   print('ClientError getting builds: {}'.format(error))
+
+               
+            while 'nextToken' in response:
+                response = {}
+                try:
+                    response = client.list_builds(
+                        nextToken=response['nextToken']
+                    )
+                    build_ids.extend(response['ids'])
+                except ClientError as error:
+                    if error.response['Error']['Code'] == 'AccessDeniedException':
+                        print('No further code-builds builds for region: {} - AccessDeniedException'.format(region))
+                        print('ClientError getting further builds: {}'.format(error))
 
             if len(build_ids) > 0:
-                region_builds = client.batch_get_builds(
-                    ids=build_ids
-                )['builds']
-                print('  Found {} builds'.format(len(region_builds)))
-                summary_data[region]['Builds'] = len(region_builds)
-                all_builds.extend(region_builds)
+                region_builds = {}
+                try:
+                    region_builds = client.batch_get_builds(
+                        ids=build_ids
+                    )['builds']
+                    print('  Found {} builds'.format(len(region_builds)))
+                    summary_data[region]['Builds'] = len(region_builds)
+                    all_builds.extend(region_builds)
+                except ClientError as error:
+                    if error.response['Error']['Code'] == 'AccessDeniedException':
+                        print('No info retrieved about code-builds for region: {} - AccessDeniedException'.format(region))
+                        print('ClientError getting info about builds: {}'.format(error))
+
         if not summary_data[region]:
             del summary_data[region]
 
@@ -117,7 +146,6 @@ def main(args, pacu_main):
     session.update(pacu_main.database, CodeBuild=codebuild_data)
 
     return summary_data
-
 
 def summary(data, pacu_main):
     out = ''

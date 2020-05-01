@@ -12,7 +12,7 @@ class Color:
 
     @staticmethod
     def print(color, text):
-        print(f'{color}{text}{Color.ENDC}')
+        print('{}{}{}'.format(color, text, Color.ENDC))
 
 
 def shannon_entropy(data):

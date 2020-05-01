@@ -171,7 +171,7 @@ def get_function_source(session_name, func):
         r = requests.get(code_url, stream=True)
 
         # Write Zip to output file
-        fname = os.path.join(f'sessions/{session_name}/downloads', f'lambda_{fname}.zip')
+        fname = os.path.join('sessions/{}/downloads'.format(session_name), 'lambda_{}.zip'.format(fname))
         zfile = open(fname, 'wb')
         zfile.write(r.content)
         zfile.close()

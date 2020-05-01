@@ -108,6 +108,6 @@ def main(args, pacu_main):
 
 def summary(data, pacu_main):
     out = "Account Spend:\n"
-    for key in data.keys():
-        out += "        {}: {} (USD)\n".format(key, data[key])
+    for key in sorted(data.keys(), key=lambda x: data[x], reverse=True):
+        out += "        {:<30}: {:>10.2f} (USD)\n".format(key, data[key])
     return out

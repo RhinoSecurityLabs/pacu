@@ -413,7 +413,7 @@ def main(args, pacu_main):
 
                                     for user_perm in user['Permissions']['Allow']:
                                         if '*' in user_perm:
-                                            if permission.startswith(user_perm.split('*', maxsplit=1)[0]):
+                                            if re.match(user_perm.replace('*', '.*'), permission):
                                                 wildcard_match = True
 
                                     if wildcard_match is False:
@@ -443,7 +443,7 @@ def main(args, pacu_main):
 
                                     for role_perm in role['Permissions']['Allow']:
                                         if '*' in role_perm:
-                                            if permission.startswith(role_perm.split('*', maxsplit=1)[0]):
+                                            if re.match(role_perm.replace('*', '.*'), permission):
                                                 wildcard_match = True
 
                                     if wildcard_match is False:

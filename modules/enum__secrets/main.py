@@ -36,11 +36,16 @@ module_info = {
     'external_dependencies': [],
 
     # Module arguments to autocomplete when the user hits tab.
-    'arguments_to_autocomplete': ['--regions'],
+    'arguments_to_autocomplete': ['--regions',
+                                  '--secrets-manager',
+                                  '--parameter-store'
+                                  ],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 parser.add_argument('--regions', required=False, help='One or more (comma separated) AWS regions in the format "us-east-1". Defaults to all session regions.')
+parser.add_argument('--secrets-manager', required=False, action="store_true", help="Enumerate secrets manager")
+parser.add_argument('--parameter-store', required=False, action="store_true", help="Enumerate Systems Manager parameter store")
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -59,6 +64,10 @@ def main(args, pacu_main):
     else:
         regions = args.regions.split(',')
 
+    if args.secrets_manager is False and args.parameter_store is False:
+        args.secrets_manager = args.parameter_store = True
+        
+
     all_secrets_ids_sm = []
     all_secrets_ids_ssm = []
 
@@ -73,116 +82,122 @@ def main(args, pacu_main):
         secrets_ssm = []
 
         print('Starting region {}...'.format(region))
-        client = pacu_main.get_boto3_client('secretsmanager', region)
-        
-        
-        response = None
-        next_token = False
-        while (response is None) or 'NextToken' in response:
-            if next_token is False:
-                try:
+        if args.secrets_manager:
+            client = pacu_main.get_boto3_client('secretsmanager', region)
+            
+            
+            response = None
+            next_token = False
+            while (response is None) or 'NextToken' in response:
+                if next_token is False:
+                    try:
+                        response = client.list_secrets()
+                    except ClientError as error:
+                        code = error.response['Error']['Code']
+                        print('FAILURE: ')
+                        if code == 'UnauthorizedOperation':
+                            print('  Access denied to ListSecrets.')
+                        else:
+                            print('  ' + code)
+                        print('    Could not list secrets... Exiting')
+                        return None
+                        
+                else:
                     response = client.list_secrets()
+
+                for secret in response['SecretList']:
+                    secret_ids.append({"name":secret["Name"],"region":region})
+
+            all_secrets_ids_sm += secret_ids
+
+
+        for sec in all_secrets_ids_sm:
+            secret_values = []
+            client = pacu_main.get_boto3_client('secretsmanager',sec["region"])
+
+            response = None
+            while response is None:
+                try:
+                    response = client.get_secret_value(
+                    SecretId=sec["name"]
+                    )
                 except ClientError as error:
                     code = error.response['Error']['Code']
                     print('FAILURE: ')
                     if code == 'UnauthorizedOperation':
-                        print('  Access denied to ListSecrets.')
+                        print('  Access denied to GetSecretsValue.')
                     else:
-                        print('  ' + code)
-                    print('    Could not list secrets... Exiting')
+                        print(' ' + code)
+                    print('    Could not get secrets value... Exiting')
                     return None
-                    
-            else:
-                response = client.list_secrets()
-
-            for secret in response['SecretList']:
-                secret_ids.append({"name":secret["Name"],"region":region})
-
-        all_secrets_ids_sm += secret_ids
-
-        client = pacu_main.get_boto3_client('ssm', region)
-
-        response = None
-        while response is None:
-            try:
-                response = client.describe_parameters()
-            except ClientError as error:
-                code = error.response['Error']['Code']
-                print('FAILURE: ')
-                if code == 'UnauthorizedOperation':
-                    print('  Access denied to DescribeParameters.')
-                else:
-                    print(' ' + code)
-                print('    Could not list parameters... Exiting')
-                return None
-            
-            for param in response["Parameters"]:
-                secrets_ssm.append({"name":param["Name"],"type":param["Type"],"region":region})
-
-            
-        all_secrets_ids_ssm += secrets_ssm
-
-    for sec in all_secrets_ids_sm:
-        secret_values = []
-        client = pacu_main.get_boto3_client('secretsmanager',sec["region"])
-
-        response = None
-        while response is None:
-            try:
-                response = client.get_secret_value(
-                    SecretId=sec["name"]
-                )
-            except ClientError as error:
-                code = error.response['Error']['Code']
-                print('FAILURE: ')
-                if code == 'UnauthorizedOperation':
-                    print('  Access denied to GetSecretsValue.')
-                else:
-                    print(' ' + code)
-                print('    Could not get secrets value... Exiting')
-                return None
 
             with open('./sessions/{}/downloads/secrets/secrets_manager/secrets.txt'.format(session.name),'a') as f:
                 f.write("{}:{}\n".format(sec["name"], response["SecretString"]))
 
-    for param in all_secrets_ids_ssm:
-        client = pacu_main.get_boto3_client('ssm',sec["region"])
 
-        response = None
-        while response is None:
-            if param["type"] != "SecureString":
-                try:
-                    response = client.get_parameter(
-                        Name=param["name"]
-                    )
-                except ClientError as error:
-                    code = error.response['Error']['Code']
-                    print('FAILURE: ')
-                    if code == 'UnauthorizedOperation':
-                        print('  Access denied to GetParameter.')
-                    else:
-                        print(' ' + code)
-                    print('    Could not get parameter value... Exiting')
-                    return None
-
-            else:
-                try:
-                    response = client.get_parameter(
-                        Name=param["name"],
-                        WithDecryption=True
-                    )
-                except ClientError as error:
-                    code = error.response['Error']['Code']
-                    print('FAILURE: ')
-                    if code == 'UnauthorizedOperation':
-                        print('  Access denied to GetParameter.')
-                    else:
-                        print(' ' + code)
-                    print('    Could not get parameter value... Exiting')
-                    return None
             
-            with open('./sessions/{}/downloads/secrets/parameter_store/parameters.txt'.format(session.name),'a') as f:
-                f.write("{}:{}\n".format(param["name"], response["Parameter"]["Value"]))
+        if args.parameter_store:
+            client = pacu_main.get_boto3_client('ssm', region)
+
+            response = None
+            while response is None:
+                try:
+                    response = client.describe_parameters()
+                except ClientError as error:
+                    code = error.response['Error']['Code']
+                    print('FAILURE: ')
+                    if code == 'UnauthorizedOperation':
+                        print('  Access denied to DescribeParameters.')
+                    else:
+                        print(' ' + code)
+                    print('    Could not list parameters... Exiting')
+                    return None
+                
+                for param in response["Parameters"]:
+                    secrets_ssm.append({"name":param["Name"],"type":param["Type"],"region":region})
+
+                
+            all_secrets_ids_ssm += secrets_ssm
+
+        
+            for param in all_secrets_ids_ssm:
+                client = pacu_main.get_boto3_client('ssm',param["region"])
+
+                response = None
+                while response is None:
+                    if param["type"] != "SecureString":
+                        try:
+                            response = client.get_parameter(
+                                Name=param["name"]
+                            )
+                        except ClientError as error:
+                            code = error.response['Error']['Code']
+                            print('FAILURE: ')
+                            if code == 'UnauthorizedOperation':
+                                print('  Access denied to GetParameter.')
+                            else:
+                                print(' ' + code)
+                            print('    Could not get parameter value... Exiting')
+                            return None
+
+                    else:
+                        try:
+                            response = client.get_parameter(
+                                Name=param["name"],
+                                WithDecryption=True
+                            )
+                        except ClientError as error:
+                            code = error.response['Error']['Code']
+                            print('FAILURE: ')
+                            if code == 'UnauthorizedOperation':
+                                print('  Access denied to GetParameter.')
+                            else:
+                                print(' ' + code)
+                            print('    Could not get parameter value... Exiting')
+                            return None
+                    
+                    with open('./sessions/{}/downloads/secrets/parameter_store/parameters.txt'.format(session.name),'a') as f:
+                        f.write("{}:{}\n".format(param["name"], response["Parameter"]["Value"]))
 
 
     summary_data["SecretsManager"] = len(all_secrets_ids_sm)

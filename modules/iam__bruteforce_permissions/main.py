@@ -35,7 +35,8 @@ parser.add_argument(
 
 SUPPORTED_SERVICES = [
     'ec2',
-    's3'
+    's3',
+    'logs'
 ]
 
 current_client = None

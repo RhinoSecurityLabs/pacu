@@ -42,7 +42,8 @@ class Main:
     COMMANDS = [
         'aws', 'data', 'exec', 'exit', 'help', 'import_keys', 'list', 'load_commands_file',
         'ls', 'proxy', 'quit', 'regions', 'run', 'search', 'services', 'set_keys',
-        'set_regions', 'swap_keys', 'update_regions', 'whoami'
+        'set_regions', 'swap_keys', 'update_regions', 'whoami', 'swap_session', 'sessions',
+        'list_sessions', 'delete_session'
     ]
 
     def __init__(self):
@@ -505,6 +506,12 @@ class Main:
             return
         elif command[0] == 'data':
             self.parse_data_command(command)
+        elif command[0] == 'sessions' or command[0] == 'list_sessions':
+            self.list_sessions()
+        elif command[0] == 'swap_session':
+            self.check_sessions()
+        elif command[0] == 'delete_session':
+            self.delete_session()
         elif command[0] == 'help':
             self.parse_help_command(command)
         elif command[0] == 'console' or command[0] == 'open_console':
@@ -937,6 +944,11 @@ class Main:
                                                   at ~/.aws/credentials) to the current sessions database. 
                                                   Enter the name of a profile you would like to import or 
                                                   supply --all to import all the credentials in the file.
+            sessions/list_sessions              List all sessions in the Pacu database
+            swap_session                        Change the active Pacu session to another one in the database
+            delete_session                      Delete a Pacu session from the database. Note that the output
+                                                  folder for that session will not be deleted
+
             exit/quit                           Exit Pacu
 
         Other command info:
@@ -1209,6 +1221,12 @@ class Main:
             print('\n    console/open_console\n        Generate a URL to login to the AWS web console as the current user/role\n')
         elif command_name == 'search':
             print('\n    search [cat[egory]] <search term>\n        Search the list of available modules by name or category\n')
+        elif command_name == 'sessions' or command_name == 'list_sessions':
+            print('\n    sessions/list_sessions\n        List all sessions stored in the Pacu database.')
+        elif command_name == 'swap_session':
+            print('\n    swap_session\n        Swap the active Pacu session for another one stored in the database or a brand new session.')
+        elif command_name == 'delete_session':
+            print('\n    delete_session\n        Delete a session from the Pacu database. Note that this does not delete the output folder for that session.')
         elif command_name == 'help':
             print('\n    help\n        Display information about all Pacu commands\n    help <module name>\n        Display information about a module\n')
         elif command_name == 'whoami':
@@ -1480,6 +1498,22 @@ class Main:
 
         session.activate(self.database)
 
+    def list_sessions(self):
+        active_session = self.get_active_session()
+        all_sessions = self.database.query(PacuSession).all()
+
+        print('Found existing sessions:')
+
+        for index, session in enumerate(all_sessions, 0):
+            if session.name == active_session.name:
+                print('- ' + session.name + ' (ACTIVE)')
+            else:
+                print('- ' + session.name)
+
+        print('\nUse "swap_session" to change to another session.')
+
+        return
+
     def new_session(self):
         session_data = dict()
         name = None
@@ -1507,6 +1541,36 @@ class Main:
         print('Session {} created.'.format(name))
 
         return session
+
+    def delete_session(self):
+        active_session = self.get_active_session()
+        all_sessions = self.database.query(PacuSession).all()
+        print('Delete which session?')
+
+        for index, session in enumerate(all_sessions, 0):
+            if session.name == active_session.name:
+                print('  [{}] {} (ACTIVE)'.format(index, session.name))
+            else:
+                print('  [{}] {}'.format(index, session.name))
+
+        choice = input('Choose an option: ')
+
+        try:
+            session = all_sessions[int(choice)]
+            if session.name == active_session.name:
+                print('Cannot delete the active session! Switch sessions and try again.')
+                return
+        except (ValueError, IndexError):
+            print('Please choose a number from 0 to {}.'.format(len(all_sessions)-1))
+            return self.delete_session()
+
+        self.database.delete(session)
+        self.database.commit()
+
+        print('Deleted {} from the database!'.format(session.name))
+        print('Note that the output folder at ./sessions/{}/ will not be deleted. Do it manually if necessary.'.format(session.name))
+
+        return
 
     def get_data_from_traceback(self, tb):
         session = None

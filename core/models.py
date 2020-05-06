@@ -63,40 +63,6 @@ class AWSKey(Base, ModelUpdateMixin):
         })
 
 
-class ProxySettings(Base, ModelUpdateMixin):
-    __tablename__ = 'proxy_settings'
-
-    id = Column(Integer, primary_key=True)
-
-    ip = Column(Text, nullable=True, default='0.0.0.0')
-    target_agent = Column(JSONType, nullable=False, default=[])
-    port = Column(Integer, nullable=False, default=80)
-    listening = Column(Boolean, nullable=False, default=False)
-    ssh_username = Column(Text, nullable=True, default='')
-    ssh_password = Column(Text, nullable=True, default='')
-    ssh_shm_name = Column(Text, nullable=True, default='')
-
-    @classmethod
-    def get_proxy_settings(cls, database):
-        return database.query(ProxySettings).scalar()
-
-    def activate(self, database):
-        database.add(self)
-        database.commit()
-
-    # How to add a positive-integer-only constraint to a column in SQLAlchemy.
-    __table_args__ = (
-        CheckConstraint(
-            'port > 0',
-            name='check_port_is_positive'
-        ),
-        {}
-    )
-
-    def __repr__(self):
-        return '<PacuProxy {}:{} Target {} Listening {}>'.format(self.ip, self.port, self.target_agent, self.listening)
-
-
 class PacuSession(Base, ModelUpdateMixin):
     __tablename__ = 'pacu_session'
     aws_data_field_names = (
@@ -116,7 +82,9 @@ class PacuSession(Base, ModelUpdateMixin):
         'Lambda',
         'Lightsail',
         'S3',
+        'SecretsManager',
         'Shield',
+        'SSM',
         'VPC',
         'WAF',
         'Account',
@@ -152,6 +120,8 @@ class PacuSession(Base, ModelUpdateMixin):
     Lambda = Column(JSONType, nullable=False, default=dict)
     Lightsail = Column(JSONType, nullable=False, default=dict)
     S3 = Column(JSONType, nullable=False, default=dict)
+    SecretsManager = Column(JSONType, nullable=False, default=dict)
+    SSM = Column(JSONType, nullable=False, default=dict)
     Shield = Column(JSONType, nullable=False, default=dict)
     VPC = Column(JSONType, nullable=False, default=dict)
     WAF = Column(JSONType, nullable=False, default=dict)

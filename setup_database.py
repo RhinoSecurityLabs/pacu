@@ -31,7 +31,7 @@ def attempt_to_create_database(database_file_path, auto_proceed=True):
 
         # Base.metadata.create_all requires all models to be loaded before
         # tables can be created. It's is placed here for emphasis.
-        from core.models import AWSKey, PacuSession, ProxySettings
+        from core.models import AWSKey, PacuSession
         Base.metadata.create_all(engine)
 
         print('Database created at {}\n'.format(database_file_path))

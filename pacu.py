@@ -22,6 +22,7 @@ try:
     import requests
     import boto3
     import botocore
+    import urllib.parse
 
     import configure_settings
     import settings
@@ -506,6 +507,8 @@ class Main:
             self.parse_data_command(command)
         elif command[0] == 'help':
             self.parse_help_command(command)
+        elif command[0] == 'console' or command[0] == 'open_console':
+            self.print_web_console_url()
         elif command[0] == 'import_keys':
             self.parse_awscli_keys_import(command)
         elif command[0] == 'list' or command[0] == 'ls':
@@ -948,6 +951,8 @@ class Main:
                                                   ensure that you are using the keys you want when using
                                                   the AWS CLI. It is suggested to use AWS CLI profiles
                                                   to solve this problem
+            console/open_console                Generate a URL that will log the current user/role in to
+                                                  the AWS web console
 
         [ADVANCED] PacuProxy command info:
             proxy [help]                        Control PacuProxy/display help
@@ -1052,6 +1057,51 @@ class Main:
             return module
         return None
 
+    def print_web_console_url(self):
+        active_session = self.get_active_session()
+
+        sts = self.get_boto3_client('sts')
+
+        res = sts.get_federation_token(
+            Name=active_session.name,
+            Policy=json.dumps({
+                'Version': '2012-10-17',
+                'Statement': [
+                    {
+                        'Effect': 'Allow',
+                        'Action': '*',
+                        'Resource': '*'
+                    }
+                ]
+            })
+        )
+
+        params = {
+            'Action': 'getSigninToken',
+            'Session': json.dumps({
+                'sessionId': res['Credentials']['AccessKeyId'],
+                'sessionKey': res['Credentials']['SecretAccessKey'],
+                'sessionToken': res['Credentials']['SessionToken']
+            })
+        }
+
+        res = requests.get(url='https://signin.aws.amazon.com/federation', params=params)
+
+        signin_token = res.json()['SigninToken']
+
+        params = {
+            'Action': 'login',
+            'Issuer': active_session.name,
+            'Destination': 'https://console.aws.amazon.com/console/home',
+            'SigninToken': signin_token
+        }
+
+        url = 'https://signin.aws.amazon.com/federation?' + urllib.parse.urlencode(params)
+
+        print('Paste the following URL into a web browser to login as session {}...\n'.format(active_session.name))
+
+        print(url)
+
     def all_region_prompt(self):
         print('Automatically targeting regions:')
         for region in self.get_regions('all'):
@@ -1148,6 +1198,8 @@ class Main:
             print('\n    import_keys <profile name>|--all\n      Import AWS keys from the AWS CLI credentials file (located at ~/.aws/credentials) to the current sessions database. Enter the name of a profile you would like to import or supply --all to import all the credentials in the file.\n')
         elif command_name == 'aws':
             print('\n    aws <command>\n        Use the AWS CLI directly. This command runs in your local shell to use the AWS CLI. Warning: The AWS CLI\'s authentication is not related to Pacu. Be careful to ensure that you are using the keys you want when using the AWS CLI. It is suggested to use AWS CLI profiles to help solve this problem\n')
+        elif command_name == 'console' or command_name == 'open_console':
+            print('\n    console/open_console\n        Generate a URL to login to the AWS web console as the current user/role\n')
         elif command_name == 'search':
             print('\n    search [cat[egory]] <search term>\n        Search the list of available modules by name or category\n')
         elif command_name == 'help':

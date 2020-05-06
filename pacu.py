@@ -3,20 +3,14 @@ import copy
 import importlib
 import json
 import os
-import platform
-from queue import Queue
 import random
 import re
 import shlex
-import string
 import subprocess
 import sys
-import threading
 import time
 import traceback
-from http.server import BaseHTTPRequestHandler, HTTPServer
 import argparse
-import sys
 
 try:
     import requests
@@ -413,14 +407,14 @@ class Main:
     def parse_commands_from_file(self, command):
         if len(command) == 1:
             self.display_command_help('load_commands_file')
-            return 
-        
+            return
+
         commands_file = command[1]
 
         if not os.path.isfile(commands_file):
             self.display_command_help('load_commands_file')
-            return 
-        
+            return
+
         with open(commands_file, 'r+') as f:
             commands = f.readlines()
             for command in commands:
@@ -428,7 +422,7 @@ class Main:
                 command_without_space = command.strip()
                 if command_without_space:
                     self.parse_command(command_without_space)
-            
+
     def parse_awscli_keys_import(self, command):
         if len(command) == 1:
             self.display_command_help('import_keys')
@@ -563,8 +557,8 @@ class Main:
             swap_keys                           Change the currently active AWS key to another key that has
                                                   previously been set for this session
             import_keys <profile name>|--all    Import AWS keys from the AWS CLI credentials file (located
-                                                  at ~/.aws/credentials) to the current sessions database. 
-                                                  Enter the name of a profile you would like to import or 
+                                                  at ~/.aws/credentials) to the current sessions database.
+                                                  Enter the name of a profile you would like to import or
                                                   supply --all to import all the credentials in the file.
             sessions/list_sessions              List all sessions in the Pacu database
             swap_session                        Change the active Pacu session to another one in the database
@@ -728,7 +722,7 @@ class Main:
             # self.print('<command>{}</command>'.format(cmd), output_type='xml', output='file')
 
             self.print('  Running module {}...'.format(module_name))
-            
+
             try:
                 args = module.parser.parse_args(command[2:])
                 if 'regions' in args and args.regions is None:
@@ -1112,7 +1106,7 @@ class Main:
                 print('Cannot delete the active session! Switch sessions and try again.')
                 return
         except (ValueError, IndexError):
-            print('Please choose a number from 0 to {}.'.format(len(all_sessions)-1))
+            print('Please choose a number from 0 to {}.'.format(len(all_sessions) - 1))
             return self.delete_session()
 
         self.database.delete(session)
@@ -1326,7 +1320,7 @@ class Main:
 
     def run_cli(self, *args):
         self.database = get_database_connection(settings.DATABASE_CONNECTION_PATH)
-        sessions = self.database.query(PacuSession).all() 
+        sessions = self.database.query(PacuSession).all()
 
         arg = args[0]
 
@@ -1334,24 +1328,24 @@ class Main:
         module_name = arg.module_name
         service = arg.data
         list_mods = arg.list_modules
-        list_cmd = ["ls"]
+        list_cmd = ['ls']
 
         pacu_help = arg.pacu_help
-        pacu_help_cmd = ["help"]
+        pacu_help_cmd = ['help']
         module_help = arg.module_info
 
         if session is not None:
             session_names = [x.name for x in sessions]
 
             if session not in session_names:
-                print("Session could not be found. Exiting...")
+                print('Session could not be found. Exiting...')
                 self.exit()
 
             session_index = session_names.index(session)
             sessions[session_index].is_active = True
 
         if module_name is not None:
-            module = ["exec", module_name]
+            module = ['exec', module_name]
 
             if arg.module_args is not None:
                 args_list = arg.module_args.split(' ')
@@ -1359,34 +1353,34 @@ class Main:
                     if i != '':
                         module.append(i)
 
-            if arg.exec == True:
+            if arg.exec is True:
                 self.exec_module(module)
 
         if service is not None:
-            if service == "all":
-                service_cmd = ["data"]
+            if service == 'all':
+                service_cmd = ['data']
             else:
-                service_cmd = ["data", service.upper()]
+                service_cmd = ['data', service.upper()]
             self.parse_data_command(service_cmd)
 
-        if list_mods == True:
+        if list_mods is True:
             self.parse_list_command(list_cmd)
 
-        if pacu_help == True:
+        if pacu_help is True:
             self.parse_help_command(pacu_help_cmd)
 
-        if arg.module_info == True:
+        if arg.module_info is True:
             if module_name is None:
-                print("Specify a module to get information on")
+                print('Specify a module to get information on')
             pacu_help_cmd.append(module_name)
             self.parse_help_command(pacu_help_cmd)
 
         if arg.set_regions is not None:
             regions = arg.set_regions
-            regions.insert(0,"set_regions")
+            regions.insert(0, 'set_regions')
             self.parse_set_regions_command(regions)
 
-        if arg.whoami == True:
+        if arg.whoami is True:
             self.print_key_info()
 
     def run_gui(self):
@@ -1476,32 +1470,29 @@ class Main:
 
     def run(self):
         parser = argparse.ArgumentParser()
-        parser.add_argument('--session', required=False, default=None, help="<session name>", metavar="")
-        parser.add_argument('--module-name', required=False, default=None, help="<module name>", metavar="")
-        parser.add_argument('--data', required=False,default=None, help="<service name/all>", metavar="")
-        parser.add_argument('--module-args', default=None, help="<--module-args=\"--regions us-east-1,us-east-1\">", metavar="")
-        parser.add_argument('--list-modules', action="store_true", help="List arguments")
-        parser.add_argument('--pacu-help', action="store_true",help="List the Pacu help window")
-        parser.add_argument('--module-info', action="store_true", help="Get information on a specific module, use --module-name")
-        parser.add_argument('--exec', action="store_true", help="exec module")
-        parser.add_argument('--set-regions',nargs="+", default=None, help="<region1 region2 ...> or <all> for all", metavar="")
-        parser.add_argument('--whoami', action="store_true", help="Display information on current IAM user")
+        parser.add_argument('--session', required=False, default=None, help='<session name>', metavar='')
+        parser.add_argument('--module-name', required=False, default=None, help='<module name>', metavar='')
+        parser.add_argument('--data', required=False, default=None, help='<service name/all>', metavar='')
+        parser.add_argument('--module-args', default=None, help='<--module-args=\'--regions us-east-1,us-east-1\'>', metavar='')
+        parser.add_argument('--list-modules', action='store_true', help='List arguments')
+        parser.add_argument('--pacu-help', action='store_true', help='List the Pacu help window')
+        parser.add_argument('--module-info', action='store_true', help='Get information on a specific module, use --module-name')
+        parser.add_argument('--exec', action='store_true', help='exec module')
+        parser.add_argument('--set-regions', nargs='+', default=None, help='<region1 region2 ...> or <all> for all', metavar='')
+        parser.add_argument('--whoami', action='store_true', help='Display information on current IAM user')
         args = parser.parse_args()
 
-        if any([args.session,args.data,args.module_args,args.exec,args.set_regions,args.whoami]):
+        if any([args.session, args.data, args.module_args, args.exec, args.set_regions, args.whoami]):
             if args.session is None:
-                print("When running Pacu from the CLI, a session is necessary")
+                print('When running Pacu from the CLI, a session is necessary')
                 exit()
             self.run_cli(args)
-            
-        elif any([args.list_modules,args.pacu_help,args.module_info]):
+
+        elif any([args.list_modules, args.pacu_help, args.module_info]):
             self.run_cli(args)
 
         else:
             self.run_gui()
-
-            
-                    
 
 
 if __name__ == '__main__':

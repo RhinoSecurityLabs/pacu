@@ -1072,10 +1072,17 @@ class Main:
     def print_web_console_url(self):
         active_session = self.get_active_session()
 
+        if not active_session.access_key_id:
+            print('  No access key has been set. Not generating the URL.')
+            return
+        if not active_session.secret_access_key:
+            print('  No secret key has been set. Not generating the URL.')
+            return
+
         sts = self.get_boto3_client('sts')
 
         res = sts.get_federation_token(
-            Name=active_session.name,
+            Name=active_session.key_alias,
             Policy=json.dumps({
                 'Version': '2012-10-17',
                 'Statement': [
@@ -1103,7 +1110,7 @@ class Main:
 
         params = {
             'Action': 'login',
-            'Issuer': active_session.name,
+            'Issuer': active_session.key_alias,
             'Destination': 'https://console.aws.amazon.com/console/home',
             'SigninToken': signin_token
         }
@@ -1603,6 +1610,13 @@ class Main:
         session = self.get_active_session()
         proxy_settings = self.get_proxy_settings()
 
+        if not session.access_key_id:
+            print('  No access key has been set. Failed to generate boto3 Client.')
+            return
+        if not session.secret_access_key:
+            print('  No secret key has been set. Failed to generate boto3 Client.')
+            return
+
         # If there is not a custom user_agent passed into this function
         # and session.boto_user_agent is set, use that as the user agent
         # for this client. If both are set, the incoming user_agent will
@@ -1630,6 +1644,13 @@ class Main:
         # All the comments from get_boto3_client apply here too
         session = self.get_active_session()
         proxy_settings = self.get_proxy_settings()
+
+        if not session.access_key_id:
+            print('  No access key has been set. Failed to generate boto3 Resource.')
+            return
+        if not session.secret_access_key:
+            print('  No secret key has been set. Failed to generate boto3 Resource.')
+            return
 
         if user_agent is None and session.boto_user_agent is not None:
             user_agent = session.boto_user_agent

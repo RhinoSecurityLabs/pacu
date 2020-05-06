@@ -937,14 +937,15 @@ class Main:
                                                   default
             swap_keys                           Change the currently active AWS key to another key that has
                                                   previously been set for this session
-            sessions/list_sessions              List all sessions in the Pacu database
-            swap_session                        Change the active Pacu session to another one in the database
-            delete_session                      Delete a Pacu session from the database. Note that the output
-                                                  folder for that session will not be deleted
             import_keys <profile name>|--all    Import AWS keys from the AWS CLI credentials file (located
                                                   at ~/.aws/credentials) to the current sessions database. 
                                                   Enter the name of a profile you would like to import or 
                                                   supply --all to import all the credentials in the file.
+            sessions/list_sessions              List all sessions in the Pacu database
+            swap_session                        Change the active Pacu session to another one in the database
+            delete_session                      Delete a Pacu session from the database. Note that the output
+                                                  folder for that session will not be deleted
+
             exit/quit                           Exit Pacu
 
         Other command info:
@@ -1161,6 +1162,12 @@ class Main:
             print('\n    aws <command>\n        Use the AWS CLI directly. This command runs in your local shell to use the AWS CLI. Warning: The AWS CLI\'s authentication is not related to Pacu. Be careful to ensure that you are using the keys you want when using the AWS CLI. It is suggested to use AWS CLI profiles to help solve this problem\n')
         elif command_name == 'search':
             print('\n    search [cat[egory]] <search term>\n        Search the list of available modules by name or category\n')
+        elif command_name == 'sessions' or command_name == 'list_sessions':
+            print('\n    sessions/list_sessions\n        List all sessions stored in the Pacu database.')
+        elif command_name == 'swap_session':
+            print('\n    swap_session\n        Swap the active Pacu session for another one stored in the database or a brand new session.')
+        elif command_name == 'delete_session':
+            print('\n    delete_session\n        Delete a session from the Pacu database. Note that this does not delete the output folder for that session.')
         elif command_name == 'help':
             print('\n    help\n        Display information about all Pacu commands\n    help <module name>\n        Display information about a module\n')
         elif command_name == 'whoami':

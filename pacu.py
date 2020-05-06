@@ -1440,12 +1440,16 @@ class Main:
         session.activate(self.database)
 
     def list_sessions(self):
-        sessions = self.database.query(PacuSession).all()
+        active_session = self.get_active_session()
+        all_sessions = self.database.query(PacuSession).all()
 
         print('Found existing sessions:')
 
-        for index, session in enumerate(sessions, 1):
-            print('- ' + session.name)
+        for index, session in enumerate(all_sessions, 0):
+            if session.name == active_session.name:
+                print('- ' + session.name + ' (ACTIVE)')
+            else:
+                print('- ' + session.name)
 
         print('\nUse "swap_session" to change to another session.')
 
@@ -1486,7 +1490,7 @@ class Main:
 
         for index, session in enumerate(all_sessions, 0):
             if session.name == active_session.name:
-                print('  [{}] {} - ACTIVE'.format(index, session.name))
+                print('  [{}] {} (ACTIVE)'.format(index, session.name))
             else:
                 print('  [{}] {}'.format(index, session.name))
 

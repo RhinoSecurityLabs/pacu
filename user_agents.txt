@@ -1,34 +1,60 @@
-Boto3/1.7.62 Python/3.7.0 Windows/10 Botocore/1.10.62
-Boto3/1.7.48 Python/3.6.5 Windows/10 Botocore/1.10.48
-Boto3/1.7.24 Python/3.6.5 Windows/10 Botocore/1.10.24
-signin.amazonaws.com
 aws-cli/1.15.10 Python/2.7.9 Windows/8 botocore/1.10.10
-Boto3/1.7.24 Python/3.6.5 Windows/10 Botocore/1.10.24 Resource
-Boto3/1.7.24 Python/3.6.5 Darwin/16.7.0 Botocore/1.10.24
-aws-cli/1.15.10 Python/2.7.9 Windows/8 botocore/1.10.10
-Boto3/1.7.45 Python/3.6.5 Windows/10 Botocore/1.10.45
-Boto3/1.4.7 Python/2.7.0 Java/1.8.0_112 Botocore/1.7.21
-Boto3/1.7.30 Python/3.6.1 Linux/4.9.93-41.60.amzn1.x86_64 Botocore/1.10.30
-Boto3/1.7.14 Python/3.6.1 Linux/4.9.93-41.60.amzn1.x86_64 Botocore/1.10.14
-Boto3/1.5.8 Python/3.6.5 Windows/10 Botocore/1.10.4
-Boto3/1.5.8 Python/3.6.3 Windows/10 Botocore/1.8.22
-console.amazonaws.com
-aws-sdk-go/1.4.22 (go1.7.4; linux; amd64)
-aws-sdk-go/1.4.10 (go1.7.4; linux; amd64)
-aws-sdk-go/1.4.10 (go1.8.3; linux; amd64)
-aws-sdk-go/1.13.32 (go1.9.2; darwin; amd64) APN/1.0 HashiCorp/1.0 Terraform/0.11.7
-aws-sdk-java/2.0.0-preview-9-SNAPSHOT Mac_OS_X/10.11.6 Java_HotSpot_TM__64-Bit_Server_VM/25.151-b12 Java/1.8.0_151
-Boto3/1.7.62 Python/3.5.2 Linux/4.4.0-130-generic Botocore/1.10.62
+aws-cli/1.16.145 Python/3.6.7 Linux/4.15.0-45-generic botocore/1.12.135
+aws-cli/1.16.145 Python/3.6.7 Linux/4.15.0-45-generic botocore/1.12.168
+aws-cli/1.16.157 Python/3.7.3 Darwin/18.6.0 botocore/1.12.147
+aws-cli/1.16.166 Python/3.6.7 Linux/4.15.0-48-generic botocore/1.12.156
+aws-cli/1.16.170 Python/2.7.10 Linux/4.4.11-23.53.amzn1.x86_64 botocore/1.12.160cwlogs/1.4.4
+aws-cli/1.16.178 Python/3.6.7 Linux/4.15.0-45-generic botocore/1.12.168
+aws-cli/1.16.178 Python/3.7.0 Windows/10 botocore/1.12.168
+aws-cli/1.16.190 Python/3.7.0 Windows/10 botocore/1.12.180
+aws-cli/1.16.198 Python/3.7.3 Linux/4.9.125-linuxkit botocore/1.12.188
+aws-cli/1.16.198 Python/3.8.0b2 Linux/4.9.125-linuxkit botocore/1.12.188
+aws-cli/1.16.198 Python/3.8.0b2 Linux/4.9.184-linuxkit botocore/1.12.188
+aws-cli/1.16.219 Python/3.7.0 Windows/10 botocore/1.12.209
+aws-cli/1.16.284 Python/3.7.4 Windows/10 botocore/1.13.20
+aws-cli/1.17.1 Python/3.6.9 Linux/4.4.0-18362-Microsoft botocore/1.14.2
+aws-cli/1.18.2 Python/2.7.16 Linux/4.14.165-103.209.amzn1.x86_64 botocore/1.15.2
+aws-cli/1.18.39 Python/3.7.7 Windows/10 botocore/1.15.39
+aws-cli/1.18.40 Python/3.8.2 Windows/10 botocore/1.15.40
+aws-cli/2.0.0dev3 Python/3.7.3 Linux/4.19.76-linuxkit botocore/2.0.0dev2
 aws-sdk-go/1.1.0 (go1.5.2; darwin; amd64)
 aws-sdk-go/1.1.2 (go1.6; darwin; amd64) terraform/0.6.13
+aws-sdk-go/1.12.8 (go1.10.8; linux; amd64)
+aws-sdk-go/1.13.32 (go1.9.2; darwin; amd64) APN/1.0 HashiCorp/1.0 Terraform/0.11.7
+aws-sdk-go/1.19.42 (go1.12.5; darwin; amd64) APN/1.0 HashiCorp/1.0 Terraform/0.12.1
+aws-sdk-go/1.20.17 (go1.12.6; linux; amd64) APN/1.0 HashiCorp/1.0 Terraform/0.12.2
+aws-sdk-go/1.21.3 (go1.12.6; linux; amd64) APN/1.0 HashiCorp/1.0 Terraform/0.12.5
+aws-sdk-go/1.21.7 (go1.12.6; darwin; amd64) APN/1.0 HashiCorp/1.0 Terraform/0.12.5 Waiter
+aws-sdk-go/1.21.7 (go1.12.6; linux; amd64) APN/1.0 HashiCorp/1.0 Terraform/0.12.5
+aws-sdk-go/1.25.41 (go1.12.11; windows; amd64) amazon-ssm-agent/
+aws-sdk-go/1.4.10 (go1.7.4; linux; amd64)
+aws-sdk-go/1.4.10 (go1.8.3; linux; amd64)
+aws-sdk-go/1.4.22 (go1.7.4; linux; amd64)
+aws-sdk-java/2.0.0-preview-9-SNAPSHOT Mac_OS_X/10.11.6 Java_HotSpot_TM__64-Bit_Server_VM/25.151-b12 Java/1.8.0_151
+aws-sdk-nodejs/2.586.0 darwin/v13.2.0 promise
+Boto3/1.10.2 Python/3.8.0 Linux/4.14.138-99.102.amzn2.x86_64 exec-env/AWS_Lambda_python3.8 Botocore/1.13.2
+Boto3/1.10.27 Python/3.7.4 Windows/10 Botocore/1.13.20
+Boto3/1.4.7 Python/2.7.0 Java/1.8.0_112 Botocore/1.7.21
+Boto3/1.5.8 Python/3.6.3 Windows/10 Botocore/1.8.22
+Boto3/1.5.8 Python/3.6.5 Windows/10 Botocore/1.10.4
+Boto3/1.7.14 Python/3.6.1 Linux/4.9.93-41.60.amzn1.x86_64 Botocore/1.10.14
+Boto3/1.7.24 Python/3.6.5 Darwin/16.7.0 Botocore/1.10.24
+Boto3/1.7.24 Python/3.6.5 Windows/10 Botocore/1.10.24
+Boto3/1.7.24 Python/3.6.5 Windows/10 Botocore/1.10.24 Resource
+Boto3/1.7.30 Python/3.6.1 Linux/4.9.93-41.60.amzn1.x86_64 Botocore/1.10.30
+Boto3/1.7.45 Python/3.6.5 Windows/10 Botocore/1.10.45
 Boto3/1.7.48 Python/3.5.0 Windows/ Botocore/1.10.48
-Boto3/1.7.61 Python/3.5.0 Windows/ Botocore/1.10.62
+Boto3/1.7.48 Python/3.6.5 Windows/10 Botocore/1.10.48
 Boto3/1.7.48 Python/3.7.0 Windows/10 Botocore/1.10.48
-Boto3/1.9.149 Python/3.7.0 Windows/10 Botocore/1.12.168
-aws-cli/1.16.178 Python/3.7.0 Windows/10 botocore/1.12.168
-aws-cli/1.16.145 Python/3.6.7 Linux/4.15.0-45-generic botocore/1.12.135
-Boto3/1.9.168 Python/3.6.7 Linux/4.15.0-45-generic Botocore/1.12.168
-aws-cli/1.16.145 Python/3.6.7 Linux/4.15.0-45-generic botocore/1.12.168
-aws-cli/1.16.178 Python/3.6.7 Linux/4.15.0-45-generic botocore/1.12.168
-aws-cli/1.16.157 Python/3.7.3 Darwin/18.6.0 botocore/1.12.147
+Boto3/1.7.48 Python/3.7.3 Linux/4.9.184-linuxkit Botocore/1.10.48
+Boto3/1.7.61 Python/3.5.0 Windows/ Botocore/1.10.62
+Boto3/1.7.62 Python/3.5.2 Linux/4.4.0-130-generic Botocore/1.10.62
+Boto3/1.7.62 Python/3.7.0 Windows/10 Botocore/1.10.62
+Boto3/1.9.106 Python/3.6.7 Linux/4.15.0-48-generic Botocore/1.12.156
 Boto3/1.9.125 Python/3.7.3 Darwin/18.6.0 Botocore/1.12.147
+Boto3/1.9.149 Python/3.7.0 Windows/10 Botocore/1.12.168
+Boto3/1.9.168 Python/3.6.7 Linux/4.15.0-45-generic Botocore/1.12.168
+Boto3/1.9.211 Python/3.7.0 Windows/10 Botocore/1.12.211
+Boto3/1.9.69 Python/3.7.4 Linux/4.14.133-97.112.amzn2.x86_64 exec-env/AWS_Lambda_python3.7 Botocore/1.12.243
+console.amazonaws.com
+signin.amazonaws.com

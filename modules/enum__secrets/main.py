@@ -18,13 +18,13 @@ module_info = {
 
     # One liner description of the module functionality. This shows up when a
     # user searches for modules.
-    'one_liner': 'enumerates and dumps secrets from AWS Secrets Manager and AWS parameter store',
+    'one_liner': 'Enumerates and dumps secrets from AWS Secrets Manager and AWS parameter store',
 
     # Full description about what the module does and how it works.
     'description': 'This module will enumerate secrets in AWS Secrets Manager and AWS Systems manager parameter store.',
 
     # A list of AWS services that the module utilizes during its execution.
-    'services': [],
+    'services': ['SecretsManager', 'SSM'],
 
     # For prerequisite modules, try and see if any existing modules return the
     # data that is required for your module before writing that code yourself;

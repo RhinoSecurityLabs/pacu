@@ -7,6 +7,7 @@ import random
 import re
 import shlex
 import subprocess
+import datetime
 import sys
 import time
 import traceback
@@ -315,6 +316,21 @@ class Main:
             else:
                 self.exec_module(['exec', module])
         return True
+
+    def check_for_updates(self):
+        with open('./last_update.txt', 'r') as f:
+            local_last_update = f.read().rstrip()
+
+        latest_update = requests.get('https://raw.githubusercontent.com/RhinoSecurityLabs/pacu/master/last_update.txt').text.rstrip()
+
+        local_year, local_month, local_day = local_last_update.split('-')
+        datetime_local = datetime.date(int(local_year), int(local_month), int(local_day))
+
+        latest_year, latest_month, latest_day = latest_update.split('-')
+        datetime_latest = datetime.date(int(latest_year), int(latest_month), int(latest_day))
+
+        if datetime_local < datetime_latest:
+            print('Pacu has a new version available! Clone it from GitHub to receive the updates.\n    git clone https://github.com/RhinoSecurityLabs/pacu.git\n')
 
     def key_info(self, alias=''):
         """ Return the set of information stored in the session's active key
@@ -1527,6 +1543,8 @@ aws_secret_access_key = {}
                     self.initialize_tab_completion()
                     self.display_pacu_help()
 
+                    self.check_for_updates()
+
                     idle_ready = True
 
                 self.check_user_agent()
@@ -1583,10 +1601,9 @@ aws_secret_access_key = {}
                 print('When running Pacu from the CLI, a session is necessary')
                 exit()
             self.run_cli(args)
-
         elif any([args.list_modules, args.pacu_help, args.module_info]):
+            self.check_for_updates()
             self.run_cli(args)
-
         else:
             self.run_gui()
 

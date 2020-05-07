@@ -36,7 +36,7 @@ class Main:
         'aws', 'data', 'exec', 'exit', 'help', 'import_keys', 'list', 'load_commands_file',
         'ls', 'quit', 'regions', 'run', 'search', 'services', 'set_keys', 'set_regions',
         'swap_keys', 'update_regions', 'whoami', 'swap_session', 'sessions',
-        'list_sessions', 'delete_session'
+        'list_sessions', 'delete_session', 'export_creds'
     ]
 
     def __init__(self):
@@ -370,6 +370,8 @@ class Main:
             self.check_sessions()
         elif command[0] == 'delete_session':
             self.delete_session()
+        elif command[0] == 'export_creds':
+            self.export_creds(command)
         elif command[0] == 'help':
             self.parse_help_command(command)
         elif command[0] == 'console' or command[0] == 'open_console':
@@ -693,6 +695,37 @@ class Main:
             return True
         else:
             return False
+
+    def export_creds(self, command):
+        export = input('Export the active keys to the AWS CLI credentials file (~/.aws/credentials)? (y/n) ').rstrip()
+
+        if export.lower() == 'y':
+            session = self.get_active_session()
+
+            if not session.access_key_id:
+                print('  No access key has been set. Not exporting credentials.')
+                return
+            if not session.secret_access_key:
+                print('  No secret key has been set. Not exporting credentials.')
+                return
+
+            config = """
+\n\n[{}]
+aws_access_key_id = {}
+aws_secret_access_key = {}
+""".format(session.key_alias, session.access_key_id, session.secret_access_key)
+            if session.session_token:
+                config = config + 'aws_session_token = "{}"'.format(session.session_token)
+
+            config = config + '\n'
+
+            with open('{}/.aws/credentials'.format(os.path.expanduser('~')), 'a+') as f:
+                f.write(config)
+
+            print('Successfully exported {}. Use it with the AWS CLI like this: aws ec2 describe instances --profile {}'.format(session.key_alias, session.key_alias))
+        else:
+            return
+
 
     ###### Some module notes
     # For any argument that needs a value and a region for that value, use the form

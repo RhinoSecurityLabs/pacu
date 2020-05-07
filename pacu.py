@@ -321,7 +321,7 @@ class Main:
         with open('./last_update.txt', 'r') as f:
             local_last_update = f.read().rstrip()
 
-        latest_update = requests.get('https://raw.githubusercontent.com/RhinoSecurityLabs/pacu/regions/last_update.txt').text.rstrip()
+        latest_update = requests.get('https://raw.githubusercontent.com/RhinoSecurityLabs/pacu/master/last_update.txt').text.rstrip()
 
         local_year, local_month, local_day = local_last_update.split('-')
         datetime_local = datetime.date(int(local_year), int(local_month), int(local_day))

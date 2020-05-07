@@ -37,7 +37,7 @@ class Main:
         'aws', 'data', 'exec', 'exit', 'help', 'import_keys', 'list', 'load_commands_file',
         'ls', 'quit', 'regions', 'run', 'search', 'services', 'set_keys', 'set_regions',
         'swap_keys', 'update_regions', 'whoami', 'swap_session', 'sessions',
-        'list_sessions', 'delete_session', 'export_keys'
+        'list_sessions', 'delete_session', 'export_keys', 'open_console', 'console'
     ]
 
     def __init__(self):

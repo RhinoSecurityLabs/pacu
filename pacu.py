@@ -7,6 +7,7 @@ import random
 import re
 import shlex
 import subprocess
+import datetime
 import sys
 import time
 import traceback
@@ -320,16 +321,16 @@ class Main:
         with open('./last_update.txt', 'r') as f:
             local_last_update = f.read().rstrip()
 
-        latest_update = requests.get('https://raw.githubusercontent.com/RhinoSecurityLabs/pacu/master/last_update.txt').text.rstrip()
+        latest_update = requests.get('https://raw.githubusercontent.com/RhinoSecurityLabs/pacu/regions/last_update.txt').text.rstrip()
 
         local_year, local_month, local_day = local_last_update.split('-')
-        datetime_local = datetime.date(local_year, local_month, local_day)
+        datetime_local = datetime.date(int(local_year), int(local_month), int(local_day))
 
         latest_year, latest_month, latest_day = latest_update.split('-')
-        datetime_latest = datetime.date(latest_year, latest_month, latest_day)
+        datetime_latest = datetime.date(int(latest_year), int(latest_month), int(latest_day))
 
         if datetime_local < datetime_latest:
-            print('Pacu has a new version available! Clone it from GitHub to receive the updates.\n    git clone https://github.com/RhinoSecurityLabs/pacu.git')
+            print('Pacu has a new version available! Clone it from GitHub to receive the updates.\n    git clone https://github.com/RhinoSecurityLabs/pacu.git\n')
 
     def key_info(self, alias=''):
         """ Return the set of information stored in the session's active key

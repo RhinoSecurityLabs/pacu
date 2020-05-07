@@ -36,7 +36,7 @@ class Main:
         'aws', 'data', 'exec', 'exit', 'help', 'import_keys', 'list', 'load_commands_file',
         'ls', 'quit', 'regions', 'run', 'search', 'services', 'set_keys', 'set_regions',
         'swap_keys', 'update_regions', 'whoami', 'swap_session', 'sessions',
-        'list_sessions', 'delete_session'
+        'list_sessions', 'delete_session', 'export_keys'
     ]
 
     def __init__(self):
@@ -370,6 +370,8 @@ class Main:
             self.check_sessions()
         elif command[0] == 'delete_session':
             self.delete_session()
+        elif command[0] == 'export_keys':
+            self.export_keys(command)
         elif command[0] == 'help':
             self.parse_help_command(command)
         elif command[0] == 'console' or command[0] == 'open_console':
@@ -560,6 +562,8 @@ class Main:
                                                   at ~/.aws/credentials) to the current sessions database.
                                                   Enter the name of a profile you would like to import or
                                                   supply --all to import all the credentials in the file.
+            export_keys                         Export the active credentials to a profile in the AWS CLI
+                                                  credentials file (~/.aws/credentials)
             sessions/list_sessions              List all sessions in the Pacu database
             swap_session                        Change the active Pacu session to another one in the database
             delete_session                      Delete a Pacu session from the database. Note that the output
@@ -694,6 +698,37 @@ class Main:
         else:
             return False
 
+    def export_keys(self, command):
+        export = input('Export the active keys to the AWS CLI credentials file (~/.aws/credentials)? (y/n) ').rstrip()
+
+        if export.lower() == 'y':
+            session = self.get_active_session()
+
+            if not session.access_key_id:
+                print('  No access key has been set. Not exporting credentials.')
+                return
+            if not session.secret_access_key:
+                print('  No secret key has been set. Not exporting credentials.')
+                return
+
+            config = """
+\n\n[{}]
+aws_access_key_id = {}
+aws_secret_access_key = {}
+""".format(session.key_alias, session.access_key_id, session.secret_access_key)
+            if session.session_token:
+                config = config + 'aws_session_token = "{}"'.format(session.session_token)
+
+            config = config + '\n'
+
+            with open('{}/.aws/credentials'.format(os.path.expanduser('~')), 'a+') as f:
+                f.write(config)
+
+            print('Successfully exported {}. Use it with the AWS CLI like this: aws ec2 describe instances --profile {}'.format(session.key_alias, session.key_alias))
+        else:
+            return
+
+
     ###### Some module notes
     # For any argument that needs a value and a region for that value, use the form
     # value@region
@@ -776,6 +811,8 @@ class Main:
             print('\n    aws <command>\n        Use the AWS CLI directly. This command runs in your local shell to use the AWS CLI. Warning: The AWS CLI\'s authentication is not related to Pacu. Be careful to ensure that you are using the keys you want when using the AWS CLI. It is suggested to use AWS CLI profiles to help solve this problem\n')
         elif command_name == 'console' or command_name == 'open_console':
             print('\n    console/open_console\n        Generate a URL to login to the AWS web console as the current user/role\n')
+        elif command_name == 'export_keys':
+            print('\n    export_keys\n        Export the active credentials to a profile in the AWS CLI credentials file (~/.aws/credentials)\n')
         elif command_name == 'search':
             print('\n    search [cat[egory]] <search term>\n        Search the list of available modules by name or category\n')
         elif command_name == 'sessions' or command_name == 'list_sessions':

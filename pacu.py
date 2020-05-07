@@ -205,22 +205,81 @@ class Main:
         # TODO: Add an option for GovCloud regions
 
         if service == 'all':
-            return regions['all']
-        if 'aws-global' in regions[service]['endpoints']:
-            return [None]
-        if 'all' in session.session_regions:
-            valid_regions = list(regions[service]['endpoints'].keys())
+            valid_regions = regions['all']
             if 'local' in valid_regions:
                 valid_regions.remove('local')
-            return valid_regions
-        else:
-            valid_regions = list(regions[service]['endpoints'].keys())
-            if 'local' in valid_regions:
-                valid_regions.remove('local')
-            if check_session is True:
-                return [region for region in valid_regions if region in session.session_regions]
-            else:
+            if 'af-south-1' in valid_regions:
+                valid_regions.remove('af-south-1')  # Doesn't work currently
+            if 'ap-east-1' in valid_regions:
+                    valid_regions.remove('ap-east-1')
+            if 'eu-south-1' in valid_regions:
+                    valid_regions.remove('eu-south-1')
+            if 'me-south-1' in valid_regions:
+                    valid_regions.remove('me-south-1')
+        if type(regions[service]) == dict and regions[service].get('endpoints'):
+            if 'aws-global' in regions[service]['endpoints']:
+                return [None]
+            if 'all' in session.session_regions:
+                valid_regions = list(regions[service]['endpoints'].keys())
+                if 'local' in valid_regions:
+                    valid_regions.remove('local')
+                if 'af-south-1' in valid_regions:
+                    valid_regions.remove('af-south-1')
+                if 'ap-east-1' in valid_regions:
+                    valid_regions.remove('ap-east-1')
+                if 'eu-south-1' in valid_regions:
+                    valid_regions.remove('eu-south-1')
+                if 'me-south-1' in valid_regions:
+                    valid_regions.remove('me-south-1')
                 return valid_regions
+            else:
+                valid_regions = list(regions[service]['endpoints'].keys())
+                if 'local' in valid_regions:
+                    valid_regions.remove('local')
+                if 'af-south-1' in valid_regions:
+                    valid_regions.remove('af-south-1')
+                if 'ap-east-1' in valid_regions:
+                    valid_regions.remove('ap-east-1')
+                if 'eu-south-1' in valid_regions:
+                    valid_regions.remove('eu-south-1')
+                if 'me-south-1' in valid_regions:
+                    valid_regions.remove('me-south-1')
+                if check_session is True:
+                    return [region for region in valid_regions if region in session.session_regions]
+                else:
+                    return valid_regions
+        else:
+            if 'aws-global' in regions[service]:
+                return [None]
+            if 'all' in session.session_regions:
+                valid_regions = regions[service]
+                if 'local' in valid_regions:
+                    valid_regions.remove('local')
+                if 'af-south-1' in valid_regions:
+                    valid_regions.remove('af-south-1')
+                if 'ap-east-1' in valid_regions:
+                    valid_regions.remove('ap-east-1')
+                if 'eu-south-1' in valid_regions:
+                    valid_regions.remove('eu-south-1')
+                if 'me-south-1' in valid_regions:
+                    valid_regions.remove('me-south-1')
+                return valid_regions
+            else:
+                valid_regions = regions[service]
+                if 'local' in valid_regions:
+                    valid_regions.remove('local')
+                if 'af-south-1' in valid_regions:
+                    valid_regions.remove('af-south-1')
+                if 'ap-east-1' in valid_regions:
+                    valid_regions.remove('ap-east-1')
+                if 'eu-south-1' in valid_regions:
+                    valid_regions.remove('eu-south-1')
+                if 'me-south-1' in valid_regions:
+                    valid_regions.remove('me-south-1')
+                if check_session is True:
+                    return [region for region in valid_regions if region in session.session_regions]
+                else:
+                    return valid_regions
 
     def display_all_regions(self, command):
         for region in sorted(self.get_regions('all')):

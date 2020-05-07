@@ -36,7 +36,7 @@ class Main:
         'aws', 'data', 'exec', 'exit', 'help', 'import_keys', 'list', 'load_commands_file',
         'ls', 'quit', 'regions', 'run', 'search', 'services', 'set_keys', 'set_regions',
         'swap_keys', 'update_regions', 'whoami', 'swap_session', 'sessions',
-        'list_sessions', 'delete_session', 'export_creds'
+        'list_sessions', 'delete_session', 'export_keys'
     ]
 
     def __init__(self):
@@ -370,8 +370,8 @@ class Main:
             self.check_sessions()
         elif command[0] == 'delete_session':
             self.delete_session()
-        elif command[0] == 'export_creds':
-            self.export_creds(command)
+        elif command[0] == 'export_keys':
+            self.export_keys(command)
         elif command[0] == 'help':
             self.parse_help_command(command)
         elif command[0] == 'console' or command[0] == 'open_console':
@@ -562,6 +562,8 @@ class Main:
                                                   at ~/.aws/credentials) to the current sessions database.
                                                   Enter the name of a profile you would like to import or
                                                   supply --all to import all the credentials in the file.
+            export_keys                         Export the active credentials to a profile in the AWS CLI
+                                                  credentials file (~/.aws/credentials)
             sessions/list_sessions              List all sessions in the Pacu database
             swap_session                        Change the active Pacu session to another one in the database
             delete_session                      Delete a Pacu session from the database. Note that the output
@@ -696,7 +698,7 @@ class Main:
         else:
             return False
 
-    def export_creds(self, command):
+    def export_keys(self, command):
         export = input('Export the active keys to the AWS CLI credentials file (~/.aws/credentials)? (y/n) ').rstrip()
 
         if export.lower() == 'y':
@@ -809,6 +811,8 @@ aws_secret_access_key = {}
             print('\n    aws <command>\n        Use the AWS CLI directly. This command runs in your local shell to use the AWS CLI. Warning: The AWS CLI\'s authentication is not related to Pacu. Be careful to ensure that you are using the keys you want when using the AWS CLI. It is suggested to use AWS CLI profiles to help solve this problem\n')
         elif command_name == 'console' or command_name == 'open_console':
             print('\n    console/open_console\n        Generate a URL to login to the AWS web console as the current user/role\n')
+        elif command_name == 'export_keys':
+            print('\n    export_keys\n        Export the active credentials to a profile in the AWS CLI credentials file (~/.aws/credentials)\n')
         elif command_name == 'search':
             print('\n    search [cat[egory]] <search term>\n        Search the list of available modules by name or category\n')
         elif command_name == 'sessions' or command_name == 'list_sessions':

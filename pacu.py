@@ -723,19 +723,29 @@ class Main:
 
         sts = self.get_boto3_client('sts')
 
-        res = sts.get_federation_token(
-            Name=active_session.key_alias,
-            Policy=json.dumps({
-                'Version': '2012-10-17',
-                'Statement': [
-                    {
-                        'Effect': 'Allow',
-                        'Action': '*',
-                        'Resource': '*'
-                    }
-                ]
-            })
-        )
+        if active_session.session_token:
+            # Roles cant use get_federation_token
+            res = {
+                'Credentials': {
+                    'AccessKeyId': active_session.access_key_id,
+                    'SecretAccessKey': active_session.secret_access_key,
+                    'SessionToken': active_session.session_token
+                }
+            }
+        else:
+            res = sts.get_federation_token(
+                Name=active_session.key_alias,
+                Policy=json.dumps({
+                    'Version': '2012-10-17',
+                    'Statement': [
+                        {
+                            'Effect': 'Allow',
+                            'Action': '*',
+                            'Resource': '*'
+                        }
+                    ]
+                })
+            )
 
         params = {
             'Action': 'getSigninToken',

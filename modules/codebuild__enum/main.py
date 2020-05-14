@@ -90,7 +90,6 @@ def main(args, pacu_main):
 
                
             while 'nextToken' in response:
-                response = {}
                 try:
                     response = client.list_builds(
                         nextToken=response['nextToken']

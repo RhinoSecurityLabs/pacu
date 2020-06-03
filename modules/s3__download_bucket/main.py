@@ -163,7 +163,7 @@ def main(args, pacu_main):
         buckets.append(bucket['Name'])
         print('  Found bucket "{bucket_name}"'.format(bucket_name=bucket['Name']))
 
-    # Process Enuemrated Buckets
+    # Process Enumerated Buckets
     print('Starting enumerating objects in buckets...')
     summary_data['readable_buckets'] = 0
     objects = {}

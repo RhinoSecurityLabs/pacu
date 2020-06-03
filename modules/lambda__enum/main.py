@@ -41,7 +41,7 @@ module_info = {
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 parser.add_argument('--versions-all', required=False, default=False, action='store_true', help='Grab all versions instead of just the latest')
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all session regions.')
-parser.add_argument('--checksource', required=False, default=False, action='store_true', help='Download and scan all lambda functions for secrets. Warning this could effect perforamce.' )
+parser.add_argument('--checksource', required=False, default=False, action='store_true', help='Download and scan all lambda functions for secrets. Warning this could effect performance.' )
 
 SOURCE_ENTROPY_THRESHOLD = 3.8
 

@@ -137,8 +137,8 @@ def generate_preload_actions():
 
 
 def read_only_function(service, func):
-    """Verifies that actions being ran are ReadOnlyAccess to minimize unexpecteed
-    changes to the AWS enviornment.
+    """Verifies that actions being ran are ReadOnlyAccess to minimize unexpected
+    changes to the AWS environment.
     """
     module_dir = os.path.dirname(__file__)
     path = os.path.join(module_dir, 'ReadOnlyAccessPolicy.json')

@@ -154,7 +154,7 @@ def main(args, pacu_main):
             for role in roles:
                 # For each AssumeRole statement
                 for statement in role['AssumeRolePolicyDocument']['Statement']:
-                    # Statement->Principal could be a liist or a dict
+                    # Statement->Principal could be a list or a dict
                     if type(statement['Principal']) is list:
                         # For each item in the list, check if ec2.amazonaws.com is in it
                         for principal in statement['Principal']:

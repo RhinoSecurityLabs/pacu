@@ -130,7 +130,7 @@ def main(args, pacu_main):
 
                 print('  {}@{}: User Data found'.format(instance_id, region))
 
-                #check for secerts 
+                #check for secrets 
                 find_secrets(formatted_user_data)
 
                 # Write to the "all" file

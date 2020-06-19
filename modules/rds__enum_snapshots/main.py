@@ -22,7 +22,7 @@ module_info = {
     'one_liner': 'Enumerates RDS snapshots and logs any without encryption.',
 
     # Description about what the module does and how it works
-    'description': 'This module will enumerate all the RDS snapshots of the account and also snapshots that have been shared by other account to this account. It can also enumerate the snapshot permissions in the account and save the data to the current session. It will also note whether or not each snapshot is encrypted, then write a list of the unencrypted snapshots to ./sessions/[current_session_name]/downloads/unencrypted_rds_snapshots_[timestamp].csv in .CSV format.',
+    'description': 'This module will enumerate all the RDS snapshots of the account and also snapshots that have been shared by other accounts to this account. It can also enumerate the snapshot permissions in the account and save the data to the current session. It will also note whether or not each snapshot is encrypted, then write a list of the unencrypted snapshots to ./sessions/[current_session_name]/downloads/unencrypted_rds_snapshots_[timestamp].csv in .CSV format.',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['RDS'],

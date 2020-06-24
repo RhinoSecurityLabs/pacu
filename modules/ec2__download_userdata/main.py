@@ -31,14 +31,14 @@ module_info = {
     'prerequisite_modules': ['ec2__enum'],
 
     # Module arguments to autocomplete when the user hits tab
-    'arguments_to_autocomplete': ['--instance-ids', '--template-ids'],
+    'arguments_to_autocomplete': ['--instance-ids', '--template-ids', '--filter'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 parser.add_argument('--instance-ids', required=False, default=None, help='One or more (comma separated) EC2 instance IDs with their regions in the format instance_id@region. Defaults to all EC2 instances in the database.')
 parser.add_argument('--template-ids', required=False, default=None, help='One or more (comma separated) EC2 launch template IDs with their regions in the format template_id@region. Defaults to all EC2 launch templates in the database.')
-
+parser.add_argument('--filter', required=False, default=False, help='tag_name_only:, :value_only, tag:value_pair Specify tags, values or tag:value pairs to match when downloading user data.')
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -91,7 +91,12 @@ def main(args, pacu_main):
 
     if instances:
         print('Targeting {} instance(s)...'.format(len(instances)))
-        for instance in instances:
+        for instance in instances: 
+
+            # if the filter is actived check the tags. If tags do not match skip instance
+            if args.filter and not has_tags(args.filter.split(','), instance):
+                continue
+               
             instance_id = instance['InstanceId']
             region = instance['Region']
             client = pacu_main.get_boto3_client('ec2', region)
@@ -221,6 +226,38 @@ def find_secrets(userdata):
     detections = regex_checker(userdata)
     [Color.print(Color.GREEN, '\tDetected {}: {}'.format(itemkey, detections[itemkey])) for itemkey in detections]
 
+def has_tags(filters, userdata):
+
+    try:
+        tags = userdata['Tags']
+    # Instance has no Key
+    except KeyError:
+        return False
+    
+    # If there is only one tag it will be a dict. Convert it to a list
+    if isinstance(tags, dict):
+        tags = list(tags)
+
+    for tag in tags:
+        for item in filters:
+            # This splits items at : 
+            item = item.split(':')
+            
+            # Item is a key value pair
+            if len(item[0]) and len(item[1]) > 0:
+                if '{}:{}'.format(item[0], item[1]) == "{}:{}".format(tag['Key'], tag['Value']):
+                    return True
+            # Key only 
+            elif len(item[0]) > 0:
+                if item[0] == tag['Key']:
+                    return True
+            # Value only
+            else:
+                if item[1] in tag['Value']:
+                    return True
+    # No matches were found 
+    return False
+        
 def summary(data, pacu_main):
     session = pacu_main.get_active_session()
     out = '  Downloaded EC2 User Data for {} instance(s) and {} launch template(s) to ./sessions/{}/downloads/ec2_user_data/.\n'.format(data['instance_downloads'], data['template_downloads'], session.name)

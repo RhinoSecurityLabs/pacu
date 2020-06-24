@@ -103,6 +103,11 @@ def main(args, pacu_main):
         response = None
         next_token = False
 
+        # Create rds directory 
+        directory = "{}/sessions/{}/downloads/rds".format(os.getcwd(), session.name)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
         while (response is None or 'NextToken' in response):
             if next_token is False:
                 try:
@@ -172,7 +177,7 @@ def main(args, pacu_main):
 
     rds_data['Snapshots'] = all_snaps
     summary_data['snapshots'] = len(rds_data['Snapshots'])
-    unencrypted_snapshots_csv_path = 'sessions/{}/downloads/unencrypted_rds_snapshots_{}.csv'.format(session.name, now)
+    unencrypted_snapshots_csv_path = '{}/unencrypted_rds_snapshots_{}.csv'.format(directory, now)
     with open(unencrypted_snapshots_csv_path, 'w+') as unencrypted_snapshots_csv:
         unencrypted_snapshots_csv.write('Snapshot Identifier ,Region\n')
         print('  Writing data for {} snapshots...'.format(len(snapshots_csv_data)))
@@ -193,7 +198,8 @@ def main(args, pacu_main):
         }
         temp = permission_data.copy()
         summary_data.update(temp)
-        path = os.path.join(os.getcwd(), 'sessions', session.name, 'downloads', 'rds_snapshot_permissions_' + str(now) + '.txt')
+
+        path = os.path.join(directory, 'rds_snapshot_permissions_{}.txt'.format(now))
         with open(path, 'w') as out_file:
             out_file.write('Public:\n')
             for public in snapshot_permissions['Public']:

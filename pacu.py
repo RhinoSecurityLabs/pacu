@@ -24,6 +24,7 @@ try:
 
     from core.models import AWSKey, PacuSession
     from setup_database import setup_database_if_not_present
+    from sqlalchemy import exc
     from utils import get_database_connection, set_sigint_handler
 except ModuleNotFoundError as error:
     exception_type, exception_value, tb = sys.exc_info()
@@ -1577,6 +1578,19 @@ aws_secret_access_key = {}
                             local_data=local_data,
                             global_data=global_data
                         )
+
+                # Catch sqlalchemy error
+                elif exception_type == exc.OperationalError:
+                        traceback_text = '\nTraceback (most recent call last):\n{}{}: {}\n\n'.format(''.join(traceback.format_tb(tb)), str(exception_type), str(exception_value))
+                        session, global_data, local_data = self.get_data_from_traceback(tb)
+                        self.log_error(
+                            traceback_text,
+                            exception_info='{}: {}\n\nPacu database error. This could be caused by a recent update in the Database structure. If your Pacu has updated recently try removing your old Db file'.format(exception_type, exception_value),
+                            session=session,
+                            local_data=local_data,
+                            global_data=global_data
+                        )
+                
                 else:
                     traceback_text = '\nTraceback (most recent call last):\n{}{}: {}\n\n'.format(''.join(traceback.format_tb(tb)), str(exception_type), str(exception_value))
                     session, global_data, local_data = self.get_data_from_traceback(tb)

@@ -38,7 +38,7 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 
 parser.add_argument('--instance-ids', required=False, default=None, help='One or more (comma separated) EC2 instance IDs with their regions in the format instance_id@region. Defaults to all EC2 instances in the database.')
 parser.add_argument('--template-ids', required=False, default=None, help='One or more (comma separated) EC2 launch template IDs with their regions in the format template_id@region. Defaults to all EC2 launch templates in the database.')
-parser.add_argument('--filter', required=False, default=False, help='tag_name_only:, :value_only, tag:value_pair Specify tags, values or tag:value pairs to match when downloading user data.')
+parser.add_argument('--filter', required=False, default=False, help='tag_name_only:,:value_only,tag:value_pair Specify tags, values or tag:value pairs to match when downloading user data.')
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()

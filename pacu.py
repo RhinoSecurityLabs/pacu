@@ -814,7 +814,6 @@ aws_secret_access_key = {}
         else:
             return
 
-
     ###### Some module notes
     # For any argument that needs a value and a region for that value, use the form
     # value@region
@@ -1581,16 +1580,16 @@ aws_secret_access_key = {}
 
                 # Catch sqlalchemy error
                 elif exception_type == exc.OperationalError:
-                        traceback_text = '\nTraceback (most recent call last):\n{}{}: {}\n\n'.format(''.join(traceback.format_tb(tb)), str(exception_type), str(exception_value))
-                        session, global_data, local_data = self.get_data_from_traceback(tb)
-                        self.log_error(
-                            traceback_text,
-                            exception_info='{}: {}\n\nPacu database error. This could be caused by a recent update in the Database structure. If your Pacu has updated recently try removing your old Db file'.format(exception_type, exception_value),
-                            session=session,
-                            local_data=local_data,
-                            global_data=global_data
-                        )
-                
+                    traceback_text = '\nTraceback (most recent call last):\n{}{}: {}\n\n'.format(''.join(traceback.format_tb(tb)), str(exception_type), str(exception_value))
+                    session, global_data, local_data = self.get_data_from_traceback(tb)
+                    self.log_error(
+                        traceback_text,
+                        exception_info='{}: {}\n\nPacu database error. This could be caused by a recent update in Pacu\'s database\'s structure. If your Pacu has been updated recently, try removing your old db.sqlite3 database file.'.format(exception_type, exception_value),
+                        session=session,
+                        local_data=local_data,
+                        global_data=global_data
+                    )
+
                 else:
                     traceback_text = '\nTraceback (most recent call last):\n{}{}: {}\n\n'.format(''.join(traceback.format_tb(tb)), str(exception_type), str(exception_value))
                     session, global_data, local_data = self.get_data_from_traceback(tb)

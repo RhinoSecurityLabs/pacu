@@ -2,7 +2,6 @@
 import argparse
 from copy import deepcopy
 import time
-import random
 import os
 
 from botocore.exceptions import ClientError
@@ -22,7 +21,7 @@ module_info = {
     'one_liner': 'Enumerates RDS snapshots and logs any without encryption.',
 
     # Description about what the module does and how it works
-    'description': 'This module will enumerate all the RDS snapshots of the account and also snapshots that have been shared by other accounts to this account. It can also enumerate the snapshot permissions in the account and save the data to the current session. It will also note whether or not each snapshot is encrypted, then write a list of the unencrypted snapshots to ./sessions/[current_session_name]/downloads/unencrypted_rds_snapshots_[timestamp].csv in .CSV format.',
+    'description': 'This module will enumerate all the RDS snapshots (including cluster snapshots) of the account and also snapshots that have been shared by other accounts to this account. It can also enumerate the snapshot permissions in the account and save the data to the current session. It will also note whether or not each snapshot is encrypted, then write a list of the unencrypted snapshots to ./sessions/[current_session_name]/downloads/unencrypted_rds_snapshots_[timestamp].csv in .CSV format. For written files, DB cluster snapshots will have a "(cluster)" added beside its identifier.',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['RDS'],
@@ -65,8 +64,6 @@ def main(args, pacu_main):
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = pacu_main.print
-    input = pacu_main.input
-    key_info = pacu_main.key_info
     get_regions = pacu_main.get_regions
     ######
 
@@ -83,7 +80,6 @@ def main(args, pacu_main):
     else:
         regions = args.regions.split(',')
 
-    client = pacu_main.get_boto3_client('rds', random.choice(regions))
     now = time.time()
     all_snaps = []
     snapshots_csv_data = []
@@ -94,82 +90,134 @@ def main(args, pacu_main):
         'Private': [],
     }
 
+    def fetch_rds_data(client, func, key, print, **kwargs):
+        caller = getattr(client, func)
+        try:
+            response = caller(**kwargs)
+            data = response[key]
+            if isinstance(data, (dict, str)):
+                return data
+            while 'Marker' in response:
+                response = caller({**kwargs, **{'Marker': response['Marker']}})
+                data.extend(response[key])
+            return data
+
+        except ClientError as error:
+            print('  FAILURE:')
+            code = error.response['Error']['Code']
+            if code == 'AccessDenied':
+                print('    MISSING NEEDED PERMISSIONS for ' + func)
+            else:
+                print(code)
+            print('    Skipping ' + func)
+        return []
+
+    # Create rds directory
+    directory = "{}/sessions/{}/downloads/rds".format(os.getcwd(), session.name)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
     for region in regions:
         print('Starting region {} (this may take a while if there are thousands of RDS snapshots)...'.format(region))
-        client = pacu_main.get_boto3_client('rds', region)
-
         # Start RDS Snapshots in this region
         count = 0
-        response = None
-        next_token = False
 
-        # Create rds directory 
-        directory = "{}/sessions/{}/downloads/rds".format(os.getcwd(), session.name)
-        if not os.path.exists(directory):
-            os.makedirs(directory)
+        rdsClient = pacu_main.get_boto3_client('rds', region)
 
-        while (response is None or 'NextToken' in response):
-            if next_token is False:
-                try:
-                    response = client.describe_db_snapshots(
-                        IncludeShared=not args.no_include_shared,
-                        MaxRecords=100  # Using this as AWS can timeout the connection if there are too many snapshots to return in one
-                    )
-                except ClientError as error:
-                    code = error.response['Error']['Code']
-                    print('FAILURE: ')
-                    if code == 'UnauthorizedOperation':
-                        print('  Access denied to DescribeDBSnapshots.')
-                    else:
-                        print('  ' + code)
-                    print('Skipping snapshot enumeration...')
-                    break
-            else:
-                response = client.describe_db_snapshots(
-                    IncludeShared=not args.no_include_shared,
-                    MaxRecords=100
-                )
+        # Enumerate normal snapshots
+        rdsSnapshotData = fetch_rds_data(rdsClient, 'describe_db_snapshots', 'DBSnapshots',
+                                print, IncludeShared=not args.no_include_shared, MaxRecords=100)
 
-            if 'NextToken' in response:
-                next_token = response['NextToken']
+        # Enumerate cluster snapshots
+        rdsClusterSnapshotData = fetch_rds_data(rdsClient, 'describe_db_cluster_snapshots', 'DBClusterSnapshots',
+                                print, IncludeShared=not args.no_include_shared, MaxRecords=100)
 
-            for snapshot in response['DBSnapshots']:
-                all_snaps.append(snapshot)
-                snapshot['Region'] = region
+        # Check basic info for normal snapshots
+        for snapshot in rdsSnapshotData:
+            all_snaps.append(snapshot)
+            snapshot['Region'] = region
 
-                if snapshot['Encrypted'] is False:
-                    snapshots_csv_data.append('{},{}\n'.format(snapshot['DBSnapshotIdentifier'], region))
+            if snapshot['Encrypted'] is False:
+                snapshots_csv_data.append('{},{}\n'.format(snapshot['DBSnapshotIdentifier'], region))
 
+            if snapshot['SnapshotType'] == 'shared':
+                    shared_by_other_account_snapshots.append(snapshot['DBSnapshotIdentifier'])
+
+        # Check basic info for cluster snapshots
+        for clusterSnapshot in rdsClusterSnapshotData:
+            all_snaps.append(clusterSnapshot)
+            clusterSnapshot['Region'] = region
+
+            if clusterSnapshot['StorageEncrypted'] is False:
+                snapshots_csv_data.append('{},{}\n'.format(clusterSnapshot['DBClusterSnapshotIdentifier'] + " (cluster)", region))
+
+            if clusterSnapshot['SnapshotType'] == 'shared':
+                    shared_by_other_account_snapshots.append(clusterSnapshot['DBClusterSnapshotIdentifier'] + " (cluster)")
+
+        # Handle permissions check for both types of snapshots
+        if args.snapshot_permissions and (rdsSnapshotData or rdsClusterSnapshotData):
+            print('  Starting enumeration for own account\'s Snapshot Permissions...')
+
+            for snapshot in rdsSnapshotData:
                 if snapshot['SnapshotType'] == 'shared':
-                        shared_by_other_account_snapshots.append(snapshot['DBSnapshotIdentifier'])
-                        # Ignore permission check for snapshots shared by other account so move on to next snapshot
-                        continue
+                    continue  # Ignore permission check for snapshots shared by other account so move on to next snapshot
 
-                if args.snapshot_permissions:
-                    print('    Starting enumeration for own account\'s Snapshot Permissions...')
-                    # Automated snapshots are always private
-                    if snapshot['SnapshotType'] == 'automated':
+                # Automated snapshots are always private
+                if snapshot['SnapshotType'] == 'automated':
+                    snapshot_permissions['Private'].append(snapshot['DBSnapshotIdentifier'])
+
+                # Only manual snapshots will be updated with RestoreAttributeValues
+                else:
+                    attributes = fetch_rds_data(rdsClient, "describe_db_snapshot_attributes", 'DBSnapshotAttributesResult',
+                                        print, DBSnapshotIdentifier=snapshot['DBSnapshotIdentifier'])
+
+                    # If user does not have permission to DescribeDBSnapshotAttributes, skip this loop
+                    if attributes == []:
+                        break
+
+                    for attr in attributes['DBSnapshotAttributes']:
+                        if attr['AttributeName'] == 'restore':
+                            snapshot['RestoreAttributeValues'] = attr['AttributeValues']
+                            break
+
+                    if not snapshot['RestoreAttributeValues']:
                         snapshot_permissions['Private'].append(snapshot['DBSnapshotIdentifier'])
-
-                    # Only manual snapshots will be updated with RestoreAttributeValues
+                    elif snapshot['RestoreAttributeValues'][0] == 'all':
+                        snapshot_permissions['Public'].append(snapshot['DBSnapshotIdentifier'])
                     else:
-                        attributes = client.describe_db_snapshot_attributes(
-                            DBSnapshotIdentifier=snapshot['DBSnapshotIdentifier']
-                        )['DBSnapshotAttributesResult']['DBSnapshotAttributes']
+                        snapshot_permissions['Shared'][snapshot['DBSnapshotIdentifier']] = snapshot['RestoreAttributeValues']
 
-                        for attr in attributes:
-                            if attr['AttributeName'] == 'restore':
-                                snapshot['RestoreAttributeValues'] = attr['AttributeValues']
-                                break
+            for clusterSnapshot in rdsClusterSnapshotData:
+                if clusterSnapshot['SnapshotType'] == 'shared':
+                    continue  # Ignore permission check for snapshots shared by other account so move on to next snapshot
 
-                        if not snapshot['RestoreAttributeValues']:
-                            snapshot_permissions['Private'].append(snapshot['DBSnapshotIdentifier'])
-                        elif snapshot['RestoreAttributeValues'][0] == 'all':
-                            snapshot_permissions['Public'].append(snapshot['DBSnapshotIdentifier'])
-                        else:
-                            snapshot_permissions['Shared'][snapshot['DBSnapshotIdentifier']] = snapshot['RestoreAttributeValues']
+                # Automated snapshots are always private
+                if clusterSnapshot['SnapshotType'] == 'automated':
+                    snapshot_permissions['Private'].append(clusterSnapshot['DBClusterSnapshotIdentifier'] + " (cluster)")
 
-            count += len(response['DBSnapshots'])
+                # Only manual snapshots will be updated with RestoreAttributeValues
+                else:
+                    attributes = fetch_rds_data(rdsClient, "describe_db_cluster_snapshot_attributes", 'DBClusterSnapshotAttributesResult',
+                                        print, DBClusterSnapshotIdentifier=clusterSnapshot['DBClusterSnapshotIdentifier'])
+
+                    # If user does not have permission to DescribeDBClusterSnapshotAttributes, skip this loop
+                    if attributes == []:
+                        break
+
+                    for attr in attributes['DBClusterSnapshotAttributes']:
+                        if attr['AttributeName'] == 'restore':
+                            clusterSnapshot['RestoreAttributeValues'] = attr['AttributeValues']
+                            break
+
+                    if not clusterSnapshot['RestoreAttributeValues']:
+                        snapshot_permissions['Private'].append(clusterSnapshot['DBClusterSnapshotIdentifier'] + " (cluster)")
+                    elif clusterSnapshot['RestoreAttributeValues'][0] == 'all':
+                        snapshot_permissions['Public'].append(clusterSnapshot['DBClusterSnapshotIdentifier'] + " (cluster)")
+                    else:
+                        snapshot_permissions['Shared'][clusterSnapshot['DBClusterSnapshotIdentifier'] + " (cluster)"] = clusterSnapshot['RestoreAttributeValues']
+
+        count += len(rdsSnapshotData)
+        count += len(rdsClusterSnapshotData)
 
         print('    {} snapshot(s) found'.format(count))
 
@@ -180,7 +228,7 @@ def main(args, pacu_main):
     unencrypted_snapshots_csv_path = '{}/unencrypted_rds_snapshots_{}.csv'.format(directory, now)
     with open(unencrypted_snapshots_csv_path, 'w+') as unencrypted_snapshots_csv:
         unencrypted_snapshots_csv.write('Snapshot Identifier ,Region\n')
-        print('  Writing data for {} snapshots...'.format(len(snapshots_csv_data)))
+        print('  Writing data for {} unencrypted snapshots...'.format(len(snapshots_csv_data)))
         for line in snapshots_csv_data:
             unencrypted_snapshots_csv.write(line)
     summary_data['snapshots_csv_path'] = unencrypted_snapshots_csv_path

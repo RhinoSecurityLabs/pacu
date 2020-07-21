@@ -34,11 +34,11 @@ module_info = {
     'arguments_to_autocomplete': ['--instance-ids', '--template-ids', '--filter'],
 }
 
-parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
+parser = argparse.ArgumentParser(add_help=True, description=module_info['description'])
 
 parser.add_argument('--instance-ids', required=False, default=None, help='One or more (comma separated) EC2 instance IDs with their regions in the format instance_id@region. Defaults to all EC2 instances in the database.')
 parser.add_argument('--template-ids', required=False, default=None, help='One or more (comma separated) EC2 launch template IDs with their regions in the format template_id@region. Defaults to all EC2 launch templates in the database.')
-parser.add_argument('--filter', required=False, default=False, help='tag_name_only:,:value_only,tag:value_pair Specify tags, values or tag:value pairs to match when downloading user data.')
+parser.add_argument('--filter', required=False, default=False, help='Specify tags, values or tag:value pairs to match before downloading user data. Using format tag_name_only:, :value_only, tag:value_pair ')
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -96,7 +96,7 @@ def main(args, pacu_main):
             # if the filter is actived check the tags. If tags do not match skip instance
             if args.filter and not has_tags(args.filter.split(','), instance):
                 continue
-               
+
             instance_id = instance['InstanceId']
             region = instance['Region']
             client = pacu_main.get_boto3_client('ec2', region)
@@ -135,7 +135,7 @@ def main(args, pacu_main):
 
                 print('  {}@{}: User Data found'.format(instance_id, region))
 
-                #check for secrets 
+                # Check for secrets
                 find_secrets(formatted_user_data)
 
                 # Write to the "all" file
@@ -223,6 +223,7 @@ def main(args, pacu_main):
     return summary_data
 
 def find_secrets(userdata):
+
     detections = regex_checker(userdata)
     [Color.print(Color.GREEN, '\tDetected {}: {}'.format(itemkey, detections[itemkey])) for itemkey in detections]
 
@@ -240,20 +241,20 @@ def has_tags(filters, userdata):
 
     for tag in tags:
         for item in filters:
-            # This splits items at : 
-            item = item.split(':')
+            # This splits items at :
+            item_list = item.split(':')
             
             # Item is a key value pair
-            if len(item[0]) and len(item[1]) > 0:
-                if '{}:{}'.format(item[0], item[1]) == "{}:{}".format(tag['Key'], tag['Value']):
+            if len(item_list[0]) and len(item_list[1]) > 0:
+                if '{}:{}'.format(item_list[0], item_list[1]) == "{}:{}".format(tag['Key'], tag['Value']):
                     return True
             # Key only 
-            elif len(item[0]) > 0:
-                if item[0] == tag['Key']:
+            elif len(item_list[0]) > 0:
+                if item_list[0] == tag['Key']:
                     return True
             # Value only
             else:
-                if item[1] in tag['Value']:
+                if item_list[1] in tag['Value']:
                     return True
     # No matches were found 
     return False

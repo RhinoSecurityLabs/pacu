@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 from copy import deepcopy
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError,EndpointConnectionError
 
 
 module_info = {
@@ -155,6 +155,12 @@ def main(args, pacu_main):
                     guard_duty_permission = False
                 else:
                     print('    {}'.format(code))
+            except EndpointConnectionError as error: 
+                print('    Error connecting to Guardduty Endpoint for region: {}'.format(region))
+                print('        Error: {}, {}'.format(error.__class__, str(error)))
+            except Exception as error: 
+                print('    Generic Error when enumerating Guardduty detectors for region: {}'.format(region))
+                print('        Error: {}, {}'.format(error.__class__, str(error)))
 
         summary_data['MasterDetectors'] = master_count
         guardduty_data = deepcopy(session.GuardDuty)

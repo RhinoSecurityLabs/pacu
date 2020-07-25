@@ -52,7 +52,7 @@ def main(args, pacu_main):
 
     # Need to delete ALL detectors
     if args.regions == "all" or args.detector_ids == "all":
-        data['detectors'] = detectors_regions_map.keys()
+        data['detectors'] = detectors_regions_map.copy()
     else:
         # Add detector IDs to be deleted 
         if args.detector_ids:
@@ -75,7 +75,7 @@ def main(args, pacu_main):
     print("Deleting following detectors:")
     for detector_id, region in data['detectors'].items():
         print('region: {}, detector_id: {}'.format(region, detector_id))
-    input("Press any key to continue...")
+    input("Press any key to continue OR CTRL-D to stop...")
 
     # Start deleting detectors now
     for detector_id, region in data['detectors'].items():

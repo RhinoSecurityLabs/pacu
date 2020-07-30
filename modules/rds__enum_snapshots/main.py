@@ -226,12 +226,14 @@ def main(args, pacu_main):
     rds_data['Snapshots'] = all_snaps
     summary_data['snapshots'] = len(rds_data['Snapshots'])
     unencrypted_snapshots_csv_path = '{}/unencrypted_rds_snapshots_{}.csv'.format(directory, now)
-    with open(unencrypted_snapshots_csv_path, 'w+') as unencrypted_snapshots_csv:
-        unencrypted_snapshots_csv.write('Snapshot Identifier ,Region\n')
-        print('  Writing data for {} unencrypted snapshots...'.format(len(snapshots_csv_data)))
-        for line in snapshots_csv_data:
-            unencrypted_snapshots_csv.write(line)
-    summary_data['snapshots_csv_path'] = unencrypted_snapshots_csv_path
+    
+    if (snapshots_csv_data):
+        with open(unencrypted_snapshots_csv_path, 'w+') as unencrypted_snapshots_csv:
+            unencrypted_snapshots_csv.write('Snapshot Identifier ,Region\n')
+            print('  Writing data for {} unencrypted snapshots...'.format(len(snapshots_csv_data)))
+            for line in snapshots_csv_data:
+                unencrypted_snapshots_csv.write(line)
+        summary_data['snapshots_csv_path'] = unencrypted_snapshots_csv_path
 
     if not args.no_include_shared:
         summary_data['Shared by other account'] = len(shared_by_other_account_snapshots)

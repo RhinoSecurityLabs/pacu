@@ -12,7 +12,7 @@ module_info = {
     'name': 'rds__enum_snapshots',
 
     # Name and any other notes about the author
-    'author': 'Ng Song Guan',
+    'author': 'Ng Song Guan (GovTech-CSG)',
 
     # Category of the module. Make sure the name matches an existing category.
     'category': 'ENUM',

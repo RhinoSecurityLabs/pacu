@@ -11,7 +11,7 @@ module_info = {
     'author': 'Manas Bellani',
     'category': 'ENUM',
     'one_liner': 'List GuardDuty master account, and other accounts that are linked to Guardduty which can provide us more lateral movement scope',
-    'description': 'This module list accounts that are linked to the current GuardDuty account which provides list of more accounts that we can laterally move into. The module also determines the master account that acts as the administration account for guardduty, and also any other accounts within the organization',
+    'description': 'This module list accounts that are linked to the current GuardDuty account which provides list of more accounts that we can laterally move into. The module also determines invitations to integrate Guardduty findings to other accounts, master account that acts as the administrative account for Guardduty, and also any other accounts within the organization',
     'services': ['GuardDuty'],
     'prerequisite_modules': ['detection__enum_services'],
     'external_dependencies': [],

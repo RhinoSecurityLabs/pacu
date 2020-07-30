@@ -146,6 +146,40 @@ def main(args, pacu_main):
                     print("Exception determining GuardDuty master account for region: {}, detector: {}".format(region, detector_id)) 
                     print("    Error: {}, {}".format(err.__class__, str(err)))    
 
+                
+                # List any guardduty invitations that contain details of other accounts
+                try:
+                    finished_getting_invites = False
+                    next_token = None
+                    while not finished_getting_invites:
+                        print("Determine the invitations for region: {}, detector ID: {}".format(region, detector_id))
+                        if next_token:
+                            response = client.list_invitations(
+                                NextToken=next_token,
+                                MaxResults=50
+                            )
+                        else:
+                            response = client.list_invitations(
+                                MaxResults=50
+                            )
+
+                        if 'Invitations' in response:
+                            print("    GuardDuty Invitations for region: {}, detector: {}".format(region, detector_id))
+                            print(json.dumps(response['Invitations'], indent=4))
+                        else:
+                            print("    No GuardDuty invitations for region: {}, detector: {}".format(region, detector_id))
+
+                        # check if we need to get the next token for more accounts 
+                        if 'NextToken' in response: 
+                            next_token = response['NextToken']
+                        else:
+                            finished_getting_invites = True
+
+                except Exception as err:
+                    print("Exception determining GuardDuty Organizational AdminAccounts for region: {}, detector: {}".format(region, detector_id)) 
+                    print("    Error: {}, {}".format(err.__class__, str(err)))
+
+
     return data
 
 

@@ -10,8 +10,8 @@ module_info = {
     'name': 'guardduty__list_accounts',
     'author': 'Manas Bellani',
     'category': 'ENUM',
-    'one_liner': 'List GuardDuty master account, other accounts that are linked to Guardduty which can provide us more lateral movement scope',
-    'description': 'This module list accounts that are linked to the current GuardDuty account which provides list of more accounts that we can laterally move into',
+    'one_liner': 'List GuardDuty master account, and other accounts that are linked to Guardduty which can provide us more lateral movement scope',
+    'description': 'This module list accounts that are linked to the current GuardDuty account which provides list of more accounts that we can laterally move into. The module also determines the master account that acts as the administration account for guardduty, and also any other accounts within the organization',
     'services': ['GuardDuty'],
     'prerequisite_modules': ['detection__enum_services'],
     'external_dependencies': [],
@@ -48,6 +48,7 @@ def main(args, pacu_main):
         client = pacu_main.get_boto3_client('guardduty', region)
         for detector in detectors:
 
+
              # Get the detector and region for each detector
             if detector['Region'] == region:
                 detector_id = detector['Id']
@@ -82,20 +83,53 @@ def main(args, pacu_main):
                         else:
                             finished_getting_accounts = True
 
-                        print("    Member Accounts. Region: {}, Detector: {}".format(region, detector_id))
                         if 'Members' in response:
-                            if len(response['Members'] > 0):
+                            if len(response['Members']) > 0:
                                 print(json.dumps(response['Members'], indent=4))
                             else:
-                                print("   No Member accounts found for region: {}, detector: {}".format(region, detector_id))
+                                print("    No Member accounts found for region: {}, detector: {}".format(region, detector_id))
                         else:
-                            print("   No Member accounts found for region: {}, detector: {}".format(region, detector_id))
+                            print("    No Member accounts found for region: {}, detector: {}".format(region, detector_id))
                         #data['guardduty_accounts_info'][detector] = response 
 
                 except Exception as err:
                     print("Exception listing GuardDuty member accounts for region: {}, detector: {}".format(region, detector_id)) 
                     print("    Error: {}, {}".format(err.__class__, str(err)))
                 
+
+                # Listing the guardduty organizational admin accounts
+                try:
+                    finished_getting_accounts = False
+                    next_token = None
+                    while not finished_getting_accounts:
+                        print("Determine the organizational AdminAccounts for region: {}, detector ID: {}".format(region, detector_id))
+                        if next_token:
+                            response = client.list_organization_admin_accounts(
+                                NextToken=next_token,
+                                MaxResults=50
+                            )
+                        else:
+                            response = client.list_organization_admin_accounts(
+                                MaxResults=50
+                            )
+
+                        if 'AdminAccounts' in response:
+                            print("    AdminAccounts Account for region: {}, detector: {}".format(region, detector_id))
+                            print(json.dumps(response['AdminAccounts'], indent=4))
+                        else:
+                            print("   No AdminAccounts account found for region: {}, detector: {}".format(region, detector_id))
+
+                        # check if we need to get the next token for more accounts 
+                        if 'NextToken' in response: 
+                            next_token = response['NextToken']
+                        else:
+                            finished_getting_accounts = True
+
+                except Exception as err:
+                    print("Exception determining GuardDuty Organizational AdminAccounts for region: {}, detector: {}".format(region, detector_id)) 
+                    print("    Error: {}, {}".format(err.__class__, str(err)))
+
+
                 # List the guardduty master account
                 try:
                     print("Determine the master account for region: {}, detector ID: {}".format(region, detector_id))
@@ -104,15 +138,13 @@ def main(args, pacu_main):
                     )
 
                     if 'Master' in response:
-                        print("    Master Account for region: {}, detector: {}".format(region, detector_id))
                         print(json.dumps(response['Master'], indent=4))
                     else:
                         print("   No Master account found for region: {}, detector: {}".format(region, detector_id))
 
                 except Exception as err:
                     print("Exception determining GuardDuty master account for region: {}, detector: {}".format(region, detector_id)) 
-                    print("    Error: {}, {}".format(err.__class__, str(err)))
-                
+                    print("    Error: {}, {}".format(err.__class__, str(err)))    
 
     return data
 

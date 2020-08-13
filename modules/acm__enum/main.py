@@ -11,7 +11,7 @@ module_info = {
     'author': 'Manas Bellani',
     'category': 'ENUM',
     'one_liner': 'Enumerate Information about the AWS Certificate Manager',
-    'description': 'This module is used to list and get information about ACM certificates, list expired certificates, and get info about private CAs which can generate certs created within AWS',
+    'description': 'This module is used to list and get information about ACM certificates, list expired certificates, and get info about private CAs which can generate certs. Expired certificates can provide an opportunity for takeover if domain has expired OR can be abused for client interaction as well',
     'services': ['ACM'],
     'prerequisite_modules': [],
     'external_dependencies': [],
@@ -233,7 +233,7 @@ Expired CA Certificate ARNs:
 
 Found {} certificate(s) in ACM
 
-Found {} CA(s) in ACM
+Found {} Private CA(s) in ACM
 
 Found {} expired certificate(s) in ACM
 """.format(

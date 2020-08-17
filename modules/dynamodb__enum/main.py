@@ -143,13 +143,16 @@ def main(args, pacu_main):
 
 def summary(data, pacu_main):
     out = ''
+    tables_dumped = False
     for region in sorted(data):
         if not region == 'dump_path':
             out += '  {} tables found in {}. View more information in the DB \n'.format(data[region], region)
+            tables_dumped = True
     if not out:
-        out = '  Nothing was enumerated'
-    if data['dump_path']:
+        out = '  No tables found'
+    if data['dump_path'] and tables_dumped:
         out += '  Tables dumped to {}\n'.format(data['dump_path'])
+        
     return out
 
 

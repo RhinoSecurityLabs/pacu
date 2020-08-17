@@ -107,9 +107,8 @@ def main(args, pacu_main):
 
     summary_data['dump_path'] = False
     if args.dump:
-        dir_path = os.path.join(os.getcwd(), 'sessions', session.name, 'downloads', 'dynamodb_table_dump_' + str(now))
-        os.mkdir(dir_path)
-        summary_data['dump_path'] = dir_path
+        # Name but do not wirte until data is found
+        summary_data['dump_path'] = os.path.join(os.getcwd(), 'sessions', session.name, 'downloads', 'dynamodb_table_dump_' + str(now))
 
     for region in regions:
         print('Starting region {}...'.format(region))
@@ -124,14 +123,14 @@ def main(args, pacu_main):
 
             if args.dump:
                 print('  Downloading data and finding secrets for table: {}'.format(table))
-                path = os.path.join(dir_path, table + '.txt')
+                
                 dump = dump_dynamodb_table(client, print, TableName=table)
 
                 check_secrets(session.name, dump)
 
                 del dump['ResponseMetadata']
-                with open(path, 'w+') as writeTableDump:
-                    writeTableDump.write(pprint.pformat(dump))
+
+                writeTableData(summary_data['dump_path'], table, dump)
 
         if dynamodb_tables:
             summary_data[region] = len(dynamodb_tables)
@@ -152,9 +151,16 @@ def summary(data, pacu_main):
         out = '  No tables found'
     if data['dump_path'] and tables_dumped:
         out += '  Tables dumped to {}\n'.format(data['dump_path'])
-        
+
     return out
 
+
+def writeTableData(directory, table, data):
+    if not os.path.exists(directory):
+        os.mkdir(directory)
+    path = os.path.join(directory, table + '.txt')
+    with open(path, 'w+') as writeTableDump:
+        writeTableDump.write(pprint.pformat(data))
 
 def NestedDictValues(d):
     for v in d.values():

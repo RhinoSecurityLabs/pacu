@@ -195,7 +195,7 @@ def main(args, pacu_main):
                         )
                     except UnicodeDecodeError as error:
                         try:
-                            decoded = base64.b64decode(user_data['Value'])
+                            decoded = base64.b64decode(user_data)
                             decompressed = gzip.decompress(decoded)
                             formatted_user_data = '{}@{}:\n{}\n\n'.format(
                                 instance_id,

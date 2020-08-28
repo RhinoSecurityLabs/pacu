@@ -575,11 +575,21 @@ class Main:
             self.display_module_help(command[1])
 
     def parse_list_command(self, command):
+
         if len(command) == 1:
             self.list_modules('')
+
         elif len(command) == 2:
+            if command[1] in ('cat', 'category', 'categories'):
+                PRINT_ORDER = ['RECON_UNAUTH', 'ENUM', 'ESCALATE', 'LATERAL_MOVE', 'EXPLOIT', 'PERSIST', 'EXFIL', 'EVADE']
+                print("[Categories]:")
+                for category in PRINT_ORDER:
+                    print('    {}'.format(category))
+
+        # list cat/category <cat_name>
+        elif len(command) == 3:
             if command[1] in ('cat', 'category'):
-                self.list_modules('', by_category=True)
+                self.list_modules(command[2], by_category=True)
 
     def parse_exec_module_command(self, command):
         if len(command) > 1:
@@ -989,7 +999,7 @@ aws_secret_access_key = {}
                         continue
 
                     # Searching for modules by category:
-                    if by_category and search_term in category:
+                    if by_category and search_term.upper() in category:
                         if category not in found_modules_by_category.keys():
                             found_modules_by_category[category] = list()
 

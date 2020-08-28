@@ -13,18 +13,26 @@ module_info = {
     'services': ['SSM'],
     'prerequisite_modules': [],
     'external_dependencies': [],
-    'arguments_to_autocomplete': [],
+    'arguments_to_autocomplete': ["--regions"],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
+
+parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all regions.')
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
     print = pacu_main.print
-    get_regions = pacu_main.get_regions
 
-    regions = get_regions('ssm')
+    args = parser.parse_args(args)
+
+    if args.regions:
+        regions = args.regions.split(',')
+    else:
+        get_regions = pacu_main.get_regions
+        regions = get_regions('ssm')
+
     data = {}
     for region in regions:
         param_objs = []
@@ -43,7 +51,7 @@ def main(args, pacu_main):
         #Check if any params in the region and add them to param_objs
         if param_data["Parameters"]:
             data[region] = {}
-            print('Found parameters in region {}...'.format(region))
+            print('    Found parameters in region {}...'.format(region))
             param_objs += (param_data["Parameters"])
         else:
             continue

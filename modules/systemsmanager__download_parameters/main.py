@@ -119,7 +119,7 @@ def main(args, pacu_main):
 
 # The summary function will be called by Pacu after running main
 def summary(data, pacu_main):
-    number_of_parameters = 0
+    
     if data.keys():
         return 'Downloaded {} SSM parameters and values from {} region(s).\nSaved to: {}'.format(data["total_params"],data["region_count"],data["save_path"])
     else:

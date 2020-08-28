@@ -16,6 +16,9 @@ module_info = {
     'arguments_to_autocomplete': ["--regions"],
 }
 
+# client.get_parameters() only takes a list of 10 max
+SMS_GET_PARAM_MAX = 10
+
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all regions.')
@@ -80,11 +83,10 @@ def main(args, pacu_main):
         param_names = list(data[region].keys())
         
         #client.get_parameters() only takes a list of 10 max, so break it up into 10s
-        #Reference: https://www.geeksforgeeks.org/break-list-chunks-size-n-python/
-        n = 10    
-        param_names_by_10 = [param_names[i * n:(i + 1) * n] for i in range((len(param_names) + n - 1) // n )]
+        #Reference: https://www.geeksforgeeks.org/break-list-chunks-size-n-python/   
+        param_names_by_max = [param_names[i * SMS_GET_PARAM_MAX:(i + 1) * SMS_GET_PARAM_MAX] for i in range((len(param_names) + SMS_GET_PARAM_MAX - 1) // SMS_GET_PARAM_MAX )]
         
-        for names in param_names_by_10:
+        for names in param_names_by_max:
             full_params = client.get_parameters(Names=names,
                                                 WithDecryption=True)
 

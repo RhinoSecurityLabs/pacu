@@ -6,13 +6,14 @@ import string
 import random
 import json
 import math
+import time
 
 module_info = {
     'name': 'guardduty__list_findings',
     'author': 'Manas Bellani',
     'category': 'ENUM',
     'one_liner': 'Gets the guard-duty statistics and finding details from all Guard-duty detectors.',
-    'description': 'This module lists all the GuardDuty Findings available from the AWS console for each identified detector. It requires that pre-req module has been run first to ensure that all detectors for which findings need to be pulled have been populated',
+    'description': 'This module lists all the GuardDuty Findings available from the AWS console for each identified detector. It requires that pre-req module has been run first to ensure that all detectors for which findings need to be pulled have been populated. Ther results are written to the "Downloads" folder within "sessions" folder in pacu.',
     'services': ['GuardDuty'],
     'prerequisite_modules': ['detection__enum_services'],
     'external_dependencies': [],
@@ -29,25 +30,42 @@ def main(args, pacu_main):
     input = pacu_main.input
     fetch_data = pacu_main.fetch_data
     get_regions = pacu_main.get_regions
+    
+    # Prepare output file to write guardduty findings results
+    now = time.time()
+    out_file_path = 'sessions/{}/downloads/guardduty_list_findings_{}.json'.format(
+        session.name,
+        now
+    )
 
-    data = {'detectors': [], 'findings': {}, 'finding_details': {}, 
-            'severity_count_map': {}}
+    # Store all the data in this 
+    data = {
+        'detectors': {}, 
+        'findings': {}, 
+        'finding_details': {}, 
+        'severity_count_map': {}
+    }
 
+    # Get all the regions that GuardDuty runs in
     regions = get_regions('GuardDuty')
+
+    # Get the list of all detectors 
     if fetch_data(['GuardDuty', 'Detectors'], module_info['prerequisite_modules'][0], '--guard-duty') is False:
         print('Pre-req module failed.')
         return
     detectors = copy.deepcopy(session.GuardDuty['Detectors'])
 
+    # Loop through each region for guardduty detectors
     for region in regions:
         client = pacu_main.get_boto3_client('guardduty', region)
+
+        # Get the detectors for each region
         for detector in detectors:
             if detector['Region'] == region:
                 detector_id = detector['Id']
                 print(' ({}) Detector {}:'.format(region, detector_id))
-                data['detectors'].append(detector)
+                data['detectors'][detector_id] = region
 
-                
                 try:
                     # Get the statistics of number of findings
                     response = client.get_findings_statistics(
@@ -97,7 +115,6 @@ def main(args, pacu_main):
                         print('Number of findings for detector_id, {}: {}'.format(detector_id, num_findings))
                         print('Getting more details about each finding')
 
-
                     # Determining number of iterations to use to get information
                     findings_set_len = 10
                     num_iters = math.ceil(num_findings/findings_set_len)
@@ -107,12 +124,18 @@ def main(args, pacu_main):
                     # bunch of 'findings_set_len' findings
                     data['finding_details'][detector_id] = []
                     for i in range(0, num_iters):
-                        print('Iterating {}th time to get findings info for detector_id: {}'.format(i, detector_id))
+                        print('Iterating {}th time to get findings info for detector_id: {}'.format(
+                                i+1,
+                                detector_id
+                            )
+                        )
+
+                        # Split findings to get into a group 
                         lbound = i * findings_set_len
                         ubound = (i+1) * findings_set_len
                         findings_to_get = data['findings'][detector_id][lbound:ubound]
 
-                        
+                        # Get more info about all the findings
                         response = client.get_findings(
                             DetectorId=detector_id,
                             FindingIds=findings_to_get
@@ -129,32 +152,41 @@ def main(args, pacu_main):
                                             'type': finding_detail['Type'],
                                             'title': finding_detail['Title'],
                                             'sev': finding_detail['Severity'],
-                                            'count': finding_detail['Service']['Count']
+                                            'count': finding_detail['Service']['Count'],
+                                            'detector': detector_id,
+                                            'region': region
                                         }
                                     )
-
-                    # Display ALL the findings to user now
-                    print('Findings for detector_id, {}:'.format(detector_id))
-                    print('{}'.format(
-                            json.dumps(
-                                data['finding_details'][detector_id],
-                                indent=4
-                            )
-                        )
-                    )
 
                 except Exception as error: 
                     print('    Generic Error collecting GuardDuty stats for region: {}, detector: {}'.format(region, detector_id))
                     print('        Error: {}, {}'.format(error.__class__, str(error)))
 
+    print("Writing ALL findings to JSON output file: {}".format(
+            out_file_path
+        )
+    )
+    with open(out_file_path, "w+") as f:
+        f.write(
+            json.dumps(
+                data,
+                indent=4,
+                default=str
+            )
+        )
+        
     return data
-
 
 def summary(data, pacu_main):
     msg = 'Stats presented for {} GuardDuty Detector(s).\n'.format(len(data['detectors']))
     for detector_id, finding_ids in data['findings'].items():
         num_findings = len(finding_ids)
-        msg += 'Number of findings presented for detector {} is: {}\n'.format(detector_id, num_findings)
+        detector_region = data['detectors'][detector_id]
+        msg += 'Number of findings presented for detector, {}, in region, {}, is: {}\n'.format(
+            detector_id, 
+            detector_region,
+            num_findings
+        )
 
     return msg
 

@@ -39,6 +39,7 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
+
 def get_hosted_zones(client):
     try:
         hosted_zones = client.list_hosted_zones()['HostedZones']
@@ -75,10 +76,11 @@ def get_query_logging_config(client):
 
 
 def zones_plus_config(zones, configs):
-    for c in configs:
-        if c['HostedZoneId'] in zones.keys():
-            zones[c['HostedZoneId']].update({'CloudWatchLogsLogGroupArn': c['CloudWatchLogsLogGroupArn']})
-            zones[c['HostedZoneId']].update({'QueryLoggingConfigId': c['Id']})
+    for con in configs:
+        if con['HostedZoneId'] in zones.keys():
+            zones[con['HostedZoneId']].update({'CloudWatchLogsLogGroupArn': con['CloudWatchLogsLogGroupArn']})
+            zones[con['HostedZoneId']].update({'QueryLoggingConfigId': con['Id']})
+
     return zones
 
 

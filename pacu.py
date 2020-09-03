@@ -44,6 +44,7 @@ class Main:
     def __init__(self):
         self.database = None
         self.running_module_names = []
+        self.CATEGORIES = self.load_categories()
 
     # Utility methods
 
@@ -575,11 +576,20 @@ class Main:
             self.display_module_help(command[1])
 
     def parse_list_command(self, command):
+
         if len(command) == 1:
             self.list_modules('')
+
         elif len(command) == 2:
+            if command[1] in ('cat', 'category', 'categories'):
+                print("[Categories]:")
+                for category in self.CATEGORIES:
+                    print('    {}'.format(category))
+
+        # list cat/category <cat_name>
+        elif len(command) == 3:
             if command[1] in ('cat', 'category'):
-                self.list_modules('', by_category=True)
+                self.list_modules(command[2], by_category=True)
 
     def parse_exec_module_command(self, command):
         if len(command) > 1:
@@ -953,6 +963,33 @@ aws_secret_access_key = {}
         else:
             print('Command or module not found. Is it spelled correctly? Try using the module search function, or "help" to view a list of commands.')
             return
+    def load_categories(self):
+        categories = set()
+        current_directory = os.getcwd()
+        for root, directories, files in os.walk('{}/modules'.format(current_directory)):
+            modules_directory_path = os.path.realpath('{}/modules'.format(current_directory))
+            specific_module_directory = os.path.realpath(root)
+
+            # Skip any directories inside module directories.
+            if os.path.dirname(specific_module_directory) != modules_directory_path:
+                continue
+            # Skip the root directory.
+            elif modules_directory_path == specific_module_directory:
+                continue
+
+            module_name = os.path.basename(root)
+
+            for file in files:
+                if file == 'main.py':
+                    # Make sure the format is correct
+                    module_path = 'modules/{}/main'.format(module_name).replace('/', '.').replace('\\', '.')
+                    # Import the help function from the module
+                    module = __import__(module_path, globals(), locals(), ['module_info'], 0)
+                    importlib.reload(module)
+                    categories.add(module.module_info['category'])
+        return categories
+
+
 
     def list_modules(self, search_term, by_category=False):
         found_modules_by_category = dict()
@@ -989,7 +1026,7 @@ aws_secret_access_key = {}
                         continue
 
                     # Searching for modules by category:
-                    if by_category and search_term in category:
+                    if by_category and search_term.upper() in category:
                         if category not in found_modules_by_category.keys():
                             found_modules_by_category[category] = list()
 
@@ -1009,8 +1046,7 @@ aws_secret_access_key = {}
                             found_modules_by_category[category].append('    {}\n'.format(module.module_info['one_liner']))
 
         if found_modules_by_category:
-            PRINT_ORDER = ['RECON_UNAUTH', 'ENUM', 'ESCALATE', 'LATERAL_MOVE', 'EXPLOIT', 'PERSIST', 'EXFIL', 'EVADE']
-            for category in PRINT_ORDER:
+            for category in self.CATEGORIES:
                 if category in found_modules_by_category:
                     search_results = '\n'.join(found_modules_by_category[category]).strip('\n')
                     print('\n[Category: {}]\n\n{}'.format(category, search_results))

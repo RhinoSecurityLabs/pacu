@@ -5,13 +5,14 @@ import copy
 import string
 import random
 import json
+import time
 
 module_info = {
     'name': 'acm__enum',
     'author': 'Manas Bellani',
     'category': 'ENUM',
     'one_liner': 'Enumerate Information about the AWS Certificate Manager',
-    'description': 'This module is used to list and get information about ACM certificates, list expired certificates, and get info about private CAs which can generate certs. Expired certificates can provide an opportunity for takeover if domain has expired OR can be abused for client interaction as well',
+    'description': 'This module is used to list and get information about ACM certificates, list expired certificates, and get info about private CAs which can generate certs. Expired certificates can provide an opportunity for takeover if domain has expired OR can be abused for client interaction as well. All certs, cert chains, CAs discovered is written to \"downloads\" folder in relevant \'sessions\' folder',
     'services': ['ACM'],
     'prerequisite_modules': [],
     'external_dependencies': [],
@@ -51,7 +52,7 @@ def main(args, pacu_main):
     if args.regions == "all":
         regions = get_regions('all')
     else:
-        regions = ['ap-southeast-2']
+        regions = args.regions.split(',')
 
     for region in regions:
         
@@ -211,41 +212,42 @@ def main(args, pacu_main):
                     print("    Error: {}, {}".format(err.__class__, str(err)))   
 
 
+    # Prepare the out file names to write output data to
+    now = time.time()
+    outfiles = {}
+    outfiles['certs'] = 'sessions/{}/downloads/acm_enum_certs_{}.json'.format(session.name, now)
+    outfiles['certs_info'] = 'sessions/{}/downloads/acm_enum_certs_info_{}.json'.format(session.name, now)
+    outfiles['certs_chain'] = 'sessions/{}/downloads/acm_enum_certs_chain_{}.json'.format(session.name, now)
+    outfiles['cas'] = 'sessions/{}/downloads/acm_enum_cas_{}.json'.format(session.name, now)
+    outfiles['certs_expired'] =  'sessions/{}/downloads/acm_enum_certs_expired_{}.json'.format(session.name, now)
+
+    # Write the relevant output to the output files
+    for info_type, outfile in outfiles.items():
+        print("Writing info: {} to outfile: {}".format(info_type, outfile))
+        with open(outfile, 'w+') as f:
+            f.write(
+                json.dumps(
+                    data[info_type], 
+                    indent=4,
+                    default=str
+                )
+            )
+
+    # Write the info about certs to outfile
     return data
 
 
 def summary(data, pacu_main):
     msg = """
-Certificates:
-{}
-
-Certificate Chains: 
-{}
-
-Detailed Certificate Info/Description: 
-{}
-
-Detailed Private CA Description: 
-{}
-
-Expired CA Certificate ARNs: 
-{}
-
 Found {} certificate(s) in ACM
 
 Found {} Private CA(s) in ACM
 
 Found {} expired certificate(s) in ACM
 """.format(
-    
-    json.dumps(data['certs'], indent=4),
-    json.dumps(data['certs_chain'], indent=4),
-    json.dumps(data['certs_info'], indent=4, default=str),
-    json.dumps(data['cas'], indent=4, default=str),
-    json.dumps(data['certs_expired'], indent=4, default=str),
-    data['num_certs'], 
-    data['num_cas'],
-    data['num_certs_expired']
+        data['num_certs'], 
+        data['num_cas'],
+        data['num_certs_expired']
 )
 
     return msg

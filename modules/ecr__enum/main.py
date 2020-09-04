@@ -11,7 +11,7 @@ module_info = {
     'category': 'ENUM',
     'one_liner': 'Enumerates repostories and relevant images/tags ',
     'description': 'This module enumerates information about all ECR images and repositories within Elastic Container Registry (ECR). It writes the JSON results found to "Downloads" folder within sessions folder',
-    'services': ['ECR'],
+    'services': ['API.ECR'],
     'prerequisite_modules': [],
     'external_dependencies': [],
     'arguments_to_autocomplete': ['--regions'],

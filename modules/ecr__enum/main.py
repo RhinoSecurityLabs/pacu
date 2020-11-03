@@ -128,7 +128,7 @@ def main(args, pacu_main):
 def summary(data, pacu_main):
     out = ''
     for region, region_info in data['ecr']['regions'].items():
-        out += 'Num of ECR repos found: {} in region: {}'.format(
+        out += 'Num of ECR repos found: {} in region: {} \n'.format(
             region_info['num_repos_found'],
             region
         )

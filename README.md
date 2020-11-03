@@ -1,4 +1,4 @@
-**Update 5/6/2020:** Pacu's database structure has been updated and PacuProxy has been removed. This update will break Pacu's database if you have used previous versions of Pacu. To fix this, rename/backup the old `SQLite.db` file and let a new one be generated on the next startup.
+**Update 5/6/2020:** Pacu's database structure has been updated and PacuProxy has been removed. This update will break Pacu's database if you have used previous versions of Pacu. To fix this, rename/backup the old `sqLite.db` file and let a new one be generated on the next startup.
 
 # Quick reference
 - **Where to get help**:

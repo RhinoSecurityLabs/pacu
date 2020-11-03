@@ -223,15 +223,16 @@ def main(args, pacu_main):
 
     # Write the relevant output to the output files
     for info_type, outfile in outfiles.items():
-        print("Writing info: {} to outfile: {}".format(info_type, outfile))
-        with open(outfile, 'w+') as f:
-            f.write(
-                json.dumps(
-                    data[info_type], 
-                    indent=4,
-                    default=str
+        if data[info_type]:
+            print("Writing info: {} to outfile: {}".format(info_type, outfile))
+            with open(outfile, 'w+') as f:
+                f.write(
+                    json.dumps(
+                        data[info_type], 
+                        indent=4,
+                        default=str
+                    )
                 )
-            )
 
     # Write the info about certs to outfile
     return data

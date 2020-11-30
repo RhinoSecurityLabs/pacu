@@ -99,7 +99,7 @@ def main(args, pacu_main):
     try:
         confs = get_query_logging_config(client=client)
     except ClientError as error:
-        print(f'Failed to list R53 Hosted Zones: {error}')
+        print(f'Failed to list R53 Hosted Zone Query Logging Configurations: {error}')
         return
 
     data = zones_plus_config(zones=zones, configs=confs)

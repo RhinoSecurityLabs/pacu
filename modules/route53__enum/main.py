@@ -41,10 +41,7 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 
 
 def get_hosted_zones(client):
-    try:
-        hosted_zones = client.list_hosted_zones()['HostedZones']
-    except ClientError as error:
-        print('Failed to list R53 Hosted Zones: {error}')
+    hosted_zones = client.list_hosted_zones()['HostedZones']
 
     zones = {}
 
@@ -60,10 +57,7 @@ def get_hosted_zones(client):
 
 
 def get_query_logging_config(client):
-    try:
-        configs = client.list_query_logging_configs()['QueryLoggingConfigs']
-    except ClientError as error:
-        print('Failed to list R53 Hosted Zone Query Logging Configurations: {error}')
+    configs = client.list_query_logging_configs()['QueryLoggingConfigs']
 
     if len(configs) > 0:
         print("QueryLoggingConfigs:")
@@ -92,11 +86,22 @@ def main(args, pacu_main):
     try:
         client = pacu_main.get_boto3_client('route53')
     except ClientError as error:
-        print('Failed to initialize boto client for route53.')
+        print(f'Failed to initialize boto client for route53: {error}')
 
     data = {}
-    zones = get_hosted_zones(client=client)
-    confs = get_query_logging_config(client=client)
+
+    try:
+        zones = get_hosted_zones(client=client)
+    except ClientError as error:
+        print(f'Failed to list R53 Hosted Zones: {error}')
+        return
+
+    try:
+        confs = get_query_logging_config(client=client)
+    except ClientError as error:
+        print(f'Failed to list R53 Hosted Zones: {error}')
+        return
+
     data = zones_plus_config(zones=zones, configs=confs)
 
     session.update(pacu_main.database, Route53=data)

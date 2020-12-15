@@ -2,6 +2,8 @@ import math
 import json
 import re
 import os
+from typing import Dict, Any
+
 
 class Color:
     GREEN = '\033[92m'
@@ -11,7 +13,7 @@ class Color:
     ENDC = '\033[0m'
 
     @staticmethod
-    def print(color, text):
+    def print(color, text) -> None:
         print('{}{}{}'.format(color, text, Color.ENDC))
 
 
@@ -26,8 +28,8 @@ def shannon_entropy(data):
             entropy += - px * math.log(px, 2)
     return entropy
 
-def regex_checker(userdata):
 
+def regex_checker(userdata) -> Dict[Any, list]:
     results = {}
     __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
@@ -51,5 +53,6 @@ def regex_checker(userdata):
 
     return results
 
-def contains_secret(data, THRESHOLD=3.5):
+
+def contains_secret(data, THRESHOLD=3.5) -> bool:
     return shannon_entropy(data) > THRESHOLD

@@ -344,6 +344,18 @@ class Main:
 
         aws_key = self.get_aws_key_by_alias(alias)
 
+        # TODO: error and user handling
+        if not aws_key.permissions_confirmed:
+            path = 'sessions/{}/downloads/confirmed_permissions/role-{}.json'.format(session.name, aws_key.role_name)
+            if os.path.exists(path):
+                with open(path) as f:
+                    content = json.load(f)
+                    print(content)
+                    if content["PermissionsConfirmed"]:
+                        self.print("Using previously found permissions in {}", path)
+                        aws_key.allow_permissions = content["Permissions"]["Allow"]
+                        aws_key.deny_permissions = content["Permissions"]["Deny"]
+
         if aws_key is not None:
             return aws_key.get_fields_as_camel_case_dictionary()
         else:

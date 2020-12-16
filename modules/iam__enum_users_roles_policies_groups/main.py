@@ -36,6 +36,7 @@ parser.add_argument('--users', required=False, action='store_true', help='Enumer
 parser.add_argument('--roles', required=False, action='store_true', help='Enumerate info for roles in the account')
 parser.add_argument('--policies', required=False, action='store_true', help='Enumerate info for policies in the account')
 parser.add_argument('--groups', required=False, action='store_true', help='Enumerate info for groups in the account')
+parser.add_argument('--instance-profiles', required=False, action='store_true', help='Enumerate info for instance profiles in the account')
 
 
 def main(args, pacu_main):
@@ -143,6 +144,32 @@ def main(args, pacu_main):
         iam_data['Policies'] = policies
         session.update(pacu_main.database, IAM=iam_data)
         summary_data['Policies'] = len(policies)
+
+    if args.instance_profiles is True:
+        instance_profiles = []
+        response = None
+        is_truncated = False
+
+        try:
+            while response is None or is_truncated is True:
+                if is_truncated is False:
+                    response = client.list_instance_profiles()
+                else:
+                    response = client.list_instance_profiles(Marker=response['Marker'])
+                for profiles in response['InstanceProfiles']:
+                    instance_profiles.append(profiles)
+
+                is_truncated = response['IsTruncated']
+            print('Found {} instance profiles'.format(len(instance_profiles)))
+
+        except ClientError:
+            print('No Instance Profiles Found')
+            print('  FAILURE: MISSING NEEDED PERMISSIONS')
+
+        iam_data = deepcopy(session.IAM)
+        iam_data['InstanceProfiles'] = instance_profiles
+        session.update(pacu_main.database, IAM=iam_data)
+        summary_data['InstanceProfiles'] = len(instance_profiles)
 
     if args.groups is True:
         groups = []

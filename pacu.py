@@ -1309,14 +1309,31 @@ aws_secret_access_key = {}
                 self.print('  User agent for this session set to:')
                 self.print('    {}'.format(new_ua))
 
-    def get_boto3_client(self, service, region=None, user_agent=None, parameter_validation=True):
+    # _get_boto3_session is marked as private because it isn't able to set some of the same global
+    # settings get_boto3_client and get_boto3_resource are able to, currently this is just the
+    # user agent.
+    def _get_boto3_session(self, region=None) -> boto3.session.Session:
         session = self.get_active_session()
 
         if not session.access_key_id:
-            print('  No access key has been set. Failed to generate boto3 Client.')
-            return
+            raise UserWarning('  No access key has been set. Failed to generate boto3 Client.')
         if not session.secret_access_key:
-            print('  No secret key has been set. Failed to generate boto3 Client.')
+            raise UserWarning('  No secret key has been set. Failed to generate boto3 Client.')
+
+        return boto3.session.Session(
+            aws_access_key_id=session.access_key_id,
+            aws_secret_access_key=session.secret_access_key,
+            aws_session_token=session.session_token,
+            region_name=region,
+        )
+
+    def get_boto3_client(self, service, region=None, user_agent=None, parameter_validation=True):
+        session = self.get_active_session()
+
+        try:
+            aws_sess = self._get_boto3_session(region=region)
+        except UserWarning as e:
+            print(e.args)
             return
 
         # If there is not a custom user_agent passed into this function
@@ -1332,7 +1349,7 @@ aws_secret_access_key = {}
             parameter_validation=parameter_validation
         )
 
-        return boto3.client(
+        return aws_sess.client(
             service,
             region_name=region,  # Whether region has a value or is None, it will work here
             aws_access_key_id=session.access_key_id,
@@ -1345,11 +1362,10 @@ aws_secret_access_key = {}
         # All the comments from get_boto3_client apply here too
         session = self.get_active_session()
 
-        if not session.access_key_id:
-            print('  No access key has been set. Failed to generate boto3 Resource.')
-            return
-        if not session.secret_access_key:
-            print('  No secret key has been set. Failed to generate boto3 Resource.')
+        try:
+            aws_sess = self._get_boto3_session(region=region)
+        except UserWarning as e:
+            print(e.args)
             return
 
         if user_agent is None and session.boto_user_agent is not None:
@@ -1360,7 +1376,7 @@ aws_secret_access_key = {}
             parameter_validation=parameter_validation
         )
 
-        return boto3.resource(
+        return aws_sess.resource(
             service,
             region_name=region,
             aws_access_key_id=session.access_key_id,

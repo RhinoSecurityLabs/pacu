@@ -92,7 +92,7 @@ class PacuSession(Base, ModelUpdateMixin):
         'AccountSpend'
     )
 
-    aws_keys = relationship('AWSKey', backref='session', cascade='all, delete-orphan', lazy='dynamic')
+    aws_keys = relationship('AWSKey', back_populates='session', cascade='all, delete-orphan', lazy='dynamic')
 
     id = Column(Integer, primary_key=True)
     created = Column(DateTime, default=datetime.datetime.utcnow)

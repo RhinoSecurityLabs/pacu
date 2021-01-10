@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """ configure_settings.copy_settings_template_into_settings_file_if_not_present
 is run automatically at pacu.py execution, if no settings file is found. """
 import os

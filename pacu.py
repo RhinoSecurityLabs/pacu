@@ -12,11 +12,13 @@ import sys
 import time
 import traceback
 import argparse
+from typing import List, Optional, Any, Dict, Union, Tuple
 
 try:
     import requests
     import boto3
     import botocore
+    import botocore.exceptions
     import urllib.parse
 
     import configure_settings
@@ -24,13 +26,136 @@ try:
 
     from core.models import AWSKey, PacuSession
     from setup_database import setup_database_if_not_present
-    from sqlalchemy import exc
+    from sqlalchemy import exc, orm  # type: ignore
     from utils import get_database_connection, set_sigint_handler
-except ModuleNotFoundError as error:
+except ModuleNotFoundError:
     exception_type, exception_value, tb = sys.exc_info()
     print('Traceback (most recent call last):\n{}{}: {}\n'.format(''.join(traceback.format_tb(tb)), str(exception_type), str(exception_value)))
     print('Pacu was not able to start because a required Python package was not found.\nRun `sh install.sh` to check and install Pacu\'s Python requirements.')
     sys.exit(1)
+
+
+def load_categories() -> set:
+    categories = set()
+    current_directory = os.getcwd()
+    for root, directories, files in os.walk('{}/modules'.format(current_directory)):
+        modules_directory_path = os.path.realpath('{}/modules'.format(current_directory))
+        specific_module_directory = os.path.realpath(root)
+
+        # Skip any directories inside module directories.
+        if os.path.dirname(specific_module_directory) != modules_directory_path:
+            continue
+        # Skip the root directory.
+        elif modules_directory_path == specific_module_directory:
+            continue
+
+        module_name = os.path.basename(root)
+
+        for file in files:
+            if file == 'main.py':
+                # Make sure the format is correct
+                module_path = 'modules/{}/main'.format(module_name).replace('/', '.').replace('\\', '.')
+                # Import the help function from the module
+                module = __import__(module_path, globals(), locals(), ['module_info'], 0)
+                importlib.reload(module)
+                categories.add(module.module_info['category'])
+    return categories
+
+
+def display_pacu_help():
+    print("""
+    Pacu - https://github.com/RhinoSecurityLabs/pacu
+    Written and researched by Spencer Gietzen of Rhino Security Labs - https://rhinosecuritylabs.com/
+
+    This was built as a modular, open source tool to assist in penetration testing an AWS environment.
+    For usage and developer documentation, please visit the GitHub page.
+
+    Modules that have pre-requisites will have those listed in that modules help info, but if it is
+    executed before its pre-reqs have been filled, it will prompt you to run that module then continue
+    once that is finished, so you have the necessary data for the module you want to run.
+
+    Pacu command info:
+        list/ls                             List all modules
+        load_commands_file <file>           Load an existing file with list of commands to execute
+        search [cat[egory]] <search term>   Search the list of available modules by name or category
+        help                                Display this page of information
+        help <module name>                  Display information about a module
+        whoami                              Display information regarding to the active access keys
+        data                                Display all data that is stored in this session. Only fields
+                                              with values will be displayed
+        data <service>                      Display all data for a specified service in this session
+        services                            Display a list of services that have collected data in the
+                                              current session to use with the "data" command
+        regions                             Display a list of all valid AWS regions
+        update_regions                      Run a script to update the regions database to the newest
+                                              version
+        set_regions <region> [<region>...]  Set the default regions for this session. These space-separated
+                                              regions will be used for modules where regions are required,
+                                              but not supplied by the user. The default set of regions is
+                                              every supported region for the service. Supply "all" to this
+                                              command to reset the region set to the default of all
+                                              supported regions
+        run/exec <module name>              Execute a module
+        set_keys                            Add a set of AWS keys to the session and set them as the
+                                              default
+        swap_keys                           Change the currently active AWS key to another key that has
+                                              previously been set for this session
+        import_keys <profile name>|--all    Import AWS keys from the AWS CLI credentials file (located
+                                              at ~/.aws/credentials) to the current sessions database.
+                                              Enter the name of a profile you would like to import or
+                                              supply --all to import all the credentials in the file.
+        export_keys                         Export the active credentials to a profile in the AWS CLI
+                                              credentials file (~/.aws/credentials)
+        sessions/list_sessions              List all sessions in the Pacu database
+        swap_session                        Change the active Pacu session to another one in the database
+        delete_session                      Delete a Pacu session from the database. Note that the output
+                                              folder for that session will not be deleted
+
+        exit/quit                           Exit Pacu
+
+    Other command info:
+        aws <command>                       Run an AWS CLI command directly. Note: If Pacu detects "aws"
+                                              as the first word of the command, the whole command will
+                                              instead be run in a shell so that you can use the AWS CLI
+                                              from within Pacu. Due to the command running in a shell,
+                                              this enables you to pipe output where needed. An example
+                                              would be to run an AWS CLI command and pipe it into "jq"
+                                              to parse the data returned. Warning: The AWS CLI's
+                                              authentication is not related to Pacu. Be careful to
+                                              ensure that you are using the keys you want when using
+                                              the AWS CLI. It is suggested to use AWS CLI profiles
+                                              to solve this problem
+        console/open_console                Generate a URL that will log the current user/role in to
+                                              the AWS web console
+    """)
+
+
+def import_module_by_name(module_name: str, include: List[str] = []) -> Any:  # TODO: define module type
+    file_path = os.path.join(os.getcwd(), 'modules', module_name, 'main.py')
+    if os.path.exists(file_path):
+        import_path = 'modules.{}.main'.format(module_name).replace('/', '.').replace('\\', '.')
+        module = __import__(import_path, globals(), locals(), include, 0)
+        importlib.reload(module)
+        return module
+    return None
+
+
+def get_data_from_traceback(tb) -> Tuple[Optional[PacuSession], List[str], List[str]]:
+    session = None
+    global_data_in_all_frames = list()
+    local_data_in_all_frames = list()
+
+    for frame, line_number in traceback.walk_tb(tb):
+        global_data_in_all_frames.append(str(frame.f_globals))
+        local_data_in_all_frames.append(str(frame.f_locals))
+
+        # Save the most recent PacuSession called "session", working backwards.
+        if session is None:
+            session = frame.f_locals.get('session', None)
+            if not isinstance(session, PacuSession):
+                session = None
+
+    return session, global_data_in_all_frames, local_data_in_all_frames
 
 
 class Main:
@@ -42,13 +167,14 @@ class Main:
     ]
 
     def __init__(self):
-        self.database = None
-        self.running_module_names = []
-        self.CATEGORIES = self.load_categories()
+        # NOTE: self.database is the sqlalchemy session since 'session' is reserved for PacuSession objects.
+        self.database: orm.session.Session = None
+        self.running_module_names: List[str] = []
+        self.CATEGORIES: set = load_categories()
 
     # Utility methods
 
-    def log_error(self, text, exception_info=None, session=None, local_data=None, global_data=None):
+    def log_error(self, text, exception_info=None, session=None, local_data=None, global_data=None) -> None:
         """ Write an error to the file at log_file_path, or a default log file
         if no path is supplied. If a session is supplied, its name will be used
         to determine which session directory to add the error file to. """
@@ -66,7 +192,9 @@ class Main:
             else:
                 log_file_path = 'global_error_log.txt'
 
-            print('\n[{}] Pacu encountered an error while running the previous command. Check {} for technical details. [LOG LEVEL: {}]\n\n    {}\n'.format(timestamp, log_file_path, settings.ERROR_LOG_VERBOSITY.upper(), exception_info))
+            print('\n[{}] Pacu encountered an error while running the previous command. Check {} for technical '
+                  'details. [LOG LEVEL: {}]\n\n    {}\n'.format(timestamp, log_file_path,
+                                                                settings.ERROR_LOG_VERBOSITY.upper(), exception_info))
 
             log_file_directory = os.path.dirname(log_file_path)
             if log_file_directory and not os.path.exists(log_file_directory):
@@ -106,14 +234,15 @@ class Main:
                 log_file.write(formatted_text)
 
         except Exception as error:
-            print('Error while saving exception information. This means the exception was not added to any error log and should most likely be provided to the developers.\n    Exception raised: {}'.format(str(error)))
+            print('Error while saving exception information. This means the exception was not added to any error log '
+                  'and should most likely be provided to the developers.\n    Exception raised: {}'.format(str(error)))
             raise
 
     # @message: String - message to print and/or write to file
     # @output: String - where to output the message: both, file, or screen
     # @output_type: String - format for message when written to file: plain or xml
     # @is_cmd: boolean - Is the log the initial command that was run (True) or output (False)? Devs won't touch this most likely
-    def print(self, message='', output='both', output_type='plain', is_cmd=False, session_name=''):
+    def print(self, message: Union[dict, list, str, Exception] = '', output='both', output_type='plain', is_cmd=False, session_name='') -> bool:
         session = self.get_active_session()
 
         if session_name == '':
@@ -127,7 +256,8 @@ class Main:
             if isinstance(message, dict):
                 if 'SecretAccessKey' in message:
                     message = copy.deepcopy(message)
-                    message['SecretAccessKey'] = '{}{}'.format(message['SecretAccessKey'][0:int(len(message['SecretAccessKey']) / 2)], '*' * int(len(message['SecretAccessKey']) / 2))
+                    truncated_key = message['SecretAccessKey'][0:int(len(message['SecretAccessKey']) / 2)]
+                    message['SecretAccessKey'] = '{}{}'.format(truncated_key, '*' * int(len(message['SecretAccessKey']) / 2))
                 message = json.dumps(message, indent=2, default=str)
             elif isinstance(message, list):
                 message = json.dumps(message, indent=2, default=str)
@@ -163,7 +293,7 @@ class Main:
     # @message: String - input question to ask and/or write to file
     # @output: String - where to output the message: both or screen (can't write a question to a file only)
     # @output_type: String - format for message when written to file: plain or xml
-    def input(self, message, output='both', output_type='plain', session_name=''):
+    def input(self, message, output='both', output_type='plain', session_name='') -> str:
         session = self.get_active_session()
 
         if session_name == '':
@@ -186,18 +316,17 @@ class Main:
                 # TODO: Implement actual XML output
                 # now = time.time()
                 with open('sessions/{}/cmd_log.xml'.format(session_name), 'a+') as file:
-                    file.write('{} {}\n'.format(message, res))\
-
+                    file.write('{} {}\n'.format(message, res))
             else:
                 print('  Unrecognized output type: {}'.format(output_type))
         return res
 
-    def validate_region(self, region):
+    def validate_region(self, region) -> bool:
         if region in self.get_regions('All'):
             return True
         return False
 
-    def get_regions(self, service, check_session=True):
+    def get_regions(self, service, check_session=True) -> List[Optional[str]]:
         session = self.get_active_session()
 
         service = service.lower()
@@ -214,11 +343,11 @@ class Main:
             if 'af-south-1' in valid_regions:
                 valid_regions.remove('af-south-1')  # Doesn't work currently
             if 'ap-east-1' in valid_regions:
-                    valid_regions.remove('ap-east-1')
+                valid_regions.remove('ap-east-1')
             if 'eu-south-1' in valid_regions:
-                    valid_regions.remove('eu-south-1')
+                valid_regions.remove('eu-south-1')
             if 'me-south-1' in valid_regions:
-                    valid_regions.remove('me-south-1')
+                valid_regions.remove('me-south-1')
         if type(regions[service]) == dict and regions[service].get('endpoints'):
             if 'aws-global' in regions[service]['endpoints']:
                 return [None]
@@ -291,7 +420,7 @@ class Main:
     # @data: list
     # @module: string
     # @args: string
-    def fetch_data(self, data, module, args, force=False):
+    def fetch_data(self, data: List[str], module: str, args: str, force=False) -> bool:
         session = self.get_active_session()
 
         if data is None:
@@ -332,9 +461,10 @@ class Main:
         datetime_latest = datetime.date(int(latest_year), int(latest_month), int(latest_day))
 
         if datetime_local < datetime_latest:
-            print('Pacu has a new version available! Clone it from GitHub to receive the updates.\n    git clone https://github.com/RhinoSecurityLabs/pacu.git\n')
+            print('Pacu has a new version available! Clone it from GitHub to receive the updates.\n    git clone '
+                  'https://github.com/RhinoSecurityLabs/pacu.git\n')
 
-    def key_info(self, alias=''):
+    def key_info(self, alias='') -> Union[Dict[str, Any], bool]:
         """ Return the set of information stored in the session's active key
         or the session's key with a specified alias, as a dictionary. """
         session = self.get_active_session()
@@ -370,7 +500,7 @@ class Main:
         for service in services.keys():
             print('  {}'.format(service))
 
-    def install_dependencies(self, external_dependencies):
+    def install_dependencies(self, external_dependencies) -> bool:
         if len(external_dependencies) < 1:
             return True
         answer = self.input('This module requires external dependencies: {}\n\nInstall them now? (y/n) '.format(external_dependencies))
@@ -390,8 +520,10 @@ class Main:
                     try:
                         self.print('  Installing dependency {}/{} from {}...'.format(author, name, dependency))
                         subprocess.run(['git', 'clone', dependency, './dependencies/{}/{}'.format(author, name)])
-                    except Exception as error:
-                        self.print('    {} failed, view the error below. If you are unsure, some potential causes are that you are missing "git" on your command line, your git credentials are not properly set, or the GitHub link does not exist.'.format(error.cmd))
+                    except subprocess.CalledProcessError as error:
+                        self.print('{} failed, view the error below. If you are unsure, some potential causes are '
+                                   'that you are missing "git" on your command line, your git credentials are not '
+                                   'properly set, or the GitHub link does not exist.'.format(error.cmd))
                         self.print('    stdout: {}\nstderr: {}'.format(error.cmd, error.stderr))
                         self.print('  Exiting module...')
                         return False
@@ -417,21 +549,21 @@ class Main:
         self.print('Dependencies finished installing.')
         return True
 
-    def get_active_session(self):
+    def get_active_session(self) -> PacuSession:
         """ A wrapper for PacuSession.get_active_session, removing the need to
         import the PacuSession model. """
         return PacuSession.get_active_session(self.database)
 
-    def get_aws_key_by_alias(self, alias):
+    def get_aws_key_by_alias(self, alias: str) -> AWSKey:
         """ Return an AWSKey with the supplied alias that is assigned to the
         currently active PacuSession from the database, or None if no AWSKey
         with the supplied alias exists. If more than one key with the alias
         exists for the active session, an exception will be raised. """
         session = self.get_active_session()
-        key = self.database.query(AWSKey)                           \
-                           .filter(AWSKey.session_id == session.id) \
-                           .filter(AWSKey.key_alias == alias)       \
-                           .scalar()
+        key = self.database.query(AWSKey) \
+            .filter(AWSKey.session_id == session.id) \
+            .filter(AWSKey.key_alias == alias) \
+            .scalar()
         return key
 
     # Pacu commands and execution
@@ -529,18 +661,19 @@ class Main:
 
         self.import_awscli_key(command[1])
 
-    def import_awscli_key(self, profile_name):
+    def import_awscli_key(self, profile_name: str) -> None:
         try:
             boto3_session = boto3.session.Session(profile_name=profile_name)
             creds = boto3_session.get_credentials()
-            self.set_keys(key_alias='imported-{}'.format(profile_name), access_key_id=creds.access_key, secret_access_key=creds.secret_key, session_token=creds.token)
+            self.set_keys(key_alias='imported-{}'.format(profile_name), access_key_id=creds.access_key, secret_access_key=creds.secret_key,
+                          session_token=creds.token)
             self.print('  Imported keys as "imported-{}"'.format(profile_name))
-        except botocore.exceptions.ProfileNotFound as error:
+        except botocore.exceptions.ProfileNotFound:
             self.print('\n  Did not find the AWS CLI profile: {}\n'.format(profile_name))
             boto3_session = boto3.session.Session()
             print('  Profiles that are available:\n    {}\n'.format('\n    '.join(boto3_session.available_profiles)))
 
-    def run_aws_cli_command(self, command):
+    def run_aws_cli_command(self, command: List[str]) -> None:
         try:
             result = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT).decode('utf-8')
         except subprocess.CalledProcessError as error:
@@ -548,7 +681,7 @@ class Main:
 
         self.print(result)
 
-    def parse_data_command(self, command):
+    def parse_data_command(self, command: List[str]) -> None:
         session = self.get_active_session()
 
         if len(command) == 1:
@@ -579,9 +712,9 @@ class Main:
         else:
             print('  Error: set_regions requires either "all" or at least one region to be specified. Try the "regions" command to view all regions.')
 
-    def parse_help_command(self, command):
+    def parse_help_command(self, command: List[str]) -> None:
         if len(command) <= 1:
-            self.display_pacu_help()
+            display_pacu_help()
         elif len(command) > 1 and command[1] in self.COMMANDS:
             self.display_command_help(command[1])
         else:
@@ -603,13 +736,13 @@ class Main:
             if command[1] in ('cat', 'category'):
                 self.list_modules(command[2], by_category=True)
 
-    def parse_exec_module_command(self, command):
+    def parse_exec_module_command(self, command: List[str]) -> None:
         if len(command) > 1:
             self.exec_module(command)
         else:
             print('The {} command requires a module name. Try using the module search function.'.format(command))
 
-    def parse_search_command(self, command):
+    def parse_search_command(self, command: List[str]) -> None:
         if len(command) == 1:
             self.list_modules('')
         elif len(command) == 2:
@@ -618,81 +751,18 @@ class Main:
             if command[1] in ('cat', 'category'):
                 self.list_modules(command[2], by_category=True)
 
-    def display_pacu_help(self):
-        print("""
-        Pacu - https://github.com/RhinoSecurityLabs/pacu
-        Written and researched by Spencer Gietzen of Rhino Security Labs - https://rhinosecuritylabs.com/
-
-        This was built as a modular, open source tool to assist in penetration testing an AWS environment.
-        For usage and developer documentation, please visit the GitHub page.
-
-        Modules that have pre-requisites will have those listed in that modules help info, but if it is
-        executed before its pre-reqs have been filled, it will prompt you to run that module then continue
-        once that is finished, so you have the necessary data for the module you want to run.
-
-        Pacu command info:
-            list/ls                             List all modules
-            load_commands_file <file>           Load an existing file with list of commands to execute
-            search [cat[egory]] <search term>   Search the list of available modules by name or category
-            help                                Display this page of information
-            help <module name>                  Display information about a module
-            whoami                              Display information regarding to the active access keys
-            data                                Display all data that is stored in this session. Only fields
-                                                  with values will be displayed
-            data <service>                      Display all data for a specified service in this session
-            services                            Display a list of services that have collected data in the
-                                                  current session to use with the "data" command
-            regions                             Display a list of all valid AWS regions
-            update_regions                      Run a script to update the regions database to the newest
-                                                  version
-            set_regions <region> [<region>...]  Set the default regions for this session. These space-separated
-                                                  regions will be used for modules where regions are required,
-                                                  but not supplied by the user. The default set of regions is
-                                                  every supported region for the service. Supply "all" to this
-                                                  command to reset the region set to the default of all
-                                                  supported regions
-            run/exec <module name>              Execute a module
-            set_keys                            Add a set of AWS keys to the session and set them as the
-                                                  default
-            swap_keys                           Change the currently active AWS key to another key that has
-                                                  previously been set for this session
-            import_keys <profile name>|--all    Import AWS keys from the AWS CLI credentials file (located
-                                                  at ~/.aws/credentials) to the current sessions database.
-                                                  Enter the name of a profile you would like to import or
-                                                  supply --all to import all the credentials in the file.
-            export_keys                         Export the active credentials to a profile in the AWS CLI
-                                                  credentials file (~/.aws/credentials)
-            sessions/list_sessions              List all sessions in the Pacu database
-            swap_session                        Change the active Pacu session to another one in the database
-            delete_session                      Delete a Pacu session from the database. Note that the output
-                                                  folder for that session will not be deleted
-
-            exit/quit                           Exit Pacu
-
-        Other command info:
-            aws <command>                       Run an AWS CLI command directly. Note: If Pacu detects "aws"
-                                                  as the first word of the command, the whole command will
-                                                  instead be run in a shell so that you can use the AWS CLI
-                                                  from within Pacu. Due to the command running in a shell,
-                                                  this enables you to pipe output where needed. An example
-                                                  would be to run an AWS CLI command and pipe it into "jq"
-                                                  to parse the data returned. Warning: The AWS CLI's
-                                                  authentication is not related to Pacu. Be careful to
-                                                  ensure that you are using the keys you want when using
-                                                  the AWS CLI. It is suggested to use AWS CLI profiles
-                                                  to solve this problem
-            console/open_console                Generate a URL that will log the current user/role in to
-                                                  the AWS web console
-        """)
-
-    def update_regions(self):
+    def update_regions(self) -> None:
         py_executable = sys.executable
         # Update botocore to fetch the latest version of the AWS region_list
+
+        cmd = [py_executable, '-m', 'pip', 'install', '--upgrade', 'botocore']
         try:
             self.print('  Fetching latest botocore...\n')
-            subprocess.run([py_executable, '-m', 'pip', 'install', '--upgrade', 'botocore'])
-        except:
-            pip = self.input('  Could not use pip3 or pip to update botocore to the latest version. Enter the name of your pip binary to continue: ').strip()
+            subprocess.run(cmd, check=True)
+        except subprocess.CalledProcessError as e:
+            self.print('"{}" returned {}'.format(' '.join(cmd), e.returncode))
+            pip = self.input('Could not use pip3 or pip to update botocore to the latest version. Enter the name of '
+                             'your pip binary to continue: ').strip()
             subprocess.run(['{}'.format(pip), 'install', '--upgrade', 'botocore'])
 
         path = ''
@@ -700,8 +770,10 @@ class Main:
         try:
             self.print('  Using pip3 to locate botocore...\n')
             output = subprocess.check_output('{} -m pip show botocore'.format(py_executable), shell=True)
-        except:
-            path = self.input('  Could not use pip to determine botocore\'s location. Enter the path to your Python "dist-packages" folder (example: /usr/local/bin/python3.6/lib/dist-packages): ').strip()
+        except subprocess.CalledProcessError as e:
+            self.print('Cmd: "{}" returned {}'.format(' '.join(cmd), e.returncode))
+            path = self.input('Could not use pip to determine botocore\'s location. Enter the path to your Python '
+                              '"dist-packages" folder (example: /usr/local/bin/python3.6/lib/dist-packages): ').strip()
 
         if path == '':
             # Account for Windows \r and \\ in file path (Windows)
@@ -725,16 +797,7 @@ class Main:
 
         self.print('  Region list updated to the latest version!')
 
-    def import_module_by_name(self, module_name, include=()):
-        file_path = os.path.join(os.getcwd(), 'modules', module_name, 'main.py')
-        if os.path.exists(file_path):
-            import_path = 'modules.{}.main'.format(module_name).replace('/', '.').replace('\\', '.')
-            module = __import__(import_path, globals(), locals(), include, 0)
-            importlib.reload(module)
-            return module
-        return None
-
-    def print_web_console_url(self):
+    def print_web_console_url(self) -> None:
         active_session = self.get_active_session()
 
         if not active_session.access_key_id:
@@ -756,7 +819,7 @@ class Main:
                 }
             }
         else:
-            res = sts.get_federation_token(
+            res = sts.get_federation_token(  # type: ignore[attr-defined]
                 Name=active_session.key_alias,
                 Policy=json.dumps({
                     'Version': '2012-10-17',
@@ -779,13 +842,13 @@ class Main:
             })
         }
 
-        res = requests.get(url='https://signin.aws.amazon.com/federation', params=params)
+        fed_resp = requests.get(url='https://signin.aws.amazon.com/federation', params=params)
 
-        signin_token = res.json()['SigninToken']
+        signin_token = fed_resp.json()['SigninToken']
 
         params = {
             'Action': 'login',
-            'Issuer': active_session.key_alias,
+            'Issuer': active_session.key_alias or '',
             'Destination': 'https://console.aws.amazon.com/console/home',
             'SigninToken': signin_token
         }
@@ -796,7 +859,7 @@ class Main:
 
         print(url)
 
-    def all_region_prompt(self):
+    def all_region_prompt(self) -> bool:
         print('Automatically targeting regions:')
         for region in self.get_regions('all'):
             print('  {}'.format(region))
@@ -806,7 +869,7 @@ class Main:
         else:
             return False
 
-    def export_keys(self, command):
+    def export_keys(self, command) -> None:
         export = input('Export the active keys to the AWS CLI credentials file (~/.aws/credentials)? (y/n) ').rstrip()
 
         if export.lower() == 'y':
@@ -832,16 +895,18 @@ aws_secret_access_key = {}
             with open('{}/.aws/credentials'.format(os.path.expanduser('~')), 'a+') as f:
                 f.write(config)
 
-            print('Successfully exported {}. Use it with the AWS CLI like this: aws ec2 describe instances --profile {}'.format(session.key_alias, session.key_alias))
+            print('Successfully exported {}. Use it with the AWS CLI like this: aws ec2 describe instances --profile {}'.format(
+                session.key_alias, session.key_alias
+            ))
         else:
             return
 
-    ###### Some module notes
+    # ***** Some module notes *****
     # For any argument that needs a value and a region for that value, use the form
     # value@region
     # Arguments that accept multiple values should be comma separated.
-    ######
-    def exec_module(self, command):
+    #
+    def exec_module(self, command: List[str]) -> None:
         session = self.get_active_session()
 
         # Run key checks so that if no keys have been set, Pacu doesn't default to
@@ -854,13 +919,14 @@ aws_secret_access_key = {}
             return
 
         module_name = command[1].lower()
-        module = self.import_module_by_name(module_name, include=['main', 'module_info', 'summary'])
+        module = import_module_by_name(module_name, include=['main', 'module_info', 'summary'])
 
         if module is not None:
             # Plaintext Command Log
-            self.print('{} ({}): {}'.format(session.access_key_id, time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime()), ' '.join(command).strip()), output='file', is_cmd=True)
+            self.print('{} ({}): {}'.format(session.access_key_id, time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime()), ' '.join(command).strip()),
+                       output='file', is_cmd=True)
 
-            ## XML Command Log - Figure out how to auto convert to XML
+            # TODO: XML Command Log - Figure out how to auto convert to XML
             # self.print('<command>{}</command>'.format(cmd), output_type='xml', output='file')
 
             self.print('  Running module {}...'.format(module_name))
@@ -883,22 +949,29 @@ aws_secret_access_key = {}
                 if summary_data is not None:
                     summary = module.summary(summary_data, self)
                     if len(summary) > 10000:
-                        raise ValueError('The {} module\'s summary is too long ({} characters). Reduce it to 10000 characters or fewer.'.format(module.module_info['name'], len(summary)))
+                        raise ValueError('The {} module\'s summary is too long ({} characters). Reduce it to 10000 '
+                                         'characters or fewer.'.format(module.module_info['name'], len(summary)))
+
                     if not isinstance(summary, str):
-                        raise TypeError(' The {} module\'s summary is {}-type instead of str. Make summary return a string.'.format(module.module_info['name'], type(summary)))
+                        raise TypeError('The {} module\'s summary is {}-type instead of str. Make summary return a '
+                                        'string.'.format(module.module_info['name'], type(summary)))
+
                     self.print('{} completed.\n'.format(module.module_info['name']))
                     self.print('MODULE SUMMARY:\n\n{}\n'.format(summary.strip('\n')))
-            except SystemExit as error:
-                exception_type, exception_value, tb = sys.exc_info()
+            except SystemExit as exception_value:
+                exception_type, _, tb = sys.exc_info()
+
                 if 'SIGINT called' in exception_value.args:
                     self.print('^C\nExiting the currently running module.')
                 else:
-                    traceback_text = '\nTraceback (most recent call last):\n{}{}: {}\n\n'.format(''.join(traceback.format_tb(tb)), str(exception_type), str(exception_value))
-                    session, global_data, local_data = self.get_data_from_traceback(tb)
+                    traceback_text = '\nTraceback (most recent call last):\n{}{}: {}\n\n'.format(
+                        ''.join(traceback.format_tb(tb)), str(exception_type), str(exception_value)
+                    )
+                    pacu_session, global_data, local_data = get_data_from_traceback(tb)
                     self.log_error(
                         traceback_text,
                         exception_info='{}: {}\n\nPacu caught a SystemExit error. '.format(exception_type, exception_value),
-                        session=session,
+                        session=pacu_session,
                         local_data=local_data,
                         global_data=global_data
                     )
@@ -909,13 +982,17 @@ aws_secret_access_key = {}
         else:
             print('Module not found. Is it spelled correctly? Try using the module search function.')
 
-    def display_command_help(self, command_name):
+    def display_command_help(self, command_name: str) -> None:
         if command_name == 'list' or command_name == 'ls':
             print('\n    list/ls\n        List all modules\n')
         elif command_name == 'import_keys':
-            print('\n    import_keys <profile name>|--all\n      Import AWS keys from the AWS CLI credentials file (located at ~/.aws/credentials) to the current sessions database. Enter the name of a profile you would like to import or supply --all to import all the credentials in the file.\n')
+            print('\n    import_keys <profile name>|--all\n      Import AWS keys from the AWS CLI credentials file (located at ~/.aws/credentials) to the '
+                  'current sessions database. Enter the name of a profile you would like to import or supply --all to import all the credentials in the '
+                  'file.\n')
         elif command_name == 'aws':
-            print('\n    aws <command>\n        Use the AWS CLI directly. This command runs in your local shell to use the AWS CLI. Warning: The AWS CLI\'s authentication is not related to Pacu. Be careful to ensure that you are using the keys you want when using the AWS CLI. It is suggested to use AWS CLI profiles to help solve this problem\n')
+            print('\n    aws <command>\n        Use the AWS CLI directly. This command runs in your local shell to use the AWS CLI. Warning: The AWS CLI\'s '
+                  'authentication is not related to Pacu. Be careful to ensure that you are using the keys you want when using the AWS CLI. It is suggested '
+                  'to use AWS CLI profiles to help solve this problem\n')
         elif command_name == 'console' or command_name == 'open_console':
             print('\n    console/open_console\n        Generate a URL to login to the AWS web console as the current user/role\n')
         elif command_name == 'export_keys':
@@ -933,15 +1010,19 @@ aws_secret_access_key = {}
         elif command_name == 'whoami':
             print('\n    whoami\n        Display information regarding to the active access keys\n')
         elif command_name == 'data':
-            print('\n    data\n        Display all data that is stored in this session. Only fields with values will be displayed\n    data <service>\n        Display all data for a specified service in this session\n')
+            print('\n    data\n        Display all data that is stored in this session. Only fields with values will be displayed\n    data <service>\n       '
+                  ' Display all data for a specified service in this session\n')
         elif command_name == 'services':
-            print('\n    services\n        Display a list of services that have collected data in the current session to use with the "data"\n          command\n')
+            print('\n    services\n        Display a list of services that have collected data in the current session to use with the "data"\n          '
+                  'command\n')
         elif command_name == 'regions':
             print('\n    regions\n        Display a list of all valid AWS regions\n')
         elif command_name == 'update_regions':
             print('\n    update_regions\n        Run a script to update the regions database to the newest version\n')
         elif command_name == 'set_regions':
-            print('\n    set_regions <region> [<region>...]\n        Set the default regions for this session. These space-separated regions will be used for modules where\n          regions are required, but not supplied by the user. The default set of regions is every supported\n          region for the service. Supply "all" to this command to reset the region set to the default of all\n          supported regions\n')
+            print('\n    set_regions <region> [<region>...]\n        Set the default regions for this session. These space-separated regions will be used for '
+                  'modules where\n          regions are required, but not supplied by the user. The default set of regions is every supported\n          '
+                  'region for the service. Supply "all" to this command to reset the region set to the default of all\n          supported regions\n')
         elif command_name == 'run' or command_name == 'exec':
             print('\n    run/exec <module name>\n        Execute a module\n')
         elif command_name == 'set_keys':
@@ -956,8 +1037,8 @@ aws_secret_access_key = {}
             print('Command or module not found. Is it spelled correctly? Try using the module search function.')
         return
 
-    def display_module_help(self, module_name):
-        module = self.import_module_by_name(module_name, include=['module_info', 'parser'])
+    def display_module_help(self, module_name: str) -> None:
+        module = import_module_by_name(module_name, include=['module_info', 'parser'])
 
         if module is not None:
             print('\n{} written by {}.\n'.format(module.module_info['name'], module.module_info['author']))
@@ -975,33 +1056,6 @@ aws_secret_access_key = {}
         else:
             print('Command or module not found. Is it spelled correctly? Try using the module search function, or "help" to view a list of commands.')
             return
-    def load_categories(self):
-        categories = set()
-        current_directory = os.getcwd()
-        for root, directories, files in os.walk('{}/modules'.format(current_directory)):
-            modules_directory_path = os.path.realpath('{}/modules'.format(current_directory))
-            specific_module_directory = os.path.realpath(root)
-
-            # Skip any directories inside module directories.
-            if os.path.dirname(specific_module_directory) != modules_directory_path:
-                continue
-            # Skip the root directory.
-            elif modules_directory_path == specific_module_directory:
-                continue
-
-            module_name = os.path.basename(root)
-
-            for file in files:
-                if file == 'main.py':
-                    # Make sure the format is correct
-                    module_path = 'modules/{}/main'.format(module_name).replace('/', '.').replace('\\', '.')
-                    # Import the help function from the module
-                    module = __import__(module_path, globals(), locals(), ['module_info'], 0)
-                    importlib.reload(module)
-                    categories.add(module.module_info['category'])
-        return categories
-
-
 
     def list_modules(self, search_term, by_category=False):
         found_modules_by_category = dict()
@@ -1066,7 +1120,7 @@ aws_secret_access_key = {}
             print('\nNo modules found.')
         print()
 
-    def set_keys(self, key_alias=None, access_key_id=None, secret_access_key=None, session_token=None):
+    def set_keys(self, key_alias: str = None, access_key_id: str = None, secret_access_key: str = None, session_token: str = None):
         session = self.get_active_session()
 
         # If key_alias is None, then it's being run normally from the command line (set_keys),
@@ -1093,7 +1147,7 @@ aws_secret_access_key = {}
         if key_alias is None:
             new_value = self.input('Access key ID [{}]: '.format(session.access_key_id))
         else:
-            new_value = access_key_id
+            new_value = access_key_id or ''
             self.print('Access key ID [{}]: {}'.format(session.access_key_id, new_value), output='file')
         if str(new_value.strip().lower()) == 'c':
             session.access_key_id = None
@@ -1105,9 +1159,10 @@ aws_secret_access_key = {}
             if session.secret_access_key is None:
                 new_value = input('Secret access key [None]: ')
             else:
-                new_value = input('Secret access key [{}{}]: '.format(session.secret_access_key[0:int(len(session.secret_access_key) / 2)], '*' * int(len(session.secret_access_key) / 2)))
+                truncated_key = session.secret_access_key[0:int(len(session.secret_access_key) / 2)]
+                new_value = input('Secret access key [{}{}]: '.format(truncated_key, '*' * int(len(session.secret_access_key) / 2)))
         else:
-            new_value = secret_access_key
+            new_value = secret_access_key or ''
         self.print('Secret access key [******]: ****** (Censored)', output='file')
         if str(new_value.strip().lower()) == 'c':
             session.secret_access_key = None
@@ -1118,7 +1173,7 @@ aws_secret_access_key = {}
         if key_alias is None:
             new_value = self.input('Session token (Optional - for temp AWS keys only) [{}]: '.format(session.session_token))
         else:
-            new_value = session_token
+            new_value = session_token or ''
             if new_value is None:
                 new_value = 'c'
             self.print('Session token [{}]: {}'.format(session.session_token, new_value), output='file')
@@ -1150,9 +1205,11 @@ aws_secret_access_key = {}
         if key_alias is None:
             self.print('\nKeys saved to database.\n')
 
-    def swap_keys(self):
-        session = self.get_active_session()
-        aws_keys = session.aws_keys.all()
+    def swap_keys(self) -> None:
+        session: PacuSession = self.get_active_session()
+
+        # On attr-defined ignore: https://github.com/dropbox/sqlalchemy-stubs/issues/168
+        aws_keys: List[AWSKey] = session.aws_keys.all()  # type: ignore[attr-defined]
 
         if not aws_keys:
             self.print('\nNo AWS keys set for this session. Run "set_keys" to add AWS keys.\n')
@@ -1187,7 +1244,7 @@ aws_secret_access_key = {}
         self.database.commit()
         self.print('AWS key is now {}.'.format(session.key_alias))
 
-    def check_sessions(self):
+    def check_sessions(self) -> None:
         sessions = self.database.query(PacuSession).all()
 
         if not sessions:
@@ -1213,7 +1270,7 @@ aws_secret_access_key = {}
 
         session.activate(self.database)
 
-    def list_sessions(self):
+    def list_sessions(self) -> None:
         active_session = self.get_active_session()
         all_sessions = self.database.query(PacuSession).all()
 
@@ -1229,8 +1286,8 @@ aws_secret_access_key = {}
 
         return
 
-    def new_session(self):
-        session_data = dict()
+    def new_session(self) -> PacuSession:
+        session_data: Dict[str, str] = dict()
         name = None
 
         while not name:
@@ -1257,7 +1314,7 @@ aws_secret_access_key = {}
 
         return session
 
-    def delete_session(self):
+    def delete_session(self) -> None:
         active_session = self.get_active_session()
         all_sessions = self.database.query(PacuSession).all()
         print('Delete which session?')
@@ -1287,24 +1344,7 @@ aws_secret_access_key = {}
 
         return
 
-    def get_data_from_traceback(self, tb):
-        session = None
-        global_data_in_all_frames = list()
-        local_data_in_all_frames = list()
-
-        for frame, line_number in traceback.walk_tb(tb):
-            global_data_in_all_frames.append(str(frame.f_globals))
-            local_data_in_all_frames.append(str(frame.f_locals))
-
-            # Save the most recent PacuSession called "session", working backwards.
-            if session is None:
-                session = frame.f_locals.get('session', None)
-                if not isinstance(session, PacuSession):
-                    session = None
-
-        return session, global_data_in_all_frames, local_data_in_all_frames
-
-    def check_user_agent(self):
+    def check_user_agent(self) -> None:
         session = self.get_active_session()
 
         if session.boto_user_agent is None:  # If there is no user agent set for this session already
@@ -1321,7 +1361,7 @@ aws_secret_access_key = {}
                 self.print('  User agent for this session set to:')
                 self.print('    {}'.format(new_ua))
 
-    def get_boto3_client(self, service, region=None, user_agent=None, parameter_validation=True):
+    def get_boto3_client(self, service, region=None, user_agent=None, parameter_validation=True) -> Any:
         session = self.get_active_session()
 
         if not session.access_key_id:
@@ -1339,7 +1379,7 @@ aws_secret_access_key = {}
         if user_agent is None and session.boto_user_agent is not None:
             user_agent = session.boto_user_agent
 
-        boto_config = botocore.config.Config(
+        boto_config = botocore.config.Config(  # type: ignore[attr-defined]
             user_agent=user_agent,  # If user_agent=None, botocore will use the real UA which is what we want
             parameter_validation=parameter_validation
         )
@@ -1353,7 +1393,12 @@ aws_secret_access_key = {}
             config=boto_config
         )
 
-    def get_boto3_resource(self, service, region=None, user_agent=None, parameter_validation=True):
+    def get_boto3_resource(self,
+                           service: str,
+                           region: Union[str, None] = None,
+                           user_agent: Union[str, None] = None,
+                           parameter_validation: bool = True
+                           ) -> Any:
         # All the comments from get_boto3_client apply here too
         session = self.get_active_session()
 
@@ -1367,7 +1412,7 @@ aws_secret_access_key = {}
         if user_agent is None and session.boto_user_agent is not None:
             user_agent = session.boto_user_agent
 
-        boto_config = botocore.config.Config(
+        boto_config = botocore.config.Config(  # type: ignore[attr-defined]
             user_agent=user_agent,
             parameter_validation=parameter_validation
         )
@@ -1381,7 +1426,7 @@ aws_secret_access_key = {}
             config=boto_config
         )
 
-    def initialize_tab_completion(self):
+    def initialize_tab_completion(self) -> None:
         try:
             import readline
             # Big thanks to samplebias: https://stackoverflow.com/a/5638688
@@ -1412,7 +1457,7 @@ aws_secret_access_key = {}
                         importlib.reload(module)
                         CATEGORIES.append(module.module_info['category'])
 
-            RE_SPACE = re.compile('.*\s+$', re.M)
+            RE_SPACE = re.compile(r'.*\s+$', re.M)
             readline.set_completer_delims(' \t\n`~!@#$%^&*()=+[{]}\\|;:\'",<>/?')
 
             class Completer(object):
@@ -1455,7 +1500,7 @@ aws_secret_access_key = {}
                     elif len(line) >= 3:
                         if line[0].strip() == 'run' or line[0].strip() == 'exec':
                             module_name = line[1].strip()
-                            module = self.import_module_by_name(module_name, include=['module_info'])
+                            module = import_module_by_name(module_name, include=['module_info'])
                             autocomplete_arguments = module.module_info.get('arguments_to_autocomplete', list())
                             current_argument = line[-1].strip()
                             results = [c + ' ' for c in autocomplete_arguments if c.startswith(current_argument)] + [None]
@@ -1465,16 +1510,16 @@ aws_secret_access_key = {}
             comp = Completer()
             readline.parse_and_bind("tab: complete")
             readline.set_completer(comp.complete)
-        except Exception as error:
+        except Exception as error:  # noqa: F841 TODO: narrow down this exception
             # Error means most likely on Windows where readline is not supported
             # TODO: Implement tab-completion for Windows
             # print(error)
             pass
 
-    def exit(self):
+    def exit(self) -> None:
         sys.exit('SIGINT called')
 
-    def idle(self):
+    def idle(self) -> None:
         session = self.get_active_session()
 
         if session.key_alias:
@@ -1488,21 +1533,20 @@ aws_secret_access_key = {}
 
         self.idle()
 
-    def run_cli(self, *args):
+    def run_cli(self, *args) -> None:
         self.database = get_database_connection(settings.DATABASE_CONNECTION_PATH)
-        sessions = self.database.query(PacuSession).all()
+        sessions: List[PacuSession] = self.database.query(PacuSession).all()
 
         arg = args[0]
 
-        session = arg.session
-        module_name = arg.module_name
+        session: str = arg.session
+        module_name: str = arg.module_name
         service = arg.data
-        list_mods = arg.list_modules
+        list_mods: bool = arg.list_modules
         list_cmd = ['ls']
 
-        pacu_help = arg.pacu_help
+        pacu_help: bool = arg.pacu_help
         pacu_help_cmd = ['help']
-        module_help = arg.module_info
 
         if session is not None:
             session_names = [x.name for x in sessions]
@@ -1553,7 +1597,7 @@ aws_secret_access_key = {}
         if arg.whoami is True:
             self.print_key_info()
 
-    def run_gui(self):
+    def run_gui(self) -> None:
         idle_ready = False
 
         while True:
@@ -1586,7 +1630,7 @@ aws_secret_access_key = {}
  ⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⢸⣿⣿⡇⠀⠸⣿⣿⣿⣿⣿⣿⣿⣿⡿⠀⠀⢿⣿⣿⣿⣿⣿⣿⣿⡟
  ⠀⠀⠀⠀⠀⠀⠀⠀⠘⠛⠛⠃⠀⠀⠀⠀⠀⠀⠀⠘⠛⠛⠃⠀⠀⠘⠛⠛⠃⠀⠀⠉⠛⠛⠛⠛⠛⠛⠋⠀⠀⠀⠀⠙⠛⠛⠛⠛⠛⠉⠀
 """)
-                    except UnicodeEncodeError as error:
+                    except UnicodeEncodeError:
                         pass
 
                     configure_settings.copy_settings_template_into_settings_file_if_not_present()
@@ -1599,7 +1643,7 @@ aws_secret_access_key = {}
                     self.check_sessions()
 
                     self.initialize_tab_completion()
-                    self.display_pacu_help()
+                    display_pacu_help()
 
                     self.check_for_updates()
 
@@ -1608,19 +1652,23 @@ aws_secret_access_key = {}
                 self.check_user_agent()
                 self.idle()
 
-            except (Exception, SystemExit) as error:
-                exception_type, exception_value, tb = sys.exc_info()
+            except (Exception, SystemExit) as exception_value:
+                exception_type, _, tb = sys.exc_info()
 
                 if exception_type == SystemExit:
                     if 'SIGINT called' in exception_value.args:
                         print('\nBye!')
                         return
                     else:
-                        traceback_text = '\nTraceback (most recent call last):\n{}{}: {}\n\n'.format(''.join(traceback.format_tb(tb)), str(exception_type), str(exception_value))
-                        session, global_data, local_data = self.get_data_from_traceback(tb)
+                        traceback_text = '\nTraceback (most recent call last):\n{}{}: {}\n\n'.format(
+                            ''.join(traceback.format_tb(tb)), str(exception_type), str(exception_value)
+                        )
+                        session, global_data, local_data = get_data_from_traceback(tb)
                         self.log_error(
                             traceback_text,
-                            exception_info='{}: {}\n\nPacu caught a SystemExit error. This may be due to incorrect module arguments received by argparse in the module itself. Check to see if any required arguments are not being received by the module when it executes.'.format(exception_type, exception_value),
+                            exception_info='{}: {}\n\nPacu caught a SystemExit error. This may be due to incorrect module arguments received by argparse in '
+                                           'the module itself. Check to see if any required arguments are not being received by the module when it '
+                                           'executes.'.format(exception_type, exception_value),
                             session=session,
                             local_data=local_data,
                             global_data=global_data
@@ -1628,19 +1676,24 @@ aws_secret_access_key = {}
 
                 # Catch sqlalchemy error
                 elif exception_type == exc.OperationalError:
-                    traceback_text = '\nTraceback (most recent call last):\n{}{}: {}\n\n'.format(''.join(traceback.format_tb(tb)), str(exception_type), str(exception_value))
-                    session, global_data, local_data = self.get_data_from_traceback(tb)
+                    traceback_text = '\nTraceback (most recent call last):\n{}{}: {}\n\n'.format(
+                        ''.join(traceback.format_tb(tb)), str(exception_type), str(exception_value)
+                    )
+                    session, global_data, local_data = get_data_from_traceback(tb)
                     self.log_error(
                         traceback_text,
-                        exception_info='{}: {}\n\nPacu database error. This could be caused by a recent update in Pacu\'s database\'s structure. If your Pacu has been updated recently, try removing your old db.sqlite3 database file.'.format(exception_type, exception_value),
+                        exception_info='{}: {}\n\nPacu database error. This could be caused by a recent update in Pacu\'s database\'s structure. If your Pacu '
+                                       'has been updated recently, try removing your old db.sqlite3 database file.'.format(exception_type, exception_value),
                         session=session,
                         local_data=local_data,
                         global_data=global_data
                     )
 
                 else:
-                    traceback_text = '\nTraceback (most recent call last):\n{}{}: {}\n\n'.format(''.join(traceback.format_tb(tb)), str(exception_type), str(exception_value))
-                    session, global_data, local_data = self.get_data_from_traceback(tb)
+                    traceback_text = '\nTraceback (most recent call last):\n{}{}: {}\n\n'.format(
+                        ''.join(traceback.format_tb(tb)), str(exception_type), str(exception_value)
+                    )
+                    session, global_data, local_data = get_data_from_traceback(tb)
                     self.log_error(
                         traceback_text,
                         exception_info='{}: {}'.format(exception_type, exception_value),
@@ -1650,10 +1703,11 @@ aws_secret_access_key = {}
                     )
 
                 if not idle_ready:
-                    print('Pacu is unable to start. Try backing up Pacu\'s sqlite.db file and deleting the old version. If the error persists, try reinstalling Pacu in a new directory.')
+                    print('Pacu is unable to start. Try backing up Pacu\'s sqlite.db file and deleting the old '
+                          'version. If the error persists, try reinstalling Pacu in a new directory.')
                     return
 
-    def run(self):
+    def run(self) -> None:
         parser = argparse.ArgumentParser()
         parser.add_argument('--session', required=False, default=None, help='<session name>', metavar='')
         parser.add_argument('--module-name', required=False, default=None, help='<module name>', metavar='')

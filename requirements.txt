@@ -2,9 +2,8 @@ awscli
 boto3
 botocore
 s3transfer==0.1.13
-flake8==3.5.0
-pytz==2018.5
+flake8==3.8.4
 requests==2.20.0
 urllib3==1.24.2
-SQLAlchemy==1.3.6
-SQLAlchemy-Utils==0.33.3
+SQLAlchemy==1.3.22
+SQLAlchemy-Utils==0.36.8

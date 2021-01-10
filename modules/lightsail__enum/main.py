@@ -27,7 +27,7 @@ module_info = {
 }
 
 
-def add_field(name):
+def add_field(name: str) -> None:
     parser.add_argument(
         '--' + name,
         required=False,

@@ -4,7 +4,7 @@ from core.base import Base, engine
 from utils import set_sigint_handler
 
 
-def setup_database_if_not_present(database_file_path, auto_proceed=True):
+def setup_database_if_not_present(database_file_path: str, auto_proceed: bool=True) -> bool:
     if os.path.exists(database_file_path):
         return True
     else:

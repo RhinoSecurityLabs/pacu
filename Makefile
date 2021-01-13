@@ -17,8 +17,3 @@ clean:
 
 test:
 	pytest ./tests
-
-graphs:
-	mkdir -p out
-	cd out && pyreverse -S -f ALL -o dot ../pacu.py ../core
-	docker run -it  -v "${PWD}:/dot" -w /dot dotviz  -Tpng out/classes.dot -o out/classes.png

@@ -518,6 +518,9 @@ settings.py
 monkeytype.sqlite3
 stubs
 
+# vim
+.*.sw[a-p]
+
 # Module-specific
 modules/iam__privesc_scan/lambda_function.zip
 modules/lambda__backdoor_new_sec_groups/lambda_function.py

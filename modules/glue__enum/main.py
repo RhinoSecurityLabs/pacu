@@ -4,6 +4,8 @@ from copy import deepcopy
 
 from botocore.exceptions import ClientError
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -70,12 +72,12 @@ def fetch_glue_data(client, func, key, print, **kwargs):
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
-    get_regions = pacu_main.get_regions
+
+
     ######
 
     if args.connections is False and args.databases is False and args.crawlers is False and args.jobs is False and args.dev_endpoints is False:
@@ -95,7 +97,7 @@ def main(args, pacu_main):
     all_jobs = []
     for region in regions:
         print('Starting region {}...'.format(region))
-        client = pacu_main.get_boto3_client('glue', region)
+        client = get_boto3_client('glue', region)
 
         # Connections
         if args.connections:
@@ -147,7 +149,7 @@ def main(args, pacu_main):
     glue_data['Databases'] = all_databases
     glue_data['DevEndpoints'] = all_dev_endpoints
     glue_data['Jobs'] = all_jobs
-    session.update(pacu_main.database, Glue=glue_data)
+    session.Glue==glue_data
 
     return summary_data
 

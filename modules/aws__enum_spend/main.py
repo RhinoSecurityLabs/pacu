@@ -3,6 +3,8 @@ import argparse
 from botocore.exceptions import ClientError
 import datetime
 
+from pacu.aws import get_boto3_client
+from pacu.io import print
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -38,15 +40,14 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 
 # Main is the first function that is called when this module is executed
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
     ######
 
     # All the billing seems to be in us-east-1. YMMV
-    cwm_client = pacu_main.get_boto3_client('cloudwatch', "us-east-1")
+    cwm_client = get_boto3_client('cloudwatch', "us-east-1")
 
     services = []
     service_spend = {}
@@ -66,7 +67,7 @@ def main(args, pacu_main):
             return
     except ClientError as e:
         print("ClientError getting spend: {}".format(e))
-        return({"error": "<unauthorized>"})
+        return ({"error": "<unauthorized>"})
 
     for s in services:
         try:
@@ -101,7 +102,7 @@ def main(args, pacu_main):
         except ClientError as e:
             print("ClientError getting spend: {}".format(e))
 
-    session.update(pacu_main.database, AccountSpend=service_spend)
+    session.update(AccountSpend=service_spend)
 
     return service_spend
 

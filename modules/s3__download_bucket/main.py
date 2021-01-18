@@ -6,6 +6,8 @@ import os
 
 from botocore.exceptions import ClientError
 
+import pacu.aws
+from pacu.io import print
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -62,7 +64,7 @@ def get_bucket_size(pacu, bucket_name):
 
 
 def download_s3_file(pacu, key, bucket):
-    session = pacu.get_active_session()
+    session = pacu.session()
     base_directory = 'sessions/{}/downloads/{}/{}/'.format(session.name, module_info['name'], bucket)
 
     directory = base_directory
@@ -72,18 +74,18 @@ def download_s3_file(pacu, key, bucket):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    s3 = pacu.get_boto3_resource('s3')
+    s3 = pacu.aws.get_boto3_resource('s3')
 
     size = s3.Object(bucket, key).content_length
     if size > FILE_SIZE_THRESHOLD:
-        pacu.print('  LARGE FILE DETECTED:')
+        print('  LARGE FILE DETECTED:')
         confirm = pacu.input('    Download {}? Size: {} bytes (y/n) '.format(key, size))
         if confirm != 'y':
             return False
     try:
         s3.Bucket(bucket).download_file(key, base_directory + key)
     except Exception as error:
-        pacu.print('  {}'.format(error))
+        print('  {}'.format(error))
         return False
     return True
 
@@ -98,13 +100,13 @@ def extract_from_file(pacu, file):
                 bucket = line[delimiter + 1:-1]
                 files[key] = bucket
     except FileNotFoundError:
-        pacu.print('  Download File not found...')
+        print('  Download File not found...')
     return files
 
 
 def write_bucket_keys_to_file(pacu, objects):
-    pacu.print('  Writing file names to disk...')
-    session = pacu.get_active_session()
+    print('  Writing file names to disk...')
+    session = pacu.session
     file = 'sessions/{}/downloads/{}/'.format(session.name, module_info['name'])
     if not os.path.exists(file):
         os.makedirs(file)
@@ -120,9 +122,9 @@ def write_bucket_keys_to_file(pacu, objects):
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
     args = parser.parse_args(args)
-    print = pacu_main.print
+
     input = pacu_main.input
     if (args.names_only is True and args.dl_names is True) or (args.names_only is True and args.dl_all is True) or (args.dl_names is True and args.dl_all is True):
         print('Only zero or one options of --dl-all, --names-only, and --dl-names may be specified. Exiting...')
@@ -130,18 +132,18 @@ def main(args, pacu_main):
 
     # Download Objects from File
     if args.dl_names:
-        pacu_main.print('  Extracting files from file...')
+        print('  Extracting files from file...')
         extracted_files = extract_from_file(pacu_main, args.dl_names)
         total = len(extracted_files.keys())
         success = 0
         for key in extracted_files:
             if download_s3_file(pacu_main, key, extracted_files[key]):
                 success += 1
-        pacu_main.print('  Finished downloading from file...')
+        print('  Finished downloading from file...')
         return {'downloaded_files': success, 'failed': total - success}
 
     # Enumerate Buckets
-    client = pacu_main.get_boto3_client('s3')
+    client = pacu.get_boto3_client('s3')
 
     buckets = []
     print('Enumerating buckets...')
@@ -157,7 +159,7 @@ def main(args, pacu_main):
 
     s3_data = deepcopy(session.S3)
     s3_data['Buckets'] = deepcopy(response['Buckets'])
-    session.update(pacu_main.database, S3=s3_data)
+    session.S3=s3_data
     summary_data = {'buckets': len(response['Buckets'])}
     for bucket in response['Buckets']:
         buckets.append(bucket['Name'])

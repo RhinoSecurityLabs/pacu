@@ -5,8 +5,9 @@ import os
 import gzip
 
 from botocore.exceptions import ClientError
-from core.secretfinder.utils import regex_checker, Color
 
+from pacu.aws import get_boto3_client
+from pacu.core.secretfinder.utils import regex_checker, Color
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -41,11 +42,10 @@ parser.add_argument('--template-ids', required=False, default=None, help='One or
 parser.add_argument('--filter', required=False, default=False, help='Specify tags, values or tag:value pairs to match before downloading user data. Using format tag_name_only:, :value_only, tag:value_pair ')
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
     fetch_data = pacu_main.fetch_data
     ######
 
@@ -99,7 +99,7 @@ def main(args, pacu_main):
 
             instance_id = instance['InstanceId']
             region = instance['Region']
-            client = pacu_main.get_boto3_client('ec2', region)
+            client = get_boto3_client('ec2', region)
 
             try:
                 user_data = client.describe_instance_attribute(
@@ -156,7 +156,7 @@ def main(args, pacu_main):
         for template in templates:
             template_id = template['LaunchTemplateId']
             region = template['Region']
-            client = pacu_main.get_boto3_client('ec2', region)
+            client = get_boto3_client('ec2', region)
 
             all_versions = []
 
@@ -262,6 +262,6 @@ def has_tags(filters, userdata):
     return False
         
 def summary(data, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
     out = '  Downloaded EC2 User Data for {} instance(s) and {} launch template(s) to ./sessions/{}/downloads/ec2_user_data/.\n'.format(data['instance_downloads'], data['template_downloads'], session.name)
     return out

@@ -7,6 +7,9 @@ import string
 
 from botocore.exceptions import ClientError
 
+from pacu.aws import get_regions
+from pacu.io import print
+
 module_info = {
     'name': 'rds__explore_snapshots',
     'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
@@ -65,11 +68,11 @@ def cleanup(pacu):
     success = True
     for instance in data['Instances']:
         client = pacu.get_boto3_client('rds', data['Instances'][instance]['AvailabilityZone'][:-1])
-        if not delete_instance(client, instance, pacu.print):
+        if not delete_instance(client, instance, print):
             success = False
     for snapshot in data['Snapshots']:
         client = pacu.get_boto3_client('rds', data['Snapshots'][snapshot]['AvailabilityZone'][:-1])
-        if not delete_snapshot(client, snapshot, pacu.print):
+        if not delete_snapshot(client, snapshot, print):
             success = False
     return success
 
@@ -80,39 +83,39 @@ def main(args, pacu):
     if args.regions:
         regions = args.regions.split(',')
     else:
-        regions = pacu.get_regions('rds')
+        regions = get_regions(pacu.session, 'rds')
     if not cleanup(pacu):
         if pacu.input('  Cleanup Failed. Continue? (y/n) ') != 'y':
             return {'fail': 'Failed to delete temporary data.'}
     summary_data = {'instances': 0}
     for region in regions:
-        pacu.print('Region: {}'.format(region))
+        print('Region: {}'.format(region))
         client = pacu.get_boto3_client('rds', region)
-        pacu.print('  Getting RDS instances...')
-        active_instances = get_all_region_instances(client, pacu.print)
-        pacu.print('  Found {} RDS instance(s)'.format(len(active_instances)))
+        print('  Getting RDS instances...')
+        active_instances = get_all_region_instances(client, print)
+        print('  Found {} RDS instance(s)'.format(len(active_instances)))
         for instance in active_instances:
             prompt = '    Target: {} (y/n)? '.format(instance['DBInstanceIdentifier'])
             if pacu.input(prompt).lower() != 'y':
                 continue
-            pacu.print('    Creating temporary snapshot...')
-            temp_snapshot = create_snapshot_from_instance(client, instance, pacu.print)
+            print('    Creating temporary snapshot...')
+            temp_snapshot = create_snapshot_from_instance(client, instance, print)
             if not temp_snapshot:
-                pacu.print('    Failed to create temporary snapshot')
+                print('    Failed to create temporary snapshot')
                 continue
 
-            pacu.print('    Restoring temporary instance from snapshot...')
-            temp_instance = restore_instance_from_snapshot(client, temp_snapshot, pacu.print)
+            print('    Restoring temporary instance from snapshot...')
+            temp_instance = restore_instance_from_snapshot(client, temp_snapshot, print)
             if not temp_instance:
-                pacu.print('    Failed to create temporary instance')
-                delete_snapshot(client, temp_snapshot, pacu.print)
+                print('    Failed to create temporary instance')
+                delete_snapshot(client, temp_snapshot, print)
                 continue
 
             process_instance(pacu, client, temp_instance)
 
-            pacu.print('    Deleting temporary resources...')
-            delete_instance(client, temp_instance, pacu.print)
-            delete_snapshot(client, temp_snapshot, pacu.print)
+            print('    Deleting temporary resources...')
+            delete_instance(client, temp_instance, print)
+            delete_snapshot(client, temp_snapshot, print)
             summary_data['instances'] += 1
     if not cleanup(pacu):
         summary_data['fail'] = 'Failed to delete temporary data.'
@@ -126,19 +129,19 @@ def process_instance(pacu, client, instance):
         WaiterConfig=WAIT_CONFIG,
     )
     password = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(20))
-    pacu.print('    Master Password for current instance: {}'.format(password))
-    if modify_master_password(client, instance, password, pacu.print):
-        pacu.print('      Password Change Successful')
+    print('    Master Password for current instance: {}'.format(password))
+    if modify_master_password(client, instance, password, print):
+        print('      Password Change Successful')
     else:
-        pacu.print('      Password Change Failed')
+        print('      Password Change Failed')
 
     response = client.describe_db_instances(
         DBInstanceIdentifier=instance['DBInstanceIdentifier']
     )
     endpoint = response['DBInstances'][0]['Endpoint']
-    pacu.print('    Connection Information:')
-    pacu.print('      Address: {}'.format(endpoint['Address']))
-    pacu.print('      Port: {}'.format(endpoint['Port']))
+    print('    Connection Information:')
+    print('      Address: {}'.format(endpoint['Address']))
+    print('      Port: {}'.format(endpoint['Port']))
 
     pacu.input('    Press enter to process next instance...')
 

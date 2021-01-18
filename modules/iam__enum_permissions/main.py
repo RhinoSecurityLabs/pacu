@@ -3,10 +3,13 @@ import argparse
 import json
 import os
 import re
-import botocore
 
+import botocore
 from botocore.exceptions import ClientError
 
+from pacu.core.models import AWSKey, key_info
+from pacu.aws import get_boto3_client
+from pacu.io import print
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -46,13 +49,12 @@ parser.add_argument('--role-name', required=False, default=None, help='A single 
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = pacu_main.print
     input = pacu_main.input
-    key_info = pacu_main.key_info
     fetch_data = pacu_main.fetch_data
     ######
 
@@ -119,17 +121,16 @@ def main(args, pacu_main):
     is_user = is_role = False
 
     if not any([args.all_users, args.user_name, args.all_roles, args.role_name]):
-        client = pacu_main.get_boto3_client('sts')
+        client = get_boto3_client('sts')
         identity = client.get_caller_identity()
-        active_aws_key = session.get_active_aws_key(pacu_main.database)
+        active_aws_key: AWSKey = session.key_alias
 
         if re.match(r'arn:aws:iam::\d{12}:user/', identity['Arn']) is not None:
             is_user = True
-            client = pacu_main.get_boto3_client('iam')
+            client = get_boto3_client('iam')
             try:
                 user = client.get_user()
                 active_aws_key.update(
-                    pacu_main.database,
                     user_name=user['User']['UserName'],
                     arn=identity['Arn'],
                     user_id=identity['UserId'],
@@ -139,7 +140,6 @@ def main(args, pacu_main):
                 username = input('Failed to discover the current users username, enter it now or Ctrl+C to exit the module: ').strip()
                 if username:
                     active_aws_key.update(
-                        pacu_main.database,
                         user_name=username,
                         arn=identity['Arn'],
                         user_id=identity['UserId'],
@@ -148,7 +148,6 @@ def main(args, pacu_main):
                 else:
                     # Update the information from get_caller_identity and exit
                     active_aws_key.update(
-                        pacu_main.database,
                         arn=identity['Arn'],
                         user_id=identity['UserId'],
                         account_id=identity['Account']
@@ -157,7 +156,6 @@ def main(args, pacu_main):
         elif re.match(r'arn:aws:sts::\d{12}:assumed-role/', identity['Arn']) is not None:
             is_role = True
             active_aws_key.update(
-                pacu_main.database,
                 role_name=identity['Arn'].split(':assumed-role/')[1].split('/')[-2],
                 arn=identity['Arn'],
                 user_id=identity['UserId'],
@@ -168,7 +166,7 @@ def main(args, pacu_main):
             return False
 
         if is_user:
-            user = key_info(alias=session.key_alias)
+            user = key_info()
             user['PermissionsConfirmed'] = True
             user['Permissions'] = {'Allow': {}, 'Deny': {}}
             users.append(user)
@@ -197,7 +195,7 @@ def main(args, pacu_main):
     # get-group-policy
     # get-role-policy
 
-    client = pacu_main.get_boto3_client('iam')
+    client = get_boto3_client('iam')
     if any([args.all_users, args.user_name, args.all_roles, args.role_name]):
         print('Permission Document Location:')
         print('  sessions/{}/downloads/confirmed_permissions/\n'.format(session.name))
@@ -279,7 +277,6 @@ def main(args, pacu_main):
                 if args.role_name is None and args.all_roles is False:
                     print('    Confirmed permissions for {}'.format(role['RoleName']))
                     active_aws_key.update(
-                        pacu_main.database,
                         role_name=role['RoleName'],
                         policies=role['Policies'],
                         permissions_confirmed=role['PermissionsConfirmed'],
@@ -469,7 +466,6 @@ def main(args, pacu_main):
                 if args.user_name is None and args.all_users is False:
                     print('    Confirmed Permissions for {}'.format(user['UserName']))
                     active_aws_key.update(
-                        pacu_main.database,
                         user_name=user['UserName'],
                         arn=user['Arn'],
                         user_id=user['UserId'],

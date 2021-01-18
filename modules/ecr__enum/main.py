@@ -5,6 +5,9 @@ from copy import deepcopy
 from botocore.exceptions import ClientError
 import time
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
+
 module_info = {
     'name': 'ecr__enum',
     'author': 'Manas Bellani',
@@ -22,11 +25,11 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format "us-east-1". Defaults to all session regions.')
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     args = parser.parse_args(args)
-    print = pacu_main.print
-    get_regions = pacu_main.get_regions
+
+
 
     # Get a list of all regions from which to get ECR data
     regions = args.regions.split(',') if args.regions else get_regions('all')
@@ -52,7 +55,7 @@ def main(args, pacu_main):
         region_images = []
 
         print('Checking region {} for ECR Repositories...'.format(region))
-        client = pacu_main.get_boto3_client('ecr', region)
+        client = get_boto3_client('ecr', region)
 
         # Get all the ECR repositories for the region
         response = {}

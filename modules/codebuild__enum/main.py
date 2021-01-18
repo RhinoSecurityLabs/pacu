@@ -3,6 +3,8 @@ import argparse
 from copy import deepcopy
 from botocore.exceptions import ClientError
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
 
 module_info = {
     'name': 'codebuild__enum',
@@ -24,11 +26,11 @@ parser.add_argument('--projects', required=False, default=False, action='store_t
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     args = parser.parse_args(args)
-    print = pacu_main.print
-    get_regions = pacu_main.get_regions
+
+
 
     if args.builds is False and args.projects is False:
         enum_all = True
@@ -46,7 +48,7 @@ def main(args, pacu_main):
         summary_data[region] = {}
 
         print('Starting region {}...'.format(region))
-        client = pacu_main.get_boto3_client('codebuild', region)
+        client = get_boto3_client('codebuild', region)
 
         # Begin enumeration
 
@@ -143,7 +145,7 @@ def main(args, pacu_main):
         codebuild_data['Builds'] = all_builds
         summary_data['All']['Builds'] = len(all_builds)
 
-    session.update(pacu_main.database, CodeBuild=codebuild_data)
+    session.update(CodeBuild=codebuild_data)
 
     return summary_data
 

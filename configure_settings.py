@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """ configure_settings.copy_settings_template_into_settings_file_if_not_present
-is run automatically at pacu.py execution, if no settings file is found. """
+is run automatically at main.py execution, if no settings file is found. """
 import os
 
 
@@ -13,5 +13,5 @@ def copy_settings_template_into_settings_file_if_not_present() -> None:
         print('  Settings file created.\n')
 
 
-# This removes the need to call the function in the middle of pacu.py's imports
+# This removes the need to call the function in the middle of main.py's imports
 copy_settings_template_into_settings_file_if_not_present()

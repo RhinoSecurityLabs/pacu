@@ -2,6 +2,8 @@
 import argparse
 from copy import deepcopy
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -41,14 +43,14 @@ parser.add_argument('--flow-logs', required=False, default=None, help='Comma-sep
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
+
     input = pacu_main.input
     fetch_data = pacu_main.fetch_data
-    get_regions = pacu_main.get_regions
+
     ######
 
     gd_regions = get_regions('guardduty')
@@ -210,7 +212,7 @@ def main(args, pacu_main):
         for region in gd_regions:
             print('  Starting region {}...\n'.format(region))
 
-            client = pacu_main.get_boto3_client('guardduty', region)
+            client = get_boto3_client('guardduty', region)
 
             for detector in detectors:
                 if detector['Region'] == region:
@@ -255,7 +257,7 @@ def main(args, pacu_main):
         for region in ct_regions:
             print('  Starting region {}...\n'.format(region))
 
-            client = pacu_main.get_boto3_client('cloudtrail', region)
+            client = get_boto3_client('cloudtrail', region)
 
             for trail in trails:
                 if trail['Region'] == region:
@@ -323,7 +325,7 @@ def main(args, pacu_main):
         for region in config_regions:
             print('  Starting region {}...\n'.format(region))
 
-            client = pacu_main.get_boto3_client('config', region)
+            client = get_boto3_client('config', region)
 
             for rule in rules:
                 if rule['Region'] == region:
@@ -348,7 +350,7 @@ def main(args, pacu_main):
         for region in config_regions:
             print('  Starting region {}...\n'.format(region))
 
-            client = pacu_main.get_boto3_client('config', region)
+            client = get_boto3_client('config', region)
 
             for recorder in recorders:
                 if recorder['Region'] == region:
@@ -382,7 +384,7 @@ def main(args, pacu_main):
         for region in config_regions:
             print('  Starting region {}...\n'.format(region))
 
-            client = pacu_main.get_boto3_client('config', region)
+            client = get_boto3_client('config', region)
 
             for aggregator in aggregators:
                 if aggregator['Region'] == region:
@@ -411,7 +413,7 @@ def main(args, pacu_main):
         for region in cw_regions:
             print('  Starting region {}...\n'.format(region))
 
-            client = pacu_main.get_boto3_client('cloudwatch', region)
+            client = get_boto3_client('cloudwatch', region)
 
             for alarm in alarms:
                 if alarm['Region'] == region:
@@ -455,7 +457,7 @@ def main(args, pacu_main):
         for region in vpc_regions:
             print('  Starting region {}...\n'.format(region))
 
-            client = pacu_main.get_boto3_client('ec2', region)
+            client = get_boto3_client('ec2', region)
 
             logs_to_delete = []
             for log in flow_logs:

@@ -7,6 +7,7 @@ import random
 import string
 import os
 
+from pacu.io import print
 
 module_info = {
     'name': 'lambda__backdoor_new_roles',
@@ -36,11 +37,11 @@ parser.add_argument('--cleanup', required=False, default=False, action='store_tr
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ######
     args = parser.parse_args(args)
-    print = pacu_main.print
+
     input = pacu_main.input
     fetch_data = pacu_main.fetch_data
     ######
@@ -61,7 +62,7 @@ def main(args, pacu_main):
             for function in created_lambda_functions:
                 name = function.rstrip()
                 print('  Deleting function {}...'.format(name))
-                client = pacu_main.get_boto3_client('lambda', 'us-east-1')
+                client = get_boto3_client('lambda', 'us-east-1')
                 try:
                     client.delete_function(
                         FunctionName=name
@@ -86,7 +87,7 @@ def main(args, pacu_main):
             for rule in created_cwe_rules:
                 name = rule.rstrip()
                 print('  Deleting rule {}...'.format(name))
-                client = pacu_main.get_boto3_client('events', 'us-east-1')
+                client = get_boto3_client('events', 'us-east-1')
                 try:
                     client.remove_targets(
                         Rule=name,
@@ -158,7 +159,7 @@ def main(args, pacu_main):
     with open('./modules/{}/lambda_function.zip'.format(module_info['name']), 'rb') as f:
         zip_file_bytes = f.read()
 
-    client = pacu_main.get_boto3_client('lambda', 'us-east-1')
+    client = get_boto3_client('lambda', 'us-east-1')
 
     try:
         function_name = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(15))
@@ -176,7 +177,7 @@ def main(args, pacu_main):
         data['functions_created'] += 1
         created_resources['LambdaFunctions'].append(function_name)
 
-        client = pacu_main.get_boto3_client('events', 'us-east-1')
+        client = get_boto3_client('events', 'us-east-1')
 
         response = client.put_rule(
             Name=function_name,
@@ -186,7 +187,7 @@ def main(args, pacu_main):
         print('  Created CloudWatch Events rule: {}'.format(response['RuleArn']))
         data['rules_created'] += 1
 
-        client = pacu_main.get_boto3_client('lambda', 'us-east-1')
+        client = get_boto3_client('lambda', 'us-east-1')
 
         client.add_permission(
             FunctionName=function_name,
@@ -196,7 +197,7 @@ def main(args, pacu_main):
             SourceArn=response['RuleArn']
         )
 
-        client = pacu_main.get_boto3_client('events', 'us-east-1')
+        client = get_boto3_client('events', 'us-east-1')
 
         response = client.put_targets(
             Rule=function_name,

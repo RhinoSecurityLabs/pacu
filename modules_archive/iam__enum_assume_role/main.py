@@ -17,6 +17,7 @@ import botocore
 import random
 import string
 
+from pacu.io import print
 
 module_info = {
     'name': 'iam__enum_assume_role',
@@ -46,7 +47,7 @@ parser.add_argument('--word-list', required=False, default=None, help='File path
 
 def main(args, pacu_main):
     args = parser.parse_args(args)
-    print = pacu_main.print
+
 
     if not len(args.account_id) == 12 or not args.account_id.isdigit():
         print('Error: An AWS account ID is a number of length 12. You supplied: {}\n'.format(args.account_id))
@@ -70,7 +71,7 @@ def main(args, pacu_main):
 
     print('Starting role enumeration...\n')
 
-    client = pacu_main.get_boto3_client('sts')
+    client = get_boto3_client('sts')
     for word in word_list:
         role_arn = 'arn:aws:iam::{}:role/{}'.format(args.account_id, word)
 

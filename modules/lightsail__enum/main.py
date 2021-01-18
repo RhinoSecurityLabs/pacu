@@ -2,6 +2,9 @@
 import argparse
 from botocore.exceptions import ClientError
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
+
 MASTER_FIELDS = [
     'active-names',
     'blueprints',
@@ -82,10 +85,10 @@ def fetch_lightsail_data(client, func, print):
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
     args = parser.parse_args(args)
-    print = pacu_main.print
-    get_regions = pacu_main.get_regions
+
+
 
     fields = [arg for arg in vars(args) if getattr(args, arg)]
     if not fields:
@@ -97,7 +100,7 @@ def main(args, pacu_main):
 
     for region in regions:
         print('Starting region {}...'.format(region))
-        client = pacu_main.get_boto3_client('lightsail', region)
+        client = get_boto3_client('lightsail', region)
         for field in fields:
             lightsail_data[field].extend(fetch_lightsail_data(client, field, print))
 
@@ -105,7 +108,7 @@ def main(args, pacu_main):
     for field in lightsail_data:
         summary_data[field] = len(lightsail_data[field])
 
-    session.update(pacu_main.database, Lightsail=lightsail_data)
+    session.update(Lightsail = lightsail_data)
     return summary_data
 
 

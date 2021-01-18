@@ -5,6 +5,8 @@ from random import choice
 
 from botocore.exceptions import ClientError
 
+import pacu.aws
+from pacu.core.models import key_info
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -41,18 +43,17 @@ parser.add_argument('--no-random', required=False, action='store_true', help='If
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
+
     input = pacu_main.input
-    key_info = pacu_main.key_info
     fetch_data = pacu_main.fetch_data
     get_aws_key_by_alias = pacu_main.get_aws_key_by_alias
     ######
 
-    client = pacu_main.get_boto3_client('iam')
+    client = pacu.get_boto3_client('iam')
 
     rolenames = []
     user_arns = []
@@ -77,9 +78,9 @@ def main(args, pacu_main):
         active_aws_key = get_aws_key_by_alias(session.key_alias)
 
         if 'Arn' not in user or user['Arn'] is None:
-            client = pacu_main.get_boto3_client('sts')
+            client = pacu.get_boto3_client('sts')
             user_info = client.get_caller_identity()
-            active_aws_key.update(pacu_main.database, arn=user_info['Arn'], user_id=user_info['UserId'], account_id=user_info['Account'])
+            active_aws_key.update(arn=user_info['Arn'], user_id=user_info['UserId'], account_id=user_info['Account'])
 
         user_arns.append(active_aws_key.arn)
     else:
@@ -88,7 +89,7 @@ def main(args, pacu_main):
         else:
             user_arns.append(args.user_arns)  # Only one ARN was passed in
 
-    iam = pacu_main.get_boto3_resource('iam')
+    iam = pacu.aws.get_boto3_resource('iam')
     backdoored_role_count = 0
     print('Backdoor the following roles?')
     for rolename in rolenames:

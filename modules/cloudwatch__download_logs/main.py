@@ -6,6 +6,8 @@ import os
 
 from botocore.exceptions import ClientError
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
 
 module_info = {
     'name': 'cloudwatch__download_logs',
@@ -95,10 +97,10 @@ def millisecond(time_stamp):
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
     args = parser.parse_args(args)
-    print = pacu_main.print
-    get_regions = pacu_main.get_regions
+
+
     summary_data = {}
     if isinstance(args.from_time, str):
         from_time = parse_time(args.from_time)
@@ -112,7 +114,7 @@ def main(args, pacu_main):
     log_groups = {}
     for region in regions:
         print('Enumerating {}...'.format(region))
-        client = pacu_main.get_boto3_client('logs', region)
+        client = get_boto3_client('logs', region)
         groups = collect_all(client, 'describe_log_groups', 'logGroups')
         if not groups:
             print('  No Log Groups found')

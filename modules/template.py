@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 import argparse
-from botocore.exceptions import ClientError
-
 
 # When writing a module, feel free to remove any comments, placeholders, or
 # anything else that doesn't relate to your module.
+from pacu.aws import get_boto3_client, get_regions
+from pacu.core.models import key_info, PacuSession
+from pacu.io import print, input
 
 module_info = {
     # Name of the module (should be the same as the filename).
@@ -57,15 +58,11 @@ parser.add_argument('', required=False, default=None, help='')
 
 # Main is the first function that is called when this module is executed.
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
 
     ###### These can be removed if you are not using the function.
+    session = PacuSession.active_session()
     args = parser.parse_args(args)
-    print = pacu_main.print
-    input = pacu_main.input
-    key_info = pacu_main.key_info
     fetch_data = pacu_main.fetch_data
-    get_regions = pacu_main.get_regions
     install_dependencies = pacu_main.install_dependencies
     ######
 
@@ -103,7 +100,7 @@ def main(args, pacu_main):
 
     for region in regions:
         print('Starting region {}...'.format(region))
-        client = pacu_main.get_boto3_client('aws_service', region)
+        client = get_boto3_client('aws_service', region)
         data = client.do_something()
 
     # Make sure your main function returns whatever data you need to construct

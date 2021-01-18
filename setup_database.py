@@ -1,10 +1,10 @@
 import os
 
-from core.base import Base, engine
-from utils import set_sigint_handler
+from pacu.core import Base
+from pacu.utils import get_database_engine, set_sigint_handler
 
 
-def setup_database_if_not_present(database_file_path: str, auto_proceed: bool=True) -> bool:
+def setup_database_if_not_present(connection: str, database_file_path: str, auto_proceed: bool=True) -> bool:
     if os.path.exists(database_file_path):
         return True
     else:
@@ -12,7 +12,7 @@ def setup_database_if_not_present(database_file_path: str, auto_proceed: bool=Tr
         return attempt_to_create_database(database_file_path, auto_proceed)
 
 
-def attempt_to_create_database(database_file_path, auto_proceed=True):
+def attempt_to_create_database(database_file_path: str, auto_proceed: bool=True) -> bool:
     if auto_proceed:
         proceed = 'y'
     else:
@@ -29,9 +29,9 @@ def attempt_to_create_database(database_file_path, auto_proceed=True):
         if os.path.exists(database_file_path):
             os.remove(database_file_path)
 
+        engine = get_database_engine()
         # Base.metadata.create_all requires all models to be loaded before
         # tables can be created. It's is placed here for emphasis.
-        from core.models import AWSKey, PacuSession
         Base.metadata.create_all(engine)
 
         print('Database created at {}\n'.format(database_file_path))

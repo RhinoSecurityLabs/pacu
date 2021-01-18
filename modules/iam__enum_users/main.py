@@ -2,6 +2,7 @@
 import argparse
 import botocore
 
+from pacu.io import print
 
 module_info = {
     'name': 'iam__enum_users',
@@ -32,7 +33,7 @@ parser.add_argument('--account-id', required=True, help='The AWS account ID of t
 
 def main(args, pacu_main):
     args = parser.parse_args(args)
-    print = pacu_main.print
+
 
     if not len(args.account_id) == 12 or not args.account_id.isdigit():
         print('Error: An AWS account ID is a number of length 12. You supplied: {}\n'.format(args.account_id))
@@ -53,7 +54,7 @@ def main(args, pacu_main):
         'valid_users': []
     }
 
-    client = pacu_main.get_boto3_client('iam')
+    client = get_boto3_client('iam')
 
     print('Targeting account ID: {}\n'.format(args.account_id))
     print('Starting user enumeration...\n')

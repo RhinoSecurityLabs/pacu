@@ -5,6 +5,9 @@ import argparse
 import os
 import json
 
+from pacu.aws import get_boto3_client
+from pacu.io import print
+
 module_info = {
     # Name of the module (should be the same as the filename)
     'name': 'ecs__enum_task_def',
@@ -35,11 +38,11 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 parser.add_argument('--task_definitions',required=False,default=None,help='A comma separated list of ECS task defintion ARNs (arn:aws:ecs:us-east-1:273486424706:task-definition/first-run-task-definition:latest)')
 
 def main(args, pacu_main):
-    session = session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
+
     fetch_data = pacu_main.fetch_data
     ######
 
@@ -65,7 +68,7 @@ def main(args, pacu_main):
 
         for task_def in task_definitions:
             region = task_def.split(':')[3]
-            client = pacu_main.get_boto3_client('ecs', region)
+            client = get_boto3_client('ecs', region)
 
             try:
                 task_def_data = client.describe_task_definition(
@@ -96,7 +99,7 @@ def main(args, pacu_main):
     return summary_data
 
 def summary(data, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     output = '  ECS Task Definition Data for {} task definition(s) was written to ./sessions/{}/downloads/ecs_task_def_data/'.format(data['task_definitions'],session.name)
     return output

@@ -5,6 +5,8 @@ import re
 import time
 from botocore.exceptions import ClientError
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -43,14 +45,14 @@ parser.add_argument('--ip-name', required=False, default=None, help='The name of
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
+
     input = pacu_main.input
     fetch_data = pacu_main.fetch_data
-    get_regions = pacu_main.get_regions
+
     ######
 
     summary_data = {}
@@ -94,7 +96,7 @@ def main(args, pacu_main):
         for region in regions:
             image_ids = []
             print('Starting region {}...'.format(region))
-            client = pacu_main.get_boto3_client('ec2', region)
+            client = get_boto3_client('ec2', region)
 
             for instance in instances:
                 if instance['Region'] == region:
@@ -138,7 +140,7 @@ def main(args, pacu_main):
 
     if ssm_instance_profile_name == '':
         # Begin Systems Manager role finder/creator
-        client = pacu_main.get_boto3_client('iam')
+        client = get_boto3_client('iam')
 
         ssm_policy = client.get_policy(
             PolicyArn='arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
@@ -283,7 +285,7 @@ def main(args, pacu_main):
     ec2_data = copy.deepcopy(session.EC2)
 
     for region in regions:
-        client = pacu_main.get_boto3_client('ec2', region)
+        client = get_boto3_client('ec2', region)
         # instances_to_replace will be filled up as each instance is checked for
         # each region. The describe_iam_instance_profile_associations API call
         # supports multiple instance IDs as filters, so by collecting a list and
@@ -378,7 +380,7 @@ def main(args, pacu_main):
                         replace = False
                         break
 
-    session.update(pacu_main.database, EC2=ec2_data)
+    session.json_update(EC2=ec2_data)
     print('\n  Done.\n')
 
     # Start polling SystemsManager/RunCommand to see if instances show up
@@ -394,7 +396,7 @@ def main(args, pacu_main):
             # Accumulate a list of instances to attack to minimize the amount of API calls being made
             windows_instances_to_attack = []
             linux_instances_to_attack = []
-            client = pacu_main.get_boto3_client('ssm', region)
+            client = get_boto3_client('ssm', region)
 
             # Enumerate instances that appear available to Systems Manager
             response = client.describe_instance_information()

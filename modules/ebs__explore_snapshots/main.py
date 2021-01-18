@@ -7,6 +7,8 @@ from pathlib import Path
 
 from botocore.exceptions import ClientError
 
+from pacu.io import print
+
 module_info = {
     'name': 'ebs__explore_snapshots',
     'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
@@ -57,8 +59,8 @@ def load_volumes(pacu, client, instance_id, volume_ids):
             pacu, client, 'attach_volume', instance_id, current_volume_set
         )
         if not attached:
-            pacu.print(' Volume attachment failed')
-            pacu.print(' Exiting...')
+            print(' Volume attachment failed')
+            print(' Exiting...')
             running = False
 
         while True:
@@ -74,8 +76,8 @@ def load_volumes(pacu, client, instance_id, volume_ids):
             pacu, client, 'detach_volume', instance_id, current_volume_set
         )
         if not detached:
-            pacu.print(' Volume detachment failed')
-            pacu.print(' Exiting...')
+            print(' Volume detachment failed')
+            print(' Exiting...')
             running = False
         waiter.wait(VolumeIds=current_volume_set)
         set_index += SET_COUNT
@@ -112,9 +114,9 @@ def modify_volume_list(pacu, client, func, instance_id, volume_id_list):
         except ClientError as error:
             code = error.response['Error']['Code']
             if code == 'UnauthorizedOperation':
-                pacu.print('  FAILURE MISSING AWS PERMISSIONS')
+                print('  FAILURE MISSING AWS PERMISSIONS')
             else:
-                pacu.print(error)
+                print(error)
             return False
     return True
 
@@ -163,7 +165,7 @@ def get_instances(pacu):
     Returns:
         list: List of Instances.
     """
-    ec2_data = deepcopy(pacu.get_active_session().EC2)
+    ec2_data = deepcopy(pacu_main.session().EC2)
     if 'Instances' not in ec2_data:
         fields = ['EC2', 'Instances']
         module = module_info['prerequisite_modules'][0]
@@ -171,7 +173,7 @@ def get_instances(pacu):
         fetched_ec2_instances = pacu.fetch_data(fields, module, args)
         if fetched_ec2_instances is False:
             return []
-        instance_data = deepcopy(pacu.get_active_session().EC2)
+        instance_data = deepcopy(pacu_main.session().EC2)
         return instance_data['Instances']
     return ec2_data['Instances']
 
@@ -183,7 +185,7 @@ def get_snapshots(pacu):
     Returns:
         list: List of Snapshots.
     """
-    ec2_data = deepcopy(pacu.get_active_session().EC2)
+    ec2_data = deepcopy(pacu_main.session().EC2)
     if 'Snapshots' not in ec2_data or not ec2_data['Snapshots']:
         fields = ['EC2', 'Snapshots']
         module = module_info['prerequisite_modules'][1]
@@ -191,7 +193,7 @@ def get_snapshots(pacu):
         fetched_snapshots = pacu.fetch_data(fields, module, args)
         if fetched_snapshots is False:
             return []
-        snap_data = deepcopy(pacu.get_active_session().EC2)
+        snap_data = deepcopy(pacu_main.session().EC2)
         return snap_data['Snapshots']
     return ec2_data['Snapshots']
 
@@ -203,16 +205,16 @@ def get_volumes(pacu):
     Returns:
         dict: Mapping regions to corresponding list of volume_ids.
     """
-    ec2_data = deepcopy(pacu.get_active_session().EC2)
+    ec2_data = deepcopy(pacu_main.session().EC2)
     if 'Volumes' not in ec2_data or not ec2_data['Volumes']:
-        pacu.print('Fetching Volume data...')
+        print('Fetching Volume data...')
         fields = ['EC2', 'Volumes']
         module = module_info['prerequisite_modules'][1]
         args = '--vols'
         fetched_volumes = pacu.fetch_data(fields, module, args)
         if fetched_volumes is False:
             return []
-        vol_data = deepcopy(pacu.get_active_session().EC2)
+        vol_data = deepcopy(pacu_main.session().EC2)
         return vol_data['Volumes']
     return ec2_data['Volumes']
 
@@ -323,23 +325,23 @@ def main(args, pacu):
     client = pacu.get_boto3_client('ec2', region)
 
     if not cleanup(client):
-        pacu.print('  Cleanup failed')
+        print('  Cleanup failed')
         return summary_data
 
     snapshots = [snap['SnapshotId'] for snap in get_snapshots(pacu) if snap['Region'] == region]
     volumes = [vol['VolumeId'] for vol in get_volumes(pacu) if vol['Region'] == region]
     summary_data.update({'snapshots': len(snapshots), 'volumes': len(volumes)})
 
-    pacu.print('  Attaching volumes...')
+    print('  Attaching volumes...')
     temp_snaps = generate_snapshots_from_volumes(client, volumes)
     temp_volumes = generate_volumes_from_snapshots(client, temp_snaps, zone)
     load_volumes(pacu, client, instance_id, temp_volumes)
-    pacu.print('  Finished attaching volumes...')
+    print('  Finished attaching volumes...')
 
-    pacu.print('  Attaching volumes from existing snapshots...')
+    print('  Attaching volumes from existing snapshots...')
     temp_volumes = generate_volumes_from_snapshots(client, snapshots, zone)
     load_volumes(pacu, client, instance_id, temp_volumes)
-    pacu.print('  Finished attaching existing snapshot volumes...')
+    print('  Finished attaching existing snapshot volumes...')
 
     return summary_data
 

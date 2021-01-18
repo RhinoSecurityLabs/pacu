@@ -5,6 +5,8 @@ import os
 
 # When writing a module, feel free to remove any comments, placeholders, or
 # anything else that doesn't relate to your module.
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
 
 module_info = {
     # Name of the module (should be the same as the filename).
@@ -48,11 +50,11 @@ parser.add_argument('--secrets-manager', required=False, action="store_true", he
 parser.add_argument('--parameter-store', required=False, action="store_true", help="Enumerate Systems Manager parameter store")
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     args = parser.parse_args(args)
-    print = pacu_main.print
-    get_regions = pacu_main.get_regions
+
+
 
     summary_data = {"SecretsManager": 0,"ParameterStore": 0}
 
@@ -83,7 +85,7 @@ def main(args, pacu_main):
 
         print('Starting region {}...'.format(region))
         if args.secrets_manager:
-            client = pacu_main.get_boto3_client('secretsmanager', region)
+            client = get_boto3_client('secretsmanager', region)
             
             
             response = None
@@ -125,7 +127,7 @@ def main(args, pacu_main):
 
         for sec in all_secrets_ids_sm:
             secret_values = []
-            client = pacu_main.get_boto3_client('secretsmanager',sec["region"])
+            client = get_boto3_client('secretsmanager',sec["region"])
 
             response = None
             while response is None:
@@ -161,7 +163,7 @@ def main(args, pacu_main):
 
             
         if args.parameter_store:
-            client = pacu_main.get_boto3_client('ssm', region)
+            client = get_boto3_client('ssm', region)
 
             response = None
             while response is None:
@@ -197,7 +199,7 @@ def main(args, pacu_main):
 
         
             for param in all_secrets_ids_ssm:
-                client = pacu_main.get_boto3_client('ssm',param["region"])
+                client = get_boto3_client('ssm',param["region"])
 
                 response = None
                 while response is None:

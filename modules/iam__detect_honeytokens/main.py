@@ -3,6 +3,8 @@ import argparse
 import re
 from botocore.exceptions import ClientError
 
+from pacu.aws import get_boto3_client
+from pacu.io import print
 
 module_info = {
     'name': 'iam__detect_honeytokens',
@@ -30,16 +32,16 @@ parser.add_argument('--region', required=False, default='us-east-1', help='If fo
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### These can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
+
     ######
 
     data = {}
 
-    client = pacu_main.get_boto3_client('sdb', args.region)
+    client = get_boto3_client('sdb', args.region)
 
     print('Making test API request...\n')
 
@@ -64,11 +66,10 @@ def main(args, pacu_main):
             if match:
                 data['arn'] = match.group().split('(')[1].split(')')[0]
 
-                active_aws_key = session.get_active_aws_key(pacu_main.database)
+                active_aws_key = session.key_alias
 
                 if ':assumed-role/' in data['arn']:
                     active_aws_key.update(
-                        pacu_main.database,
                         arn=data['arn'],
                         account_id=data['arn'].split('arn:aws:sts::')[1][:12],
                         # -2 will get the role name everytime,
@@ -78,7 +79,6 @@ def main(args, pacu_main):
                     )
                 elif ':user/' in data['arn']:
                     active_aws_key.update(
-                        pacu_main.database,
                         arn=data['arn'],
                         account_id=data['arn'].split('arn:aws:iam::')[1][:12],
                         # -1 will get the user name everytime,

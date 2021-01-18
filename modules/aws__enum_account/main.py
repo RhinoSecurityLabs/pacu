@@ -3,6 +3,8 @@ import argparse
 from botocore.exceptions import ClientError
 import datetime
 
+from pacu.aws import get_boto3_client
+from pacu.io import print
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -38,19 +40,18 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 
 # Main is the first function that is called when this module is executed
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
     ######
 
-    sts_client = pacu_main.get_boto3_client('sts')
+    sts_client = get_boto3_client('sts')
     response = sts_client.get_caller_identity()
     key_arn = response['Arn']
     account_id = response['Account']
 
-    iam_client = pacu_main.get_boto3_client('iam')
+    iam_client = get_boto3_client('iam')
     try:
         response = iam_client.list_account_aliases()
         account_iam_alias = response['AccountAliases'][0]
@@ -62,7 +63,7 @@ def main(args, pacu_main):
 
     print('Enumerating Account: {}'.format(account_iam_alias))
     # All the billing seems to be in us-east-1. YMMV
-    cwm_client = pacu_main.get_boto3_client('cloudwatch', "us-east-1")
+    cwm_client = get_boto3_client('cloudwatch', "us-east-1")
     try:
         response = cwm_client.get_metric_statistics(
             Namespace='AWS/Billing',
@@ -93,7 +94,7 @@ def main(args, pacu_main):
             account_spend = "<ClientError>"
 
     try:
-        org_client = pacu_main.get_boto3_client('organizations')
+        org_client = get_boto3_client('organizations')
         org_response = org_client.describe_organization()
         org_data = org_response['Organization']
     except ClientError as e:
@@ -111,7 +112,7 @@ def main(args, pacu_main):
         'org_data': org_data
     }
 
-    session.update(pacu_main.database, Account=account_data)
+    session.update(Account=account_data)
 
     summary_data = {
         'key_arn': key_arn,

@@ -5,6 +5,8 @@ import copy
 import string
 import random
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
 
 module_info = {
     'name': 'guardduty__whitelist_ip',
@@ -25,12 +27,12 @@ parser.add_argument('--targets', required=False, default=None, help='Comma-separ
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
     args = parser.parse_args(args)
-    print = pacu_main.print
+
     input = pacu_main.input
     fetch_data = pacu_main.fetch_data
-    get_regions = pacu_main.get_regions
+
 
     data = {'detectors': [], 'ip_sets': []}
 
@@ -51,7 +53,7 @@ def main(args, pacu_main):
         detectors = copy.deepcopy(session.GuardDuty['Detectors'])
 
     for region in regions:
-        client = pacu_main.get_boto3_client('guardduty', region)
+        client = get_boto3_client('guardduty', region)
         for detector in detectors:
             if detector['Region'] == region:
                 print(' ({}) Detector {}:'.format(region, detector['Id']))

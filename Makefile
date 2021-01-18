@@ -2,7 +2,7 @@ flake8:
 	flake8 pacu.py
 
 stubgen:
-	test -d stubs || stubgen --include-private -p boto3 -p botocore -o stubs
+	test -d stubs || stubgen --include-private -p boto3 -p botocore -p sqlalchemy_mixins -o stubs
 
 mypy: stubgen
 	export MYPYPATH="${PWD}/stubs" && mypy *.py core

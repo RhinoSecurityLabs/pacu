@@ -5,6 +5,8 @@ import time
 
 from botocore.exceptions import ClientError
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -38,11 +40,11 @@ parser.add_argument('--regions', required=False, default=None, help='One or more
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     args = parser.parse_args(args)
-    print = pacu_main.print
-    get_regions = pacu_main.get_regions
+
+
     if not args.regions:
         regions = get_regions('elasticloadbalancing')
     else:
@@ -51,12 +53,12 @@ def main(args, pacu_main):
     if 'LoadBalancers' not in session.EC2.keys():
         ec2_data = deepcopy(session.EC2)
         ec2_data['LoadBalancers'] = []
-        session.update(pacu_main.database, EC2=ec2_data)
+        session.EC2=ec2_data
 
     load_balancers = list()
     for region in regions:
         print('Starting region {}...'.format(region))
-        client = pacu_main.get_boto3_client('elbv2', region)
+        client = get_boto3_client('elbv2', region)
 
         count = 0
         response = None
@@ -91,7 +93,7 @@ def main(args, pacu_main):
 
     ec2_data = deepcopy(session.EC2)
     ec2_data['LoadBalancers'] = deepcopy(load_balancers)
-    session.update(pacu_main.database, EC2=ec2_data)
+    session.EC2=ec2_data
 
     print('\n{} total load balancer(s) found.'.format(len(session.EC2['LoadBalancers'])))
 

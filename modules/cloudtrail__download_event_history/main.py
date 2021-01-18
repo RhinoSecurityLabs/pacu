@@ -3,6 +3,8 @@ import argparse
 import json
 import time
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -36,12 +38,12 @@ parser.add_argument('--regions', required=False, default=None, help='One or more
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
-    get_regions = pacu_main.get_regions
+
+
     ######
     summary_data = {}
     if args.regions is None:
@@ -56,7 +58,7 @@ def main(args, pacu_main):
         events = []
         print('Downloading logs from {}:'.format(region))
         print(' This may take a while...')
-        client = pacu_main.get_boto3_client('cloudtrail', region)
+        client = get_boto3_client('cloudtrail', region)
 
         event_history = client.lookup_events(
             MaxResults=50,

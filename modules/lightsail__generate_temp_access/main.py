@@ -3,6 +3,8 @@ import argparse
 from botocore.exceptions import ClientError
 import os
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -73,9 +75,9 @@ def write_keys_to_file(created_keys, session):
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
-    print = pacu_main.print
-    get_regions = pacu_main.get_regions
+    session = pacu_main.session
+
+
     fetch_data = pacu_main.fetch_data
 
     args = parser.parse_args(args)
@@ -114,7 +116,7 @@ def main(args, pacu_main):
     for instance in instances:
         temp_keys[instance['region']] = []
     for instance in instances:
-        client = pacu_main.get_boto3_client('lightsail', instance['region'])
+        client = get_boto3_client('lightsail', instance['region'])
         print('    Instance {}'.format(instance['name']))
         try:
             response = client.get_instance_access_details(

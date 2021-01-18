@@ -4,6 +4,8 @@ from botocore.exceptions import ClientError
 import os
 import urllib.request
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
 
 module_info = {
     'name': 'inspector__get_reports',
@@ -25,10 +27,10 @@ parser.add_argument('--download-reports', required=False, default=False, action=
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
     args = parser.parse_args(args)
-    print = pacu_main.print
-    get_regions = pacu_main.get_regions
+
+
 
     regions = get_regions('Inspector')
     complete_data = {}
@@ -42,7 +44,7 @@ def main(args, pacu_main):
     for region in regions:
         print('Starting region {}...'.format(region))
 
-        client = pacu_main.get_boto3_client('inspector', region)
+        client = get_boto3_client('inspector', region)
 
         if args.download_reports:
             assessment_runs = []
@@ -98,7 +100,7 @@ def main(args, pacu_main):
         except ClientError as error:
             if error.response['Error']['Code'] == 'AccessDeniedException':
                 print('Access Denied for describe-findings')
-    session.update(pacu_main.database, Inspector=complete_data)
+    session.update(Inspector = complete_data)
     return summary_data
 
 

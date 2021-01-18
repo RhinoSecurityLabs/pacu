@@ -9,6 +9,8 @@ import boto3
 from botocore.exceptions import ClientError
 from botocore.exceptions import ParamValidationError
 
+from pacu.aws import get_boto3_client
+from pacu.io import print
 from . import param_generator
 
 
@@ -307,9 +309,9 @@ def valid_exception(error):
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
     args = parser.parse_args(args)
-    print = pacu_main.print
+
 
     preload_actions = generate_preload_actions()
     service_list = build_service_list(args.services.split(',')) if args.services else build_service_list()
@@ -329,7 +331,7 @@ def main(args, pacu_main):
             global current_region
             current_region = region
             global current_client
-            current_client = pacu_main.get_boto3_client(service, region)
+            current_client = get_boto3_client(service, region)
             functions = [func for func in dir(current_client) if valid_func(service, func)]
             index = 1
             for func in functions:
@@ -369,9 +371,8 @@ def main(args, pacu_main):
     if deny_permissions:
         full_deny = [service + ':' + camel_case(perm) for perm in deny_permissions[service] for service in deny_permissions]
 
-    active_aws_key = session.get_active_aws_key(pacu_main.database)
+    active_aws_key = session.key_alias
     active_aws_key.update(
-        pacu_main.database,
         allow_permissions=full_allow,
         deny_permissions=full_deny
     )

@@ -3,6 +3,8 @@ import argparse
 from copy import deepcopy
 from botocore.exceptions import ClientError
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -39,9 +41,9 @@ parser.add_argument('--cleanup', required=False, default=None, action='store_tru
 
 
 def cleanup(pacu_main, regions):
-    print = pacu_main.print
+
     for region in regions:
-        client = pacu_main.get_boto3_client('apigateway', region)
+        client = get_boto3_client('apigateway', region)
         try:
             keys = client.get_api_keys()['items']
             if len(keys) < 1:
@@ -65,11 +67,11 @@ def cleanup(pacu_main, regions):
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
     args = parser.parse_args(args)
     input = pacu_main.input
-    print = pacu_main.print
-    get_regions = pacu_main.get_regions
+
+
     regions = args.regions.split(',') if args.regions else get_regions('apigateway')
 
     summary_data = {'keys_created': 0}
@@ -82,7 +84,7 @@ def main(args, pacu_main):
             print('  Failed to Cleanup Keys')
             summary_data['cleanup'] = False
         # Either way assume database has been cleared, it if failed it's out of sync
-        session.update(pacu_main.database, APIGateway={})
+        session.updpate(APIGateway={})
         user_input = input('  Continue key creation? (y/n) ')
         if user_input.lower() != 'y':
             return summary_data
@@ -90,7 +92,7 @@ def main(args, pacu_main):
     for region in regions:
         api_keys[region] = []
         print('Starting region {}...'.format(region))
-        client = pacu_main.get_boto3_client('apigateway', region)
+        client = get_boto3_client('apigateway', region)
         try:
             response = client.create_api_key(name='Pacu')
             api_keys[region].append(response['id'])
@@ -108,7 +110,7 @@ def main(args, pacu_main):
             api_gateway_data[region].extend(api_keys[region])
         else:
             api_gateway_data[region] = api_keys[region]
-    session.update(pacu_main.database, APIGateway=api_gateway_data)
+    session.APIGateway=api_gateway_data
 
     return summary_data
 

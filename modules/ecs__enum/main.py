@@ -4,6 +4,9 @@ from botocore.exceptions import ClientError
 from copy import deepcopy
 from random import choice
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
+
 module_info = {
     # Name of the module (should be the same as the filename).
     'name': 'ecs__enum',
@@ -62,9 +65,9 @@ ARG_FIELD_MAPPER = {
 
 def main(args, pacu_main):
     args = parser.parse_args(args)
-    print = pacu_main.print
-    session = pacu_main.get_active_session()
-    get_regions = pacu_main.get_regions
+
+    session = pacu_main.session
+
 
     if args.regions is None:
         regions = get_regions('ecs')
@@ -92,7 +95,7 @@ def main(args, pacu_main):
         if any([args.clusters, args.containers, args.services, args.taskdef]):
             print('Starting region {}...'.format(region))
         
-        client = pacu_main.get_boto3_client('ecs', region)
+        client = get_boto3_client('ecs', region)
 
         if args.clusters:
             response = None
@@ -237,7 +240,7 @@ def main(args, pacu_main):
     ecs_data = deepcopy(session.ECS)
     for key, value in gathered_data.items():
         ecs_data[key] = value
-    session.update(pacu_main.database, ECS=ecs_data)    
+    session.update(ECS=ecs_data)
 
 
     gathered_data['regions'] = regions

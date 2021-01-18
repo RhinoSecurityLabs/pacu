@@ -4,9 +4,10 @@ import os
 import time
 import pprint
 
-from core.secretfinder.utils import regex_checker, Color
 from botocore.exceptions import ClientError
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.core.secretfinder.utils import Color, regex_checker
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -87,12 +88,12 @@ def dump_dynamodb_table(client, print, **kwargs):
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
-    get_regions = pacu_main.get_regions
+
+
     ######
 
     if args.regions:
@@ -113,7 +114,7 @@ def main(args, pacu_main):
     for region in regions:
         print('Starting region {}...'.format(region))
 
-        client = pacu_main.get_boto3_client('dynamodb', region)
+        client = get_boto3_client('dynamodb', region)
 
         dynamodb_tables = fetch_dynamodb_data(client, 'list_tables', 'TableNames', print)
         for table in dynamodb_tables:
@@ -135,7 +136,7 @@ def main(args, pacu_main):
         if dynamodb_tables:
             summary_data[region] = len(dynamodb_tables)
 
-    session.update(pacu_main.database, DynamoDB=dynamodb_data)
+    session.update(DynamoDB = dynamodb_data)
 
     return summary_data
 

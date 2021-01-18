@@ -4,6 +4,8 @@ from botocore.exceptions import ClientError
 from copy import deepcopy
 import time
 
+from pacu.aws import get_boto3_client
+from pacu.io import print
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -37,11 +39,11 @@ parser.add_argument('--instances', required=False, default=None, help='A comma s
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
+
     fetch_data = pacu_main.fetch_data
     ######
     summary_data = {'instance_count': 0}
@@ -57,7 +59,7 @@ def main(args, pacu_main):
     with open(csv_file_path, 'w+') as csv_file:
         csv_file.write('Instance Name,Instance ID,Region\n')
         for instance in instances:
-            client = pacu_main.get_boto3_client('ec2', instance['Region'])
+            client = get_boto3_client('ec2', instance['Region'])
 
             try:
                 instance['TerminationProtection'] = client.describe_instance_attribute(
@@ -85,7 +87,7 @@ def main(args, pacu_main):
 
     ec2_data = deepcopy(session.EC2)
     ec2_data['Instances'] = instances
-    session.update(pacu_main.database, EC2=ec2_data)
+    session.EC2=ec2_data
     return summary_data
 
 

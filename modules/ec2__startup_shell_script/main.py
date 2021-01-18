@@ -5,6 +5,8 @@ from botocore.exceptions import ClientError
 import time
 import random
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -39,18 +41,18 @@ parser.add_argument('--instance-ids', required=False, default=None, help='One or
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
+
     fetch_data = pacu_main.fetch_data
-    get_regions = pacu_main.get_regions
+
     ######
 
     regions = get_regions('ec2')
 
-    client = pacu_main.get_boto3_client('ec2', random.choice(regions))
+    client = get_boto3_client('ec2', random.choice(regions))
 
     instances = []
     if args.instance_ids is not None:  # need to update this to include the regions of these IDs
@@ -74,7 +76,7 @@ def main(args, pacu_main):
             })
     instance_count = 0
     for region in regions:
-        client = pacu_main.get_boto3_client('ec2', region)
+        client = get_boto3_client('ec2', region)
         for instance in instances:
             if instance['Region'] == region:
                 result = stop_instance(client, instance['InstanceId'], print)

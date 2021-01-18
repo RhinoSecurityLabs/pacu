@@ -4,8 +4,10 @@ from copy import deepcopy
 from random import choice
 
 from botocore.exceptions import ClientError
-from core.secretfinder.utils import regex_checker, Color
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.core.models import PacuSession
+from pacu.core.secretfinder.utils import regex_checker, Color
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -86,11 +88,11 @@ ARG_FIELD_MAPPER = {
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session: PacuSession = pacu_main.session
 
     args = parser.parse_args(args)
-    print = pacu_main.print
-    get_regions = pacu_main.get_regions
+
+
 
     if args.instances is False and args.security_groups is False and args.elastic_ips is False and args.customer_gateways is False and args.dedicated_hosts is False and args.network_acls is False and args.nat_gateways is False and args.network_interfaces is False and args.route_tables is False and args.subnets is False and args.vpcs is False and args.vpc_endpoints is False and args.launch_templates is False:
         args.instances = args.security_groups = args.elastic_ips = args.customer_gateways = args.dedicated_hosts = args.network_acls = args.nat_gateways = args.network_interfaces = args.route_tables = args.subnets = args.vpcs = args.vpc_endpoints = args.launch_templates = True
@@ -103,7 +105,7 @@ def main(args, pacu_main):
     else:
         regions = args.regions.split(',')
 
-    client = pacu_main.get_boto3_client('ec2', choice(regions))
+    client = get_boto3_client('ec2', choice(regions))
 
     all_instances = []
     all_security_groups = []
@@ -135,7 +137,7 @@ def main(args, pacu_main):
 
         if any([args.instances, args.security_groups, args.elastic_ips, args.customer_gateways, args.dedicated_hosts, args.network_acls, args.nat_gateways, args.network_interfaces, args.route_tables, args.subnets, args.vpcs, args.vpc_endpoints, args.launch_templates]):
             print('Starting region {}...'.format(region))
-        client = pacu_main.get_boto3_client('ec2', region)
+        client = get_boto3_client('ec2', region)
 
         # Instances
         if args.instances:
@@ -494,7 +496,7 @@ def main(args, pacu_main):
     ec2_data = deepcopy(session.EC2)
     for key, value in gathered_data.items():
         ec2_data[key] = value
-    session.update(pacu_main.database, EC2=ec2_data)
+    session.json_update(EC2=ec2_data)
 
     # Add regions to gathered_data for summary output
     gathered_data['regions'] = regions

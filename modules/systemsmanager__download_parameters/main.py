@@ -4,6 +4,9 @@ from botocore.exceptions import ClientError
 import json
 import os
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
+
 module_info = {
     'name': 'systemsmanager__download_parameters',
     'author': 'David Yesland',
@@ -24,16 +27,16 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all regions.')
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
-    print = pacu_main.print
+
 
     args = parser.parse_args(args)
 
     if args.regions:
         regions = args.regions.split(',')
     else:
-        get_regions = pacu_main.get_regions
+
         regions = get_regions('ssm')
 
     data = {}
@@ -42,7 +45,7 @@ def main(args, pacu_main):
         NextToken = ""
 
         print('Looking for parameters in region {}...'.format(region))
-        client = pacu_main.get_boto3_client('ssm', region)
+        client = get_boto3_client('ssm', region)
 
         #Catch errors with the ssm-* regions
         try:

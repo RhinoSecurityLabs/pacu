@@ -3,6 +3,9 @@ import argparse
 from botocore.exceptions import ClientError
 from copy import deepcopy
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
+
 module_info = {
     # Name of the module (should be the same as the filename)
     'name': 'waf__enum',
@@ -103,10 +106,10 @@ def consistentCase(name):
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.database
     args = parser.parse_args(args)
-    print = pacu_main.print
-    get_regions = pacu_main.get_regions
+
+
     regions = get_regions('waf-regional') if args.regions is None else args.regions.split(',')
 
     waf_regional_data = {}
@@ -117,7 +120,7 @@ def main(args, pacu_main):
 
     for region in regions:
         print('  Staring enumeration of region: {}...'.format(region))
-        client = pacu_main.get_boto3_client('waf-regional', region)
+        client = get_boto3_client('waf-regional', region)
         for func, key in METHODS:
             items = grab_data(client, 'list_' + func, key)
             for index, item in enumerate(items):
@@ -131,7 +134,7 @@ def main(args, pacu_main):
     # Grab additional data specifically for RuleGroups.
     for rule_group in waf_regional_data['RuleGroups']:
         region = rule_group['region']
-        client = pacu_main.get_boto3_client('waf-regional', region)
+        client = get_boto3_client('waf-regional', region)
         group_id = rule_group['RuleGroupId']
         rule_group['ActivatedRules'] = grab_data(
             client,
@@ -141,10 +144,10 @@ def main(args, pacu_main):
         )
     waf_region_data = deepcopy(session.WAFRegional)
     waf_region_data.update(waf_regional_data)
-    session.update(pacu_main.database, WAFRegional=waf_region_data)
+    session.WAFRegional=waf_region_data
 
     if args.global_region:
-        client = pacu_main.get_boto3_client('waf')
+        client = get_boto3_client('waf')
         print('  Starting enumeration for global WAF...')
         for func, key in METHODS:
             items = grab_data(client, 'list_' + func, key)
@@ -166,7 +169,7 @@ def main(args, pacu_main):
             )
         waf_data = deepcopy(session.WAF)
         waf_data.update(waf_global_data)
-        session.update(pacu_main.database, WAF=waf_data)
+        session.update(WAF = waf_data)
 
     summary_data = {}
     for func, key in METHODS:

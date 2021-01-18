@@ -3,6 +3,8 @@ import argparse
 from botocore.exceptions import ClientError
 import os
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -41,9 +43,9 @@ parser.add_argument('--regions', required=False, default=None, help='One or more
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
-    print = pacu_main.print
-    get_regions = pacu_main.get_regions
+    session = pacu_main.session
+
+
 
     args = parser.parse_args(args)
     created_keys = {}
@@ -53,7 +55,7 @@ def main(args, pacu_main):
 
     for region in regions:
         print('Starting region {}...'.format(region))
-        client = pacu_main.get_boto3_client('lightsail', region)
+        client = get_boto3_client('lightsail', region)
         try:
             if args.import_key_file is None:
                 print('  Creating new key...')

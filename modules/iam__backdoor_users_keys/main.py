@@ -2,6 +2,8 @@
 import argparse
 from botocore.exceptions import ClientError
 
+from pacu.aws import get_boto3_client
+from pacu.io import print
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -35,18 +37,18 @@ parser.add_argument('--usernames', required=False, default=None, help='A comma-s
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
+
     input = pacu_main.input
     fetch_data = pacu_main.fetch_data
     ######
 
     usernames = []
     summary_data = {}
-    client = pacu_main.get_boto3_client('iam')
+    client = get_boto3_client('iam')
 
     if args.usernames is not None:
         if ',' in args.usernames:

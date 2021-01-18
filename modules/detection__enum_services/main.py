@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import argparse
 from copy import deepcopy
-from botocore.exceptions import ClientError,EndpointConnectionError
+from botocore.exceptions import ClientError, EndpointConnectionError
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -21,7 +23,8 @@ module_info = {
     'description': 'This module will enumerate the different logging and monitoring capabilities that have been implemented in the current AWS account. By default the module will enumerate all services that it supports, but by specifying the individual arguments, it is possible to target specific services. The supported services include CloudTrail, CloudWatch, Config, Shield, VPC, and GuardDuty. Not all regions contain support for AWS Config aggregators, so no attempts are made to obtain aggregators in unsupported regions. When a permission issue is detected for an action, future attempts to call that action will be skipped. If permissions to enumerate a service have all been invalidated, the enumeration of that service will stop for all subsequen regions and the module will continue execution.',
 
     # A list of AWS services that the module utilizes during its execution
-    'services': ['GuardDuty', 'CloudTrail', 'Shield', 'monitoring', 'Config', 'EC2'],  # CloudWatch needs to be "monitoring" and VPC needs to be "EC2" here for "ls" to work
+    'services': ['GuardDuty', 'CloudTrail', 'Shield', 'monitoring', 'Config', 'EC2'],
+    # CloudWatch needs to be "monitoring" and VPC needs to be "EC2" here for "ls" to work
 
     # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
     'prerequisite_modules': [],
@@ -41,12 +44,11 @@ parser.add_argument('--vpc', required=False, default=False, action='store_true',
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
-    get_regions = pacu_main.get_regions
+
     ######
     arguments = [args.cloud_trail, args.cloud_watch, args.shield, args.guard_duty, args.config, args.vpc]
     enum_all = not any(arguments)
@@ -57,7 +59,7 @@ def main(args, pacu_main):
         print('Starting Shield...')
 
         try:
-            client = pacu_main.get_boto3_client('shield', 'us-east-1')
+            client = get_boto3_client('shield', 'us-east-1')
 
             subscription = client.get_subscription_state()
 
@@ -67,16 +69,17 @@ def main(args, pacu_main):
                 shield_data['AdvancedProtection'] = True
                 shield_data['StartTime'] = time_period['Subscription']['StartTime']
                 shield_data['TimeCommitmentInDays'] = time_period['Subscription']['TimeCommitmentInSeconds'] / 60 / 60 / 24
-                session.update(pacu_main.database, Shield=shield_data)
+                session.update(Shield=shield_data)
                 print('    Advanced (paid) DDoS protection enabled through AWS Shield.')
-                print('      Subscription Started: {}\nSubscription Commitment: {} days'.format(session.Shield['StartTime'], session.Shield['TimeCommitmentInDays']))
+                print('      Subscription Started: {}\nSubscription Commitment: {} days'.format(session.Shield['StartTime'],
+                                                                                                session.Shield['TimeCommitmentInDays']))
                 summary_data['ShieldSubscription'] = 'Active'
                 summary_data['ShieldSubscriptionStart'] = session.Shield['StarTime']
                 summary_data['ShieldSubscriptionLength'] = session.Shield['TimeCommitmentInDays']
             else:
                 shield_data = deepcopy(session.Shield)
                 shield_data['AdvancedProtection'] = False
-                session.update(pacu_main.database, Shield=shield_data)
+                session.update(Shield=shield_data)
                 print('    Standard (default/free) DDoS protection enabled through AWS Shield.')
                 summary_data['ShieldSubscription'] = 'Inactive'
 
@@ -95,7 +98,7 @@ def main(args, pacu_main):
                 break
             print('  Starting region {}...'.format(region))
 
-            client = pacu_main.get_boto3_client('cloudtrail', region)
+            client = get_boto3_client('cloudtrail', region)
             try:
                 trails = client.describe_trails(includeShadowTrails=False)
                 for trail in trails['trailList']:
@@ -113,7 +116,7 @@ def main(args, pacu_main):
 
         cloudtrail_data = deepcopy(session.CloudTrail)
         cloudtrail_data['Trails'] = all_trails
-        session.update(pacu_main.database, CloudTrail=cloudtrail_data)
+        session.update(CloudTrail = cloudtrail_data)
         print('  {} total CloudTrail trail(s) found.'.format(len(session.CloudTrail['Trails'])))
         summary_data['CloudTrails'] = len(session.CloudTrail['Trails'])
     if args.guard_duty or enum_all:
@@ -130,7 +133,7 @@ def main(args, pacu_main):
                 break
             detectors = []
             print('  Starting region {}...'.format(region))
-            client = pacu_main.get_boto3_client('guardduty', region)
+            client = get_boto3_client('guardduty', region)
             paginator = client.get_paginator('list_detectors')
             page_iterator = paginator.paginate()
             try:
@@ -155,17 +158,17 @@ def main(args, pacu_main):
                     guard_duty_permission = False
                 else:
                     print('    {}'.format(code))
-            except EndpointConnectionError as error: 
+            except EndpointConnectionError as error:
                 print('    Error connecting to Guardduty Endpoint for region: {}'.format(region))
                 print('        Error: {}, {}'.format(error.__class__, str(error)))
-            except Exception as error: 
+            except Exception as error:
                 print('    Generic Error when enumerating Guardduty detectors for region: {}'.format(region))
                 print('        Error: {}, {}'.format(error.__class__, str(error)))
 
         summary_data['MasterDetectors'] = master_count
         guardduty_data = deepcopy(session.GuardDuty)
         guardduty_data['Detectors'] = all_detectors
-        session.update(pacu_main.database, GuardDuty=guardduty_data)
+        session.uppdate(GuardDuty = guardduty_data)
         print('  {} total GuardDuty Detector(s) found.\n'.format(len(session.GuardDuty['Detectors'])))
         summary_data['Detectors'] = len(session.GuardDuty['Detectors'])
 
@@ -189,7 +192,7 @@ def main(args, pacu_main):
                 break
             print('  Starting region {}...'.format(region))
 
-            client = pacu_main.get_boto3_client('config', region)
+            client = get_boto3_client('config', region)
             if permissions['rules']:
                 paginator = client.get_paginator('describe_config_rules')
                 rules_pages = paginator.paginate()
@@ -306,7 +309,7 @@ def main(args, pacu_main):
         config_data['Recorders'] = all_configuration_recorders
         config_data['DeliveryChannels'] = all_delivery_channels
         config_data['Aggregators'] = all_configuration_aggregators
-        session.update(pacu_main.database, Config=config_data)
+        session.update(Config = config_data)
 
         print('  {} total Config rule(s) found.'.format(len(session.Config['Rules'])))
         print('  {} total Config recorder(s) found.'.format(len(session.Config['Recorders'])))
@@ -333,7 +336,7 @@ def main(args, pacu_main):
                 break
 
             print('  Starting region {}...'.format(region))
-            client = pacu_main.get_boto3_client('cloudwatch', region)
+            client = get_boto3_client('cloudwatch', region)
             paginator = client.get_paginator('describe_alarms')
             page_iterator = paginator.paginate()
             alarms = []
@@ -355,7 +358,7 @@ def main(args, pacu_main):
 
         cw_data = deepcopy(session.CloudWatch)
         cw_data['Alarms'] = all_alarms
-        session.update(pacu_main.database, CloudWatch=cw_data)
+        session.update(CloudWatch = cw_data)
         print('  {} total CloudWatch alarm(s) found.'.format(len(session.CloudWatch['Alarms'])))
         summary_data['alarms'] = len(all_alarms)
     if args.vpc or enum_all:
@@ -371,7 +374,7 @@ def main(args, pacu_main):
                 break
             print('  Starting region {}...'.format(region))
 
-            client = pacu_main.get_boto3_client('ec2', region)
+            client = get_boto3_client('ec2', region)
             kwargs = {'MaxResults': 1000}
             flow_logs = []
             while True:
@@ -399,7 +402,7 @@ def main(args, pacu_main):
 
         vpc_data = deepcopy(session.VPC)
         vpc_data['FlowLogs'] = all_flow_logs
-        session.update(pacu_main.database, VPC=vpc_data)
+        session.update(VPC = vpc_data)
         print('  {} total VPC flow log(s) found.'.format(len(session.VPC['FlowLogs'])))
         summary_data['flowlogs'] = len(all_flow_logs)
 
@@ -443,7 +446,7 @@ def get_detector_master(detector_id, client):
     except ClientError:
         raise
     if 'Master' not in response:
-        return(None, None)
+        return (None, None)
 
     status = None
     master = None
@@ -454,4 +457,4 @@ def get_detector_master(detector_id, client):
     if 'AccountId' in response['Master']:
         master = response['Master']['AccountId']
 
-    return(status, master)
+    return (status, master)

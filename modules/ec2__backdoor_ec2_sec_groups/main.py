@@ -2,6 +2,8 @@
 import argparse
 from botocore.exceptions import ClientError
 
+from pacu.aws import get_boto3_client
+from pacu.io import print
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -38,11 +40,11 @@ parser.add_argument('--groups', required=False, default=None, help='The EC2 secu
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
+
     fetch_data = pacu_main.fetch_data
     ######
 
@@ -50,7 +52,7 @@ def main(args, pacu_main):
 
     summary_data = {}
 
-    client = pacu_main.get_boto3_client('ec2', 'us-east-1')
+    client = get_boto3_client('ec2', 'us-east-1')
 
     if args.groups is not None:
         groups_and_regions = args.groups.split(',')
@@ -70,7 +72,7 @@ def main(args, pacu_main):
     for group in groups:
         print('  Group: {}'.format(group['GroupName']))
 
-        client = pacu_main.get_boto3_client('ec2', group['Region'])
+        client = get_boto3_client('ec2', group['Region'])
 
         try:
             client.authorize_security_group_ingress(

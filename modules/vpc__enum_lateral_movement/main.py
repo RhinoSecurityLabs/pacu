@@ -3,6 +3,8 @@ import argparse
 from copy import deepcopy
 from botocore.exceptions import ClientError
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -39,12 +41,12 @@ parser.add_argument('--versions-all', required=False, default=False, action='sto
 
 # Main is the first function that is called when this module is executed
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
-    get_regions = pacu_main.get_regions
+
+
     ######
 
     regions = get_regions('DirectConnect')
@@ -67,7 +69,7 @@ def main(args, pacu_main):
         print('Starting region {}...'.format(region))
         summary_data[region] = {}
 
-        dx_client = pacu_main.get_boto3_client('directconnect', region)
+        dx_client = get_boto3_client('directconnect', region)
 
         print("  Enumerating DirectConnect")
         try:
@@ -108,7 +110,7 @@ def main(args, pacu_main):
         print("  Enumerating VPNs")
         # Now we look for VPN Connections
         try:
-            ec2_client = pacu_main.get_boto3_client('ec2', region)
+            ec2_client = get_boto3_client('ec2', region)
             vpn_response = ec2_client.describe_vpn_connections()
             if 'VpnConnections' in vpn_response:
                 vpn_count = len(vpn_response['VpnConnections'])
@@ -176,7 +178,7 @@ def main(args, pacu_main):
 
     vpc_data = deepcopy(session.VPC)
     vpc_data['VPC'] = list(vpcs_by_id.values())
-    session.update(pacu_main.database, VPC=vpc_data)
+    session.update(VPC = vpc_data)
 
     summary_data.update({
         'vpcs_found': vpcs_found,
@@ -195,7 +197,7 @@ def summary(data, pacu_main):
 
 
 def get_vpc_by_vgw(pacu_main, vgw_id, vgw_region):
-    ec2_client = pacu_main.get_boto3_client('ec2', vgw_region)
+    ec2_client = get_boto3_client('ec2', vgw_region)
     vgw_response = ec2_client.describe_vpn_gateways(VpnGatewayIds=[vgw_id])
     if 'VpnGateways' in vgw_response and vgw_response['VpnGateways']:
         for vgw_attachment in vgw_response['VpnGateways'][0]['VpcAttachments']:
@@ -206,7 +208,7 @@ def get_vpc_by_vgw(pacu_main, vgw_id, vgw_region):
 
 def get_vpc_by_id(pacu_main, vpc_id, region):
     try:
-        ec2_client = pacu_main.get_boto3_client('ec2', region)
+        ec2_client = get_boto3_client('ec2', region)
         vpc_response = ec2_client.describe_vpcs(VpcIds=[vpc_id])
         return vpc_response['Vpcs'][0]
     except ClientError as error:

@@ -473,6 +473,12 @@ paket-files/
 .idea/
 *.sln.iml
 
+# Mypy config is useful to keep around, requires the `mypy (official)` plugin w/ PyCharm.
+!.idea/MypyConfig.xml
+
+# mypy daemon running config
+.dmypy.json
+
 # CodeRush
 .cr/
 

@@ -4,6 +4,8 @@ import botocore
 import random
 import string
 
+from pacu.aws import get_boto3_client
+from pacu.io import print
 
 module_info = {
     'name': 'iam__enum_roles',
@@ -34,7 +36,7 @@ parser.add_argument('--account-id', required=True, help='The AWS account ID of t
 
 def main(args, pacu_main):
     args = parser.parse_args(args)
-    print = pacu_main.print
+
 
     if not len(args.account_id) == 12 or not args.account_id.isdigit():
         print('Error: An AWS account ID is a number of length 12. You supplied: {}\n'.format(args.account_id))
@@ -56,7 +58,7 @@ def main(args, pacu_main):
         'roles_assumed': []
     }
 
-    client = pacu_main.get_boto3_client('iam')
+    client = get_boto3_client('iam')
 
     print('Targeting account ID: {}\n'.format(args.account_id))
     print('Starting role enumeration...\n')
@@ -91,7 +93,7 @@ def main(args, pacu_main):
         print()
 
         print('Checking to see if any of these roles can be assumed for temporary credentials...\n')
-        client = pacu_main.get_boto3_client('sts')
+        client = get_boto3_client('sts')
         for role in data['valid_roles']:
             try:
                 response = client.assume_role(

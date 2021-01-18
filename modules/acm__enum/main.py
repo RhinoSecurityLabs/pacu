@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 import argparse
-from botocore.exceptions import ClientError
-import copy
-import string
-import random
 import json
 import time
+
+from pacu.aws import get_boto3_client
+from pacu.aws import get_regions
+from pacu.io import print
 
 module_info = {
     'name': 'acm__enum',
@@ -37,12 +37,12 @@ parser.add_argument('--ca-list', action='store_true',
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
     args = parser.parse_args(args)
-    print = pacu_main.print
+
     input = pacu_main.input
     fetch_data = pacu_main.fetch_data
-    get_regions = pacu_main.get_regions
+
 
     data = {'num_certs': 0, 'certs': {}, 'certs_info': {}, 'certs_chain': {},
             'num_cas': 0, 'cas': {},
@@ -57,8 +57,8 @@ def main(args, pacu_main):
     for region in regions:
         
         # Get the ACM client for the region
-        client = pacu_main.get_boto3_client('acm', region)
-        ca_client = pacu_main.get_boto3_client('acm-pca', region)
+        client = get_boto3_client('acm', region)
+        ca_client = get_boto3_client('acm-pca', region)
 
         if args.all or args.certs_list:
 

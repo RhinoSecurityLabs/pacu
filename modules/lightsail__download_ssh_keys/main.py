@@ -2,6 +2,9 @@
 import argparse
 from pathlib import Path
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.io import print
+
 module_info = {
     # Name of the module (should be the same as the filename)
     'name': 'lightsail__download_ssh_keys',
@@ -33,10 +36,10 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 
 def main(args, pacu_main):
     ###### Don't modify these. They can be removed if you are not using the function.
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
     args = parser.parse_args(args)
-    print = pacu_main.print
-    get_regions = pacu_main.get_regions
+
+
     ######
     summary_data = {'region_key_pairs': []}
     regions = get_regions('lightsail')
@@ -50,7 +53,7 @@ def main(args, pacu_main):
         cur_path = dl_path / region
         if not cur_path.exists():
             cur_path.mkdir()
-        client = pacu_main.get_boto3_client('lightsail', region)
+        client = get_boto3_client('lightsail', region)
         downloaded_keys = client.download_default_key_pair()
         restructured_keys = {
             'publicKey': downloaded_keys['publicKeyBase64'],

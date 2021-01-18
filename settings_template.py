@@ -1,5 +1,7 @@
 import os
 
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 # Meaningful values: 'minimal', 'low', 'high', 'extreme'
 # 'Minimal' will only add tracebacks to error log files.
@@ -19,3 +21,6 @@ if os.path.isabs(DATABASE_FILE_PATH):
     DATABASE_CONNECTION_PATH = 'sqlite:///' + DATABASE_FILE_PATH
 else:
     DATABASE_CONNECTION_PATH = 'sqlite://' + DATABASE_FILE_PATH
+
+
+ISOLATION_LEVEL = 'AUTOCOMMIT'

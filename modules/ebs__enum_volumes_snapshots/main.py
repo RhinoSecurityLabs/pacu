@@ -7,6 +7,8 @@ import os
 
 from botocore.exceptions import ClientError
 
+from pacu.aws import get_boto3_client, get_regions
+from pacu.core.models import key_info
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -72,14 +74,12 @@ parser.add_argument(
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    session = pacu_main.session
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
-    print = pacu_main.print
+
     input = pacu_main.input
-    key_info = pacu_main.key_info
-    get_regions = pacu_main.get_regions
     ######
 
     if args.snaps is False and args.vols is False:
@@ -90,7 +90,7 @@ def main(args, pacu_main):
         ec2_data['Volumes'] = []
     if 'Snapshots' not in ec2_data.keys():
         ec2_data['Snapshots'] = []
-    session.update(pacu_main.database, EC2=ec2_data)
+    session.json_update(EC2=ec2_data)
 
     if args.regions is None:
         regions = get_regions('ec2')
@@ -115,16 +115,13 @@ def main(args, pacu_main):
 
             elif current_account == 'y':
                 try:
-                    client = pacu_main.get_boto3_client('sts')
-
+                    client = get_boto3_client('sts')
                     identity = client.get_caller_identity()
-
                     account_ids = [identity['Account']]
 
                     # Might as well fill current key data while it is here
-                    session_aws_key = session.get_active_aws_key(pacu_main.database)
+                    session_aws_key = session.key_alias
                     session_aws_key.update(
-                        pacu_main.database,
                         account_id=identity['Account'],
                         arn=identity['Arn'],
                         user_id=identity['UserId'],
@@ -146,7 +143,7 @@ def main(args, pacu_main):
     else:
         pass  # Ignore args.account_ids if args.snaps is False
 
-    client = pacu_main.get_boto3_client('ec2', random.choice(regions))
+    client = get_boto3_client('ec2', random.choice(regions))
 
     now = time.time()
 
@@ -161,7 +158,7 @@ def main(args, pacu_main):
     }
     for region in regions:
         print('Starting region {} (this may take a while if there are thousands of EBS volumes/snapshots)...'.format(region))
-        client = pacu_main.get_boto3_client('ec2', region)
+        client = get_boto3_client('ec2', region)
 
         if args.vols is True:
             # Start EBS Volumes in this region
@@ -317,7 +314,7 @@ def main(args, pacu_main):
             for private in snapshot_permissions['Private']:
                 out_file.write('    {}\n'.format(private))
             summary_data['snapshot-permissions-path'] = path
-    session.update(pacu_main.database, EC2=ec2_data)
+    session.json_update(EC2=ec2_data)
 
     return summary_data
 

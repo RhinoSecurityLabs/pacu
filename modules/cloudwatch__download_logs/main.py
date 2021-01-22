@@ -4,7 +4,6 @@ import csv
 import datetime
 import os
 
-import pytz
 from botocore.exceptions import ClientError
 
 
@@ -21,7 +20,7 @@ module_info = {
         '--to-time'
     ],
 }
-DEFAULT_FROM_TIME = pytz.utc.localize(datetime.datetime.today() - datetime.timedelta(days=1))
+DEFAULT_FROM_TIME = datetime.datetime.today().replace(tzinfo=datetime.timezone.utc) - datetime.timedelta(days=1)
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 parser.add_argument(
@@ -47,7 +46,7 @@ def parse_time(time):
     # Fill missing day.
     elif len(time_fields) == 2:
         time_fields.append(1)
-    return pytz.utc.localize(datetime.datetime(*time_fields))
+    return datetime.datetime(*time_fields).replace(tzinfo=datetime.timezone.utc)
 
 
 def write_stream_file(session_name, scan_time, group_name, stream_name, events):

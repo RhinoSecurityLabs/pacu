@@ -1,0 +1,7 @@
+sqlite.db
+settings.py
+stubs
+venv
+__pycache__
+**/__pycache__
+sessions

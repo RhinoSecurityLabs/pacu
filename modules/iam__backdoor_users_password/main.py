@@ -125,7 +125,7 @@ def summary(data, pacu_main):
     return out
 
 
-def create_valid_password(password_policy):
+def create_valid_password(password_policy: None) -> str:
     symbols = '!@#$%^&*()_+=-\][{}|;:",./?><`~'
     password = ''.join(choice(string.ascii_lowercase) for _ in range(3))
     try:

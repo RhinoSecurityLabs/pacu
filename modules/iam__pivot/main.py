@@ -28,7 +28,7 @@ module_info = {
 # Every module must include an ArgumentParser named "parser", even if it
 # doesn't use any additional arguments.
 parser = argparse.ArgumentParser(add_help=False, description=json.dumps(module_info['description']))
-parser.add_argument('--rebuild-db', required=False, default=True, action='store_true',
+parser.add_argument('--rebuild-db', required=False, default=False, action='store_true',
                     help='Rebuild db used in this module, this will not affect other modules. This is needed to pick '
                          'up new or changed permissions.')
 
@@ -50,9 +50,10 @@ def main(args, pacu_main):
         ['IAM'], 'iam__enum_users_roles_policies_groups', '--users --roles --policies --groups --instance-profiles'
     )
     if iam_data is False:
-        print('FAILURE')
-        print('  SUB-MODULE EXECUTION FAILED')
-        return
+        print('FAILURE'
+              '  SUB-MODULE EXECUTION FAILED'
+              '  Will attempt to continue anyways'
+              )
 
     principalmapper.graphing.gathering.edge_identification.checker_map = checker_map
 

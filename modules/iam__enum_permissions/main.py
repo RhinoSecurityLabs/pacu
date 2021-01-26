@@ -581,10 +581,16 @@ def parse_document(document, user):
                             user['Permissions']['Allow'][action]['Resources'].append(statement['Resource'])
                     else:
                         user['Permissions']['Allow'][action] = {'Resources': [], 'Conditions': []}
-                        if isinstance(statement['Resource'], list):
+                        resource = statement.get('Resource')
+                        if isinstance(resource, list):
                             user['Permissions']['Allow'][action]['Resources'] = statement['Resource']
-                        else:
+                        elif resource:
                             user['Permissions']['Allow'][action]['Resources'] = [statement['Resource']]
+                        else:
+                            identity = user.get('UserName') or user.get('RoleName')
+                            print("[WARN] No 'Resource' section found. The policy for {} likely contains NotResource "
+                                  "and our recorded permissions on it will likely be incomplete.".format(identity))
+
                     if 'Condition' in statement:
                             user['Permissions']['Allow'][action]['Conditions'].append(statement['Condition'])
                     user['Permissions']['Allow'][action]['Resources'] = list(set(user['Permissions']['Allow'][action]['Resources']))  # Remove duplicate resources

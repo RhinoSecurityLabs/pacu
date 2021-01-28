@@ -6,7 +6,7 @@ import os
 
 from botocore.exceptions import ClientError
 
-import pacu.aws
+from pacu.aws import get_boto3_client
 from pacu.io import print
 
 module_info = {
@@ -45,7 +45,7 @@ FILE_SIZE_THRESHOLD = 1073741824
 
 
 def get_bucket_size(pacu, bucket_name):
-    client = pacu.get_boto3_client('cloudwatch', 'us-east-1')
+    client = get_boto3_client('cloudwatch', 'us-east-1')
     response = client.get_metric_statistics(
         Namespace='AWS/S3',
         MetricName='BucketSizeBytes',
@@ -143,7 +143,7 @@ def main(args, pacu_main):
         return {'downloaded_files': success, 'failed': total - success}
 
     # Enumerate Buckets
-    client = pacu.get_boto3_client('s3')
+    client = get_boto3_client('s3')
 
     buckets = []
     print('Enumerating buckets...')

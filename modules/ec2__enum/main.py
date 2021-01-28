@@ -88,7 +88,7 @@ ARG_FIELD_MAPPER = {
 
 
 def main(args, pacu_main):
-    session: PacuSession = pacu_main.session
+    session = pacu_main.session
 
     args = parser.parse_args(args)
 

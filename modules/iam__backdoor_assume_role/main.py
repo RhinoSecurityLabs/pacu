@@ -5,7 +5,7 @@ from random import choice
 
 from botocore.exceptions import ClientError
 
-import pacu.aws
+from pacu.aws import get_boto3_client
 from pacu.core.models import key_info
 
 module_info = {
@@ -53,7 +53,7 @@ def main(args, pacu_main):
     get_aws_key_by_alias = pacu_main.get_aws_key_by_alias
     ######
 
-    client = pacu.get_boto3_client('iam')
+    client = get_boto3_client('iam')
 
     rolenames = []
     user_arns = []
@@ -78,7 +78,7 @@ def main(args, pacu_main):
         active_aws_key = get_aws_key_by_alias(session.key_alias)
 
         if 'Arn' not in user or user['Arn'] is None:
-            client = pacu.get_boto3_client('sts')
+            client = get_boto3_client('sts')
             user_info = client.get_caller_identity()
             active_aws_key.update(arn=user_info['Arn'], user_id=user_info['UserId'], account_id=user_info['Account'])
 

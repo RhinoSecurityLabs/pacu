@@ -7,7 +7,7 @@ import string
 
 from botocore.exceptions import ClientError
 
-from pacu.aws import get_regions
+from pacu.aws import get_boto3_client, get_regions
 from pacu.io import print
 
 module_info = {
@@ -67,11 +67,11 @@ def cleanup(pacu):
     data = read_temp()
     success = True
     for instance in data['Instances']:
-        client = pacu.get_boto3_client('rds', data['Instances'][instance]['AvailabilityZone'][:-1])
+        client = get_boto3_client('rds', data['Instances'][instance]['AvailabilityZone'][:-1])
         if not delete_instance(client, instance, print):
             success = False
     for snapshot in data['Snapshots']:
-        client = pacu.get_boto3_client('rds', data['Snapshots'][snapshot]['AvailabilityZone'][:-1])
+        client = get_boto3_client('rds', data['Snapshots'][snapshot]['AvailabilityZone'][:-1])
         if not delete_snapshot(client, snapshot, print):
             success = False
     return success
@@ -90,7 +90,7 @@ def main(args, pacu):
     summary_data = {'instances': 0}
     for region in regions:
         print('Region: {}'.format(region))
-        client = pacu.get_boto3_client('rds', region)
+        client = get_boto3_client('rds', region)
         print('  Getting RDS instances...')
         active_instances = get_all_region_instances(client, print)
         print('  Found {} RDS instance(s)'.format(len(active_instances)))

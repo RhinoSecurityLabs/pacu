@@ -263,6 +263,18 @@ class Main:
 
             print('  Running module {}...'.format(module_name))
 
+            # TODO: Remove or fix this code. It reset's the global region settings every time a submodule is called with the --region flag.
+            try:
+                args = module.parser.parse_args(command[2:])
+                if 'regions' in args and args.regions is None:
+                    session = self.session
+                    if session.session_regions == ['all']:
+                        if not self.session:
+                            return
+            except SystemExit:
+                print('  Error: Invalid Arguments')
+                return
+
             self.running_module_names.append(module.module_info['name'])
             try:
                 summary_data = module.main(command[2:], self)

@@ -110,7 +110,7 @@ def main(args, pacu_main):
             api_gateway_data[region].extend(api_keys[region])
         else:
             api_gateway_data[region] = api_keys[region]
-    session.APIGateway=api_gateway_data
+    session.update(APIGateway=api_gateway_data)
 
     return summary_data
 

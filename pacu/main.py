@@ -393,7 +393,6 @@ class Main:
                 check_user_agent()
                 self.idle()
             except (Exception, SystemExit) as exception_value:
-                raise exception_value
                 exception_type, _, tb = sys.exc_info()
 
                 if exception_type == SystemExit:

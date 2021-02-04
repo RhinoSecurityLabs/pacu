@@ -3,15 +3,11 @@
 import argparse
 import os
 import shutil
-from functools import reduce
-from typing import Iterator
 from copy import deepcopy
 
-import boto3
-import dsnap
 from dsnap.ebs import Ebs
+from dsnap.snapshot import Snapshot
 
-from modules.ebs__download_snapshots import Vagrantfile
 from pacu import Main
 
 module_info = {
@@ -73,7 +69,7 @@ def main(args, pacu: Main):
             return False
         snapshot_id, region = pick_from_data(pacu.get_active_session().EC2)
 
-    snap = dsnap.snapshot.Snapshot(
+    snap = Snapshot(
         snapshot_id,
         pacu.get_boto_session(),
         pacu.get_botocore_conf(region=region)

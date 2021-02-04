@@ -130,6 +130,7 @@ def get_valid_devices(pacu, instance_id):
 
     """
     instance = [instance for instance in get_instances(pacu) if instance['InstanceId'] == instance_id]
+    # TODO: If KeyError is raised here it's likely because ec2_enum needs to be run again
     mappings = instance[0]['BlockDeviceMappings']
     current_mappings = [device['DeviceName'] for device in mappings]
     last_mapping = sorted(current_mappings)[-1]

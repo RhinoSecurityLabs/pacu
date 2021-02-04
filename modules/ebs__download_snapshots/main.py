@@ -2,6 +2,7 @@
 """Module for ebs_snapshot_explorer"""
 import argparse
 import os
+import shutil
 from functools import reduce
 from typing import Iterator
 from copy import deepcopy
@@ -10,6 +11,7 @@ import boto3
 import dsnap
 from dsnap.ebs import Ebs
 
+from modules.ebs__download_snapshots import Vagrantfile
 from pacu import Main
 
 module_info = {
@@ -47,10 +49,15 @@ def pick_from_data(data: dict) -> (str, str):
 
 
 def get_path(session_name: str, snapshot_id: str) -> str:
-    volume_dir = f'./sessions/{session_name}/downloads/ebs/volumes/{snapshot_id}'
+    volume_dir = f'./sessions/{session_name}/downloads/ebs/volumes'
     os.makedirs(volume_dir, exist_ok=True)
-    return os.path.join(volume_dir, "disk.img")
+    return os.path.join(volume_dir, f"{snapshot_id}.img")
 
+
+def write_config(dir: str):
+    source = os.path.join(os.path.dirname(__file__), 'Vagrantfile')
+    dest = os.path.join(dir, 'Vagrantfile')
+    shutil.copyfile(source, dest)
 
 def main(args, pacu: Main):
     """Main module function, called from Pacu"""
@@ -75,6 +82,7 @@ def main(args, pacu: Main):
     path = get_path(session.name, snapshot_id)
     summary_data['snapshot_id'] = path
     snap.download(path)
+    Vagrantfile.write_config(os.path.dirname(path))
 
     return summary_data
 

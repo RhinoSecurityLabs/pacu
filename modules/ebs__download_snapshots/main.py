@@ -8,6 +8,7 @@ from copy import deepcopy
 
 import boto3
 import dsnap
+from dsnap.ebs import Ebs
 
 from pacu import Main
 
@@ -31,41 +32,49 @@ parser.add_argument(
     help='InstanceId of instance to target'
 )
 
-# # # Called if no snapshot_id is specified when running get
-# def snapshot_prompt(value: Optional[str]) -> str:
-#     snapshots = [x for x in describe_snapshots(sess, OwnerIds=['self'])]
-#     for i, k in enumerate(snapshots):
-#         print(f"{i}) {k['SnapshotId']} (Description: {k['Description']}, Size: {k['VolumeSize']}GB)")
-#     answer = prompt("Select snapshot")
-#     try:
-#         return snapshots[int(answer)]['SnapshotId']
-#     except IndexError:
-#         print(f"Invalid selection, valid inputs are 0 through {len(snapshots)-1}", file=sys.stderr)
-#         return snapshot_prompt(None)
+parser.add_argument(
+    '--region',
+    required=False,
+    help='InstanceId of instance to target'
+)
+
+
+def pick_from_data(data: dict) -> (str, str):
+    ebs = Ebs()
+    ebs.set_snapshots(deepcopy(data).get("Snapshots", []))
+    picked = ebs.snapshot_prompt()
+    return picked['SnapshotId'], picked['Region']
+
+
+def get_path(session_name: str, snapshot_id: str) -> str:
+    volume_dir = f'./sessions/{session_name}/downloads/ebs/volumes/{snapshot_id}'
+    os.makedirs(volume_dir, exist_ok=True)
+    return os.path.join(volume_dir, "disk.img")
+
 
 def main(args, pacu: Main):
     """Main module function, called from Pacu"""
     summary_data = {}
     print = pacu.print
-
+    session = pacu.get_active_session()
     snapshot_id = parser.parse_args(args).snapshot_id
+    region = parser.parse_args(args).region
+
     if not snapshot_id:
         if not pacu.fetch_data(['EC2'], 'ebs__enum_volumes_snapshots', []):
             print('Failed to fetch EBS snapshot data')
             return False
+        snapshot_id, region = pick_from_data(pacu.get_active_session().EC2)
 
-    snapshots = deepcopy(pacu.get_active_session().EC2).get("Snapshots", [])
-    snapshot_id = dsnap.main.snapshot_prompt(snapshot_id, snapshots)
-    snapshot = filter(lambda s: s['SnapshotId'] == snapshot_id, snapshots).__next__()
+    snap = dsnap.snapshot.Snapshot(
+        snapshot_id,
+        pacu.get_boto_session(),
+        pacu.get_botocore_conf(region=region)
+    )
 
-    session = pacu.get_active_session()
-    volume_dir = './sessions/{}/downloads/ebs/volumes'.format(session.name)
-    os.makedirs(volume_dir, exist_ok=True)
-
-    snap = dsnap.snapshot.Snapshot(snapshot_id, pacu.get_boto_session(), pacu.get_botocore_conf(region=snapshot['Region']))
-    output_file = os.path.join(volume_dir, snapshot_id)
-    snap.download(output_file)
-    summary_data['snapshot_id'] = output_file
+    path = get_path(session.name, snapshot_id)
+    summary_data['snapshot_id'] = path
+    snap.download(path)
 
     return summary_data
 

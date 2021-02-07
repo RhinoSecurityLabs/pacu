@@ -2,11 +2,11 @@
 """Module for ebs_snapshot_explorer"""
 import argparse
 import os
-import shutil
-from copy import deepcopy
+import sys
+from typing import List
 
-from dsnap.ebs import Ebs
-from dsnap.snapshot import Snapshot
+import dsnap.utils
+import dsnap.snapshot
 
 from pacu import Main
 
@@ -23,7 +23,7 @@ module_info = {
     'arguments_to_autocomplete': ['--snapshot-id'],
 }
 
-parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
+parser = argparse.ArgumentParser(add_help=False, description=str(module_info['description']))
 parser.add_argument(
     '--snapshot-id',
     required=False,
@@ -37,23 +37,23 @@ parser.add_argument(
 )
 
 
-def pick_from_data(data: dict) -> (str, str):
-    ebs = Ebs()
-    ebs.set_snapshots(deepcopy(data).get("Snapshots", []))
-    picked = ebs.snapshot_prompt()
-    return picked['SnapshotId'], picked['Region']
-
-
 def get_path(session_name: str, snapshot_id: str) -> str:
     volume_dir = f'./sessions/{session_name}/downloads/ebs/volumes'
     os.makedirs(volume_dir, exist_ok=True)
     return os.path.join(volume_dir, f"{snapshot_id}.img")
 
 
-def write_config(dir: str):
-    source = os.path.join(os.path.dirname(__file__), 'Vagrantfile')
-    dest = os.path.join(dir, 'Vagrantfile')
-    shutil.copyfile(source, dest)
+def snapshot_prompt(snapshots: List[dict]) -> dict:
+    """Prompt's the user for an item to select from the items passed. Item is expected to support the Item protocol."""
+    for i, snap in enumerate(snapshots):
+        print(f"{i}) Id: {snap['SnapshotId']}, VolumeId: {snap['VolumeId']}, OwnerId {snap['OwnerId']}, Size: {snap['VolumeSize']}, {snap['Description']})")
+    answer = int(input('Select Snapshot: '))
+    try:
+        return snapshots[answer]
+    except IndexError:
+        print(f"Invalid selection, valid inputs are 0 through {len(snapshots) - 1}", file=sys.stderr)
+        return snapshot_prompt(snapshots)
+
 
 def main(args, pacu: Main):
     """Main module function, called from Pacu"""
@@ -64,28 +64,37 @@ def main(args, pacu: Main):
     region = parser.parse_args(args).region
 
     if not snapshot_id:
-        if not pacu.fetch_data(['EC2'], 'ebs__enum_volumes_snapshots', []):
+        if not pacu.fetch_data(['EC2'], 'ebs__enum_volumes_snapshots', ''):
             print('Failed to fetch EBS snapshot data')
             return False
-        snapshot_id, region = pick_from_data(pacu.get_active_session().EC2)
 
-    snap = Snapshot(
-        snapshot_id,
-        pacu.get_boto_session(),
-        pacu.get_botocore_conf(region=region)
-    )
+        try:
+            s = snapshot_prompt(session.EC2['Snapshots'])
+            snapshot_id = s['SnapshotId']
+            region = s['Region']
+        except UserWarning as e:
+            print(*e.args)
+            return False
 
-    path = get_path(session.name, snapshot_id)
+    try:
+        snap = dsnap.snapshot.Snapshot(snapshot_id, pacu.get_boto_session(region=region), pacu.get_botocore_conf())
+    except UserWarning as e:
+        print(*e.args)
+        return False
+
+    path = get_path(str(session.name), snapshot_id)
     summary_data['snapshot_id'] = path
     snap.download(path)
-    Vagrantfile.write_config(os.path.dirname(path))
 
     return summary_data
 
 
 def summary(data, pacu):
     msg = ''
-    for id in data:
-        path = data[id]
-        msg += f" Snapshot {id} written to {path}\n"
+    if not data:
+        msg = 'Module execution failed'
+    else:
+        for id in data:
+            path = data[id]
+            msg += f" Snapshot {id} written to {path}\n"
     return msg

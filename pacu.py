@@ -1351,7 +1351,7 @@ aws_secret_access_key = {}
                 self.print('  User agent for this session set to:')
                 self.print('    {}'.format(new_ua))
 
-    def get_boto_session(self) -> boto3.session.Session:
+    def get_boto_session(self, region: str = None) -> boto3.session.Session:
         session = self.get_active_session()
 
         if not session.access_key_id:
@@ -1361,6 +1361,7 @@ aws_secret_access_key = {}
             raise UserWarning('  No secret key has been set. Failed to generate boto3 Client.')
 
         return boto3.session.Session(
+            region_name=region,
             aws_access_key_id=session.access_key_id,
             aws_secret_access_key=session.secret_access_key,
             aws_session_token=session.session_token,
@@ -1390,10 +1391,10 @@ aws_secret_access_key = {}
     def get_boto3_client(
             self,
             service: str,
-            region: Optional[str] =None,
+            region: Optional[str] = None,
             user_agent: Optional[str] = None,
             parameter_validation: bool = True,
-    ) -> boto3.client:
+    ) -> Any:
         try:
             aws_sess = self.get_boto_session()
         except UserWarning as e:
@@ -1403,12 +1404,13 @@ aws_secret_access_key = {}
         conf = self.get_botocore_conf(region, user_agent, parameter_validation)
         return aws_sess.client(service, config=conf)
 
-    def get_boto3_resource(self,
-                           service: str,
-                           region: Union[str, None] = None,
-                           user_agent: Union[str, None] = None,
-                           parameter_validation: bool = True
-                           ) -> Any:
+    def get_boto3_resource(
+            self,
+            service: str,
+            region: Union[str, None] = None,
+            user_agent: Union[str, None] = None,
+            parameter_validation: bool = True
+    ) -> Any:
         try:
             aws_sess = self.get_boto_session()
         except UserWarning as e:

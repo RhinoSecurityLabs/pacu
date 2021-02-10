@@ -3,6 +3,7 @@
 import argparse
 import os
 import sys
+from pathlib import Path
 from typing import List
 
 import dsnap.utils
@@ -17,7 +18,7 @@ module_info = {
     'one_liner': 'Downloads EBS snapshots',
     'description': 'This module uses the EBS direct API to download specific snapshots to your computer. These can then be '
                    'mounted and explored using either docker or vagrant. For more information on how to mount these snapshots'
-                   'see PLACEHOLDER.',
+                   'see https://github.com/RhinoSecurityLabs/dsnap#mounting-in-vagrant.',
     'services': ['EC2'],
     'prerequisite_modules': ['ebs__enum_volumes_snapshots'],
     'arguments_to_autocomplete': ['--snapshot-id'],
@@ -37,10 +38,10 @@ parser.add_argument(
 )
 
 
-def get_path(session_name: str, snapshot_id: str) -> str:
+def get_dir(session_name: str) -> Path:
     volume_dir = f'./sessions/{session_name}/downloads/ebs/volumes'
     os.makedirs(volume_dir, exist_ok=True)
-    return os.path.join(volume_dir, f"{snapshot_id}.img")
+    return Path(volume_dir)
 
 
 def snapshot_prompt(snapshots: List[dict]) -> dict:
@@ -82,9 +83,14 @@ def main(args, pacu: Main):
         print(*e.args)
         return False
 
-    path = get_path(str(session.name), snapshot_id)
-    summary_data['snapshot_id'] = path
-    snap.download(path)
+    out_dir = get_dir(str(session.name))
+    snapshot_path = str(out_dir.joinpath(snapshot_id).absolute()) + ".img"
+    summary_data['out_dir'] = out_dir
+    summary_data['snapshot_id'] = snapshot_id
+    summary_data['snapshot_path'] = snapshot_path
+    summary_data["vagrantfile"] = dsnap.utils.init_vagrant(out_dir, True)
+
+    snap.download(snapshot_path)
 
     return summary_data
 
@@ -94,7 +100,12 @@ def summary(data, pacu):
     if not data:
         msg = 'Module execution failed'
     else:
-        for id in data:
-            path = data[id]
-            msg += f" Snapshot {id} written to {path}\n"
+        msg += (
+            "********************************************************************************\n\n"
+            f" Snapshot {data['snapshot_id']} written to {data['snapshot_path']}\n" +
+            "To mount this image make sure vagrant and virtualbox are installed and run: \n\n" +
+            f"cd {data['out_dir']}\n"
+            f"IMAGE={data['snapshot_id']}.img vagrant up\n"
+            "\n********************************************************************************\n\n"
+        )
     return msg

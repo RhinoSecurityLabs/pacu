@@ -1367,11 +1367,12 @@ aws_secret_access_key = {}
             aws_session_token=session.session_token,
         )
 
-    def get_botocore_conf(self,
-                          region: Optional[str] = None,
-                          user_agent: Optional[str] = None,
-                          parameter_validation: bool = True,
-                          ) -> botocore.config.Config:
+    def get_botocore_conf(
+        self,
+        region: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        parameter_validation: bool = True,
+    ) -> botocore.config.Config:
         session = self.get_active_session()
 
         # If there is not a custom user_agent passed into this function

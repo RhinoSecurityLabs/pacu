@@ -5,6 +5,7 @@ import os
 import sys
 from pathlib import Path
 from typing import List
+from typing_extensions import TypedDict
 
 import dsnap.utils
 import dsnap.snapshot
@@ -56,9 +57,16 @@ def snapshot_prompt(snapshots: List[dict]) -> dict:
         return snapshot_prompt(snapshots)
 
 
+SummaryData = TypedDict('SummaryData', {
+    'out_dir': str,
+    'snapshot_id': str,
+    'snapshot_path': str,
+    'vagrantfile': str,
+})
+
+
 def main(args, pacu: Main):
     """Main module function, called from Pacu"""
-    summary_data = {}
     print = pacu.print
     session = pacu.get_active_session()
     snapshot_id = parser.parse_args(args).snapshot_id
@@ -85,14 +93,14 @@ def main(args, pacu: Main):
 
     out_dir = get_dir(str(session.name))
     snapshot_path = str(out_dir.joinpath(snapshot_id).absolute()) + ".img"
-    summary_data['out_dir'] = out_dir
-    summary_data['snapshot_id'] = snapshot_id
-    summary_data['snapshot_path'] = snapshot_path
-    summary_data["vagrantfile"] = dsnap.utils.init_vagrant(out_dir, True)
-
     snap.download(snapshot_path)
 
-    return summary_data
+    return SummaryData(
+        out_dir=str(out_dir),
+        snapshot_id=snapshot_id,
+        snapshot_path=snapshot_path,
+        vagrantfile=str(dsnap.utils.init_vagrant(out_dir, True)),
+    )
 
 
 def summary(data, pacu):
@@ -101,11 +109,11 @@ def summary(data, pacu):
         msg = 'Module execution failed'
     else:
         msg += (
-            "********************************************************************************\n\n"
-            f" Snapshot {data['snapshot_id']} written to {data['snapshot_path']}\n" +
-            "To mount this image make sure vagrant and virtualbox are installed and run: \n\n" +
-            f"cd {data['out_dir']}\n"
-            f"IMAGE={data['snapshot_id']}.img vagrant up\n"
-            "\n********************************************************************************\n\n"
+                "********************************************************************************\n\n"
+                f" Snapshot {data['snapshot_id']} written to {data['snapshot_path']}\n" +
+                "To mount this image make sure vagrant and virtualbox are installed and run: \n\n" +
+                f"cd {data['out_dir']}\n"
+                f"IMAGE={data['snapshot_id']}.img vagrant up\n"
+                "\n********************************************************************************\n\n"
         )
     return msg

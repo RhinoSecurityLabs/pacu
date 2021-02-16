@@ -5,10 +5,9 @@ import os
 import sys
 from pathlib import Path
 from typing import List
-from typing_extensions import TypedDict
+from typing import TypedDict
 
-import dsnap.utils
-import dsnap.snapshot
+from dsnap import snapshot, utils
 
 from pacu import Main
 
@@ -40,7 +39,7 @@ parser.add_argument(
 
 
 def get_dir(session_name: str) -> Path:
-    volume_dir = f'./sessions/{session_name}/downloads/ebs/volumes'
+    volume_dir = f'./sessions/{session_name}/downloads/ebs/snapshots'
     os.makedirs(volume_dir, exist_ok=True)
     return Path(volume_dir)
 
@@ -73,7 +72,7 @@ def main(args, pacu: Main):
     region = parser.parse_args(args).region
 
     if not snapshot_id:
-        if not pacu.fetch_data(['EC2'], 'ebs__enum_volumes_snapshots', ''):
+        if not pacu.fetch_data(['EC2', 'Snapshots'], 'ebs__enum_volumes_snapshots', ''):
             print('Failed to fetch EBS snapshot data')
             return False
 
@@ -86,20 +85,20 @@ def main(args, pacu: Main):
             return False
 
     try:
-        snap = dsnap.snapshot.Snapshot(snapshot_id, pacu.get_boto_session(region=region), pacu.get_botocore_conf())
+        out_dir = get_dir(str(session.name))
+        snap = snapshot.LocalSnapshot(str(out_dir), snapshot_id, pacu.get_boto_session(region=region), pacu.get_botocore_conf())
     except UserWarning as e:
         print(*e.args)
         return False
 
-    out_dir = get_dir(str(session.name))
-    snapshot_path = str(out_dir.joinpath(snapshot_id).absolute()) + ".img"
-    snap.download(snapshot_path)
+    snapshot_path = out_dir.joinpath(f"{snapshot_id}.img")
+    snap.fetch(str(snapshot_path))
 
     return SummaryData(
-        out_dir=str(out_dir),
+        out_dir=str(out_dir.relative_to('.')),
         snapshot_id=snapshot_id,
-        snapshot_path=snapshot_path,
-        vagrantfile=str(dsnap.utils.init_vagrant(out_dir, True)),
+        snapshot_path=str(snapshot_path),
+        vagrantfile=str(utils.init_vagrant(out_dir, True)),
     )
 
 
@@ -109,11 +108,11 @@ def summary(data, pacu):
         msg = 'Module execution failed'
     else:
         msg += (
-                "********************************************************************************\n\n"
+                "*******************************************************************************************************\n\n"
                 f" Snapshot {data['snapshot_id']} written to {data['snapshot_path']}\n" +
                 "To mount this image make sure vagrant and virtualbox are installed and run: \n\n" +
                 f"cd {data['out_dir']}\n"
                 f"IMAGE={data['snapshot_id']}.img vagrant up\n"
-                "\n********************************************************************************\n\n"
+                "\n*******************************************************************************************************\n\n"
         )
     return msg

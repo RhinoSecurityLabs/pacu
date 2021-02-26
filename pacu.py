@@ -18,6 +18,8 @@ try:
     import requests
     import boto3
     import botocore
+    import botocore.config
+    import botocore.session
     import botocore.exceptions
     import urllib.parse
 
@@ -1349,15 +1351,29 @@ aws_secret_access_key = {}
                 self.print('  User agent for this session set to:')
                 self.print('    {}'.format(new_ua))
 
-    def get_boto3_client(self, service, region=None, user_agent=None, parameter_validation=True) -> Any:
+    def get_boto_session(self, region: str = None) -> boto3.session.Session:
         session = self.get_active_session()
 
         if not session.access_key_id:
-            print('  No access key has been set. Failed to generate boto3 Client.')
-            return
+            raise UserWarning('  No access key has been set. Failed to generate boto3 Client.')
+
         if not session.secret_access_key:
-            print('  No secret key has been set. Failed to generate boto3 Client.')
-            return
+            raise UserWarning('  No secret key has been set. Failed to generate boto3 Client.')
+
+        return boto3.session.Session(
+            region_name=region,
+            aws_access_key_id=session.access_key_id,
+            aws_secret_access_key=session.secret_access_key,
+            aws_session_token=session.session_token,
+        )
+
+    def get_botocore_conf(
+        self,
+        region: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        parameter_validation: bool = True,
+    ) -> botocore.config.Config:
+        session = self.get_active_session()
 
         # If there is not a custom user_agent passed into this function
         # and session.boto_user_agent is set, use that as the user agent
@@ -1367,52 +1383,43 @@ aws_secret_access_key = {}
         if user_agent is None and session.boto_user_agent is not None:
             user_agent = session.boto_user_agent
 
-        boto_config = botocore.config.Config(  # type: ignore[attr-defined]
+        return botocore.config.Config(  # type: ignore[attr-defined]
+            region_name=region,
             user_agent=user_agent,  # If user_agent=None, botocore will use the real UA which is what we want
             parameter_validation=parameter_validation
         )
 
-        return boto3.client(
-            service,
-            region_name=region,  # Whether region has a value or is None, it will work here
-            aws_access_key_id=session.access_key_id,
-            aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token,
-            config=boto_config
-        )
+    def get_boto3_client(
+            self,
+            service: str,
+            region: Optional[str] = None,
+            user_agent: Optional[str] = None,
+            parameter_validation: bool = True,
+    ) -> Any:
+        try:
+            aws_sess = self.get_boto_session()
+        except UserWarning as e:
+            print(e.args)
+            return None
 
-    def get_boto3_resource(self,
-                           service: str,
-                           region: Union[str, None] = None,
-                           user_agent: Union[str, None] = None,
-                           parameter_validation: bool = True
-                           ) -> Any:
-        # All the comments from get_boto3_client apply here too
-        session = self.get_active_session()
+        conf = self.get_botocore_conf(region, user_agent, parameter_validation)
+        return aws_sess.client(service, config=conf)
 
-        if not session.access_key_id:
-            print('  No access key has been set. Failed to generate boto3 Resource.')
-            return
-        if not session.secret_access_key:
-            print('  No secret key has been set. Failed to generate boto3 Resource.')
-            return
+    def get_boto3_resource(
+            self,
+            service: str,
+            region: Union[str, None] = None,
+            user_agent: Union[str, None] = None,
+            parameter_validation: bool = True
+    ) -> Any:
+        try:
+            aws_sess = self.get_boto_session()
+        except UserWarning as e:
+            print(e.args)
+            return None
 
-        if user_agent is None and session.boto_user_agent is not None:
-            user_agent = session.boto_user_agent
-
-        boto_config = botocore.config.Config(  # type: ignore[attr-defined]
-            user_agent=user_agent,
-            parameter_validation=parameter_validation
-        )
-
-        return boto3.resource(
-            service,
-            region_name=region,
-            aws_access_key_id=session.access_key_id,
-            aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token,
-            config=boto_config
-        )
+        conf = self.get_botocore_conf(region, user_agent, parameter_validation)
+        return aws_sess.resource(service, region_name=region, config=conf)
 
     def initialize_tab_completion(self) -> None:
         try:

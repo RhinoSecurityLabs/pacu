@@ -1,11 +1,11 @@
 flake8:
-	flake8 pacu.py
+	flake8 pacu.py modules/ebs__download_snapshots
 
 stubgen:
-	test -d stubs || stubgen --include-private -p boto3 -p botocore -o stubs
+	test -d stubs || stubgen --include-private -o stubs -p boto3 -p botocore -p dsnap
 
 mypy: stubgen
-	export MYPYPATH="${PWD}/stubs" && mypy *.py core
+	MYPYPATH="${PWD}/stubs" mypy *.py core modules/ebs__download_snapshots
 
 lint: flake8 mypy
 

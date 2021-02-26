@@ -1,5 +1,5 @@
 awscli
-dsnap>=0.1.8
+dsnap>=0.1.10
 boto3>=1.15
 botocore>=1.16
 s3transfer>=0.3.0

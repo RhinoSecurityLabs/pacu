@@ -91,13 +91,12 @@ def main(args, pacu: Main):
         print(*e.args)
         return False
 
-    snapshot_path = out_dir.joinpath(f"{snapshot_id}.img")
-    snap.fetch(str(snapshot_path))
+    snap.fetch()
 
     return SummaryData(
         out_dir=str(out_dir.relative_to('.')),
         snapshot_id=snapshot_id,
-        snapshot_path=str(snapshot_path),
+        snapshot_path=str(snap.path),
         vagrantfile=str(utils.init_vagrant(out_dir, True)),
     )
 

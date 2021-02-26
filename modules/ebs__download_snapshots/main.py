@@ -5,7 +5,7 @@ import os
 import sys
 from pathlib import Path
 from typing import List
-from typing import TypedDict
+from typing_extensions import TypedDict
 
 from dsnap import snapshot, utils
 

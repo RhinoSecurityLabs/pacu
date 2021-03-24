@@ -13,6 +13,8 @@ module_info = {'name':'cloudformation__download_data',
  'prerequisite_modules':[],  'external_dependencies':[],  'arguments_to_autocomplete':[]}
 parser = argparse.ArgumentParser(add_help=False, description=(module_info['description']))
 
+parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all regions.')
+
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
     print = pacu_main.print

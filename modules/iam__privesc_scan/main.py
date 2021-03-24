@@ -205,6 +205,12 @@ def main(args, pacu_main):
             'lambda:InvokeFunction': True,  # Invoke the newly created function
             'iam:ListRoles': False  # Find a role to pass
         },
+        'PassExistingRoleToNewLambdaThenInvokeCrossAccount': {
+            'iam:PassRole': True,  # Pass the role to the Lambda function
+            'lambda:CreateFunction': True,  # Create a new Lambda function
+            'lambda:AddPermission': True,  # Invoke the newly created function
+            'iam:ListRoles': False  # Find a role to pass
+        },
         'PassExistingRoleToNewLambdaThenTriggerWithNewDynamo': {
             'iam:PassRole': True,  # Pass the role to the Lambda function
             'lambda:CreateFunction': True,  # Create a new Lambda function
@@ -312,6 +318,12 @@ def main(args, pacu_main):
             'iam:PassRole': True,  # Pass the role to the Lambda function
             'lambda:CreateFunction': True,  # Create a new Lambda function
             'lambda:InvokeFunction': True,  # Invoke the newly created function
+            'iam:ListRoles': False  # Find a role to pass
+        },
+        'PassExistingRoleToNewLambdaThenInvokeCrossAccount': {
+            'iam:PassRole': True,  # Pass the role to the Lambda function
+            'lambda:CreateFunction': True,  # Create a new Lambda function
+            'lambda:AddPermission': True,  # Invoke the newly created function
             'iam:ListRoles': False  # Find a role to pass
         },
         'PassExistingRoleToNewLambdaThenTriggerWithNewDynamo': {

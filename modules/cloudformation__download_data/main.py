@@ -37,13 +37,15 @@ def main(args, pacu_main):
             if isinstance(obj, (datetime.date, datetime.datetime)):
                 return obj.isoformat()
 
-    stacks = []
+    all_stacks = []
     found_regions = []
     for region in regions:
         client = pacu_main.get_boto3_client('cloudformation', region)
         print('Looking for CloudFormation Stacks in region {}...'.format(region))
         stacks_data = client.describe_stacks()
-        stacks += stacks_data['Stacks']
+        stacks = stacks_data['Stacks']
+        all_stacks += stacks
+
         if stacks_data['Stacks']:
             print('Getting exports for region: {}'.format(region))
             exports = client.list_exports()
@@ -73,7 +75,7 @@ def main(args, pacu_main):
 
         stacks_data = {}
 
-    info = {'region_count':len(found_regions),  'stack_count':len(stacks), 
+    info = {'region_count':len(found_regions),  'stack_count':len(all_stacks),
      'output_path':'sessions/{}/downloads/{}/*'.format(session.name, module_info['name'])}
     return info
 

@@ -69,31 +69,26 @@ def main(args, pacu_main):
     print(user)
    # TODO: get results from enum_ecr
 
-    # docker_client = docker.from_env()
-    # docker_client.login()
-
-
-
     # this loads AWS access token and secret from env and returns an ECR client
     ecr_client = pacu_main.get_boto3_client('ecr', 'us-east-1')
     token = ecr_client.get_authorization_token()
     username, password = base64.b64decode(token['authorizationData'][0]['authorizationToken']).decode().split(':')
     registry = token['authorizationData'][0]['proxyEndpoint']
-    # loggin in via the docker sdk doesnt work so we're gonna go with this workaround
-    # command = 'docker login -u %s -p %s %s' % (username, password, registry)
-
+    
     print(username)
     print(password)
     print(registry)
 
-
-
-    p = subprocess.Popen([command], stdout=subprocess.PIPE, shell=True, bufsize=1)
-    for line in iter(p.stdout.readline, b''):
-        print(line)
-    p.communicate()  # close p.stdout, wait for the subprocess to exit
+    # someone on stack overflow said this is an alternative to logging in with the sdk... validity TBD.
+    # command = 'docker login -u %s -p %s %s' % (username, password, registry)
+    # p = subprocess.Popen([command], stdout=subprocess.PIPE, shell=True, bufsize=1)
+    # for line in iter(p.stdout.readline, b''):
+    #     print(line)
+    # p.communicate()  # close p.stdout, wait for the subprocess to exit
 
     docker_client = docker.from_env()
+    docker_client.login(username=username, password=password, registry=registry)
+
 
     # download_image("187263833631.dkr.ecr.us-east-1.amazonaws.com/apline")
         

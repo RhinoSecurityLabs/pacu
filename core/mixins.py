@@ -1,6 +1,6 @@
 from sqlalchemy import orm
 
-from utils import stringify_datetime
+from utils import stringify
 
 
 class ModelUpdateMixin:
@@ -12,7 +12,7 @@ class ModelUpdateMixin:
             session.update(database, field_name={'json': ...}) """
 
         for key, value in kwargs.items():
-            value = stringify_datetime(value)
+            value = stringify(value)
             setattr(self, key, value)
 
         database.add(self)

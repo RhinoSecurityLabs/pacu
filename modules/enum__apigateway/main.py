@@ -2,22 +2,21 @@
 
 import argparse
 import os
-import sys
 from pathlib import Path
-from pacu import Main
 import pprint
 import json
-import time 
+import time
 
 module_info = {
     'name': 'enum__apigateway',
     'author': 'Sebastian Mora seb@ruse.tech',
     'category': 'ENUM',
-    'one_liner': 'Enumerate API Gateway',
-    'description': '',
+    'one_liner': 'Enumerate API Gateway.',
+    'description': 'Enumerate API Gateway. For each API this module enumerates available routes, methods, API keys and ' +
+                   'client certificates. Results and Swagger definitions will be exported to the session download directory.',
     'services': ['apigateway'],
     'prerequisite_modules': [''],
-    'arguments_to_autocomplete': [''],
+    'arguments_to_autocomplete': ['--regions'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=str(module_info['description']))
@@ -30,10 +29,12 @@ parser.add_argument(
 
 pp = pprint.PrettyPrinter(indent=2)
 
+
 def get_dir(session_name):
     volume_dir = f'./sessions/{session_name}/downloads/apigateway/'
     os.makedirs(volume_dir, exist_ok=True)
     return Path(volume_dir)
+
 
 # Get all resources for  API
 #
@@ -42,16 +43,18 @@ def get_api_resources(client, api_id):
     response = client.get_resources(restApiId=api_id)
     return response['items']
 
+
 # Get All deployment stages of API
 #
 # returns [] string
 def get_api_stages(client, api_id):
-    response =  client.get_stages(restApiId=api_id)
+    response = client.get_stages(restApiId=api_id)
     names = []
     for stage in response['item']:
         if(stage.get('stageName')):
             names.append(stage['stageName'])
     return names
+
 
 # Get all supported methods per api resources "/users"
 #
@@ -61,18 +64,20 @@ def get_api_methods(client, api_id, resource):
     if resource.get('resourceMethods'):
         for method in resource.get('resourceMethods'):
             response = client.get_method(
-            restApiId=api_id,
-            resourceId=resource['id'],
-            httpMethod=method
+                restApiId=api_id,
+                resourceId=resource['id'],
+                httpMethod=method
             )
             routes.append(response)
-    return routes 
+    return routes
+
 
 def get_api_keys(client):
     response = client.get_api_keys(limit=500, includeValues=True)
     if response.get('items'):
         return response['items']
     return []
+
 
 def get_client_certs(client):
     response = client.get_client_certificates(limit=500)
@@ -84,7 +89,7 @@ def get_client_certs(client):
         data.append(cert)
     return data
 
-    
+
 # If permissions supported export the API documentaion as Swagger File
 def export_api_doc(client, session, api_summary, exportType='swagger'):
 
@@ -96,7 +101,7 @@ def export_api_doc(client, session, api_summary, exportType='swagger'):
     stages = api_summary['stages']
 
     for stage in stages:
-        response = client.get_export(restApiId=api_id, stageName=stage, exportType=exportType )
+        response = client.get_export(restApiId=api_id, stageName=stage, exportType=exportType)
         filename = f"{api_name}_{stage}_swagger.json"
         with open(output_path / filename, 'w') as f:
             data = json.loads(response['body'].read().decode("utf-8"))
@@ -107,19 +112,14 @@ def export_api_doc(client, session, api_summary, exportType='swagger'):
     return files_names
 
 
-
 # Take method obj and parse into method summary
 def parse_method(base_url, method, path, stages):
-
-    uri = ""
-    params = {}
-
     api_method = {
         'uri': "",
         'requestParameters': [],
-        'method':"",
-        "authorizationType":"",
-        "apiKeyRequired": "False", # if there is a key this will get set to True
+        'method': "",
+        "authorizationType": "",
+        "apiKeyRequired": "False",  # if there is a key this will get set to True
         'url': []
     }
 
@@ -131,18 +131,17 @@ def parse_method(base_url, method, path, stages):
 
     if method.get('authorizationType'):
         api_method['authorizationType'] = method['authorizationType']
-    
+
     if method.get('apiKeyRequired'):
         api_method['apiKeyRequired'] = method['apiKeyRequired']
 
     if method['methodIntegration'].get('requestParameters'):
         api_method['requestParameters'] = method['methodIntegration']['requestParameters']
-    
-    for stage in stages:
-        api_method['url'].append( base_url + stage + path)
-    
-    return api_method
 
+    for stage in stages:
+        api_method['url'].append(base_url + stage + path)
+
+    return api_method
 
 
 def main(args, pacu):
@@ -160,19 +159,16 @@ def main(args, pacu):
     else:
         regions = pacu.get_regions('apigateway')
 
-
     # Set up summary data object
-    # apis[] holds each api object which contains api info an route info 
+    # apis[] holds each api object which contains api info an route info
     # apikeys[] holds all api keys
-    # clientCerts[] holds all client certs 
-    summary_data = {'apis':[], 'apiKeys':[], 'clientCerts': []}
-
-    
+    # clientCerts[] holds all client certs
+    summary_data = {'apis': [], 'apiKeys': [], 'clientCerts': []}
 
     for region in regions:
-        client =  pacu.get_boto3_client('apigateway', region)
+        client = pacu.get_boto3_client('apigateway', region)
         print(f"Enumerating {region}")
-        
+
         # Get global API data
         summary_data['apiKeys'] = get_api_keys(client)
         summary_data['clientCerts'] = get_client_certs(client)
@@ -183,17 +179,17 @@ def main(args, pacu):
 
         items = response['items']
 
-        # for each api in the account 
+        # for each api in the account
         for api in items:
-            
+
             # create api objecy summary
             api_summary = {
-                'id': '', 
+                'id': '',
                 'name': '',
-                'stages': [], 
+                'stages': [],
                 'urlBase': "",
-                'urlPaths':[],
-                "apiDocs":[]
+                'urlPaths': [],
+                "apiDocs": []
             }
 
             # Set up base info used by methods
@@ -203,12 +199,12 @@ def main(args, pacu):
             api_summary['urlBase'] = f"https://{api_summary['id']}.execute-api.{region}.amazonaws.com/"
 
             print(f"Enumerating API: {api_summary['name']}")
-            
+
             # For each resource get all methods and parse it into it's method summary.
             for resource in get_api_resources(client, api_summary['id']):
                 for method in get_api_methods(client, api_summary['id'], resource):
                     api_summary['urlPaths'].append(parse_method(api_summary['urlBase'], method, resource['path'], api_summary['stages']))
-            
+
             # Append api results to main summary
             summary_data['apis'].append(api_summary)
 
@@ -225,8 +221,7 @@ def main(args, pacu):
                 )
             f.close()
 
-    return summary(summary_data, pacu)
-        
+    return summary_data
 
 
 def summary(data, pacu):
@@ -245,16 +240,16 @@ def summary(data, pacu):
 
             for url_paths in api['urlPaths']:
                 # print a new http url for each staged version
-                [ print(f"\t\t {url_paths['method']}: {url}") for url in url_paths['url']]
-        
+                [print(f"\t\t {url_paths['method']}: {url}") for url in url_paths['url']]
+
         # Display Global API keys
         print("-----API Keys-----")
         for key in data['apiKeys']:
             print(f"\tKey Name: {key['name']} \n\t\tValue: {key['value']} \n\t\tcreatedDate: {key['createdDate']}")
-        
+
         # Display Gloal Client Certs
         print("-----Client Certs-----")
         for cert in data['clientCerts']:
             print(f"\tCert Id: {cert['clientCertificateId']} \n\t\texpirationDate: {cert['expirationDate']} \n\t\tpem: {cert['pemEncodedCertificate']}")
-                
-    return ''
+
+    return(msg)

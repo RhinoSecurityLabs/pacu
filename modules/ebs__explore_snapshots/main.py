@@ -12,7 +12,11 @@ module_info = {
     'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
     'category': 'EXPLOIT',
     'one_liner': 'Restores and attaches EBS volumes/snapshots to an EC2 instance of your choice.',
-    'description': 'This module will cycle through existing EBS volumes and create snapshots of them, then restore those snapshots and existing snapshots to new EBS volumes, which will then be attached to the supplied EC2 instance for you to mount. This will give you access to the files on the various volumes, where you can then look for sensitive information. Afterwards, it will cleanup the created volumes and snapshots by detaching them from your instance and removing them from the AWS account.',
+    'description': 'This module will cycle through existing EBS volumes and create snapshots of them, then restore those '
+                   'snapshots and existing snapshots to new EBS volumes, which will then be attached to the supplied EC2 '
+                   'instance for you to mount. This will give you access to the files on the various volumes, where you can '
+                   'then look for sensitive information. Afterwards, it will cleanup the created volumes and snapshots by '
+                   'detaching them from your instance and removing them from the AWS account.',
     'services': ['EC2'],
     'prerequisite_modules': ['ec2__enum', 'ebs__enum_volumes_snapshots'],
     'arguments_to_autocomplete': ['--instance-id', '--zone'],
@@ -130,6 +134,7 @@ def get_valid_devices(pacu, instance_id):
 
     """
     instance = [instance for instance in get_instances(pacu) if instance['InstanceId'] == instance_id]
+    # TODO: If KeyError is raised here it's likely because ec2_enum needs to be run again
     mappings = instance[0]['BlockDeviceMappings']
     current_mappings = [device['DeviceName'] for device in mappings]
     last_mapping = sorted(current_mappings)[-1]

@@ -1,69 +1,74 @@
 import signal
 import sys
-import datetime
+import typing
+from typing import Optional, Union
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, orm
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 from core.base import DATABASE_CONNECTION_PATH
+from datetime import datetime
 
 
-def get_database_connection(database_connection_path=DATABASE_CONNECTION_PATH):
+def get_database_connection(database_connection_path: str=DATABASE_CONNECTION_PATH) -> orm.session.Session:
     """ Unlike database file paths, database connection paths must begin with
     sqlite:/// """
     assert database_connection_path.startswith('sqlite:///'), 'Database connection path must start with sqlite:///'
 
     engine = create_engine(database_connection_path)
-    Base = declarative_base()
-    Base.metadata.bind = engine
     Session = sessionmaker(bind=engine)
 
     return Session()
 
-
-def remove_empty_from_dict(d):
+def remove_empty_from_dict(d: Union[dict, list, typing.Any]) -> Union[dict, list, typing.Any]:
     """ Reference: https://stackoverflow.com/a/24893252 """
     if type(d) is dict:
+        d = typing.cast(dict, d)
         return dict((k, remove_empty_from_dict(v)) for k, v in d.items() if v and remove_empty_from_dict(v))
 
     elif type(d) is list:
+        d = typing.cast(list, d)
         return [remove_empty_from_dict(v) for v in d if v and remove_empty_from_dict(v)]
 
     else:
         return d
 
 
-def stringify_datetime(obj):
+def stringify(obj: Union[dict, list, datetime]) -> Union[dict, list, str]:
     """ The sqlalchemy-utils' JSONType doesn't accept Python datetime objects.
     This method converts all datetime objects in JSONizable data structures
     into strings, allowing the ORM to save them. """
 
     if isinstance(obj, dict):
         # If obj is a dict, iterate over its items and recusrively call
-        # stringify_datetime on each of them.
+        # stringify on each of them.
         new_dict = dict()
         for k, v in obj.items():
-            new_dict[k] = stringify_datetime(v)
+            new_dict[k] = stringify(v)
         return new_dict
 
     elif isinstance(obj, list):
         # If obj is a list, iterate over its elements and recusrively call
-        # stringify_datetime on each of them.
+        # stringify on each of them.
         new_list = list()
         for v in obj:
-            new_list.append(stringify_datetime(v))
+            new_list.append(stringify(v))
         return new_list
 
-    elif isinstance(obj, datetime.datetime):
+    elif isinstance(obj, datetime):
         # If obj is a datetime, return a formatted string version of it
         return str(obj.strftime("%a, %d %b %Y %H:%M:%S"))
+
+    elif isinstance(obj, bytes):
+        # If obj is bytes, return a formatted string version of it
+        return obj.decode()
 
     else:
         return obj
 
 
-def set_sigint_handler(exit_text=None, value=0):
+def set_sigint_handler(exit_text: Optional[str]=None, value: Union[str, int]=0) -> None:
 
     def sigint_handler(signum, frame):
         """ This is to stop the error printed when CTRL+Cing out of the program

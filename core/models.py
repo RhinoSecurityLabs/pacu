@@ -82,6 +82,7 @@ class PacuSession(Base, ModelUpdateMixin):
         'Inspector',
         'Lambda',
         'Lightsail',
+        'RDS',
         'S3',
         'SecretsManager',
         'Shield',
@@ -121,6 +122,7 @@ class PacuSession(Base, ModelUpdateMixin):
     Inspector = Column(JSONType, nullable=False, default=dict)
     Lambda = Column(JSONType, nullable=False, default=dict)
     Lightsail = Column(JSONType, nullable=False, default=dict)
+    RDS = Column(JSONType, nullable=False, default=dict)
     S3 = Column(JSONType, nullable=False, default=dict)
     SecretsManager = Column(JSONType, nullable=False, default=dict)
     SSM = Column(JSONType, nullable=False, default=dict)

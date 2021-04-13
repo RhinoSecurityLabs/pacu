@@ -1357,19 +1357,8 @@ aws_secret_access_key = {}
         if not session.access_key_id:
             raise UserWarning('  No access key has been set. Failed to generate boto3 Client.')
 
-
-        # If there is not a custom user_agent passed into this function
-        # and session.boto_user_agent is set, use that as the user agent
-        # for this client. If both are set, the incoming user_agent will
-        # override the session.boto_user_agent. If niether are set, it
-        # will be None, and will default to the OS's regular user agent
-        if user_agent is None and session.boto_user_agent is not None:
-            user_agent = session.boto_user_agent
-
-
         if not session.secret_access_key:
             raise UserWarning('  No secret key has been set. Failed to generate boto3 Client.')
-
 
         return boto3.session.Session(
             region_name=region,
@@ -1398,6 +1387,10 @@ aws_secret_access_key = {}
         return botocore.config.Config(  # type: ignore[attr-defined]
             region_name=region,
             user_agent=user_agent,  # If user_agent=None, botocore will use the real UA which is what we want
+            retries={
+                'max_attempts': 10,
+                'mode': 'adaptive',
+            },
             parameter_validation=parameter_validation,
         )
 

@@ -35,30 +35,34 @@ def remove_empty_from_dict(d: Union[dict, list, typing.Any]) -> Union[dict, list
         return d
 
 
-def stringify_datetime(obj: Union[dict, list, datetime]) -> Union[dict, list, str]:
+def stringify(obj: Union[dict, list, datetime]) -> Union[dict, list, str]:
     """ The sqlalchemy-utils' JSONType doesn't accept Python datetime objects.
     This method converts all datetime objects in JSONizable data structures
     into strings, allowing the ORM to save them. """
 
     if isinstance(obj, dict):
         # If obj is a dict, iterate over its items and recusrively call
-        # stringify_datetime on each of them.
+        # stringify on each of them.
         new_dict = dict()
         for k, v in obj.items():
-            new_dict[k] = stringify_datetime(v)
+            new_dict[k] = stringify(v)
         return new_dict
 
     elif isinstance(obj, list):
         # If obj is a list, iterate over its elements and recusrively call
-        # stringify_datetime on each of them.
+        # stringify on each of them.
         new_list = list()
         for v in obj:
-            new_list.append(stringify_datetime(v))
+            new_list.append(stringify(v))
         return new_list
 
     elif isinstance(obj, datetime):
         # If obj is a datetime, return a formatted string version of it
         return str(obj.strftime("%a, %d %b %Y %H:%M:%S"))
+
+    elif isinstance(obj, bytes):
+        # If obj is bytes, return a formatted string version of it
+        return obj.decode()
 
     else:
         return obj

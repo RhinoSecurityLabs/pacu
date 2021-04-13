@@ -61,7 +61,7 @@ def stringify(obj: Union[dict, list, datetime]) -> Union[dict, list, str]:
         return str(obj.strftime("%a, %d %b %Y %H:%M:%S"))
 
     elif isinstance(obj, bytes):
-        # If obj is a datetime, return a formatted string version of it
+        # If obj is bytes, return a formatted string version of it
         return obj.decode()
 
     else:

@@ -189,37 +189,37 @@ def main(args, pacu_main):
             print('  {} service(s) found.'.format(len(services)))
             all_services += services
 
-            if args.taskdef:
-                response = None
-                next_token = False
-                while (response is None or 'nextToken' in response):
-                    if next_token is False:
-                        try:
-                            response = client.list_task_definitions(
-                                maxResults=100  # To prevent timeouts if there are too many instances
-                            )
-                        except ClientError as error:
-                            code = error.response['Error']['Code']
-                            print('FAILURE: ')
-                            if code == 'UnauthorizedOperation':
-                                print('  Access denied to ListTaskDefinitions.')
-                            else:
-                                print('  ' + code)
-                            print('  Skipping instance enumeration...')
-                            args.taskdef = False
-                            break
-                    else:
+        if args.taskdef:
+            response = None
+            next_token = False
+            while (response is None or 'nextToken' in response):
+                if next_token is False:
+                    try:
                         response = client.list_task_definitions(
-                            maxResults=100,
-                            nextToken=next_token
+                            maxResults=100  # To prevent timeouts if there are too many instances
                         )
-                    if 'nextToken' in response:
-                        next_token = response['nextToken']
-                    for task_def in response['taskDefinitionArns']:
-                        task_defs.append(task_def)
+                    except ClientError as error:
+                        code = error.response['Error']['Code']
+                        print('FAILURE: ')
+                        if code == 'UnauthorizedOperation':
+                            print('  Access denied to ListTaskDefinitions.')
+                        else:
+                            print('  ' + code)
+                        print('  Skipping instance enumeration...')
+                        args.taskdef = False
+                        break
+                else:
+                    response = client.list_task_definitions(
+                        maxResults=100,
+                        nextToken=next_token
+                    )
+                if 'nextToken' in response:
+                    next_token = response['nextToken']
+                for task_def in response['taskDefinitionArns']:
+                    task_defs.append(task_def)
 
-                print('  {} task definition(s) found.'.format(len(task_defs)))
-                all_task_defs += task_defs
+            print('  {} task definition(s) found.'.format(len(task_defs)))
+            all_task_defs += task_defs
 
     gathered_data = {
         'Clusters': all_clusters,

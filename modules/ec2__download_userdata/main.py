@@ -64,7 +64,7 @@ def main(args, pacu_main):
         # If args.instance_ids was not passed in,
         # only fetch instances if args.template_ids
         # is also None
-        if fetch_data(['EC2', 'Instances'], module_info['prerequisite_modules'][0], '--instances') is False:
+        if fetch_data(['EC2', 'Subnets'], module_info['prerequisite_modules'][0], '--instances') is False:
             print('Pre-req module not run successfully. Exiting...')
             return None
         instances = session.EC2['Instances']

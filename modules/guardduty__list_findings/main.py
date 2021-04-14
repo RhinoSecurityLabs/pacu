@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import argparse
+from pathlib import Path
+
 from botocore.exceptions import ClientError
 import copy
 import string
@@ -13,7 +15,11 @@ module_info = {
     'author': 'Manas Bellani',
     'category': 'ENUM',
     'one_liner': 'Gets the guard-duty statistics and finding details from all Guard-duty detectors.',
-    'description': 'This module lists all the GuardDuty Findings available from the AWS console for each identified detector. It requires that pre-req module has been run first to ensure that all detectors for which findings need to be pulled have been populated. Ther results are written to the "Downloads" folder within "sessions" folder in pacu.',
+    'description': (
+        'This module lists all the GuardDuty Findings available from the AWS console for each identified detector. It '
+        'requires that pre-req module has been run first to ensure that all detectors for which findings need to be pulled '
+        'have been populated. The results are written to sessions/<session>/guardduty/ under the pacu directory.'
+    ),
     'services': ['GuardDuty'],
     'prerequisite_modules': ['detection__enum_services'],
     'external_dependencies': [],
@@ -33,10 +39,7 @@ def main(args, pacu_main):
     
     # Prepare output file to write guardduty findings results
     now = time.time()
-    out_file_path = 'sessions/{}/downloads/guardduty_list_findings_{}.json'.format(
-        session.name,
-        now
-    )
+    out_file = Path('sessions/{}/downloads/guardduty/list_findings_{}.json'.format(session.name, now))
 
     # Store all the data in this 
     data = {
@@ -162,20 +165,12 @@ def main(args, pacu_main):
                     print('    Generic Error collecting GuardDuty stats for region: {}, detector: {}'.format(region, detector_id))
                     print('        Error: {}, {}'.format(error.__class__, str(error)))
 
-    print("Writing ALL findings to JSON output file: {}".format(
-            out_file_path
-        )
-    )
-    with open(out_file_path, "w+") as f:
-        f.write(
-            json.dumps(
-                data,
-                indent=4,
-                default=str
-            )
-        )
+    print("Writing ALL findings to JSON output file: {}".format(str(out_file)))
+    out_file.parent.mkdir(exist_ok=True, parents=True)
+    out_file.write_text(json.dumps(data, indent=4, default=str))
         
     return data
+
 
 def summary(data, pacu_main):
     msg = 'Stats presented for {} GuardDuty Detector(s).\n'.format(len(data['detectors']))

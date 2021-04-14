@@ -84,7 +84,7 @@ def main(args, pacu_main):
             formatted_data = "{}@{}\n{}\n\n".format(
                 task_def,
                 region,
-                json.dumps(task_def_data['taskDefinition'], indent=4)
+                json.dumps(task_def_data['taskDefinition'], indent=4, default=str)
             )
            
             with open('sessions/{}/downloads/ecs_task_def_data/all_task_def.txt'.format(session.name), 'a+') as data_file:

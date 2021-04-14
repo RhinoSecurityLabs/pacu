@@ -2,16 +2,16 @@ import datetime
 import json
 import copy
 
-
 from sqlalchemy import (
-    Boolean, CheckConstraint, Column, DateTime, ForeignKey, inspect, Integer, Text
+    Boolean, Column, DateTime, ForeignKey, inspect, Integer, Text, orm
 )
 from sqlalchemy.orm import relationship
-from sqlalchemy_utils import JSONType
+from sqlalchemy_utils import JSONType  # type: ignore
 
 from core.base import Base
 from core.mixins import ModelUpdateMixin
 from utils import remove_empty_from_dict
+from sqlalchemy.orm.session import Session
 
 
 class AWSKey(Base, ModelUpdateMixin):
@@ -20,6 +20,7 @@ class AWSKey(Base, ModelUpdateMixin):
     id = Column(Integer, primary_key=True)
 
     session_id = Column(Integer, ForeignKey('pacu_session.id', ondelete='CASCADE'))
+    session = relationship("PacuSession", back_populates="aws_keys")
 
     user_name = Column(Text)
     role_name = Column(Text)
@@ -40,7 +41,7 @@ class AWSKey(Base, ModelUpdateMixin):
     def __repr__(self):
         return '<AWSKey #{}: {}>'.format(self.id, self.key_alias)
 
-    def get_fields_as_camel_case_dictionary(self):
+    def get_fields_as_camel_case_dictionary(self) -> dict:
         # Deep copy because Permissions->allow_permissions and deny_permissions were dicts that were being passed as reference
         return copy.deepcopy({
             'UserName': self.user_name,
@@ -88,10 +89,11 @@ class PacuSession(Base, ModelUpdateMixin):
         'VPC',
         'WAF',
         'Account',
-        'AccountSpend'
+        'AccountSpend',
+        'Route53'
     )
 
-    aws_keys = relationship('AWSKey', backref='session', cascade='all, delete-orphan', lazy='dynamic')
+    aws_keys = relationship('AWSKey', back_populates='session', cascade='all, delete-orphan', lazy='dynamic')
 
     id = Column(Integer, primary_key=True)
     created = Column(DateTime, default=datetime.datetime.utcnow)
@@ -128,8 +130,9 @@ class PacuSession(Base, ModelUpdateMixin):
     WAFRegional = Column(JSONType, nullable=False, default=dict)
     Account = Column(JSONType, nullable=False, default=dict)
     AccountSpend = Column(JSONType, nullable=False, default=dict)
+    Route53 = Column(JSONType, nullable=False, default=dict)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.key_alias:
             key_alias = self.key_alias
         else:
@@ -139,18 +142,20 @@ class PacuSession(Base, ModelUpdateMixin):
         return '<PacuSession #{} ({}:{})>'.format(self.id, self.name, key_alias)
 
     @classmethod
-    def get_active_session(cls, database):
+    def get_active_session(cls, database) -> 'PacuSession':
         # SQLAlchemy's query filters disallow the use of `cond is True`.
-        return database.query(PacuSession).filter(PacuSession.is_active == True).scalar()
+        return database.query(PacuSession).filter(PacuSession.is_active == True).scalar()  # noqa: E712
 
-    def get_active_aws_key(self, database):
+    def get_active_aws_key(self, database: Session) -> AWSKey:
         """ Return the AWSKey with the same key_alias as the PacuSession.
         A temporary function that will be replaced with a foreign key to AWSKey
         after future refactoring. """
-        return self.aws_keys.filter(AWSKey.key_alias == self.key_alias).scalar()
+
+        # On attr-defined ignore: https://github.com/dropbox/sqlalchemy-stubs/issues/168
+        return self.aws_keys.filter(AWSKey.key_alias == self.key_alias).scalar()  # type: ignore[attr-defined]
         # return database.query(AWSKey).filter(AWSKey.key_alias == self.key_alias).filter(AWSKey.pacu_session_id == self.id).scalar()
 
-    def activate(self, database):
+    def activate(self, database: orm.session.Session) -> None:
         for other_session in database.query(PacuSession).filter(PacuSession.id != self.id):
             other_session.is_active = False
             database.add(other_session)
@@ -160,7 +165,7 @@ class PacuSession(Base, ModelUpdateMixin):
 
         database.commit()
 
-    def print_all_data_in_session(self):
+    def print_all_data_in_session(self) -> None:
         text = list()
         mapper = inspect(self)
 
@@ -187,7 +192,7 @@ class PacuSession(Base, ModelUpdateMixin):
         else:
             print('This session has no data.')
 
-    def get_all_fields_as_dict(self):
+    def get_all_fields_as_dict(self) -> dict:
         all_data = dict()
         mapper = inspect(self)
         for attribute in mapper.attrs:
@@ -204,6 +209,3 @@ class PacuSession(Base, ModelUpdateMixin):
                     all_data[attribute.key] = attribute.value
 
         return remove_empty_from_dict(all_data)
-
-    
-   

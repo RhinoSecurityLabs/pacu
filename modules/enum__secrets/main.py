@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import argparse
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, EndpointConnectionError
 import os
 
 # When writing a module, feel free to remove any comments, placeholders, or
@@ -100,13 +100,25 @@ def main(args, pacu_main):
                         else:
                             print('  ' + code)
                         print('    Could not list secrets... Exiting')
-                        return None
+                        response = None
+                        break
+                    except EndpointConnectionError as error: 
+                        print('    Error connecting to SecretsManager Endpoint for listing secrets for region: {}'.format(region))
+                        print('        Error: {}, {}'.format(error.__class__, str(error)))
+                        response = None
+                        break
+                    except Exception as error: 
+                        print('    Generic Error when Listing SecretsManager for region: {}'.format(region))
+                        print('        Error: {}, {}'.format(error.__class__, str(error)))
+                        response = None
+                        break
                         
                 else:
                     response = client.list_secrets()
 
-                for secret in response['SecretList']:
-                    secret_ids.append({"name":secret["Name"],"region":region})
+                if response:
+                    for secret in response['SecretList']:
+                        secret_ids.append({"name":secret["Name"],"region":region})
 
             all_secrets_ids_sm += secret_ids
 
@@ -119,7 +131,7 @@ def main(args, pacu_main):
             while response is None:
                 try:
                     response = client.get_secret_value(
-                    SecretId=sec["name"]
+                        SecretId=sec["name"]
                     )
                 except ClientError as error:
                     code = error.response['Error']['Code']
@@ -129,10 +141,22 @@ def main(args, pacu_main):
                     else:
                         print(' ' + code)
                     print('    Could not get secrets value... Exiting')
-                    return None
+                    response = None
+                    break
+                except EndpointConnectionError as error: 
+                    print('    Error connecting to SecretsManager Endpoint for getting secret for region: {}'.format(sec["region"]))
+                    print('        Error: {}, {}'.format(error.__class__, str(error)))
+                    response = None
+                    break
+                except Exception as error: 
+                    print('    Generic Error when getting Secret from Secrets Manager for region: {}'.format(sec["region"]))
+                    print('        Error: {}, {}'.format(error.__class__, str(error)))
+                    response = None
+                    break
 
-            with open('./sessions/{}/downloads/secrets/secrets_manager/secrets.txt'.format(session.name),'a') as f:
-                f.write("{}:{}\n".format(sec["name"], response["SecretString"]))
+            if response:
+                with open('./sessions/{}/downloads/secrets/secrets_manager/secrets.txt'.format(session.name),'a') as f:
+                    f.write("{}:{}\n".format(sec["name"], response["SecretString"]))
 
 
             
@@ -151,10 +175,22 @@ def main(args, pacu_main):
                     else:
                         print(' ' + code)
                     print('    Could not list parameters... Exiting')
-                    return None
+                    response = None
+                    break
+                except EndpointConnectionError as error: 
+                    print('    Error connecting to SSM Endpoint for describing SSM Parameters for region: {}'.format(region))
+                    print('        Error: {}, {}'.format(error.__class__, str(error)))
+                    response = None
+                    break
+                except Exception as error: 
+                    print('    Generic Error when describing SSM Parameters for region: {}'.format(region))
+                    print('        Error: {}, {}'.format(error.__class__, str(error)))
+                    response = None
+                    break
                 
-                for param in response["Parameters"]:
-                    secrets_ssm.append({"name":param["Name"],"type":param["Type"],"region":region})
+                if response:
+                    for param in response["Parameters"]:
+                        secrets_ssm.append({"name":param["Name"],"type":param["Type"],"region":region})
 
                 
             all_secrets_ids_ssm += secrets_ssm
@@ -178,7 +214,17 @@ def main(args, pacu_main):
                             else:
                                 print(' ' + code)
                             print('    Could not get parameter value... Exiting')
-                            return None
+                            response = None
+                            break
+                        except EndpointConnectionError as error: 
+                            print('    Error connecting to SSM Endpoint for describing SSM Secure parameter for region: {}'.format(param["region"]))
+                            print('        Error: {}, {}'.format(error.__class__, str(error)))
+                            response = None
+                        except Exception as error: 
+                            print('    Generic Error when describing SSM Secure Parameter for region: {}'.format(param['region']))
+                            print('        Error: {}, {}'.format(error.__class__, str(error)))
+                            response = None
+                            break
 
                     else:
                         try:
@@ -194,10 +240,22 @@ def main(args, pacu_main):
                             else:
                                 print(' ' + code)
                             print('    Could not get parameter value... Exiting')
-                            return None
+                            response = None
+                            break
+                        except EndpointConnectionError as error: 
+                            print('    Error connecting to SSM Endpoint for describing SSM parameter for region: {}'.format(param["region"]))
+                            print('        Error: {}, {}'.format(error.__class__, str(error)))
+                            response = None
+                            break
+                        except Exception as error: 
+                            print('    Generic Error when describing SSM Parameter for region: {}'.format(param['region']))
+                            print('        Error: {}, {}'.format(error.__class__, str(error)))
+                            response = None
+                            break
                     
-                    with open('./sessions/{}/downloads/secrets/parameter_store/parameters.txt'.format(session.name),'a') as f:
-                        f.write("{}:{}\n".format(param["name"], response["Parameter"]["Value"]))
+                    if response:
+                        with open('./sessions/{}/downloads/secrets/parameter_store/parameters.txt'.format(session.name),'a') as f:
+                            f.write("{}:{}\n".format(param["name"], response["Parameter"]["Value"]))
 
 
     summary_data["SecretsManager"] = len(all_secrets_ids_sm)

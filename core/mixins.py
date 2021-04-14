@@ -1,9 +1,10 @@
-from utils import stringify_datetime
+from sqlalchemy import orm
+
+from utils import stringify
 
 
-class ModelUpdateMixin():
-
-    def update(self, database, commit=True, **kwargs):
+class ModelUpdateMixin:
+    def update(self, database: orm.session.Session, commit: bool = True, **kwargs) -> None:
         """ Instead of requiring three lines to update a single field inside
         a database session, this method updates a single field in one line.
 
@@ -11,7 +12,7 @@ class ModelUpdateMixin():
             session.update(database, field_name={'json': ...}) """
 
         for key, value in kwargs.items():
-            value = stringify_datetime(value)
+            value = stringify(value)
             setattr(self, key, value)
 
         database.add(self)

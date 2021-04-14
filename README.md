@@ -1,4 +1,4 @@
-**Update 5/6/2020:** Pacu's database structure has been updated and PacuProxy has been removed. This update will break Pacu's database if you have used previous versions of Pacu. To fix this, rename/backup the old `sqlite.db` file and let a new one be generated on the next startup.
+**Update 5/6/2020:** Pacu's database structure has been updated and PacuProxy has been removed. This update will break Pacu's database if you have used previous versions of Pacu. To fix this, rename/backup the old `sqLite.db` file and let a new one be generated on the next startup.
 
 # Quick reference
 - **Where to get help**:
@@ -12,11 +12,11 @@
 
 # What is Pacu?
 
-Pacu is an open source AWS exploitation framework, designed for offensive security testing against cloud environments. Created and maintained by Rhino Security Labs, Pacu allows penetration testers to exploit configuration flaws within an AWS account, using modules to easily expand its functionality. Current modules enable a range of attacks, including user privilege escalation, backdooring of IAM users, attacking vulnerable Lambda functions, and much more.
+Pacu is an open-source AWS exploitation framework, designed for offensive security testing against cloud environments. Created and maintained by Rhino Security Labs, Pacu allows penetration testers to exploit configuration flaws within an AWS account, using modules to easily expand its functionality. Current modules enable a range of attacks, including user privilege escalation, backdooring of IAM users, attacking vulnerable Lambda functions, and much more.
 
 ## Installation
 
-Pacu is a fairly lightweight program, as it requires only [Python3.5+](https://www.python.org/downloads/) and pip3 to install a handful of Python libraries. Running install.sh will check your Python version and ensure all Python packages are up to date.
+Pacu is a fairly lightweight program, as it requires only [Python3.6+](https://www.python.org/downloads/) and pip3 to install a handful of Python libraries. Running install.sh will check your Python version and ensure all Python packages are up to date.
 
 ## Quick Installation
 
@@ -55,15 +55,15 @@ $ docker run -it -v ~/.aws:/root/.aws rhinosecuritylabs/pacu:latest
 
 Pacu uses a range of [plug-in modules](https://github.com/RhinoSecurityLabs/pacu/wiki/Module-Details) to assist an attacker in enumeration, privilege escalation, data exfiltration, service exploitation, and log manipulation within AWS environments. At present, Pacu has 36 modules for executing AWS attacks, but we'll be working hard to add more modules in the future, and suggestions for new modules (or even contributions of whole completed modules) are welcome.
 
-In order to keep pace with ongoing AWS product developments, we've designed Pacu from the ground up with extensibility in mind. A common syntax and data structure keeps modules easy to build and expand on - no need to specify AWS regions or make redundant permission checks between modules.  A local SQLite database is used to manage and manipulate retrieved data, minimizing API calls (and associated logs). Reporting and attack auditing is also built into the framework; Pacu assists the documentation process through command logging and exporting, helping build a timeline for the testing process.
+To keep pace with ongoing AWS product developments, we've designed Pacu from the ground up with extensibility in mind. A common syntax and data structure keep modules easy to build and expand on - no need to specify AWS regions or make redundant permission checks between modules.  A local SQLite database is used to manage and manipulate retrieved data, minimizing API calls (and associated logs). Reporting and attack auditing is also built into the framework; Pacu assists the documentation process through command logging and exporting, helping build a timeline for the testing process.
 
-We'll be working on improve Pacu's core capabilities and building out a well-documented ecosystem so that cybersecurity researchers and developers can make new modules quickly and easily.
+We'll be working on improving Pacu's core capabilities and building out a well-documented ecosystem so that cybersecurity researchers and developers can make new modules quickly and easily.
 
 ## Community
 
-We're always happy to get bugs reports in the Pacu framework itself, as well as testing and feedback on different modules, and generally critical feedback to help refine the framework. We hope to see this grow into a key open-source tool for testing AWS security, and we need your help to make that happen! Any support towards this effort through use, testing, improvement, or just by spreading the word, would be very much appreciated. 
+We're always happy to get bugs reports in the Pacu framework itself, as well as testing and feedback on different modules, and generally, critical feedback to help refine the framework. We hope to see this grow into a key open-source tool for testing AWS security, and we need your help to make that happen! Any support towards this effort through use, testing, improvement, or just by spreading the word, would be very much appreciated. 
 
-If you're interested in contributing directly to the Pacu Framework itself, please read our [contribution guidelines](https://github.com/RhinoSecurityLabs/pacu/wiki/Contribution-Guidelines) for code conventions and git flow notes.
+If you're interested in contributing directly to the Pacu Framework itself, please read our [contribution guidelines](https://github.com/RhinoSecurityLabs/pacu/wiki/Contribution-Guidelines) for code conventions and git-flow notes.
 
 ## Developing Pacu Modules
 
@@ -81,15 +81,15 @@ If you're interested in writing your own modules for Pacu, check out our [Module
 ## Notes
 
 * Pacu is officially supported in OSX and Linux.
-* Pacu is Open-Source Software, and is distributed with a BSD-3-Clause License.
+* Pacu is Open-Source Software and is distributed with a BSD-3-Clause License.
 
 ## Getting Started
 
 The first time Pacu is launched, you will be prompted to start and name a new session. This session will be used to store AWS key pairs, as well as any data obtained from running various modules. You can have any number of different sessions in Pacu, each with their own sets of AWS keys and data, and resume a session at any time (though a restart is currently required to switch between sessions).
 
-Modules require an AWS key, which grant you minimal access to an AWS environment and are comprised of an access key ID and a secret access key. To set your session's keys, use the `set_keys` command, and then follow the prompts to supply a key alias (nickname for reference), an AWS access key ID, an AWS secret access key, and an AWS session token (if you are using one).
+Modules require an AWS key, which grants you minimal access to an AWS environment and is comprised of an access key ID and a secret access key. To set your session's keys, use the `set_keys` command, and then follow the prompts to supply a key alias (nickname for reference), an AWS access key ID, an AWS secret access key, and an AWS session token (if you are using one).
 
-If you are ever stuck, `help` will bring up a list of commands that are available.
+If you are ever stuck, `help` will bring up a list of available commands.
 
 ## Basic Commands in Pacu
 
@@ -129,7 +129,7 @@ For walkthroughs and full documentation, please visit the [Pacu wiki](https://gi
 
 ## Disclaimers, and the AWS Acceptable Use Policy
 
-* To the best of our knowledge Pacu's capabilities are compliant with the AWS Acceptable Use Policy, but as a flexible and modular tool we cannot guarantee this will be true in every situation. It is entirely your responsibility to ensure that how you use Pacu is compliant with the AWS Acceptable Use Policy.
-* Depending on what AWS services you use and what your planned testing entails, you may need to [request authorization from Amazon](https://aws.amazon.com/security/penetration-testing/) prior to actually running Pacu against your infrastructure. Determining whether or not such authorization is necessary is your responsibility.
-* As with any penetration testing tool, it is your responsibility to get proper authorization before using Pacu outside of your own environment.
+* To the best of our knowledge Pacu's capabilities are compliant with the AWS Acceptable Use Policy, but as a flexible and modular tool, we cannot guarantee this will be true in every situation. It is entirely your responsibility to ensure that how you use Pacu is compliant with the AWS Acceptable Use Policy.
+* Depending on what AWS services you use and what your planned testing entails, you may need to [request authorization from Amazon](https://aws.amazon.com/security/penetration-testing/) before actually running Pacu against your infrastructure. Determining whether or not such authorization is necessary is your responsibility.
+* As with any penetration testing tool, it is your responsibility to get proper authorization before using Pacu outside of your environment.
 * Pacu is software that comes with absolutely no warranties whatsoever. By using Pacu, you take full responsibility for any and all outcomes that result.

@@ -119,14 +119,14 @@ def main(args, pacu_main):
             if 'Value' in user_data.keys():
                 decoded = base64.b64decode(user_data['Value'])
 
-                if decoded[0] == 139:  # Byte \x8b (139) indicates gzip compressed content
+                try:
                     decompressed = gzip.decompress(decoded)
                     formatted_user_data = '{}@{}:\n{}\n\n'.format(
                         instance_id,
                         region,
                         decompressed.decode('utf-8', 'backslashreplace')
                     )
-                else:
+                except:
                     formatted_user_data = '{}@{}:\n{}\n\n'.format(
                         instance_id,
                         region,
@@ -194,8 +194,8 @@ def main(args, pacu_main):
                             base64.b64decode(user_data).decode('utf-8')
                         )
                     except UnicodeDecodeError as error:
-                        if 'codec can\'t decode byte 0x8b' in str(error):
-                            decoded = base64.b64decode(user_data['Value'])
+                        try:
+                            decoded = base64.b64decode(user_data)
                             decompressed = gzip.decompress(decoded)
                             formatted_user_data = '{}@{}:\n{}\n\n'.format(
                                 instance_id,
@@ -203,6 +203,8 @@ def main(args, pacu_main):
                                 decompressed.decode('utf-8')
                             )
                             was_unzipped = True
+                        except:
+                            print('ERROR: GZIP decrompressing template data')
                     print('  {}-version-{}@{}: User Data found'.format(template_id, version['VersionNumber'], region))
                     if was_unzipped:
                         print('    Gzip decoded the User Data')

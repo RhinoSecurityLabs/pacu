@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 from copy import deepcopy
-from botocore.exceptions import ClientError,EndpointConnectionError
+from botocore.exceptions import ClientError, EndpointConnectionError
 
 
 module_info = {

@@ -103,8 +103,6 @@ def run(args, role_name, pacu_main, iam):
             print('\n  Found role: {}'.format(role_arn))
             data['valid_roles'].append(role_arn)
         except botocore.exceptions.ClientError as error:
-            if word == "APIGateway":
-                print()
             if 'MalformedPolicyDocument' in str(error):
                 # Role doesn't exist, continue on
                 pass

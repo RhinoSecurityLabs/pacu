@@ -3,6 +3,8 @@ from botocore.exceptions import ClientError
 # Stores found values to minimize AWS calls
 PARAM_CACHE = {}
 
+current_region = None
+
 
 def get_special_param(client, func, param):
     print('Getting info for func: {}, param: {}'.format(func, param))
@@ -13,20 +15,23 @@ def get_special_param(client, func, param):
         PARAM_CACHE[param] = get_bucket(client)
     elif param == 'Attribute':
         # Return 'Attribute directly because it doesn't need to reach out to AWS
-        return(get_attribute(func))
+        return get_attribute(func)
     elif param == 'Key':
         PARAM_CACHE[param] = get_key(client)
     return PARAM_CACHE[param]
 
 
-def get_key(client):
+def get_key(client, i=0):
     try:
-        bucket = client.list_buckets()['Buckets'][0]['Name']
-        key = client.list_objects_v2(
-            Bucket=bucket,
-            MaxKeys=1
-        )['Contents'][0]['Key']
-        return key
+        bucket = client.list_buckets()['Buckets'][i]['Name']
+        try:
+            key = client.list_objects_v2(
+                Bucket=bucket,
+                MaxKeys=1
+            ).get('Contents', [{}])[0].get('Key')
+            return key
+        except KeyError:
+            get_key(client, i+1)  # If this bucket is empty try the next one
     except ClientError as error:
         if error.response['Error']['Code'] == 'AccessDeniedException':
             return None

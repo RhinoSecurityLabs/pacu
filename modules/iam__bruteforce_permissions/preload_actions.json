@@ -47,10 +47,35 @@
   "release_address": {
     "AllocationId": "test"
   },
-  "update_security_group_rule_descriptions_egress": {
-    "GroupId": "test"
+  "describe_security_group_references": {
+    "GroupId": ["asdf"]
   },
-  "update_security_group_rule_descriptions_ingress": {
-    "GroupId": "test"
+  "describe_scheduled_instance_availability": {
+    "FirstSlotStartTimeRange": {
+      "EarliestTime": "1",
+      "LatestTime": "2"
+    },
+    "Recurrence": {
+      "Interval": 1
+    }
+  },
+  "get_reserved_instances_exchange_quote": {
+    "ReservedInstanceIds": ["dummydata"]
+  },
+  "get_flow_logs_integration_template": {
+    "FlowLogId": "fl-11223344556677889",
+    "ConfigDeliveryS3DestinationArn": "asdf",
+    "IntegrateServices": {
+      "AthenaIntegrations": [
+        {
+          "IntegrationResultS3DestinationArn": "asdf",
+          "PartitionLoadFrequency": "asdf"
+        }
+      ]
+    }
+  },
+  "test_metric_filter": {
+    "filterPattern": "dummydata",
+    "logEventMessages": ["dummydata"]
   }
 }

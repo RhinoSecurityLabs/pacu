@@ -8,9 +8,9 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from sqlalchemy_utils import JSONType  # type: ignore
 
-from core.base import Base
-from core.mixins import ModelUpdateMixin
-from utils import remove_empty_from_dict
+from pacu.core.base import Base
+from pacu.core.mixins import ModelUpdateMixin
+from pacu.utils import remove_empty_from_dict
 from sqlalchemy.orm.session import Session
 
 

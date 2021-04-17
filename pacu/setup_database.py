@@ -1,7 +1,7 @@
 import os
 
-from core.base import Base, engine
-from utils import set_sigint_handler
+from pacu.core.base import Base, engine
+from pacu.utils import set_sigint_handler
 
 
 def setup_database_if_not_present(database_file_path: str, auto_proceed: bool=True) -> bool:

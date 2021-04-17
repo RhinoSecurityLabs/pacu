@@ -1,6 +1,6 @@
 from sqlalchemy import orm
 
-from utils import stringify
+from pacu.utils import stringify
 
 
 class ModelUpdateMixin:

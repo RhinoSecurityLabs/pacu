@@ -14,12 +14,8 @@ import traceback
 import argparse
 from typing import List, Optional, Any, Dict, Union, Tuple
 
-from pathlib import Path
-
-import io
-
-from core import lib
-from core.lib import session_dir, downloads_dir
+from pacu.core import lib
+from pacu.core.lib import session_dir
 
 try:
     import requests
@@ -30,13 +26,12 @@ try:
     import botocore.exceptions
     import urllib.parse
 
-    import configure_settings
-    import settings
+    from pacu import settings
 
-    from core.models import AWSKey, PacuSession
-    from setup_database import setup_database_if_not_present
+    from pacu.core.models import AWSKey, PacuSession
+    from pacu.setup_database import setup_database_if_not_present
     from sqlalchemy import exc, orm  # type: ignore
-    from utils import get_database_connection, set_sigint_handler
+    from pacu.utils import get_database_connection, set_sigint_handler
 except ModuleNotFoundError:
     exception_type, exception_value, tb = sys.exc_info()
     print('Traceback (most recent call last):\n{}{}: {}\n'.format(''.join(traceback.format_tb(tb)), str(exception_type), str(exception_value)))
@@ -184,10 +179,7 @@ class Main:
         # Hack so we can use session names without passing around Main.
         lib.get_active_session = self.get_active_session
 
-
-
     # Utility methods
-
     def log_error(self, text, exception_info=None, session=None, local_data=None, global_data=None) -> None:
         """ Write an error to the file at log_file_path, or a default log file
         if no path is supplied. If a session is supplied, its name will be used
@@ -1640,7 +1632,6 @@ aws_secret_access_key = {}
                     except UnicodeEncodeError:
                         pass
 
-                    configure_settings.copy_settings_template_into_settings_file_if_not_present()
                     set_sigint_handler(exit_text='\nA database must be created for Pacu to work properly.')
                     setup_database_if_not_present(settings.DATABASE_FILE_PATH)
                     set_sigint_handler(exit_text=None, value='SIGINT called')

@@ -7,3 +7,4 @@ urllib3>=1.26.4
 SQLAlchemy>=1.2
 SQLAlchemy-Utils>=0.36.8
 typing-extensions>=3.7.4.3
+dsnap>=1.0.0

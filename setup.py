@@ -24,9 +24,6 @@ setuptools.setup(
         'console_scripts': ['pacu=pacu.__main__:main'],
     },
     install_requires=requirements,
-    extras_require={
-        "dsnap":  ["dsnap>=1.0.0"],
-    },
     tests_require=test_requirements,
     classifiers=(
         'Development Status :: 4 - Beta',

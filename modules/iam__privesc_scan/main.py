@@ -9,29 +9,19 @@ import re
 import random
 import time
 import subprocess
+
+from core.lib import strip_lines, downloads_dir
+from pacu import Main
 from utils import remove_empty_from_dict
 
 
 module_info = {
-    # Name of the module (should be the same as the filename)
     'name': 'iam__privesc_scan',
-
-    # Name and any other notes about the author
     'author': 'Spencer Gietzen of Rhino Security Labs',
-
-    # Category of the module. Make sure the name matches an existing category.
     'category': 'ESCALATE',
-
-    # One liner description of the module functionality. This shows up when a user searches for modules.
     'one_liner': 'An IAM privilege escalation path finder and abuser.',
-
-    # Description about what the module does and how it works
     'description': 'This module will scan for permission misconfigurations to see where privilege escalation will be possible. Available attack paths will be presented to the user and executed on if chosen. Warning: Due to the implementation in IAM policies, this module has a difficult time parsing "NotActions". If your user has any NotActions associated with them, it is recommended to manually verify the results of this module. NotActions are noted with a "!" preceeding the action when viewing the results of the "whoami" command. For more information on what NotActions are, visit the following link: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_notaction.html\n',
-
-    # A list of AWS services that the module utilizes during its execution
     'services': ['IAM', 'EC2', 'Glue', 'Lambda', 'DataPipeline', 'DynamoDB', 'CloudFormation'],
-
-    # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
     'prerequisite_modules': [
         'iam__enum_permissions',
         'iam__enum_users_roles_policies_groups',
@@ -41,16 +31,25 @@ module_info = {
         'glue__enum',
         'lambda__enum',
     ],
-
-    # Module arguments to autocomplete when the user hits tab
     'arguments_to_autocomplete': ['--offline', '--folder', '--scan-only'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--offline', required=False, default=False, action='store_true', help='By passing this argument, this module will not make an API calls. If offline mode is enabled, you need to pass a file path to a folder that contains JSON files of the different users, policies, groups, and/or roles in the account using the --folder argument. This module will scan those JSON policy files to identify users, groups, and roles that have overly permissive policies.')
-parser.add_argument('--folder', required=False, default=None, help='A file path pointing to a folder full of JSON files containing policies and connections between users, groups, and/or roles in an AWS account. The module "iam__enum_permissions" with the "--all-users" flag outputs the exact format required for this feature to ./sessions/[current_session_name]/downloads/confirmed_permissions/.')
-parser.add_argument('--scan-only', required=False, default=False, action='store_true', help='Only run the scan to check for possible escalation methods, don\'t attempt any found methods.')
+parser.add_argument('--offline', required=False, default=False, action='store_true', help=strip_lines('''
+    By passing this argument, this module will not make an API calls. If offline mode is enabled, you need to pass a 
+    file path to a folder that contains JSON files of the different users, policies, groups, and/or roles in the account
+    using the --folder argument. This module will scan those JSON policy files to identify users, groups, and roles that
+    have overly permissive policies.
+'''))
+parser.add_argument('--folder', required=False, default=None, help=strip_lines('''
+    A file path pointing to a folder full of JSON files containing policies and connections between users, groups, 
+    and/or roles in an AWS account. The module "iam__enum_permissions" with the "--all-users" flag outputs the exact 
+    format required for this feature to ~/.local/share/pacu/sessions/[current_session_name]/downloads/confirmed_permissions/.
+'''))
+parser.add_argument('--scan-only', required=False, default=False, action='store_true', help=strip_lines('''
+    Only run the scan to check for possible escalation methods, don't attempt any found methods.
+'''))
 
 
 # 18) GreenGrass passrole privesc ?
@@ -60,13 +59,15 @@ parser.add_argument('--scan-only', required=False, default=False, action='store_
 # 22) StorageGateway passrole privesc ?
 
 
-def main(args, pacu_main):
+def main(args, pacu_main: 'Main'):
     session = pacu_main.get_active_session()
+    global save
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = pacu_main.print
     input = pacu_main.input
+
     key_info = pacu_main.key_info
     fetch_data = pacu_main.fetch_data
     ######
@@ -382,7 +383,7 @@ def main(args, pacu_main):
         folder = args.folder
 
         if args.folder is None:
-            folder = 'sessions/{}/downloads/confirmed_permissions/'.format(session.name)
+            folder = '{}/confirmed_permissions/'.format(downloads_dir())
             print('No --folder argument passed to offline mode, using the default: ./{}\n'.format(folder))
             if os.path.isdir(folder) is False:
                 print('{} not found! Maybe you have not run {} yet...\n'.format(folder, module_info['prerequisite_modules'][0]))
@@ -469,12 +470,12 @@ def main(args, pacu_main):
             print(potential_methods)
 
             now = time.time()
-            with open('sessions/{}/downloads/offline_privesc_scan_{}.json'.format(session.name, now), 'w+') as scan_results_file:
-                json.dump(potential_methods, scan_results_file, indent=2, default=str)
+            with save('downloads/offline_privesc_scan_{}.json'.format(session.name, now), 'w+') as f:
+                json.dump(potential_methods, f, indent=2, default=str)
 
             summary_data['offline'] = {
                 'scanned_dir': folder,
-                'output_file': './sessions/{}/downloads/offline_privesc_scan_{}.json'.format(session.name, now)
+                'output_file': 'offline_privesc_scan_{}.json'.format(session.name, now)
             }
             return summary_data
 
@@ -902,7 +903,7 @@ def SetExistingDefaultPolicyVersion(pacu_main, print, input, fetch_data):
         return False
 
 
-def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
+def CreateEC2WithExistingIP(pacu_main: 'Main', print, input, fetch_data):
     session = pacu_main.get_active_session()
 
     print('  Starting method CreateEC2WithExistingIP...\n')
@@ -1092,9 +1093,9 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
                 print('  Instance details:')
                 print(response)
 
-                with open('./sessions/{}/downloads/{}'.format(session.name, ssh_key_name), 'w+') as priv_key_file:
-                    priv_key_file.write(ssh_private_key)
-                print('  SSH private key (also saved to ./sessions/{}/downloads/{}):'.format(session.name, ssh_key_name))
+                with save('downloads/{}'.format(ssh_key_name), 'w+') as f:
+                    f.write(ssh_private_key)
+                print(f'  SSH private key (saved to {downloads_dir()}/{ssh_key_name})')
                 print(ssh_private_key)
 
                 print('  SSH fingerprint:')
@@ -1102,7 +1103,7 @@ def CreateEC2WithExistingIP(pacu_main, print, input, fetch_data):
 
                 return True
             except Exception as error:
-                print('Failed to start the EC2 instance, skipping to the next privilege escalation method: {}\n'.format(error))
+                print(f'Failed to start the EC2 instance, skipping to the next privilege escalation method: {error}\n')
                 return False
         else:
             # Skip
@@ -2315,7 +2316,17 @@ def EditExistingLambdaFunctionWithRole(pacu_main, print, input, fetch_data):
         return False
 
     print('Completed enumeration of Lambda functions in all session regions.\n')
-    print('It is suggested to access the functions through the AWS Web Console to determine how your code edits will affect the function. This module does not automatically modify functions due to the high risk of denial-of-service to the environment. Through the AWS API, you are required to first download the function code, modify it, then re-upload it, but through the web console, you can just edit it inline.\n')
-    print('Tips: Use the AWS SDK for the language that the function is running to contact the AWS API using the credentials associated with the function to expand your access.\n')
+    print(strip_lines('''
+        It is suggested to access the functions through the AWS Web Console to determine how your code edits will affect
+        the function. This module does not automatically modify functions due to the high risk of denial-of-service to 
+        the environment. Through the AWS API, you are required to first download the function code, modify it, then
+        re-upload it, but through the web console, you can just edit it inline.
+    '''))
+    print()
+    print(strip_lines('''
+        Tips: Use the AWS SDK for the language that the function is running to contact the AWS API using the credentials
+        associated with the function to expand your access.
+    '''))
+    print()
     print('You can now view the enumerated Lambda data by running the "data Lambda" command in Pacu.\n')
     return True

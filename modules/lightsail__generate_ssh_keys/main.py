@@ -3,6 +3,8 @@ import argparse
 from botocore.exceptions import ClientError
 import os
 
+from core.lib import downloads_dir
+from pacu import Main
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -40,7 +42,7 @@ parser.add_argument('--import-key-file', required=False, help='Import a key if s
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all session regions.')
 
 
-def main(args, pacu_main):
+def main(args, pacu_main: 'Main'):
     session = pacu_main.get_active_session()
     print = pacu_main.print
     get_regions = pacu_main.get_regions
@@ -86,7 +88,7 @@ def main(args, pacu_main):
             print('Invalid key format provided.')
             break
     for region in created_keys:
-        ssh_key_dir = os.path.join(os.getcwd(), 'sessions', session.name, 'downloads', module_info['name'], region)
+        ssh_key_dir = os.path.join(downloads_dir(), module_info['name'], region)
         if not os.path.exists(ssh_key_dir):
             os.makedirs(ssh_key_dir)
         private_key_file_dir = os.path.join(ssh_key_dir, created_keys[region]['name'])

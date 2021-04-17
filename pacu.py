@@ -14,6 +14,13 @@ import traceback
 import argparse
 from typing import List, Optional, Any, Dict, Union, Tuple
 
+from pathlib import Path
+
+import io
+
+from core import lib
+from core.lib import session_dir, downloads_dir
+
 try:
     import requests
     import boto3
@@ -174,6 +181,11 @@ class Main:
         self.running_module_names: List[str] = []
         self.CATEGORIES: set = load_categories()
 
+        # Hack so we can use session names without passing around Main.
+        lib.get_active_session = self.get_active_session
+
+
+
     # Utility methods
 
     def log_error(self, text, exception_info=None, session=None, local_data=None, global_data=None) -> None:
@@ -190,7 +202,7 @@ class Main:
 
         try:
             if session:
-                log_file_path = 'sessions/{}/error_log.txt'.format(session.name)
+                log_file_path = '{}/error_log.txt'.format(session_dir())
             else:
                 log_file_path = 'global_error_log.txt'
 
@@ -277,11 +289,11 @@ class Main:
 
         if output == 'both' or output == 'file':
             if output_type == 'plain':
-                with open('sessions/{}/cmd_log.txt'.format(session_name), 'a+') as text_file:
+                with open(f'{session_dir()}/cmd_log.txt', 'a+') as text_file:
                     text_file.write('{}\n'.format(message))
             elif output_type == 'xml':
                 # TODO: Implement actual XML output
-                with open('sessions/{}/cmd_log.xml'.format(session_name), 'a+') as xml_file:
+                with open(f'{session_dir()}/cmd_log.xml', 'a+') as xml_file:
                     xml_file.write('{}\n'.format(message))
                 pass
             else:
@@ -312,12 +324,12 @@ class Main:
         res = input(message)
         if output == 'both':
             if output_type == 'plain':
-                with open('sessions/{}/cmd_log.txt'.format(session_name), 'a+') as file:
+                with open(f'{session_dir()}/cmd_log.txt', 'a+') as file:
                     file.write('{} {}\n'.format(message, res))
             elif output_type == 'xml':
                 # TODO: Implement actual XML output
                 # now = time.time()
-                with open('sessions/{}/cmd_log.xml'.format(session_name), 'a+') as file:
+                with open(f'{session_dir}/cmd_log.xml', 'a+') as file:
                     file.write('{} {}\n'.format(message, res))
             else:
                 print('  Unrecognized output type: {}'.format(output_type))
@@ -1295,11 +1307,6 @@ aws_secret_access_key = {}
         session = PacuSession(**session_data)
         self.database.add(session)
         self.database.commit()
-
-        session_downloads_directory = './sessions/{}/downloads/'.format(name)
-        if not os.path.exists(session_downloads_directory):
-            os.makedirs(session_downloads_directory)
-
         print('Session {} created.'.format(name))
 
         return session
@@ -1330,7 +1337,8 @@ aws_secret_access_key = {}
         self.database.commit()
 
         print('Deleted {} from the database!'.format(session.name))
-        print('Note that the output folder at ./sessions/{}/ will not be deleted. Do it manually if necessary.'.format(session.name))
+        print('Note that the output folder at ~/.local/share/pacu/sessions/{}/ will not be deleted. Do it manually '
+              'if necessary.'.format(session.name))
 
         return
 

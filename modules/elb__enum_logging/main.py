@@ -5,43 +5,37 @@ import time
 
 from botocore.exceptions import ClientError
 
+from core.lib import strip_lines, save
+from pacu import Main
 
 module_info = {
-    # Name of the module (should be the same as the filename)
     'name': 'elb__enum_logging',
-
-    # Name and any other notes about the author
     'author': 'Spencer Gietzen of Rhino Security Labs',
-
-    # Category of the module. Make sure the name matches an existing category.
     'category': 'EVADE',
-
-    # One liner description of the module functionality. This shows up when a user searches for modules.
     'one_liner': 'Collects a list of Elastic Load Balancers without access logging.',
-
-    # Description about what the module does and how it works
-    'description': 'This module will enumerate all EC2 Elastic Load Balancers and save their data to the current session, as well as write a list of ELBs with logging disabled to ./sessions/[current_session_name]/downloads/elbs_no_logs_[timestamp].csv.',
-
-    # A list of AWS services that the module utilizes during its execution
+    'description': strip_lines('''
+        This module will enumerate all EC2 Elastic Load Balancers and save their data to the current session, as well as
+        write a list of ELBs with logging disabled to
+        ~/.local/share/pacu/sessions/[current_session_name]/downloads/elbs_no_logs_[timestamp].csv.
+    '''),
     'services': ['ElasticLoadBalancing'],
-
-    # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
     'prerequisite_modules': [],
-
-    # Module arguments to autocomplete when the user hits tab
     'arguments_to_autocomplete': ['--regions'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format "us-east-1". Defaults to all session regions.')
+parser.add_argument('--regions', required=False, default=None, help=strip_lines('''
+    One or more (comma separated) AWS regions in the format "us-east-1". Defaults to all session regions.
+'''))
 
 
-def main(args, pacu_main):
+def main(args, pacu_main: 'Main'):
     session = pacu_main.get_active_session()
 
     args = parser.parse_args(args)
     print = pacu_main.print
+
     get_regions = pacu_main.get_regions
     if not args.regions:
         regions = get_regions('elasticloadbalancing')
@@ -96,22 +90,24 @@ def main(args, pacu_main):
     print('\n{} total load balancer(s) found.'.format(len(session.EC2['LoadBalancers'])))
 
     now = time.time()
-    csv_file_path = 'sessions/{}/downloads/elbs_no_logs_{}.csv'.format(session.name, now)
-    summary_data['csv_file_path'] = csv_file_path
+    p = 'elbs_no_logs_{}.csv'.format(now)
+    summary_data['csv_file_path'] = p
     summary_data['logless'] = 0
 
-    with open(csv_file_path, 'w+') as csv_file:
-        csv_file.write('Load Balancer Name,Load Balancer ARN,Region\n')
+    with save(p, 'w+') as f:
+        f.write('Load Balancer Name,Load Balancer ARN,Region\n')
         for load_balancer in session.EC2['LoadBalancers']:
             for attribute in load_balancer['Attributes']:
                 if attribute['Key'] == 'access_logs.s3.enabled':
                     if attribute['Value'] is False or attribute['Value'] == 'false':
-                        csv_file.write('{},{},{}\n'.format(load_balancer['LoadBalancerName'], load_balancer['LoadBalancerArn'], load_balancer['Region']))
+                        f.write('{},{},{}\n'.format(
+                            load_balancer['LoadBalancerName'], load_balancer['LoadBalancerArn'], load_balancer['Region'])
+                        )
                         summary_data['logless'] += 1
     return summary_data
 
 
-def summary(data, pacu_main):
+def summary(data, pacu_main: 'Main'):
     out = '  {} Load balancer(s) have been found\n'.format(data['load_balancers'])
     if data['logless'] > 0:
         out += '  {} Load balancer(s) found without logging\n'.format(data['logless'])

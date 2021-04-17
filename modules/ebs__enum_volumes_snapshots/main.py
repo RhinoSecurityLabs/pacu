@@ -7,30 +7,24 @@ import os
 
 from botocore.exceptions import ClientError
 
+from core.lib import strip_lines, save
+from pacu import Main
 
 module_info = {
-    # Name of the module (should be the same as the filename)
     'name': 'ebs__enum_volumes_snapshots',
-
-    # Name and any other notes about the author
     'author': 'Spencer Gietzen of Rhino Security Labs',
-
-    # Category of the module. Make sure the name matches an existing category.
     'category': 'ENUM',
-
-    # One liner description of the module functionality. This shows up when a user searches for modules.
     'one_liner': 'Enumerates EBS volumes and snapshots and logs any without encryption.',
-
-    # Description about what the module does and how it works
-    'description': 'This module will enumerate all of the Elastic Block Store volumes, snapshots, and snapshot permissions in the account and save the data to the current session. It will also note whether or not each volume/snapshot is encrypted, then write a list of the unencrypted volumes to ./sessions/[current_session_name]/downloads/unencrypted_ebs_volumes_[timestamp].csv and unencrypted snapshots to ./sessions/[current_session_name]/downloads/unencrypted_ebs_snapshots_[timestamp].csv in .CSV format.',
-
-    # A list of AWS services that the module utilizes during its execution
+    'description': strip_lines('''
+        This module will enumerate all of the Elastic Block Store volumes, snapshots, and snapshot permissions in the
+        account and save the data to the current session. It will also note whether or not each volume/snapshot is
+        encrypted, then write a list of the unencrypted volumes to
+        ~/.local/share/pacu/sessions/[current_session_name]/downloads/unencrypted_ebs_volumes_[timestamp].csv and 
+        unencrypted snapshots to ~/.local/share/pacu/sessions/[current_session_name]/downloads/unencrypted_ebs_snapshots_[timestamp].csv
+        in .CSV format.
+    '''),
     'services': ['EC2'],
-
-    # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
     'prerequisite_modules': [],
-
-    # Module arguments to autocomplete when the user hits tab
     'arguments_to_autocomplete': ['--regions', '--vols', '--snaps', '--account-ids', '--snapshot-permissions'],
 }
 
@@ -47,37 +41,49 @@ parser.add_argument(
     required=False,
     default=False,
     action='store_true',
-    help='If this argument is passed without --snaps, this module will only enumerate volumes. If neither are passed, both volumes and snapshots will be enumerated.'
+    help=('If this argument is passed without --snaps, this module will only enumerate volumes. If neither are passed, '
+          'both volumes and snapshots will be enumerated.')
 )
 parser.add_argument(
     '--snaps',
     required=False,
     default=False,
     action='store_true',
-    help='If this argument is passed without --vols, this module will only enumerate snapshots. If neither are passed, both volumes and snapshots will be enumerated.'
+    help=strip_lines('''
+        If this argument is passed without --vols, this module will only enumerate snapshots. If neither are passed, 
+        both volumes and snapshots will be enumerated.
+    ''')
 )
 parser.add_argument(
     '--snapshot-permissions',
     required=False,
     default=False,
     action='store_true',
-    help='Capture permissions for each found snapshot. Found permissions will be captured in the database and written to the sessions downloads directory as snapshot_permissions.txt'
+    help=strip_lines('''
+        Capture permissions for each found snapshot. Found permissions will be captured in the database and written to 
+        the sessions downloads directory as snapshot_permissions.txt
+    ''')
 )
 parser.add_argument(
     '--account-ids',
     required=False,
     default=None,
-    help='One or more (comma separated) AWS account IDs. If snapshot enumeration is enabled, then this module will fetch all snapshots owned by each account in this list of AWS account IDs. Defaults to the current user accounts AWS account ID.'
+    help=strip_lines('''
+        One or more (comma separated) AWS account IDs. If snapshot enumeration is enabled, then this module will fetch 
+        all snapshots owned by each account in this list of AWS account IDs. Defaults to the current user accounts AWS 
+        account ID.
+    ''')
 )
 
 
-def main(args, pacu_main):
+def main(args, pacu_main: 'Main'):
     session = pacu_main.get_active_session()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = pacu_main.print
     input = pacu_main.input
+
     key_info = pacu_main.key_info
     get_regions = pacu_main.get_regions
     ######
@@ -108,7 +114,12 @@ def main(args, pacu_main):
         if 'AccountId' in user and user['AccountId'] is not None:
             account_ids = [user['AccountId']]
         else:
-            current_account = input('No account IDs were passed in as arguments and the account ID for the current user has not been stored in this session yet. An account ID is required to get valid results from the snapshot enumeration portion of this module. If you know the current users account ID then enter it now, otherwise, enter y to try and fetch it, or enter n to skip EBS snapshot enumeration. ([account_id]/y/n) ')
+            current_account = input(strip_lines('''
+                No account IDs were passed in as arguments and the account ID for the current user has not been stored 
+                in this session yet. An account ID is required to get valid results from the snapshot enumeration 
+                portion of this module. If you know the current users account ID then enter it now, otherwise, enter 
+                y to try and fetch it, or enter n to skip EBS snapshot enumeration. ([account_id]/y/n)
+            '''))
 
             if current_account is None or current_account == '' or current_account.lower() == 'n':
                 account_ids = []
@@ -130,8 +141,10 @@ def main(args, pacu_main):
                         user_id=identity['UserId'],
                     )
                 except Exception as error:
-                    print('Error running sts.get_caller_identity. It is possible that the account ID has been returned in this error: {}'.format(error))
-                    current_account = input('If the AWS account ID was returned in the previous error, enter it now to continue, or enter n to skip EBS snapshot enumeration. ([account_id]/n) ')
+                    print('Error running sts.get_caller_identity. It is possible that the account ID has been returned '
+                          'in this error: {}'.format(error))
+                    current_account = input('If the AWS account ID was returned in the previous error, enter it now to '
+                                            'continue, or enter n to skip EBS snapshot enumeration. ([account_id]/n) ')
                     if current_account == 'n':
                         account_ids = []
                     else:
@@ -276,24 +289,24 @@ def main(args, pacu_main):
     if args.vols:
         ec2_data['Volumes'] = all_vols
         summary_data['volumes'] = len(ec2_data['Volumes'])
-        unencrypted_volumes_csv_path = 'sessions/{}/downloads/unencrypted_ebs_volumes_{}.csv'.format(session.name, now)
-        with open(unencrypted_volumes_csv_path, 'w+') as unencrypted_volumes_csv:
-            unencrypted_volumes_csv.write('Volume Name,Volume ID,Region\n')
+        p = 'unencrypted_ebs_volumes_{}.csv'.format(now)
+        with save(p) as f:
+            f.write('Volume Name,Volume ID,Region\n')
             print('  Writing data for {} volumes...'.format(len(volumes_csv_data)))
             for line in volumes_csv_data:
-                unencrypted_volumes_csv.write(line)
-        summary_data['volumes_csv_path'] = unencrypted_volumes_csv_path
+                f.write(line)
+        summary_data['volumes_csv_path'] = p
 
     if args.snaps:
         ec2_data['Snapshots'] = all_snaps
         summary_data['snapshots'] = len(ec2_data['Snapshots'])
-        unencrypted_snapshots_csv_path = 'sessions/{}/downloads/unencrypted_ebs_snapshots_{}.csv'.format(session.name, now)
-        with open(unencrypted_snapshots_csv_path, 'w+') as unencrypted_snapshots_csv:
-            unencrypted_snapshots_csv.write('Snapshot Name,Snapshot ID,Region\n')
+        path = 'unencrypted_ebs_snapshots_{}.csv'.format(now)
+        with save(path) as f:
+            f.write('Snapshot Name,Snapshot ID,Region\n')
             print('  Writing data for {} snapshots...'.format(len(snapshots_csv_data)))
             for line in snapshots_csv_data:
-                unencrypted_snapshots_csv.write(line)
-        summary_data['snapshots_csv_path'] = unencrypted_snapshots_csv_path
+                f.write(line)
+        summary_data['snapshots_csv_path'] = path
 
     if args.snapshot_permissions:
         permission_data = {
@@ -303,19 +316,19 @@ def main(args, pacu_main):
         }
         temp = permission_data.copy()
         summary_data.update(temp)
-        path = os.path.join(os.getcwd(), 'sessions', session.name, 'downloads', 'snapshot_permissions_' + str(now) + '.txt')
-        with open(path, 'w') as out_file:
-            out_file.write('Public:\n')
+        path = 'snapshot_permissions_' + str(now) + '.txt'
+        with save(path) as f:
+            f.write('Public:\n')
             for public in snapshot_permissions['Public']:
-                out_file.write('    {}'.format(public))
-            out_file.write('Shared:\n')
+                f.write('    {}'.format(public))
+            f.write('Shared:\n')
             for snap in snapshot_permissions['Shared']:
-                out_file.write('    {}\n'.format(snap))
+                f.write('    {}\n'.format(snap))
                 for aws_id in snapshot_permissions['Shared'][snap]:
-                    out_file.write('        {}\n'.format(aws_id))
-            out_file.write('Private:\n')
+                    f.write('        {}\n'.format(aws_id))
+            f.write('Private:\n')
             for private in snapshot_permissions['Private']:
-                out_file.write('    {}\n'.format(private))
+                f.write('    {}\n'.format(private))
             summary_data['snapshot-permissions-path'] = path
     session.update(pacu_main.database, EC2=ec2_data)
 

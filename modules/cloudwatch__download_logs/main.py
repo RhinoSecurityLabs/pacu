@@ -6,13 +6,21 @@ import os
 
 from botocore.exceptions import ClientError
 
+from core.lib import strip_lines, downloads_dir
+from pacu import Main
 
 module_info = {
     'name': 'cloudwatch__download_logs',
     'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
     'category': 'EVADE',
     'one_liner': 'Captures CloudWatch logs and downloads them to the session downloads folder',
-    'description': "This module examines all logs for all regions and saves them as CSV files. By default, only events that were logged in the past 24 hours will be captured. Otherwise, they will be captured based on the passed time arguments. The files will be downloaded in a similar format to pacu/sessions/{session}/downloads/cloud_watch_logs/{timestamp}, with session being the active session, and timestamp being the start of this module's execution.",
+    'description': strip_lines('''
+        This module examines all logs for all regions and saves them as CSV files. By default, only events that were
+        logged in the past 24 hours will be captured. Otherwise, they will be captured based on the passed time
+        arguments. The files will be downloaded in a similar format to
+        ~/.local/share/pacu/sessions/{session}/downloads/cloud_watch_logs/{timestamp}, with session being the active session, and
+        timestamp being the start of this module's execution.
+    '''),
     'services': ['logs'],
     'external_dependencies': [],
     'arguments_to_autocomplete': [
@@ -52,22 +60,11 @@ def parse_time(time):
 def write_stream_file(session_name, scan_time, group_name, stream_name, events):
     if not events:
         return True
-    stream_group_path = os.path.join(
-        os.getcwd(), 'sessions', session_name, 'downloads', 'cloud_watch_logs',
-        str(scan_time), group_name[1:])
-    if not os.path.exists(stream_group_path):
-        os.makedirs(stream_group_path)
-    file_name = os.path.join(
-        stream_group_path, stream_name.replace('/', '_') + '.csv')
-    flag = 'a' if os.path.isfile(file_name) else 'w'
+    stream_group_path = os.path.join('cloud_watch_logs', str(scan_time), group_name[1:])
+    file_name = os.path.join(stream_group_path, stream_name.replace('/', '_') + '.csv')
 
-    with open(file_name, flag, newline='') as out_file:
-        event_writer = csv.writer(
-            out_file,
-            delimiter=',',
-        )
-        if flag == 'w':
-            event_writer.writerow(['timestamp', 'message'])
+    with save(file_name, 'a', newline='') as f:
+        event_writer = csv.writer(f, delimiter=',')
         for event in events:
             event_writer.writerow([event['timestamp'], event['message']])
     return True
@@ -94,10 +91,12 @@ def millisecond(time_stamp):
     return int(time_stamp.timestamp() * 1000 + time_stamp.microsecond / 1000)
 
 
-def main(args, pacu_main):
+def main(args, pacu_main: 'Main'):
+    global save
     session = pacu_main.get_active_session()
     args = parser.parse_args(args)
     print = pacu_main.print
+
     get_regions = pacu_main.get_regions
     summary_data = {}
     if isinstance(args.from_time, str):
@@ -160,7 +159,7 @@ def main(args, pacu_main):
             'streams': sum([len(log_groups[key]) for key in log_groups]),
             'events': event_count,
         }
-    dl_root = 'sessions/' + session.name + '/downloads/cloud_watch_logs/'
+    dl_root = downloads_dir() + '/cloud_watch_logs/'
     summary_data['log_download_path'] = '{}{}'.format(dl_root, scan_time)
     return summary_data
 

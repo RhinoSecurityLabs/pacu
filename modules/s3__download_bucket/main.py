@@ -6,38 +6,44 @@ import os
 
 from botocore.exceptions import ClientError
 
+from core.lib import strip_lines
 
 module_info = {
     # Name of the module (should be the same as the filename)
     'name': 's3__download_bucket',
-
-    # Name and any other notes about the author
     'author': 'Spencer Gietzen of Rhino Security Labs',
-
-    # Category of the module. Make sure the name matches an existing category.
     'category': 'EXFIL',
-
-    # One liner description of the module functionality. This shows up when a user searches for modules.
     'one_liner': 'Enumerate and dumps files from S3 buckets.',
-
-    # Description about what the module does and how it works
-    'description': 'This module scans the current account for AWS buckets and prints/stores as much data as it can about each one. With no arguments, this module will enumerate all buckets the account has access to, then prompt you to download all files in the bucket or not. Use --names-only or --dl-names to change that. The files will be downloaded to ./sessions/[current_session_name]/downloads/s3__download_bucket/.',
-
-    # A list of AWS services that the module utilizes during its execution
+    'description': strip_lines('''
+        This module scans the current account for AWS buckets and prints/stores as much data as it can about each one. 
+        With no arguments, this module will enumerate all buckets the account has access to, then prompt you to download
+        all files in the bucket or not. Use --names-only or --dl-names to change that. The files will be downloaded to
+        ~/.local/share/pacu/sessions/[current_session_name]/downloads/s3__download_bucket/.
+    '''),
     'services': ['S3'],
-
-    # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
     'prerequisite_modules': [],
-
-    # Module arguments to autocomplete when the user hits tab
     'arguments_to_autocomplete': ['--dl-all', '--names-only', '--dl-names'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--dl-all', required=False, action='store_true', help='If specified, automatically download all files from buckets that are allowed instead of asking for each one. WARNING: This could mean you could potentially be downloading terrabytes of data! It is suggested to user --names-only and then --dl-names to download specific files.')
-parser.add_argument('--names-only', required=False, action='store_true', help='If specified, only pull the names of files in the buckets instead of downloading. This can help in cases where the whole bucket is a large amount of data and you only want to target specific files for download. This option will store the filenames in a .txt file in ./sessions/[current_session_name]/downloads/s3__download_bucket/s3__download_bucket_file_names.txt, one per line, formatted as "filename@bucketname". These can then be used with the "--dl-names" option.')
-parser.add_argument('--dl-names', required=False, default=False, help='A path to a file that includes the only files to be downloaded, one per line. The format for these files must be "filename.ext@bucketname", which is what the --names-only argument outputs.')
+
+parser.add_argument('--dl-all', required=False, action='store_true', help=strip_lines('''
+    If specified, automatically download all files from buckets that are allowed instead of asking for each one.
+    WARNING: This could mean you could potentially be downloading terrabytes of data! It is suggested to user
+    --names-only and then --dl-names to download specific files.
+'''))
+parser.add_argument('--names-only', required=False, action='store_true', help=strip_lines('''
+    If specified, only pull the names of files in the buckets instead of downloading. This can help in cases where the
+    whole bucket is a large amount of data and you only want to target specific files for download. This option will
+    store the filenames in a .txt file in
+    ~/.local/share/pacu/sessions/[current_session_name]/downloads/s3__download_bucket/s3__download_bucket_file_names.txt,
+    one per line, formatted as "filename@bucketname". These can then be used with the "--dl-names" option.
+'''))
+parser.add_argument('--dl-names', required=False, default=False, help=strip_lines('''
+    A path to a file that includes the only files to be downloaded, one per line. The format for these files must be
+    "filename.ext@bucketname", which is what the --names-only argument outputs.
+'''))
 
 FILE_SIZE_THRESHOLD = 1073741824
 
@@ -62,17 +68,8 @@ def get_bucket_size(pacu, bucket_name):
 
 
 def download_s3_file(pacu, key, bucket):
-    session = pacu.get_active_session()
-    base_directory = 'sessions/{}/downloads/{}/{}/'.format(session.name, module_info['name'], bucket)
-
-    directory = base_directory
-    offset_directory = key.split('/')[:-1]
-    if offset_directory:
-        directory += '/' + ''.join(offset_directory)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
     s3 = pacu.get_boto3_resource('s3')
+    base_directory = '{}/{}/'.format(module_info['name'], bucket)
 
     size = s3.Object(bucket, key).content_length
     if size > FILE_SIZE_THRESHOLD:
@@ -81,7 +78,8 @@ def download_s3_file(pacu, key, bucket):
         if confirm != 'y':
             return False
     try:
-        s3.Bucket(bucket).download_file(key, base_directory + key)
+        with save(base_directory + key) as f:
+            s3.Bucket(bucket).download_fileobj(key, f)
     except Exception as error:
         pacu.print('  {}'.format(error))
         return False
@@ -105,12 +103,9 @@ def extract_from_file(pacu, file):
 def write_bucket_keys_to_file(pacu, objects):
     pacu.print('  Writing file names to disk...')
     session = pacu.get_active_session()
-    file = 'sessions/{}/downloads/{}/'.format(session.name, module_info['name'])
-    if not os.path.exists(file):
-        os.makedirs(file)
-    file += '{}_file_names.txt'.format(module_info['name'])
+    p = '{}/{}_file_names.txt'.format(module_info['name'], module_info['name'])
     try:
-        with open(file, 'w') as objects_file:
+        with save(p, 'w') as objects_file:
             for key in objects:
                 for file in objects[key]:
                     objects_file.write('{}@{}\n'.format(file, key))
@@ -120,11 +115,19 @@ def write_bucket_keys_to_file(pacu, objects):
 
 
 def main(args, pacu_main):
+    global save
+
     session = pacu_main.get_active_session()
     args = parser.parse_args(args)
     print = pacu_main.print
+
     input = pacu_main.input
-    if (args.names_only is True and args.dl_names is True) or (args.names_only is True and args.dl_all is True) or (args.dl_names is True and args.dl_all is True):
+
+    if (
+            (args.names_only is True and args.dl_names is True) or
+            (args.names_only is True and args.dl_all is True) or
+            (args.dl_names is True and args.dl_all is True)
+    ):
         print('Only zero or one options of --dl-all, --names-only, and --dl-names may be specified. Exiting...')
         return {}
 

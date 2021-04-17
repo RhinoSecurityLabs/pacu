@@ -3,6 +3,7 @@ import argparse
 from botocore.exceptions import ClientError
 import os
 
+from core.lib import downloads_dir
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -41,7 +42,7 @@ parser.add_argument('--regions', required=False, default=None, help='One or more
 
 def write_keys_to_file(created_keys, session):
     for region in created_keys:
-        ssh_key_dir = os.path.join(os.getcwd(), 'sessions', session.name, 'downloads', module_info['name'], region)
+        ssh_key_dir = os.path.join(downloads_dir(), module_info['name'], region)
         if not os.path.exists(ssh_key_dir):
             os.makedirs(ssh_key_dir)
         for credential in created_keys[region]:
@@ -147,7 +148,7 @@ def main(args, pacu_main):
                 ssh_count += 1
 
     if windows_count or ssh_count:
-        written_file_path = os.path.join('sessions', session.name, 'downloads', module_info['name'])
+        written_file_path = os.path.join(downloads_dir(), module_info['name'])
     else:
         written_file_path = None
 

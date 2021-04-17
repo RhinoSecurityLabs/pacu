@@ -1,57 +1,57 @@
 #!/usr/bin/env python3
 import argparse
 import json
-import os
 import re
 import botocore
 
 from botocore.exceptions import ClientError
 
+from core.lib import strip_lines, save, downloads_dir
+from pacu import Main
 
 module_info = {
-    # Name of the module (should be the same as the filename)
     'name': 'iam__enum_permissions',
-
-    # Name and any other notes about the author
     'author': 'Spencer Gietzen of Rhino Security Labs',
-
-    # Category of the module. Make sure the name matches an existing category.
     'category': 'ENUM',
-
-    # One liner description of the module functionality.
-    # This shows up when a user searches for modules.
     'one_liner': 'Tries to get a confirmed list of permissions for the current (or all) user(s).',
-
-    # Description about what the module does and how it works
-    'description': 'This module will attempt to use IAM APIs to enumerate a confirmed list of IAM permissions for users/roles in the account. By default, the owner of the active set of keys is targeted. This is done by checking attached and inline policies for the user and the groups they are in.',
-
-    # A list of AWS services that the module utilizes during its execution
+    'description': strip_lines('''
+        This module will attempt to use IAM APIs to enumerate a confirmed list of IAM permissions for users/roles in the
+        account. By default, the owner of the active set of keys is targeted. This is done by checking attached and
+        inline policies for the user and the groups they are in.
+    '''),
     'services': ['IAM'],
-
-    # For prerequisite modules, try and see if any existing modules return the
-    # data that is required for your module before writing that code yourself.
-    # That way session data can stay separated and modular.
     'prerequisite_modules': ['iam__enum_users_roles_policies_groups'],
-
-    # Module arguments to autocomplete when the user hits tab
     'arguments_to_autocomplete': ['--all-users', '--user-name']
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--all-users', required=False, default=False, action='store_true', help='Run this module against every user in the account and store the results to ./sessions/[current_session_name]/downloads/confirmed_permissions/user-[user_name].json. This data can then be run against the iam__privesc_scan module with the --offline flag enabled.')
-parser.add_argument('--user-name', required=False, default=None, help='A single user name of a user to run this module against. By default, the active AWS keys will be used.')
-parser.add_argument('--all-roles', required=False, default=False, action='store_true', help='Run this module against every role in the account and store the results to ./sessions/[current_session_name]/downloads/confirmed_permissions/role-[role_name].json. This data can then be run against the iam__privesc_scan module with the --offline flag enabled.')
-parser.add_argument('--role-name', required=False, default=None, help='A single role name of a role to run this module against. By default, the active AWS keys will be used.')
+parser.add_argument('--all-users', required=False, default=False, action='store_true', help=strip_lines('''
+    Run this module against every user in the account and store the results to 
+    ~/.local/share/pacu/sessions/[current_session_name]/downloads/confirmed_permissions/user-[user_name].json. This data
+    can then be run against the iam__privesc_scan module with the --offline flag enabled.
+'''))
+parser.add_argument('--user-name', required=False, default=None, help=strip_lines('''
+    A single user name of a user to run this module against. By default, the active AWS keys will be used.
+'''))
+parser.add_argument('--all-roles', required=False, default=False, action='store_true', help=strip_lines('''
+    Run this module against every role in the account and store the results to
+    ~/.local/share/pacu/sessions/[current_session_name]/downloads/confirmed_permissions/role-[role_name].json. This data
+    can then be run against the iam__privesc_scan module with the --offline flag enabled.
+'''))
+parser.add_argument('--role-name', required=False, default=None, help=strip_lines('''
+    A single role name of a role to run this module against. By default, the active AWS keys will be used.
+'''))
 
 
-def main(args, pacu_main):
+def main(args, pacu_main: 'Main'):
     session = pacu_main.get_active_session()
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = pacu_main.print
     input = pacu_main.input
+
     key_info = pacu_main.key_info
     fetch_data = pacu_main.fetch_data
     ######
@@ -200,7 +200,7 @@ def main(args, pacu_main):
     client = pacu_main.get_boto3_client('iam')
     if any([args.all_users, args.user_name, args.all_roles, args.role_name]):
         print('Permission Document Location:')
-        print('  sessions/{}/downloads/confirmed_permissions/\n'.format(session.name))
+        print('  {}/confirmed_permissions/\n'.format(downloads_dir()))
 
     if roles:
         print('Confirming permissions for roles:')
@@ -287,11 +287,8 @@ def main(args, pacu_main):
                         deny_permissions=role['Permissions']['Deny']
                     )
                 else:
-                    if not os.path.exists('sessions/{}/downloads/confirmed_permissions/'.format(session.name)):
-                        os.makedirs('sessions/{}/downloads/confirmed_permissions/'.format(session.name))
-
-                    with open('sessions/{}/downloads/confirmed_permissions/role-{}.json'.format(session.name, role['RoleName']), 'w+') as role_permissions_file:
-                        json.dump(role, role_permissions_file, indent=2, default=str)
+                    with save('confirmed_permissions/role-{}.json'.format(role['RoleName']), 'w+') as f:
+                        json.dump(role, f, indent=2, default=str)
 
                     print('    Permissions stored in role-{}.json'.format(role['RoleName']))
             except ClientError as error:
@@ -480,11 +477,8 @@ def main(args, pacu_main):
                         deny_permissions=user['Permissions']['Deny']
                     )
                 else:
-                    if not os.path.exists('sessions/{}/downloads/confirmed_permissions/'.format(session.name)):
-                        os.makedirs('sessions/{}/downloads/confirmed_permissions/'.format(session.name))
-
-                    with open('sessions/{}/downloads/confirmed_permissions/user-{}.json'.format(session.name, user['UserName']), 'w+') as user_permissions_file:
-                        json.dump(user, user_permissions_file, indent=2, default=str)
+                    with save('confirmed_permissions/user-{}.json'.format(session.name, user['UserName']), 'w+') as f:
+                        json.dump(user, f, indent=2, default=str)
 
                     print('    Permissions stored in user-{}.json'.format(user['UserName']))
             except ClientError as error:

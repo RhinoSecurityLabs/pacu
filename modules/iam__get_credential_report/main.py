@@ -4,37 +4,28 @@ from botocore.exceptions import ClientError
 import os
 import time
 
+from core.lib import strip_lines, save
+from pacu import Main
 
 module_info = {
-    # Name of the module (should be the same as the filename)
     'name': 'iam__get_credential_report',
-
-    # Name and any other notes about the author
     'author': 'Spencer Gietzen of Rhino Security Labs',
-
-    # Category of the module. Make sure the name matches an existing category.
     'category': 'ENUM',
-
-    # One liner description of the module functionality. This shows up when a user searches for modules.
     'one_liner': 'Generates and downloads an IAM credential report.',
-
-    # Description about what the module does and how it works
-    'description': 'This module tries to download a credential report for the AWS account, giving a lot of authentication history/info for users in the account. If it does not find a report, it will prompt you to generate one. The report is saved in ./sessions/[current_session_name]/downloads/get_credential_report_[current_time].csv',
-
-    # A list of AWS services that the module utilizes during its execution
+    'description': strip_lines('''
+        This module tries to download a credential report for the AWS account, giving a lot of authentication
+        history/info for users in the account. If it does not find a report, it will prompt you to generate one. The
+        report is saved in ~/.local/share/sessions/[current_session_name]/downloads/get_credential_report_[current_time].csv
+    '''),
     'services': ['IAM'],
-
-    # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
     'prerequisite_modules': [],
-
-    # Module arguments to autocomplete when the user hits tab
     'arguments_to_autocomplete': [],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 
-def main(args, pacu_main):
+def main(args, pacu_main: 'Main'):
     session = pacu_main.get_active_session()
 
     ###### Don't modify these. They can be removed if you are not using the function.
@@ -84,14 +75,9 @@ def main(args, pacu_main):
                 break
 
     if report and 'Content' in report:
-        if not os.path.exists('sessions/{}/downloads'.format(session.name)):
-            os.makedirs('sessions/{}/downloads'.format(session.name))
-
-        filename = 'sessions/{}/downloads/get_credential_report_{}.csv'.format(session.name, time.time())
-        with open(filename, 'w+') as csv_file:
-            csv_file.write(report['Content'].decode())
+        filename = 'downloads/get_credential_report_{}.csv'.format(session.name, time.time())
+        save(report['Content'].decode(), filename)
         summary_data['report_location'] = filename
-
         print('Credential report saved to {}'.format(filename))
 
     else:

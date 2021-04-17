@@ -2,6 +2,9 @@
 import argparse
 from pathlib import Path
 
+from core.lib import downloads_dir
+from pacu import Main
+
 module_info = {
     # Name of the module (should be the same as the filename)
     'name': 'lightsail__download_ssh_keys',
@@ -31,7 +34,7 @@ module_info = {
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 
-def main(args, pacu_main):
+def main(args, pacu_main: 'Main'):
     ###### Don't modify these. They can be removed if you are not using the function.
     session = pacu_main.get_active_session()
     args = parser.parse_args(args)
@@ -41,13 +44,10 @@ def main(args, pacu_main):
     summary_data = {'region_key_pairs': []}
     regions = get_regions('lightsail')
 
-    dl_path = Path.cwd() / 'sessions' / session.name / 'downloads' / module_info['name']
-    if not dl_path.exists():
-        dl_path.mkdir()
-    summary_data['dl_path'] = str(dl_path.relative_to(Path.cwd() / 'sessions' / session.name))
+    summary_data['dl_path'] = str(downloads_dir())
     for region in regions:
         print('  Downloading default keys for {}...'.format(region))
-        cur_path = dl_path / region
+        cur_path = downloads_dir()/region
         if not cur_path.exists():
             cur_path.mkdir()
         client = pacu_main.get_boto3_client('lightsail', region)

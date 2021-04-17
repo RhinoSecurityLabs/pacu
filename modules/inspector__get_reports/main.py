@@ -4,13 +4,19 @@ from botocore.exceptions import ClientError
 import os
 import urllib.request
 
+from core.lib import strip_lines, save
+from pacu import Main
 
 module_info = {
     'name': 'inspector__get_reports',
     'author': 'Alexander Morgenstern',
     'category': 'ENUM',
     'one_liner': 'Captures vulnerabilities found when running a preconfigured inspector report.',
-    'description': "This module captures findings for reports in regions that support AWS Inspector. The optional argument --download-reports will automatically download any reports found into the session downloads directory under a folder named after the run id of the inspector report.",
+    'description': strip_lines('''
+        This module captures findings for reports in regions that support AWS Inspector. The optional argument
+        --download-reports will automatically download any reports found into the session downloads directory under a
+        folder named after the run id of the inspector report.
+    '''),
     'services': ['Inspector'],
     'prerequisite_modules': [],
     'external_dependencies': [],
@@ -21,13 +27,15 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-parser.add_argument('--download-reports', required=False, default=False, action='store_true', help='Optional argument to download HTML reports for each run')
+parser.add_argument('--download-reports', required=False, default=False, action='store_true',
+                    help='Optional argument to download HTML reports for each run')
 
 
-def main(args, pacu_main):
+def main(args, pacu_main: 'Main'):
     session = pacu_main.get_active_session()
     args = parser.parse_args(args)
     print = pacu_main.print
+
     get_regions = pacu_main.get_regions
 
     regions = get_regions('Inspector')
@@ -67,12 +75,10 @@ def main(args, pacu_main):
                     reportType='FULL'
                 )
                 if response.get('url'):
-                    if not os.path.exists('sessions/{}/downloads/inspector_assessments/'.format(session.name)):
-                        os.makedirs('sessions/{}/downloads/inspector_assessments/'.format(session.name))
-                    file_name = 'sessions/{}/downloads/inspector_assessments/'.format(session.name) + str(run)[-10:] + '.html'
-                    print('  Report saved to: ' + file_name)
-                    with urllib.request.urlopen(response['url']) as response, open(file_name, 'a') as out_file:
-                        out_file.write(str(response.read()))
+                    p = 'inspector_assessments/'.format(session.name) + str(run)[-10:] + '.html'
+                    print('  Report saved to: ' + p)
+                    with urllib.request.urlopen(response['url']) as response, save(p, 'a') as f:
+                        f.write(str(response.read()))
                 else:
                     print('Failed to generate report for {} ({})...'.format(run, response['status']))
         findings = []

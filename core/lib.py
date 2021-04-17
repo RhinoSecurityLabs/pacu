@@ -43,7 +43,7 @@ def save(file_name: str, mode: str = 'w', header: Optional[str] = None, **kwargs
     Setting the header will write the value to the first line if the file doesn't already exist.
         Used for CSV headers.
 
-    By default the home directory is ~/.pacu.
+    By default the home directory is ~/.local/share/pacu.
     """
     p = Path(downloads_dir()) / file_name
     p.parent.mkdir(parents=True, exist_ok=True, mode=0o700)

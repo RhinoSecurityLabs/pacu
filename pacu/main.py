@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import List, Optional, Any, Dict, Union, Tuple
 
 from pacu.core import lib
-from pacu.core.lib import session_dir
+from pacu.core.lib import session_dir, home_dir
 
 try:
     import requests
@@ -456,7 +456,7 @@ class Main:
         return True
 
     def check_for_updates(self):
-        with open('./last_update.txt', 'r') as f:
+        with open(Path(__file__).parent / 'last_update.txt', 'r') as f:
             local_last_update = f.read().rstrip()
 
         latest_update = requests.get('https://raw.githubusercontent.com/RhinoSecurityLabs/pacu/master/last_update.txt').text.rstrip()

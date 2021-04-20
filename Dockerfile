@@ -7,10 +7,9 @@ RUN apk add --no-cache aws-cli
 
 # Install Pacu
 WORKDIR /usr/src/pacu/
-COPY ./requirements.txt ./
-RUN pip install -r requirements.txt
 COPY ./ ./
+RUN pip install .
 
 RUN echo 'AWS_EC2_METADATA_DISABLED=true' >> /etc/profile
 
-ENTRYPOINT [ "python3", "pacu.py" ]
+ENTRYPOINT ["pacu"]

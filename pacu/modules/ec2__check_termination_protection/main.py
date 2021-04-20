@@ -4,7 +4,7 @@ from botocore.exceptions import ClientError
 from copy import deepcopy
 import time
 
-from core.lib import strip_lines, save
+from pacu.core.lib import strip_lines, save
 from pacu import Main
 
 module_info = {

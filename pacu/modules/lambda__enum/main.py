@@ -5,7 +5,7 @@ import zipfile
 import os
 import re
 
-from core.secretfinder.utils import regex_checker, contains_secret, Color
+from pacu.core.secretfinder.utils import regex_checker, contains_secret, Color
 from botocore.exceptions import ClientError
 
 

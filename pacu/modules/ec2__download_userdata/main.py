@@ -6,8 +6,8 @@ import gzip
 
 from botocore.exceptions import ClientError
 
-from core.lib import strip_lines, save, downloads_dir
-from core.secretfinder.utils import regex_checker, Color
+from pacu.core.lib import strip_lines, save, downloads_dir
+from pacu.core.secretfinder.utils import regex_checker, Color
 from pacu import Main
 
 module_info = {

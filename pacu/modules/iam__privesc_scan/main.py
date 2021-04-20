@@ -10,7 +10,7 @@ import random
 import time
 import subprocess
 
-from core.lib import strip_lines, downloads_dir
+from pacu.core.lib import strip_lines, downloads_dir
 from pacu import Main
 from utils import remove_empty_from_dict
 

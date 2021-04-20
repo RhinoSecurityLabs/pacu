@@ -4,7 +4,7 @@ from copy import deepcopy
 from random import choice
 
 from botocore.exceptions import ClientError
-from core.secretfinder.utils import regex_checker, Color
+from pacu.core.secretfinder.utils import regex_checker, Color
 
 
 module_info = {

@@ -6,7 +6,7 @@ import os
 
 from botocore.exceptions import ClientError
 
-from core.lib import strip_lines
+from pacu.core.lib import strip_lines
 
 module_info = {
     # Name of the module (should be the same as the filename)

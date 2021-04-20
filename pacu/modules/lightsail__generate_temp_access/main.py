@@ -3,7 +3,7 @@ import argparse
 from botocore.exceptions import ClientError
 import os
 
-from core.lib import downloads_dir
+from pacu.core.lib import downloads_dir
 
 module_info = {
     # Name of the module (should be the same as the filename)

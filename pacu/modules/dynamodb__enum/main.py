@@ -4,7 +4,7 @@ import os
 import time
 import pprint
 
-from core.secretfinder.utils import regex_checker, Color
+from pacu.core.secretfinder.utils import regex_checker, Color
 from botocore.exceptions import ClientError
 
 

@@ -2,7 +2,7 @@
 import argparse
 from pathlib import Path
 
-from core.lib import downloads_dir
+from pacu.core.lib import downloads_dir
 from pacu import Main
 
 module_info = {

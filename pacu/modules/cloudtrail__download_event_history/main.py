@@ -3,7 +3,7 @@ import argparse
 import json
 import time
 
-from core.lib import strip_lines, save, downloads_dir
+from pacu.core.lib import strip_lines, save, downloads_dir
 from pacu import Main
 
 module_info = {

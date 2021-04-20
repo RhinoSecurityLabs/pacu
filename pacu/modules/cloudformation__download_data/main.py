@@ -2,15 +2,22 @@ import argparse
 from botocore.exceptions import ClientError
 import json, os, datetime
 from json import JSONEncoder
-from core.secretfinder.utils import regex_checker, Color
-module_info = {'name':'cloudformation__download_data', 
- 'author':'David Yesland', 
- 'category':'ENUM', 
- 'one_liner':'Downloads all templates, parameters, and exports from CloudFormation Stacks.', 
- 'description':'Downloads all templates, parameters, and exports from CloudFormation Stacks. Looks for secrets in all and saves data to files.', 
- 'services':[
-  'cloudformation'], 
- 'prerequisite_modules':[],  'external_dependencies':[],  'arguments_to_autocomplete':[]}
+from pacu.core.secretfinder.utils import regex_checker, Color
+
+module_info = {
+    'name': 'cloudformation__download_data',
+    'author': 'David Yesland',
+    'category': 'ENUM',
+    'one_liner': 'Downloads all templates, parameters, and exports from CloudFormation Stacks.',
+    'description': 'Downloads all templates, parameters, and exports from CloudFormation Stacks. Looks for secrets in all and saves data to files.',
+    'services': [
+        'cloudformation'
+    ],
+    'prerequisite_modules': [],
+    'external_dependencies': [],
+    'arguments_to_autocomplete': []
+}
+
 parser = argparse.ArgumentParser(add_help=False, description=(module_info['description']))
 
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all regions.')

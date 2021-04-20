@@ -3,7 +3,7 @@ import argparse
 from botocore.exceptions import ClientError, EndpointConnectionError
 import os
 
-from core.lib import strip_lines, save
+from pacu.core.lib import strip_lines, save
 from pacu import Main
 
 module_info = {

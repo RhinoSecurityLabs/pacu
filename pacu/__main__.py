@@ -1,5 +1,5 @@
 import sys
-import pacu.main
+import pacu
 
 
 def main(args=None):
@@ -7,7 +7,7 @@ def main(args=None):
     if args is None:
         args = sys.argv[1:]
 
-    pacu.main.Main().run()
+    pacu.Main().run()
 
 
 if __name__ == "__main__":

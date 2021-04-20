@@ -6,7 +6,7 @@ import botocore
 
 from botocore.exceptions import ClientError
 
-from core.lib import strip_lines, save, downloads_dir
+from pacu.core.lib import strip_lines, save, downloads_dir
 from pacu import Main
 
 module_info = {

@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import List, Optional, Any, Dict, Union, Tuple
 
 from pacu.core import lib
-from pacu.core.lib import session_dir, home_dir
+from pacu.core.lib import session_dir
 
 try:
     import requests
@@ -1273,9 +1273,9 @@ aws_secret_access_key = {}
 
         for index, session in enumerate(all_sessions, 0):
             if session.name == active_session.name:
-                print('- ' + session.name + ' (ACTIVE)')
+                print('- ' + str(session.name) + ' (ACTIVE)')
             else:
-                print('- ' + session.name)
+                print('- ' + str(session.name))
 
         print('\nUse "swap_session" to change to another session.')
 
@@ -1434,7 +1434,7 @@ aws_secret_access_key = {}
             CATEGORIES = []
 
             for root, directories, files in os.walk(Path(__file__).parent/'modules'):
-                modules_directory_path = os.path.realpath(Path(__file__/'modules'))
+                modules_directory_path = os.path.realpath(Path(__file__)/'modules')
                 category_path = os.path.realpath(root)
 
                 # Skip any directories inside module directories.

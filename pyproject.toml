@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pacu"
-version = "0.1.9"
+version = "0.1.11"
 description = ""
 authors = ["Ryan Gerstenkorn <ryan.gerstenkorn@rhinosecuritylabs.com>"]
 license = "BSD-3"

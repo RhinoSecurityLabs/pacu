@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """Module for ebs_snapshot_explorer"""
 import argparse
-import os
 import sys
-from pathlib import Path
 from typing import List
 from typing_extensions import TypedDict
 

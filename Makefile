@@ -58,7 +58,7 @@ mypy: stubgen
 	MYPYPATH="${PWD}/stubs" mypy pacu/*.py pacu/core pacu/modules/ebs__download_snapshots
 
 flake8:
-	flake8 pacu.py pacu/main.py pacu/__init__.py pacu/__main__.py modules/ebs__download_snapshots
+	flake8 cli.py pacu/main.py pacu/__init__.py pacu/__main__.py pacu/modules/ebs__download_snapshots
 
 lint: flake8 mypy
 

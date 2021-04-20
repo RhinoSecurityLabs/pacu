@@ -55,10 +55,10 @@ stubgen:
 	test -d stubs || stubgen --include-private -o stubs -p boto3 -p botocore -p dsnap
 
 mypy: stubgen
-	MYPYPATH="${PWD}/stubs" mypy *.py core modules/ebs__download_snapshots
+	MYPYPATH="${PWD}/stubs" mypy pacu/*.py pacu/core pacu/modules/ebs__download_snapshots
 
 flake8:
-	flake8 pacu.py modules/ebs__download_snapshots
+	flake8 pacu.py pacu/main.py pacu/__init__.py pacu/__main__.py modules/ebs__download_snapshots
 
 lint: flake8 mypy
 

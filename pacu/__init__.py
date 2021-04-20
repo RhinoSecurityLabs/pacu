@@ -1,1 +1,1 @@
-from main import *
+from pacu.main import Main  # noqa: F401

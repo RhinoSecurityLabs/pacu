@@ -1,13 +1,13 @@
 import contextlib
 import io
 import os
-from typing import Optional, cast
+from typing import Optional, cast, Callable, Generator, IO, Any
 
 from pathlib import Path
 
 from pacu import settings
 
-get_active_session: Optional[callable] = None
+get_active_session: Optional[Callable] = None
 
 
 def strip_lines(text: str) -> str:
@@ -24,7 +24,7 @@ def home_dir() -> Path:
 def session_dir() -> Path:
     if not get_active_session:
         raise UserWarning("No session_name set.")
-    p = (home_dir() / cast(callable, get_active_session)().name).absolute()
+    p = (home_dir() / cast(Callable, get_active_session)().name).absolute()
     os.makedirs(p, exist_ok=True)
     return p
 
@@ -36,7 +36,7 @@ def downloads_dir() -> Path:
 
 
 @contextlib.contextmanager
-def save(file_name: str, mode: str = 'w', header: Optional[str] = None, **kwargs) -> io.FileIO:
+def save(file_name: str, mode: str = 'w', header: Optional[str] = None, **kwargs) -> Generator[IO[Any], None, None]:
     """Saves the contents of text to {pacu_home}/{session}/downloads/{file_name}.
 
     Use append to avoid overwriting existing content.

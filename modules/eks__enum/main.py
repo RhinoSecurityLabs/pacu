@@ -8,10 +8,10 @@ import subprocess32 as subprocess
 module_info = {
     'name': 'my_module',
     'author': 'David Fentz',
-    'category': 'EXPLOIT',
+    'category': 'ENUM',
     'one_liner': 'Does this thing.',
     'description': 'This module does this thing by using xyz and outputs info to abc. Here is a note also.',
-    'services': ['API.ECR'],
+    'services': ['ECS'],
     'prerequisite_modules': [],
     'external_dependencies': [],
     'arguments_to_autocomplete': [],
@@ -32,26 +32,6 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 # parser.add_argument('', help='')
 # parser.add_argument('', required=False, default=None, help='')
 
-def check_ecr_enum_results():
-    pass
-
-
-def push_image(image, repo):
-    pass
-
-
-def wrap_image(base_image, wrapper_image):
-    pass
-
-
-def download_image(image_url):
-    target = docker_client.images.pull(image_url)
-    target_image = cli.get_image(target)
-    with open(f"./{image_url}.tar", 'wb') as a_file:
-        for chunk in target_image:
-            a_file.write(chunk)
-    
-
 
 # Main is the first function that is called when this module is executed.
 def main(args, pacu_main):
@@ -67,31 +47,8 @@ def main(args, pacu_main):
     # install_dependencies = pacu_main.install_dependencies
     user = key_info()
     print(user)
-   # TODO: get results from enum_ecr
 
-    # this loads AWS access token and secret from env and returns an ECR client
-    ecr_client = pacu_main.get_boto3_client('ecr', 'us-east-1')
-    token = ecr_client.get_authorization_token()
-    username, password = base64.b64decode(token['authorizationData'][0]['authorizationToken']).decode().split(':')
-    registry = token['authorizationData'][0]['proxyEndpoint']
     
-    print(username)
-    print(password)
-    print(registry)
-
-    # someone on stack overflow said this is an alternative to logging in with the sdk... validity TBD.
-    # command = 'docker login -u %s -p %s %s' % (username, password, registry)
-    # p = subprocess.Popen([command], stdout=subprocess.PIPE, shell=True, bufsize=1)
-    # for line in iter(p.stdout.readline, b''):
-    #     print(line)
-    # p.communicate()  # close p.stdout, wait for the subprocess to exit
-
-    docker_client = docker.from_env()
-    docker_client.login(username=username, password=password, registry=registry)
-
-
-    # download_image("187263833631.dkr.ecr.us-east-1.amazonaws.com/apline")
-        
     # print(regions)
     # user = key_info()
     # print(f"user info looks like this: {user}")
@@ -102,13 +59,14 @@ def main(args, pacu_main):
     # if not install_dependencies(module_info['external_dependencies']):
     #     return
 
-    
-
-
-
     # Make sure your main function returns whatever data you need to construct
     # a module summary string.
-    data = ""
+    eks_client = pacu_main.get_boto3_client('eks', 'us-east-1')
+    var = eks_client.list_clusters()
+
+    data = {
+        "summary": "nothing",
+        "clusters": var}
     return data
 
 

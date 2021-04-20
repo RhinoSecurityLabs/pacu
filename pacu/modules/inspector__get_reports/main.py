@@ -4,7 +4,7 @@ from botocore.exceptions import ClientError
 import os
 import urllib.request
 
-from pacu.core.lib import strip_lines, save
+from pacu.core.lib import strip_lines, save, downloads_dir
 from pacu import Main
 
 module_info = {
@@ -46,7 +46,7 @@ def main(args, pacu_main: 'Main'):
         'regions': regions,
     }
     if args.download_reports:
-        summary_data['reports_location'] = 'sessions/{}/downloads/inspector_assessments/'.format(session.name)
+        summary_data['reports_location'] = downloads_dir()/'inspector_assessments/'
     for region in regions:
         print('Starting region {}...'.format(region))
 

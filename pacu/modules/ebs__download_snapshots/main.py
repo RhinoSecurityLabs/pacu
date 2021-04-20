@@ -10,6 +10,7 @@ from typing_extensions import TypedDict
 from dsnap import snapshot, utils
 
 from pacu import Main
+from pacu.core.lib import downloads_dir
 
 module_info = {
     'name': 'ebs__download_snapshots',
@@ -36,12 +37,6 @@ parser.add_argument(
     required=False,
     help='InstanceId of instance to target'
 )
-
-
-def get_dir(session_name: str) -> Path:
-    volume_dir = f'./sessions/{session_name}/downloads/ebs/snapshots'
-    os.makedirs(volume_dir, exist_ok=True)
-    return Path(volume_dir)
 
 
 def snapshot_prompt(snapshots: List[dict]) -> dict:
@@ -85,7 +80,7 @@ def main(args, pacu: Main):
             return False
 
     try:
-        out_dir = get_dir(str(session.name))
+        out_dir = downloads_dir()/'ebs/snapshots'
         snap = snapshot.LocalSnapshot(str(out_dir), snapshot_id, pacu.get_boto_session(region=region), pacu.get_botocore_conf())
     except UserWarning as e:
         print(*e.args)

@@ -7,6 +7,8 @@ import random
 import json
 import time
 
+from pacu.core.lib import downloads_dir
+
 module_info = {
     'name': 'acm__enum',
     'author': 'Manas Bellani',
@@ -21,16 +23,16 @@ module_info = {
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
-parser.add_argument('--regions', required=False, default='all', 
+parser.add_argument('--regions', required=False, default='all',
     help='Regions to enumerate ACM in (defaults to "all" session regions)')
 parser.add_argument('--all', action='store_true', help="Get all info from ACM")
 parser.add_argument('--certs-list',  action="store_true",
     help="Get list about all certs")
 parser.add_argument('--certs-info',  action="store_true",
     help="Get info about each certificate")
-parser.add_argument('--certs-chain',  action="store_true", 
+parser.add_argument('--certs-chain',  action="store_true",
     help="Get certs and the certificate chain as well")
-parser.add_argument('--certs-expired-list', action='store_true', 
+parser.add_argument('--certs-expired-list', action='store_true',
     help="List expired certificates which could potentially be taken over")
 parser.add_argument('--ca-list', action='store_true',
     help="List private certificate authorities created within ACM")
@@ -55,7 +57,7 @@ def main(args, pacu_main):
         regions = args.regions.split(',')
 
     for region in regions:
-        
+
         # Get the ACM client for the region
         client = pacu_main.get_boto3_client('acm', region)
         ca_client = pacu_main.get_boto3_client('acm-pca', region)
@@ -84,7 +86,7 @@ def main(args, pacu_main):
                         if region not in data['certs']:
                             data['certs'][region] = []
                         data['certs'][region].extend(certs_list)
-                    
+
                     if 'NextToken' in response:
                         next_token = response['NextToken']
                     else:
@@ -107,7 +109,7 @@ def main(args, pacu_main):
                     if next_token:
                         response = client.list_certificates(
                             CertificateStatuses=['EXPIRED'],
-                            NextToken=next_token, 
+                            NextToken=next_token,
                             MaxItems=50
                         )
                     else:
@@ -125,7 +127,7 @@ def main(args, pacu_main):
                         if region not in data['certs_expired']:
                             data['certs_expired'][region] = []
                         data['certs_expired'][region].extend(certs_list)
-                    
+
                     if 'NextToken' in response:
                         next_token = response['NextToken']
                     else:
@@ -133,20 +135,20 @@ def main(args, pacu_main):
 
                 except Exception as err:
                     print("Exception listing Expired ACM Certificate ARNs for region: {}".format(region))
-                    print("    Error: {}, {}".format(err.__class__, str(err)))     
+                    print("    Error: {}, {}".format(err.__class__, str(err)))
 
         if args.all or args.certs_chain:
 
             if region in data['certs'] and data['certs'][region]:
                 print("Getting certs, and their chain for region: {}".format(region))
                 try:
-                    for cert_arn_domain in data['certs'][region]: 
+                    for cert_arn_domain in data['certs'][region]:
                         cert_arn = cert_arn_domain.get('CertificateArn', '')
                         domain = cert_arn_domain.get('DomainName', '')
 
                         print("Getting info about cert: {} for region: {}".format(cert_arn, region))
                         response = client.get_certificate(CertificateArn=cert_arn)
-                        
+
                         data['certs_chain'][cert_arn] = response
 
                 except Exception as err:
@@ -159,18 +161,18 @@ def main(args, pacu_main):
                 print("Describing certs: {}".format(region))
 
                 try:
-                    for cert_arn_domain in data['certs'][region]: 
+                    for cert_arn_domain in data['certs'][region]:
                         cert_arn = cert_arn_domain.get('CertificateArn', '')
                         domain = cert_arn_domain.get('DomainName', '')
 
                         print("Getting info about cert: {} for region: {}".format(cert_arn, region))
                         response = client.describe_certificate(CertificateArn=cert_arn)
-                        
+
                         data['certs_info'][cert_arn] = response
 
                 except Exception as err:
                     print("Exception getting ACM Certificate ARN: {}, Domain: {} for region: {}".format(cert_arn, domain, region))
-                    print("    Error: {}, {}".format(err.__class__, str(err)))  
+                    print("    Error: {}, {}".format(err.__class__, str(err)))
 
         if args.all or args.ca_list:
 
@@ -194,14 +196,14 @@ def main(args, pacu_main):
                     ca_list = response['CertificateAuthorities']
                     if ca_list:
                         num_cas_found = len(ca_list)
-                        print('Found {} CAs for region: {}'.format(len(ca_list), 
+                        print('Found {} CAs for region: {}'.format(len(ca_list),
                             region))
                         data['num_cas'] += num_cas_found
 
                         if region not in data['cas']:
                             data['cas'][region] = []
                         data['certs'][region].extend(ca_list)
-                    
+
                     if 'NextToken' in response:
                         next_token = response['NextToken']
                     else:
@@ -209,17 +211,17 @@ def main(args, pacu_main):
 
                 except Exception as err:
                     print("Exception listing ACM CAs for region: {}".format(region))
-                    print("    Error: {}, {}".format(err.__class__, str(err)))   
+                    print("    Error: {}, {}".format(err.__class__, str(err)))
 
 
     # Prepare the out file names to write output data to
     now = time.time()
     outfiles = {}
-    outfiles['certs'] = 'sessions/{}/downloads/acm_enum_certs_{}.json'.format(session.name, now)
-    outfiles['certs_info'] = 'sessions/{}/downloads/acm_enum_certs_info_{}.json'.format(session.name, now)
-    outfiles['certs_chain'] = 'sessions/{}/downloads/acm_enum_certs_chain_{}.json'.format(session.name, now)
-    outfiles['cas'] = 'sessions/{}/downloads/acm_enum_cas_{}.json'.format(session.name, now)
-    outfiles['certs_expired'] =  'sessions/{}/downloads/acm_enum_certs_expired_{}.json'.format(session.name, now)
+    outfiles['certs'] = str(downloads_dir()/'acm_enum_certs_{}.json').format(now)
+    outfiles['certs_info'] = str(downloads_dir()/'acm_enum_certs_info_{}.json'.format(now))
+    outfiles['certs_chain'] = str(downloads_dir()/'acm_enum_certs_chain_{}.json').format(now)
+    outfiles['cas'] = str(downloads_dir()/'acm_enum_cas_{}.json').format(now)
+    outfiles['certs_expired'] = str(downloads_dir()/'acm_enum_certs_expired_{}.json').format(now)
 
     # Write the relevant output to the output files
     for info_type, outfile in outfiles.items():
@@ -228,7 +230,7 @@ def main(args, pacu_main):
             with open(outfile, 'w+') as f:
                 f.write(
                     json.dumps(
-                        data[info_type], 
+                        data[info_type],
                         indent=4,
                         default=str
                     )
@@ -246,7 +248,7 @@ Found {} Private CA(s) in ACM
 
 Found {} expired certificate(s) in ACM
 """.format(
-        data['num_certs'], 
+        data['num_certs'],
         data['num_cas'],
         data['num_certs_expired']
 )

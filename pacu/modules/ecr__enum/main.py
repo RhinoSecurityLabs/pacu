@@ -5,6 +5,8 @@ from copy import deepcopy
 from botocore.exceptions import ClientError
 import time
 
+from pacu.core.lib import downloads_dir
+
 module_info = {
     'name': 'ecr__enum',
     'author': 'Manas Bellani',
@@ -39,7 +41,7 @@ def main(args, pacu_main):
 
     # Prepare output file to store ECR data
     now = time.time()
-    outfile_path = 'sessions/{}/downloads/ecr_enum_{}.json'.format(session.name, now)
+    outfile_path = str(downloads_dir()/f"ecr_enum_{now}.json")
 
     # Loop through each region to get ECR data one-by-one
     for region in regions:
@@ -73,7 +75,7 @@ def main(args, pacu_main):
 
                 # Extract the repository name for this region's repository
                 repo_names = [repo_info['repositoryName'] for repo_info in region_repositories]
-            
+
                 # Extract each image for the repository by repo name
                 for repo_name in repo_names:
                     response = client.describe_images(
@@ -90,7 +92,7 @@ def main(args, pacu_main):
                         region_images.extend(
                             response['imageDetails']
                         )
-                
+
                 # Let the user know how many repos we have found
                 print("Number of repos found for region, {}: {}".format(
                         region,
@@ -105,7 +107,7 @@ def main(args, pacu_main):
                             len(region_images)
                         )
                     )
-                    
+
                 # Adding repositories to region for extraction ater on
                 summary_data['ecr']['regions'][region] = {}
                 summary_data['ecr']['regions'][region]['num_repos_found'] = num_repos_found
@@ -115,7 +117,7 @@ def main(args, pacu_main):
         except Exception as err:
             print('No ECR repositories retrieved for region: {}'.format(region))
             print('Error class: {}, Error message: {}'.format(err.__class__, str(err)))
-    
+
     # Write all the data to the output file
     print("Writing all ECR results to file: {}".format(outfile_path))
     with open(outfile_path, "w+") as f:

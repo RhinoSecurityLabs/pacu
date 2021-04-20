@@ -2,6 +2,8 @@ import argparse
 from botocore.exceptions import ClientError
 import json, os, datetime
 from json import JSONEncoder
+
+from pacu.core.lib import downloads_dir, strip_lines
 from pacu.core.secretfinder.utils import regex_checker, Color
 
 module_info = {
@@ -9,7 +11,10 @@ module_info = {
     'author': 'David Yesland',
     'category': 'ENUM',
     'one_liner': 'Downloads all templates, parameters, and exports from CloudFormation Stacks.',
-    'description': 'Downloads all templates, parameters, and exports from CloudFormation Stacks. Looks for secrets in all and saves data to files.',
+    'description': strip_lines('''
+        Downloads all templates, parameters, and exports from CloudFormation Stacks. Looks for secrets in all and saves data
+        to files.
+    '''),
     'services': [
         'cloudformation'
     ],
@@ -20,7 +25,8 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=(module_info['description']))
 
-parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all regions.')
+parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format '
+                                                                    'us-east-1. Defaults to all regions.')
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -33,10 +39,10 @@ def main(args, pacu_main):
         [Color.print(Color.GREEN, '\tDetected {}: {}'.format(itemkey, detections[itemkey])) for itemkey in detections]
 
     def outfile(subdir, filename):
-        base_path = 'sessions/{}/downloads/{}/{}/'.format(session.name, module_info['name'], subdir)
+        base_path = downloads_dir()/f"{module_info['name']}/{subdir}/"
         if not os.path.exists(base_path):
             os.makedirs(base_path)
-        return open(base_path + filename, 'a+')
+        return open(base_path/filename, 'a+')
 
     class DateTimeEncoder(JSONEncoder):
 
@@ -82,14 +88,17 @@ def main(args, pacu_main):
 
         stacks_data = {}
 
-    info = {'region_count':len(found_regions),  'stack_count':len(all_stacks),
-     'output_path':'sessions/{}/downloads/{}/*'.format(session.name, module_info['name'])}
-    return info
+    return {
+        'region_count': len(found_regions),
+        'stack_count': len(all_stacks),
+        'output_path': downloads_dir()/f"{module_info['name']}/*",
+    }
 
 
 def summary(data, pacu_main):
     number_of_parameters = 0
     if data.keys():
-        return 'Downloaded data from {} CloudFormation stacks, from {} region(s).\n        Saved to: {}'.format(data['stack_count'], data['region_count'], data['output_path'])
+        return 'Downloaded data from {} CloudFormation stacks, from {} region(s).\n        Saved to: {}'.format(
+            data['stack_count'], data['region_count'], data['output_path'])
     else:
         return 'No CloudFormation stacks found.'

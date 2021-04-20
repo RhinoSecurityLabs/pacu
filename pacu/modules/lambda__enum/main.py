@@ -5,6 +5,7 @@ import zipfile
 import os
 import re
 
+from pacu.core.lib import downloads_dir
 from pacu.core.secretfinder.utils import regex_checker, contains_secret, Color
 from botocore.exceptions import ClientError
 
@@ -77,7 +78,7 @@ def main(args, pacu_main):
     get_regions = pacu_main.get_regions
     ######
 
-    
+
 
     if args.regions:
         regions = args.regions.split(',')
@@ -122,12 +123,12 @@ def main(args, pacu_main):
             check_evn_secrets(func)
             if args.checksource:
                 check_source_secrets(session.name, func)
-            
+
         lambda_data['Functions'] += lambda_functions
         if lambda_functions:
             summary_data[region] = len(lambda_functions)
     session.update(pacu_main.database, Lambda=lambda_data)
-   
+
     return summary_data
 
 
@@ -157,7 +158,7 @@ def check_source_secrets(session_name, function):
             secrets = regex_checker(line)
             if secrets:
                 [Color.print(Color.GREEN, "\t{}: {}".format(key, secrets[key])) for key in secrets]
-  
+
 
 def get_function_source(session_name, func):
     try:
@@ -171,10 +172,9 @@ def get_function_source(session_name, func):
         r = requests.get(code_url, stream=True)
 
         # Write Zip to output file
-        fname = os.path.join('sessions/{}/downloads'.format(session_name), 'lambda_{}.zip'.format(fname))
-        zfile = open(fname, 'wb')
-        zfile.write(r.content)
-        zfile.close()
+        fname = str(downloads_dir()/f'lambda_{fname}.zip')
+        with open(fname, 'wb') as f:
+            f.write(r.content)
 
         # Load Zip contents into memory
         lambda_zip = zipfile.ZipFile(fname)

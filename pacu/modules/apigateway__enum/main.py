@@ -7,6 +7,8 @@ import pprint
 import json
 import time
 
+from pacu.core.lib import downloads_dir
+
 module_info = {
     'name': 'enum__apigateway',
     'author': 'Sebastian Mora seb@ruse.tech',
@@ -28,12 +30,6 @@ parser.add_argument(
 )
 
 pp = pprint.PrettyPrinter(indent=2)
-
-
-def get_dir(session_name):
-    volume_dir = f'./sessions/{session_name}/downloads/apigateway/'
-    os.makedirs(volume_dir, exist_ok=True)
-    return Path(volume_dir)
 
 
 # Get all resources for  API
@@ -94,7 +90,7 @@ def get_client_certs(client):
 def export_api_doc(client, session, api_summary, exportType='swagger'):
 
     files_names = []
-    output_path = get_dir(session.name)
+    output_path = downloads_dir()/'apigateway'
 
     api_id = api_summary['id']
     api_name = api_summary['name']
@@ -150,9 +146,7 @@ def main(args, pacu):
     session = pacu.get_active_session()
     args = parser.parse_args(args)
 
-    now = time.time()
-    outfile_path = 'sessions/{}/downloads/apigateway/apigateway_enum_{}.json'.format(session.name, now)
-    outfile_path = get_dir(session.name)
+    outfile_path = str(downloads_dir()/'apigateway')
 
     if args.regions:
         regions = args.regions.split(',')

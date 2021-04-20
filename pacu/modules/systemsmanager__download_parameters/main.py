@@ -4,6 +4,8 @@ from botocore.exceptions import ClientError
 import json
 import os
 
+from pacu.core.lib import downloads_dir
+
 module_info = {
     'name': 'systemsmanager__download_parameters',
     'author': 'David Yesland',
@@ -58,12 +60,12 @@ def main(args, pacu_main):
             param_objs += (param_data["Parameters"])
         else:
             continue
-        
+
         try:
             NextToken = param_data["NextToken"]
         except KeyError:
             pass
-        
+
         #Paginate the results if needed, add them to param_objs
         if NextToken:
             while True:
@@ -73,7 +75,7 @@ def main(args, pacu_main):
                     NextToken = param_data["NextToken"]
                 except KeyError:
                         break
-        
+
         #Dump all param_objs Name fields into the data for the region
         for param_obj in param_objs:
             name = param_obj["Name"]
@@ -81,11 +83,11 @@ def main(args, pacu_main):
 
         #Pull all param names for the region to then grab the values
         param_names = list(data[region].keys())
-        
+
         #client.get_parameters() only takes a list of 10 max, so break it up into 10s
-        #Reference: https://www.geeksforgeeks.org/break-list-chunks-size-n-python/   
+        #Reference: https://www.geeksforgeeks.org/break-list-chunks-size-n-python/
         param_names_by_max = [param_names[i * SMS_GET_PARAM_MAX:(i + 1) * SMS_GET_PARAM_MAX] for i in range((len(param_names) + SMS_GET_PARAM_MAX - 1) // SMS_GET_PARAM_MAX )]
-        
+
         for names in param_names_by_max:
             full_params = client.get_parameters(Names=names,
                                                 WithDecryption=True)
@@ -93,7 +95,7 @@ def main(args, pacu_main):
             for param_obj in full_params["Parameters"]:
                 data[region][param_obj["Name"]] = param_obj["Value"]
 
-    #data is a JSON object like 
+    #data is a JSON object like
     # {"us-east-1":
     #              {
     #               "param_name1":"param_value1",
@@ -102,13 +104,11 @@ def main(args, pacu_main):
     # }
 
     for ssm_region in data.keys():
-        if not os.path.exists('sessions/{}/downloads/ssm_parameters/'.format(session.name)):
-            os.makedirs('sessions/{}/downloads/ssm_parameters/'.format(session.name))
-        with open('sessions/{}/downloads/ssm_parameters/{}.txt'.format(session.name,ssm_region), 'w+') as data_file:
-            json.dump(data[ssm_region], data_file, indent=2)
+        with open(downloads_dir()/'ssm_parameters/{}.txt'.format(ssm_region), 'w+') as f:
+            json.dump(data[ssm_region], f, indent=2)
 
     info = {}
-    info["save_path"] = 'sessions/{}/downloads/ssm_parameters/'.format(session.name)
+    info["save_path"] = str(downloads_dir()/'ssm_parameters/')
     info["region_count"] = str(len(data.keys()))
     total_params = 0
     for param_region in data.keys():
@@ -119,7 +119,7 @@ def main(args, pacu_main):
 
 # The summary function will be called by Pacu after running main
 def summary(data, pacu_main):
-    
+
     if data.keys():
         return 'Downloaded {} SSM parameters and values from {} region(s).\nSaved to: {}'.format(data["total_params"],data["region_count"],data["save_path"])
     else:

@@ -142,9 +142,6 @@ def main(args, pacu_main):
 
         task_role = ask_for_task_role(temp.get('taskRoleArn'))
 
-        if not os.path.exists('sessions/{}/downloads/ecs__backdoor_task_def/'.format(session.name)):
-            os.makedirs('sessions/{}/downloads/ecs__backdoor_task_def/'.format(session.name))
-
         print("    Creating malicious task definition...")
 
         resp = client.register_task_definition(

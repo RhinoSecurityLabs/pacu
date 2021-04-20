@@ -512,7 +512,6 @@ sqlite.db
 
 # Pacu-specific
 global_error_log.txt
-settings.py
 
 # stubs/typing
 monkeytype.sqlite3

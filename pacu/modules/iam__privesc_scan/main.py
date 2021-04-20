@@ -12,7 +12,7 @@ import subprocess
 
 from pacu.core.lib import strip_lines, downloads_dir
 from pacu import Main
-from utils import remove_empty_from_dict
+from pacu.utils import remove_empty_from_dict
 
 
 module_info = {

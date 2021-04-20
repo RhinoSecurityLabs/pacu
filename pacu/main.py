@@ -12,6 +12,7 @@ import sys
 import time
 import traceback
 import argparse
+from pathlib import Path
 from typing import List, Optional, Any, Dict, Union, Tuple
 
 from pacu.core import lib
@@ -42,8 +43,8 @@ except ModuleNotFoundError:
 def load_categories() -> set:
     categories = set()
     current_directory = os.getcwd()
-    for root, directories, files in os.walk('{}/modules'.format(current_directory)):
-        modules_directory_path = os.path.realpath('{}/modules'.format(current_directory))
+    for root, directories, files in os.walk(Path(__file__).parent/'modules'):
+        modules_directory_path = os.path.realpath(Path(__file__).parent/'modules')
         specific_module_directory = os.path.realpath(root)
 
         # Skip any directories inside module directories.
@@ -58,7 +59,7 @@ def load_categories() -> set:
         for file in files:
             if file == 'main.py':
                 # Make sure the format is correct
-                module_path = 'modules/{}/main'.format(module_name).replace('/', '.').replace('\\', '.')
+                module_path = str(Path('pacu/modules')/module_name/'main').replace('/', '.').replace('\\', '.')
                 # Import the help function from the module
                 module = __import__(module_path, globals(), locals(), ['module_info'], 0)
                 importlib.reload(module)
@@ -135,9 +136,9 @@ def display_pacu_help():
 
 
 def import_module_by_name(module_name: str, include: List[str] = []) -> Any:  # TODO: define module type
-    file_path = os.path.join(os.getcwd(), 'modules', module_name, 'main.py')
+    file_path = str(Path(__file__).parent/'modules'/module_name/'main.py')
     if os.path.exists(file_path):
-        import_path = 'modules.{}.main'.format(module_name).replace('/', '.').replace('\\', '.')
+        import_path = str(Path('pacu/modules')/module_name/'main').replace('/', '.').replace('\\', '.')
         module = __import__(import_path, globals(), locals(), include, 0)
         importlib.reload(module)
         return module
@@ -337,7 +338,7 @@ class Main:
 
         service = service.lower()
 
-        with open('./modules/service_regions.json', 'r+') as regions_file:
+        with open(Path(__file__).parent/'modules/service_regions.json', 'r+') as regions_file:
             regions = json.load(regions_file)
 
         # TODO: Add an option for GovCloud regions
@@ -786,7 +787,7 @@ class Main:
                 for service in partition['services']:
                     regions[service] = partition['services'][service]
 
-        with open('modules/service_regions.json', 'w+') as services_file:
+        with open(Path(__file__).parent/'modules/service_regions.json', 'w+') as services_file:
             json.dump(regions, services_file, default=str, sort_keys=True)
 
         self.print('  Region list updated to the latest version!')
@@ -1054,8 +1055,8 @@ aws_secret_access_key = {}
     def list_modules(self, search_term, by_category=False):
         found_modules_by_category = dict()
         current_directory = os.getcwd()
-        for root, directories, files in os.walk('{}/modules'.format(current_directory)):
-            modules_directory_path = os.path.realpath('{}/modules'.format(current_directory))
+        for root, directories, files in os.walk(Path(__file__).parent/'modules'):
+            modules_directory_path = os.path.realpath(Path(__file__).parent/'modules')
             specific_module_directory = os.path.realpath(root)
 
             # Skip any directories inside module directories.
@@ -1070,7 +1071,7 @@ aws_secret_access_key = {}
             for file in files:
                 if file == 'main.py':
                     # Make sure the format is correct
-                    module_path = 'modules/{}/main'.format(module_name).replace('/', '.').replace('\\', '.')
+                    module_path = str(Path('pacu/modules')/module_name/'main').replace('/', '.').replace('\\', '.')
                     # Import the help function from the module
                     module = __import__(module_path, globals(), locals(), ['module_info'], 0)
                     importlib.reload(module)
@@ -1432,8 +1433,8 @@ aws_secret_access_key = {}
             MODULES = []
             CATEGORIES = []
 
-            for root, directories, files in os.walk('{}/modules'.format(os.getcwd())):
-                modules_directory_path = os.path.realpath('{}/modules'.format(os.getcwd()))
+            for root, directories, files in os.walk(Path(__file__).parent/'modules'):
+                modules_directory_path = os.path.realpath(Path(__file__/'modules'))
                 category_path = os.path.realpath(root)
 
                 # Skip any directories inside module directories.
@@ -1449,7 +1450,7 @@ aws_secret_access_key = {}
                         MODULES.append(module_name)
 
                         # Make sure the format is correct
-                        module_path = 'modules/{}/main'.format(module_name).replace('/', '.').replace('\\', '.')
+                        module_path = str(Path('pacu/modules')/module_name/'main').replace('/', '.').replace('\\', '.')
 
                         # Import the help function from the module
                         module = __import__(module_path, globals(), locals(), ['module_info'], 0)

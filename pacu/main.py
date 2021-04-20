@@ -1344,8 +1344,8 @@ aws_secret_access_key = {}
             if 'kali' in ua.lower() or 'parrot' in ua.lower() or 'pentoo' in ua.lower():  # If the local OS is Kali/Parrot/Pentoo Linux
                 # GuardDuty triggers a finding around API calls made from Kali Linux, so let's avoid that...
                 self.print('Detected environment as one of Kali/Parrot/Pentoo Linux. Modifying user agent to hide that from GuardDuty...')
-                with open('./user_agents.txt', 'r') as file:
-                    user_agents = file.readlines()
+                with open(Path(__file__).parent/'user_agents.txt', 'r') as f:
+                    user_agents = f.readlines()
                 user_agents = [agent.strip() for agent in user_agents]  # Remove random \n's and spaces
                 new_ua = random.choice(user_agents)
                 session.update(self.database, boto_user_agent=new_ua)

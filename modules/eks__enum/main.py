@@ -35,47 +35,30 @@ parser = argparse.ArgumentParser(add_help=False, description=module_info['descri
 
 # Main is the first function that is called when this module is executed.
 def main(args, pacu_main):
+    pacu_main.update_regions() # apparently we can't trust pacu to run this on boot, seems odd. 
     session = pacu_main.get_active_session()
 
-    # These can be removed if you are not using the function.
-    # args = parser.parse_args(args)
+    
     print = pacu_main.print
     input = pacu_main.input
     key_info = pacu_main.key_info
     fetch_data = pacu_main.fetch_data
     get_regions = pacu_main.get_regions
-    # install_dependencies = pacu_main.install_dependencies
+    
     user = key_info()
     print(user)
 
+    data = {}
     
-    # print(regions)
-    # user = key_info()
-    # print(f"user info looks like this: {user}")
-
-
-    # Attempt to install the required external dependencies, exit this module
-    # if the download/install fails
-    # if not install_dependencies(module_info['external_dependencies']):
-    #     return
-
-    # Make sure your main function returns whatever data you need to construct
-    # a module summary string.
-    eks_client = pacu_main.get_boto3_client('eks', 'us-east-1')
-    var = eks_client.list_clusters()
-
-    data = {
-        "summary": "nothing",
-        "clusters": var}
+    for region in pacu_main.get_regions('eks'):
+        eks_client = pacu_main.get_boto3_client('eks', region)
+        clusters = eks_client.list_clusters()["clusters"]
+        print(f"clusters in {region}: {clusters}")
+        
+    
+    data["summary"] = "all good!"
     return data
 
 
-# The summary function will be called by Pacu after running main, and will be
-# passed the data returned from main. It should return a single string
-# containing a curated summary of every significant thing that the module did,
-# whether successful or not; or None if the module exited early and made no
-# changes that warrant a summary being displayed. The data parameter can
-# contain whatever data is needed in any structure desired. A length limit of
-# 1000 characters is enforced on strings returned by module summary functions.
 def summary(data, pacu_main):
     return str(data)

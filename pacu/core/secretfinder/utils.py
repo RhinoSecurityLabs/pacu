@@ -4,6 +4,8 @@ import re
 import os
 from typing import Dict, Any
 
+from pathlib import Path
+
 
 class Color:
     GREEN = '\033[92m'
@@ -31,21 +33,19 @@ def shannon_entropy(data):
 
 def regex_checker(userdata) -> Dict[Any, list]:
     results = {}
-    __location__ = os.path.realpath(
-    os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
     try:
-        f =open(os.path.join(__location__, 'regexs.json'))
+        f = open(Path(__file__).parent/'regexs.json')
         data = f.read()
         regexs = json.loads(data)
 
         for key in regexs:
             regex = re.compile(regexs[key])
             result = regex.findall(userdata)
-            
+
             if result:
                 results[key] = result
-                
+
     except Exception as e:
         raise e
 

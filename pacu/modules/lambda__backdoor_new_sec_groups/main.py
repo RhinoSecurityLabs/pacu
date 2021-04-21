@@ -7,6 +7,7 @@ import random
 import string
 import os
 
+from pacu.core.lib import session_dir
 
 module_info = {
     'name': 'lambda__backdoor_new_sec_groups',
@@ -53,10 +54,10 @@ def main(args, pacu_main):
         created_cwe_rules = []
 
         if os.path.isfile('./modules/{}/created-lambda-functions.txt'.format(module_info['name'])):
-            with open('./modules/{}/created-lambda-functions.txt'.format(module_info['name']), 'r') as f:
+            with open(session_dir()/'modules'/module_info['name']/'created-lambda-functions.txt', 'r') as f:
                 created_lambda_functions = f.readlines()
-        if os.path.isfile('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name'])):
-            with open('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']), 'r') as f:
+        if os.path.isfile(session_dir()/'modules'/module_info['name']/'created-cloudwatch-events-rules.txt'):
+            with open(session_dir()/'modules'/module_info['name']/'created-cloudwatch-events-rules.txt', 'r') as f:
                 created_cwe_rules = f.readlines()
 
         if created_lambda_functions:
@@ -150,7 +151,7 @@ def main(args, pacu_main):
 
     code = code.replace('FROM_PORT', from_port).replace('TO_PORT', to_port).replace('IP_RANGE', args.ip_range).replace('IP_PROTOCOL', args.protocol)
 
-    with open('./modules/{}/lambda_function.py'.format(module_info['name']), 'w+') as f:
+    with open(session_dir()/'modules'/module_info['name']/'lambda_function.py', 'w+') as f:
         f.write(code)
 
     # Zip the Lambda function
@@ -230,10 +231,10 @@ def main(args, pacu_main):
                 print(code)
 
     if created_resources['LambdaFunctions']:
-        with open('./modules/{}/created-lambda-functions.txt'.format(module_info['name']), 'w+') as f:
+        with open(session_dir()/'modules'/module_info['name']/'created-lambda-functions.txt', 'w+') as f:
             f.write('\n'.join(created_resources['LambdaFunctions']))
     if created_resources['CWERules']:
-        with open('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']), 'w+') as f:
+        with open(session_dir()/'modules'/module_info['name']/'created-cloudwatch-events-rules.txt', 'w+') as f:
             f.write('\n'.join(created_resources['CWERules']))
 
     print('Warning: Your backdoor will not execute if the account does not have an active CloudTrail trail in the region it was deployed to.')

@@ -10,7 +10,7 @@ import random
 import time
 import subprocess
 
-from pacu.core.lib import strip_lines, downloads_dir
+from pacu.core.lib import strip_lines, downloads_dir, session_dir
 from pacu import Main
 from pacu.utils import remove_empty_from_dict
 
@@ -37,14 +37,14 @@ module_info = {
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 parser.add_argument('--offline', required=False, default=False, action='store_true', help=strip_lines('''
-    By passing this argument, this module will not make an API calls. If offline mode is enabled, you need to pass a 
+    By passing this argument, this module will not make an API calls. If offline mode is enabled, you need to pass a
     file path to a folder that contains JSON files of the different users, policies, groups, and/or roles in the account
     using the --folder argument. This module will scan those JSON policy files to identify users, groups, and roles that
     have overly permissive policies.
 '''))
 parser.add_argument('--folder', required=False, default=None, help=strip_lines('''
-    A file path pointing to a folder full of JSON files containing policies and connections between users, groups, 
-    and/or roles in an AWS account. The module "iam__enum_permissions" with the "--all-users" flag outputs the exact 
+    A file path pointing to a folder full of JSON files containing policies and connections between users, groups,
+    and/or roles in an AWS account. The module "iam__enum_permissions" with the "--all-users" flag outputs the exact
     format required for this feature to ~/.local/share/pacu/sessions/[current_session_name]/downloads/confirmed_permissions/.
 '''))
 parser.add_argument('--scan-only', required=False, default=False, action='store_true', help=strip_lines('''
@@ -1630,7 +1630,7 @@ def PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo(pacu_main, print, i
     # Replace the placeholder in the local code with their server
     code = code.replace('THEIR_URL', their_url)
 
-    with open('./modules/{}/lambda_function.py'.format(module_info['name']), 'w+') as f:
+    with open(session_dir()/'modules'/module_info['name']/'lambda_function.py', 'w+') as f:
         f.write(code)
 
     # Zip the Lambda function
@@ -2109,7 +2109,9 @@ def PassExistingRoleToNewCodeStarProject(pacu_main, print, input, fetch_data):
             }
         }
 
-    with open('./modules/iam__privesc_scan/PassExistingRoleToNewCodeStarProject/codestar_cf_template.json', 'w+') as f:
+    p = session_dir()/'modules'/module_info['name']/'PassExistingRoleToNewCodeStarProject/codestar_cf_template.json'
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with open(p, 'w+') as f:
         json.dump(codestar_cf_template, f)
 
     print('    There are two files located at "./modules/iam__privesc_scan/PassExistingRoleToNewCodeStarProject/" that must be uploaded to an S3 bucket for this privilege escalation method (codestar_cf_template.json and empty.zip). They must also be accessible from within the account that you are attacking, so best bet is to upload them to your own S3 bucket and make them both public objects. When that is done, fill in the answers to the following questions.\n')
@@ -2318,7 +2320,7 @@ def EditExistingLambdaFunctionWithRole(pacu_main, print, input, fetch_data):
     print('Completed enumeration of Lambda functions in all session regions.\n')
     print(strip_lines('''
         It is suggested to access the functions through the AWS Web Console to determine how your code edits will affect
-        the function. This module does not automatically modify functions due to the high risk of denial-of-service to 
+        the function. This module does not automatically modify functions due to the high risk of denial-of-service to
         the environment. Through the AWS API, you are required to first download the function code, modify it, then
         re-upload it, but through the web console, you can just edit it inline.
     '''))

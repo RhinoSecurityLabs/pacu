@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import List, Optional, Any, Dict, Union, Tuple
 
 from pacu.core import lib
-from pacu.core.lib import session_dir
+from pacu.core.lib import session_dir, home_dir
 
 try:
     import requests
@@ -338,7 +338,7 @@ class Main:
 
         service = service.lower()
 
-        with open(Path(__file__).parent/'modules/service_regions.json', 'r+') as regions_file:
+        with open(Path(__file__).parent/'modules/service_regions.json', 'r') as regions_file:
             regions = json.load(regions_file)
 
         # TODO: Add an option for GovCloud regions
@@ -509,12 +509,13 @@ class Main:
             if name.split('.')[-1] == 'git':
                 name = name.split('.')[0]
                 author = split[-2]
-                if os.path.exists('./dependencies/{}/{}'.format(author, name)):
+                dir = session_dir()/'dependencies'/author/name
+                if dir.exists():
                     self.print('  Dependency {}/{} already installed.'.format(author, name))
                 else:
                     try:
                         self.print('  Installing dependency {}/{} from {}...'.format(author, name, dependency))
-                        subprocess.run(['git', 'clone', dependency, './dependencies/{}/{}'.format(author, name)])
+                        subprocess.run(['git', 'clone', dependency, dir])
                     except subprocess.CalledProcessError as error:
                         self.print('{} failed, view the error below. If you are unsure, some potential causes are '
                                    'that you are missing "git" on your command line, your git credentials are not '
@@ -523,7 +524,8 @@ class Main:
                         self.print('  Exiting module...')
                         return False
             else:
-                if os.path.exists('./dependencies/{}'.format(name)):
+                dir = session_dir()/'dependencies'/name
+                if dir.exists():
                     self.print('  Dependency {} already installed.'.format(name))
                 else:
                     try:
@@ -531,7 +533,7 @@ class Main:
                         r = requests.get(dependency, stream=True)
                         if r.status_code == 404:
                             raise Exception('File not found.')
-                        with open('./dependencies/{}'.format(name), 'wb') as f:
+                        with open(dir, 'wb') as f:
                             for chunk in r.iter_content(chunk_size=1024):
                                 if chunk:
                                     f.write(chunk)

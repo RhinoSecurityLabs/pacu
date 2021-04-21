@@ -7,6 +7,8 @@ from pathlib import Path
 
 from botocore.exceptions import ClientError
 
+from pacu.core.lib import session_dir
+
 module_info = {
     'name': 'ebs__explore_snapshots',
     'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
@@ -288,7 +290,7 @@ def cleanup(client):
     """
     new_data = {}
     success = True
-    temp_file = Path(__file__).parent / 'temp.json'
+    temp_file = session_dir()/'modules'/module_info['name']/ 'temp.json'
     if temp_file.is_file():
         with temp_file.open('r') as file:
             data = json.load(file)
@@ -310,7 +312,7 @@ def cleanup(client):
 
 def store_temp_data(data):
     """Stores temporary data in a JSON file"""
-    temp_file = Path(__file__).parent / 'temp.json'
+    temp_file = session_dir()/'modules'/module_info['name']/ 'temp.json'
     if temp_file.exists():
         with temp_file.open('r') as json_file:
             existing_data = json.load(json_file)

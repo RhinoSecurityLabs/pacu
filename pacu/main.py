@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import List, Optional, Any, Dict, Union, Tuple
 
 from pacu.core import lib
-from pacu.core.lib import session_dir, home_dir
+from pacu.core.lib import session_dir
 
 try:
     import requests

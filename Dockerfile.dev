@@ -11,7 +11,15 @@ COPY ./requirements.txt ./
 RUN pip install -r requirements.txt
 
 # Install dev requirements
-RUN apk add gcc musl-dev linux-headers g++
+RUN apk add \
+    gcc \
+    build-base \
+    musl-dev \
+    linux-headers \
+    libffi-dev \
+    openssl-dev \
+    rust \
+    cargo
 COPY ./requirements-dev.txt ./
 RUN pip install -r requirements-dev.txt
 COPY ./ ./

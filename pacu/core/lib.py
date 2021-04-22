@@ -24,13 +24,19 @@ def home_dir() -> Path:
 def session_dir() -> Path:
     if not get_active_session:
         raise UserWarning("No session_name set.")
-    p = (home_dir() / cast(Callable, get_active_session)().name).absolute()
+    p = (home_dir()/cast(Callable, get_active_session)().name).absolute()
     os.makedirs(p, exist_ok=True)
     return p
 
 
 def downloads_dir() -> Path:
-    p = (session_dir() / 'downloads').absolute()
+    p = (session_dir()/'downloads').absolute()
+    os.makedirs(p, exist_ok=True)
+    return p
+
+
+def module_data_dir(module: str) -> Path:
+    p = (session_dir()/'module'/module).absolute()
     os.makedirs(p, exist_ok=True)
     return p
 

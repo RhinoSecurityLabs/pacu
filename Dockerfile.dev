@@ -7,8 +7,8 @@ RUN apk add --no-cache aws-cli
 
 # Install Pacu
 WORKDIR /usr/src/pacu/
-COPY ./requirements.txt ./
-RUN pip install -r requirements.txt
+
+RUN python -m pip install --upgrade pip
 
 # Install dev requirements
 RUN apk add \
@@ -19,11 +19,13 @@ RUN apk add \
     libffi-dev \
     openssl-dev \
     rust \
-    cargo
-COPY ./requirements-dev.txt ./
-RUN pip install -r requirements-dev.txt
-COPY ./ ./
+    cargo \
+    make \
+    bash
 
 RUN echo 'AWS_EC2_METADATA_DISABLED=true' >> /etc/profile
+COPY ./requirements* ./
+RUN pip install -r requirements-dev.txt
 
-ENTRYPOINT [ "python3", "pacu.py" ]
+COPY ./ ./
+RUN pip install -e .

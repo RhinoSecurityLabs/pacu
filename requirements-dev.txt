@@ -4,5 +4,5 @@ sqlalchemy-stubs==0.3
 pytest==6.2.1
 typing-extensions==3.7.4.3
 boto3-stubs[iam]
+setuptools
 poetry
-wheel

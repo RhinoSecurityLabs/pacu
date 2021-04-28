@@ -102,13 +102,11 @@ def main(args, pacu_main):
     # }
 
     for ssm_region in data.keys():
-        if not os.path.exists('sessions/{}/downloads/ssm_parameters/'.format(session.name)):
-            os.makedirs('sessions/{}/downloads/ssm_parameters/'.format(session.name))
-        with open('sessions/{}/downloads/ssm_parameters/{}.txt'.format(session.name,ssm_region), 'w+') as data_file:
-            json.dump(data[ssm_region], data_file, indent=2)
+        with open(downloads_dir()/'ssm_parameters/{}.txt'.format(ssm_region), 'w+') as f:
+            json.dump(data[ssm_region], f, indent=2)
 
     info = {}
-    info["save_path"] = 'sessions/{}/downloads/ssm_parameters/'.format(session.name)
+    info["save_path"] = str(downloads_dir()/'ssm_parameters/')
     info["region_count"] = str(len(data.keys()))
     total_params = 0
     for param_region in data.keys():

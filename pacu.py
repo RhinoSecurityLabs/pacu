@@ -777,7 +777,7 @@ class Main:
 
         for partition in endpoints['partitions']:
             if partition['partition'] == 'aws':
-                regions = dict()
+                regions: Dict[str, Any] = dict()
                 regions['all'] = list(partition['regions'].keys())
                 for service in partition['services']:
                     # fips regions are an alternate endpoint for already existing regions, to prevent duplicates we'll

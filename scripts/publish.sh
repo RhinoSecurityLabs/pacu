@@ -7,11 +7,6 @@ err() {
 }
 trap 'err "$LINENO"' err
 
-if [[ -z "${1:-}" ]]; then
-    echo "Usage: $0 [patch, minor, major, prepatch, preminor, premajor, prerelease]"
-    exit 1
-fi
-
 if ! git branch --show-current|grep master; then
     echo "[ERR] Must be on the master branch."
     exit 2
@@ -24,7 +19,6 @@ if ! git --no-pager diff HEAD..master; then
 fi
 
 
-poetry version "${1}"
 ver="$(poetry version -s)"
 git tag "v${ver}"
 git push --tags

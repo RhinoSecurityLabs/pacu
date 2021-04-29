@@ -197,7 +197,7 @@ class Main:
             if session:
                 log_file_path = '{}/error_log.txt'.format(session_dir())
             else:
-                log_file_path = 'global_error_log.txt'
+                log_file_path = '{}/global_error_log.txt'.format(session_dir())
 
             print('\n[{}] Pacu encountered an error while running the previous command. Check {} for technical '
                   'details. [LOG LEVEL: {}]\n\n    {}\n'.format(timestamp, log_file_path,
@@ -459,7 +459,7 @@ class Main:
         with open(Path(__file__).parent / 'last_update.txt', 'r') as f:
             local_last_update = f.read().rstrip()
 
-        latest_update = requests.get('https://raw.githubusercontent.com/RhinoSecurityLabs/pacu/master/last_update.txt').text.rstrip()
+        latest_update = requests.get('https://raw.githubusercontent.com/RhinoSecurityLabs/pacu/master/pacu/last_update.txt').text.rstrip()
 
         local_year, local_month, local_day = local_last_update.split('-')
         datetime_local = datetime.date(int(local_year), int(local_month), int(local_day))

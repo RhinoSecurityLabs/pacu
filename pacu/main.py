@@ -787,7 +787,11 @@ class Main:
                 regions = dict()
                 regions['all'] = list(partition['regions'].keys())
                 for service in partition['services']:
-                    regions[service] = partition['services'][service]
+                    # fips regions are an alternate endpoint for already existing regions, to prevent duplicates we'll
+                    # filter these out for now.
+                    regions[service] = {'endpoints': {}}
+                    for region in filter(lambda r: 'fips' not in r, partition['services'][service]['endpoints'].keys()):
+                        regions[service]['endpoints'][region] = partition['services'][service]['endpoints'][region]
 
         with open(Path(__file__).parent/'modules/service_regions.json', 'w+') as services_file:
             json.dump(regions, services_file, default=str, sort_keys=True)

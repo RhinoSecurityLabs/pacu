@@ -21,4 +21,4 @@ fi
 
 ver="$(poetry version -s)"
 git tag "v${ver}"
-git push --tags
+git push origin "refs/tags/v${ver}"

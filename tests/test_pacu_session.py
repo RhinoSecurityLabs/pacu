@@ -3,9 +3,9 @@ from sqlalchemy import orm, create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-import settings
-import core.base
-from core.models import PacuSession
+from pacu import settings
+from pacu import core
+from pacu.core.models import PacuSession
 
 # Import base and models after settings are set up
 settings.DATABASE_CONNECTION_PATH = "sqlite:///:memory:"

@@ -29,6 +29,8 @@ def remove_fips(original_regions):
             non_fips_regions.append(region)
     return non_fips_regions
 
+def build_summary_message():
+    return "All good buddy!"
 
 def main(args, pacu_main):
     pacu_main.update_regions() # apparently we can't trust pacu to run this on boot, seems odd. 
@@ -55,10 +57,15 @@ def main(args, pacu_main):
             data[region] = {
             "clusters": []
             }
-            data[region]['clusters'].append(clusters)
+            for cluster in clusters:
+                response= eks_client.list_nodegroups(clusterName=cluster)
+                data[region]['clusters'].append({
+                    "cluster": cluster,
+                    "nodegroups": response["nodegroups"]
+                    })
         
     session.update(pacu_main.database, EKS=data) 
-    return "All good brother!"
+    return build_summary_message()
 
 
 def summary(data, pacu_main):

@@ -1,0 +1,81 @@
+{
+  "associate_address": {
+    "InstanceId": "dummydata",
+    "AllocationId": "dummydata"
+  },
+  "create_launch_template_version": {
+    "LaunchTemplateId": "test"
+  },
+  "create_network_interface_permission": {
+    "AwsAccountId": "test"
+  },
+  "create_volume": {
+    "SnapshotId": "test"
+  },
+  "delete_launch_template": {
+    "LaunchTemplateId": "test"
+  },
+  "delete_launch_template_versions": {
+    "LaunchTemplateId": "test"
+  },
+  "disassociate_address": {
+    "AssociationId": "dummydata"
+  },
+  "modify_launch_template": {
+    "LaunchTemplateId": "test"
+  },
+  "modify_image_attribute": {
+    "Description": {
+      "Value": "string"
+    }
+  },
+  "modify_snapshot_attribute": {
+    "CreateVolumePermission": {
+      "Add": [
+        {
+          "Group": "all",
+          "UserId": "string"
+        }
+      ]
+    }
+  },
+  "modify_subnet_attribute": {
+    "AssignIpv6AddressOnCreation": {
+      "Value": true
+    }
+  },
+  "release_address": {
+    "AllocationId": "test"
+  },
+  "describe_security_group_references": {
+    "GroupId": ["asdf"]
+  },
+  "describe_scheduled_instance_availability": {
+    "FirstSlotStartTimeRange": {
+      "EarliestTime": "1",
+      "LatestTime": "2"
+    },
+    "Recurrence": {
+      "Interval": 1
+    }
+  },
+  "get_reserved_instances_exchange_quote": {
+    "ReservedInstanceIds": ["dummydata"]
+  },
+  "get_flow_logs_integration_template": {
+    "FlowLogId": "fl-11223344556677889",
+    "ConfigDeliveryS3DestinationArn": "asdf",
+    "IntegrateServices": {
+      "AthenaIntegrations": [
+        {
+          "IntegrationResultS3DestinationArn": "asdf",
+          "PartitionLoadFrequency": "asdf"
+        }
+      ]
+    }
+  },
+  "test_metric_filter": {
+    "filterPattern": "dummydata",
+    "logEventMessages": ["dummydata"]
+  }
+}

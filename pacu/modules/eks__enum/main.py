@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 import argparse
-import docker
 from botocore.exceptions import ClientError
 import base64
-import subprocess32 as subprocess
+import kubernetes as kube
 
 module_info = {
     'name': 'eks_enum',
@@ -20,6 +19,7 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format "us-east-1". Defaults to all session regions.')
+parser.add_argument('--verbose', required=False, action='store_true', default=False, help='Enable verbose output')
 
 # fips endpoints cause duplicates in the data that we pull back, and I see no reason atm to include them
 def remove_fips(original_regions):
@@ -58,11 +58,19 @@ def main(args, pacu_main):
             "clusters": []
             }
             for cluster in clusters:
-                response= eks_client.list_nodegroups(clusterName=cluster)
-                data[region]['clusters'].append({
-                    "cluster": cluster,
-                    "nodegroups": response["nodegroups"]
-                    })
+                if args.verbose:
+                    data[region]['clusters'].append({
+                        "cluster": eks_client.describe_cluster(name=cluster)["cluster"],
+                        "nodegroups": eks_client.list_nodegroups(clusterName=cluster)["nodegroups"],
+                        "addons": eks_client.list_addons(clusterName=cluster)["addons"],
+                        "fargate_profiles": eks_client.list_fargate_profiles(clusterName=cluster)["fargateProfileNames"],
+                        "identity_provider_configs": eks_client.list_identity_provider_configs(clusterName=cluster)["identityProviderConfigs"]
+                        })
+                else:
+                    data[region]['clusters'].append({
+                        "cluster": cluster,
+                        "nodegroups": eks_client.list_nodegroups(clusterName=cluster)['nodegroups']
+                        })
         
     session.update(pacu_main.database, EKS=data) 
     return build_summary_message()

@@ -82,7 +82,6 @@ class PacuSession(Base, ModelUpdateMixin):
         'Inspector',
         'Lambda',
         'Lightsail',
-        'RDS',
         'S3',
         'SecretsManager',
         'Shield',

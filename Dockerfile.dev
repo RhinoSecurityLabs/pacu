@@ -1,0 +1,36 @@
+# syntax = docker/dockerfile:1.2
+FROM python:3.9-alpine3.12
+
+LABEL maintainer="Rhino Assessment Team <pacu@rhinosecuritylabs.com>"
+LABEL pacu.version="1.0.1"
+
+RUN apk add --no-cache aws-cli
+
+# Install Pacu
+WORKDIR /usr/src/pacu/
+ENV PYTHONPATH /usr/src/pacu/
+
+# Install dev requirements
+RUN --mount=type=cache,target=/var/cache/apk apk add \
+    gcc \
+    build-base \
+    musl-dev \
+    linux-headers \
+    libffi-dev \
+    openssl-dev \
+    rust \
+    cargo \
+    make \
+    bash
+
+RUN --mount=type=cache,target=/root/.cache/pip python -m pip install --upgrade pip
+RUN --mount=type=cache,target=/root/.cache/pip pip install poetry
+
+RUN echo 'AWS_EC2_METADATA_DISABLED=true' >> /etc/profile
+
+COPY ./requirements* ./pyproject.toml ./poetry.lock ./
+RUN --mount=type=cache,target=/root/.cache/pypoetry/cache poetry run poetry install --no-root
+
+COPY ./ ./
+
+ENTRYPOINT ["poetry", "run"]

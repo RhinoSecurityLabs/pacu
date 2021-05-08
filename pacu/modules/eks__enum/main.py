@@ -48,36 +48,30 @@ def main(args, pacu_main):
         if len(clusters) > 0:
             cluster_count += len(clusters)
             data[region] = {
-            "clusters": []
+            "clusters": {}
             }
             for cluster in clusters:
                 if args.verbose:
-                    data[region]['clusters'].append({ 
-                        "cluster_name": cluster,
-                        "data": {
+                    data[region]['clusters'][cluster] = {
                         "cluster_description": eks_client.describe_cluster(name=cluster)["cluster"],
                         "nodegroups": eks_client.list_nodegroups(clusterName=cluster)["nodegroups"]
-                        }
-                    })
+                    }
                     if args.addons:
-                        data[region]['clusters'][cluster]['data']["addons"] = eks_client.list_addons(clusterName=cluster)["addons"]
+                        data[region]['clusters'][cluster]["addons"] = eks_client.list_addons(clusterName=cluster)["addons"]
                     if args.fargate_profiles:
-                        data[region]['clusters'][cluster]['data']["fargate_profiles"] = eks_client.list_fargate_profiles(clusterName=cluster)["fargateProfileNames"]
+                        data[region]['clusters'][cluster]["fargate_profiles"] = eks_client.list_fargate_profiles(clusterName=cluster)["fargateProfileNames"]
                     if args.identity_provider_configs:
-                        data[region]['clusters'][cluster]['data']["identity_provider_configs"] = eks_client.list_identity_provider_configs(clusterName=cluster)["identityProviderConfigs"]
-                    # "addons": eks_client.list_addons(clusterName=cluster)["addons"]
-                    # "fargate_profiles": eks_client.list_fargate_profiles(clusterName=cluster)["fargateProfileNames"]
-                    # "identity_provider_configs": eks_client.list_identity_provider_configs(clusterName=cluster)["identityProviderConfigs"]
+                        data[region]['clusters'][cluster]["identity_provider_configs"] = eks_client.list_identity_provider_configs(clusterName=cluster)["identityProviderConfigs"]
                 else:
-                    data[region]['clusters'].append({
-                        "cluster_name": cluster,
-                        "data": {
-                        "nodegroups": eks_client.list_nodegroups(clusterName=cluster)['nodegroups']
-                        }
-                    })
-                    # "addons": eks_client.list_addons(clusterName=cluster)["addons"],
-                    # "fargate_profiles": eks_client.list_fargate_profiles(clusterName=cluster)["fargateProfileNames"],
-                    # "identity_provider_configs": eks_client.list_identity_provider_configs(clusterName=cluster)["identityProviderConfigs"],
+                    data[region]['clusters'][cluster] = {
+                        "nodegroups": eks_client.list_nodegroups(clusterName=cluster)["nodegroups"]
+                    }
+                    if args.addons:
+                        data[region]['clusters'][cluster]["addons"] = eks_client.list_addons(clusterName=cluster)["addons"]
+                    if args.fargate_profiles:
+                        data[region]['clusters'][cluster]["fargate_profiles"] = eks_client.list_fargate_profiles(clusterName=cluster)["fargateProfileNames"]
+                    if args.identity_provider_configs:
+                        data[region]['clusters'][cluster]["identity_provider_configs"] = eks_client.list_identity_provider_configs(clusterName=cluster)["identityProviderConfigs"]
     session.update(pacu_main.database, EKS=data) 
     return build_summary_message(cluster_count)
 

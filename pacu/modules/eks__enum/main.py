@@ -9,10 +9,17 @@ module_info = {
     'category': 'ENUM',
     'one_liner': 'This module enumerates over EKS resources.',
     'description': 'This module enumerates over EKS resources.',
-    'services': ['ECS'],
+    'services': ['EKS'],
     'prerequisite_modules': [],
     'external_dependencies': [],
-    'arguments_to_autocomplete': [],
+    'arguments_to_autocomplete': [
+        '--regions',
+        '--verbose',
+        '--addons',
+        '--identity_provider_configs',
+        '--fargate_profiles',
+        '--all',
+    ],
 }
 
 
@@ -23,8 +30,6 @@ parser.add_argument('--addons', required=False, action='store_true', default=Fal
 parser.add_argument('--identity_provider_configs', required=False, action='store_true', default=False, help='Enumerate EKS identity provider configs')
 parser.add_argument('--fargate_profiles', required=False, action='store_true', default=False, help='Enumerate EKS fargate profiles')
 parser.add_argument('--all', required=False, action='store_true', default=False, help='Enumerate all EKS resources.')
-def build_summary_message(cluster_count):
-    return f"Found {cluster_count} clusters in total.\nTo see EKS data, run \"data EKS\","
 
 def main(args, pacu_main):
     args = parser.parse_args(args)
@@ -73,8 +78,8 @@ def main(args, pacu_main):
                     if args.identity_provider_configs or args.all:
                         data[region]['clusters'][cluster]["identity_provider_configs"] = eks_client.list_identity_provider_configs(clusterName=cluster)["identityProviderConfigs"]
     session.update(pacu_main.database, EKS=data) 
-    return build_summary_message(cluster_count)
+    return cluster_count
+    
 
-
-def summary(data, pacu_main):
-    return str(data)
+def summary(cluster_count, pacu_main):
+    return f"Found {cluster_count} clusters in total.\nTo see EKS data, run \"data EKS\","

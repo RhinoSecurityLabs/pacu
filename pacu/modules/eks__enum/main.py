@@ -49,7 +49,7 @@ def main(args, pacu_main):
         if len(clusters) > 0:
             cluster_count += len(clusters)
             data[region] = {
-            "clusters": {}
+                "clusters": {}
             }
             for cluster in clusters:
                     data[region]['clusters'][cluster] = {

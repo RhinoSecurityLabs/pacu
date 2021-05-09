@@ -14,22 +14,18 @@ module_info = {
     'external_dependencies': [],
     'arguments_to_autocomplete': [
         '--regions',
-        '--verbose',
-        '--addons',
-        '--identity_provider_configs',
-        '--fargate_profiles',
-        '--all',
+        '--no_addons',
+        '--no_identity_provider_configs',
+        '--no_fargate_profiles',
     ],
 }
 
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format "us-east-1". Defaults to all session regions.')
-parser.add_argument('--verbose', required=False, action='store_true', default=False, help='Enable verbose output')
-parser.add_argument('--addons', required=False, action='store_true', default=False, help='Enumerate EKS addons')
-parser.add_argument('--identity_provider_configs', required=False, action='store_true', default=False, help='Enumerate EKS identity provider configs')
-parser.add_argument('--fargate_profiles', required=False, action='store_true', default=False, help='Enumerate EKS fargate profiles')
-parser.add_argument('--all', required=False, action='store_true', default=False, help='Enumerate all EKS resources.')
+parser.add_argument('--no_addons', required=False, action='store_true', default=False, help='Exclude EKS addons')
+parser.add_argument('--no_identity_provider_configs', required=False, action='store_true', default=False, help='Exclude EKS identity provider configs')
+parser.add_argument('--no_fargate_profiles', required=False, action='store_true', default=False, help='Exclude EKS fargate profiles')
 
 def main(args, pacu_main):
     args = parser.parse_args(args)
@@ -56,26 +52,15 @@ def main(args, pacu_main):
             "clusters": {}
             }
             for cluster in clusters:
-                if args.verbose:
                     data[region]['clusters'][cluster] = {
                         "cluster_description": eks_client.describe_cluster(name=cluster)["cluster"],
                         "nodegroups": eks_client.list_nodegroups(clusterName=cluster)["nodegroups"]
                     }
-                    if args.addons or args.all:
+                    if not args.no_addons:
                         data[region]['clusters'][cluster]["addons"] = eks_client.list_addons(clusterName=cluster)["addons"]
-                    if args.fargate_profiles or args.all:
+                    if not args.no_fargate_profiles:
                         data[region]['clusters'][cluster]["fargate_profiles"] = eks_client.list_fargate_profiles(clusterName=cluster)["fargateProfileNames"]
-                    if args.identity_provider_configs or args.all:
-                        data[region]['clusters'][cluster]["identity_provider_configs"] = eks_client.list_identity_provider_configs(clusterName=cluster)["identityProviderConfigs"]
-                else:
-                    data[region]['clusters'][cluster] = {
-                        "nodegroups": eks_client.list_nodegroups(clusterName=cluster)["nodegroups"]
-                    }
-                    if args.addons or args.all:
-                        data[region]['clusters'][cluster]["addons"] = eks_client.list_addons(clusterName=cluster)["addons"]
-                    if args.fargate_profiles or args.all:
-                        data[region]['clusters'][cluster]["fargate_profiles"] = eks_client.list_fargate_profiles(clusterName=cluster)["fargateProfileNames"]
-                    if args.identity_provider_configs or args.all:
+                    if not args.no_identity_provider_configs:
                         data[region]['clusters'][cluster]["identity_provider_configs"] = eks_client.list_identity_provider_configs(clusterName=cluster)["identityProviderConfigs"]
     session.update(pacu_main.database, EKS=data) 
     return cluster_count

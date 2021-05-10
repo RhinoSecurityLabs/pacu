@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-from botocore.exceptions import ClientError
-import base64
 
 module_info = {
     'name': 'eks_enum',
@@ -42,26 +40,54 @@ def main(args, pacu_main):
             return
     else:
         regions = args.regions.split(',')
+
     for region in regions:
         eks_client = pacu_main.get_boto3_client('eks', region)
-        clusters = eks_client.list_clusters()["clusters"]
-        print(f"clusters in {region}: {clusters}")
-        if len(clusters) > 0:
-            cluster_count += len(clusters)
-            data[region] = {
-                "clusters": {}
-            }
+        cluster_paginator = eks_client.get_paginator("list_clusters")
+        cluster_page_iterator = cluster_paginator.paginate(PaginationConfig={'PageSize': 50})
+        data[region] = { # use this to count clusters
+            "clusters": {}
+        }
+        for page in cluster_page_iterator:
+            clusters = page["clusters"]
             for cluster in clusters:
-                    data[region]['clusters'][cluster] = {
-                        "cluster_description": eks_client.describe_cluster(name=cluster)["cluster"],
-                        "nodegroups": eks_client.list_nodegroups(clusterName=cluster)["nodegroups"]
-                    }
-                    if not args.no_addons:
-                        data[region]['clusters'][cluster]["addons"] = eks_client.list_addons(clusterName=cluster)["addons"]
-                    if not args.no_fargate_profiles:
-                        data[region]['clusters'][cluster]["fargate_profiles"] = eks_client.list_fargate_profiles(clusterName=cluster)["fargateProfileNames"]
-                    if not args.no_identity_provider_configs:
-                        data[region]['clusters'][cluster]["identity_provider_configs"] = eks_client.list_identity_provider_configs(clusterName=cluster)["identityProviderConfigs"]
+                nodegroups = []
+                addons = []
+                fargate_profiles = []
+                ip_configs = []
+
+                nodegroup_paginator = eks_client.get_paginator("list_nodegroups")
+                nodegroup_page_iterator = nodegroup_paginator.paginate(clusterName=cluster, PaginationConfig={'PageSize': 50})
+                addon_paginator = eks_client.get_paginator("list_addons")
+                addon_page_iterator = addon_paginator.paginate(clusterName=cluster, PaginationConfig={'PageSize': 50})
+                fargate_paginator = eks_client.get_paginator("list_fargate_profiles")
+                fargate_page_iterator = fargate_paginator.paginate(clusterName=cluster, PaginationConfig={'PageSize': 50})
+                ip_config_paginator = eks_client.get_paginator("list_identity_provider_configs")
+                ip_config_page_iterator = ip_config_paginator.paginate(clusterName=cluster, maxResults=1, PaginationConfig={'PageSize': 50})
+
+                for page in nodegroup_page_iterator:
+                    nodegroups.append(page["nodegroups"])
+                for page in addon_page_iterator:
+                    addons.append(page["addons"])
+                for page in fargate_page_iterator:
+                    fargate_profiles.append(page["fargateProfileNames"])
+                for page in ip_config_page_iterator:
+                    ip_configs.append(page["identityProviderConfigs"])
+
+                data[region]['clusters'][cluster] = {
+                    "cluster_description": eks_client.describe_cluster(name=cluster)["cluster"],
+                    "nodegroups": nodegroups
+                }
+                if not args.no_addons:
+                    data[region]['clusters'][cluster]["addons"] = addons
+                if not args.no_fargate_profiles:
+                    data[region]['clusters'][cluster]["fargate_profiles"] = fargate_profiles
+                if not args.no_identity_provider_configs:
+                    data[region]['clusters'][cluster]["identity_provider_configs"] = ip_configs
+
+        region_clusters = [cluster for cluster in data[region]["clusters"]]
+        print(f"clusters in {region}: {region_clusters}")
+        cluster_count += len(data[region]["clusters"])
     session.update(pacu_main.database, EKS=data) 
     return cluster_count
     

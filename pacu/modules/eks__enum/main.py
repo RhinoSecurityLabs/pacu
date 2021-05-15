@@ -63,7 +63,7 @@ def main(args, pacu_main):
                 fargate_paginator = eks_client.get_paginator("list_fargate_profiles")
                 fargate_page_iterator = fargate_paginator.paginate(clusterName=cluster, PaginationConfig={'PageSize': 50})
                 ip_config_paginator = eks_client.get_paginator("list_identity_provider_configs")
-                ip_config_page_iterator = ip_config_paginator.paginate(clusterName=cluster, maxResults=1, PaginationConfig={'PageSize': 50})
+                ip_config_page_iterator = ip_config_paginator.paginate(clusterName=cluster, maxResults=1, PaginationConfig={'PageSize': 1})
 
                 for page in nodegroup_page_iterator:
                     nodegroups.append(page["nodegroups"])
@@ -82,8 +82,8 @@ def main(args, pacu_main):
                     data[region]['clusters'][cluster]["addons"] = addons
                 if not args.no_fargate_profiles:
                     data[region]['clusters'][cluster]["fargate_profiles"] = fargate_profiles
-                if not args.no_identity_provider_configs:
-                    data[region]['clusters'][cluster]["identity_provider_configs"] = ip_configs
+                # if not args.no_identity_provider_configs:
+                    # data[region]['clusters'][cluster]["identity_provider_configs"] = ip_configs
 
         region_clusters = [cluster for cluster in data[region]["clusters"]]
         print(f"clusters in {region}: {region_clusters}")

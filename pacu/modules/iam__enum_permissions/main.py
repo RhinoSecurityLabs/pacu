@@ -130,7 +130,7 @@ def main(args, pacu_main: 'Main'):
             username = identity['Arn'].split(':user/')[1]
             active_aws_key.update(
                 pacu_main.database,
-                user_name=username,
+                user_name=username.split('/')[-1],
                 arn=identity['Arn'],
                 user_id=identity['UserId'],
                 account_id=identity['Account']

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import botocore
+from copy import deepcopy
 
 
 module_info = {
@@ -31,6 +32,8 @@ parser.add_argument('--account-id', required=True, help='The AWS account ID of t
 
 
 def main(args, pacu_main):
+    session = pacu_main.get_active_session()
+
     args = parser.parse_args(args)
     print = pacu_main.print
 
@@ -86,6 +89,16 @@ def main(args, pacu_main):
         for user in data['valid_users']:
             print('    {}'.format(user))
         print('')
+
+        iam_data = deepcopy(session.IAM)
+        if iam_data.get('Users') is None:
+            iam_data['Users'] = data['valid_users']
+        else:
+            # Check for duplicate users
+            for user in data['valid_users']:
+                if user not in iam_data['Users']:
+                    iam_data['Users'].append(user)
+        session.update(pacu_main.database, IAM=iam_data)
 
     return data
 

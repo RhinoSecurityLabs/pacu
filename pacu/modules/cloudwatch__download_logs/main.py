@@ -6,7 +6,7 @@ import os
 
 from botocore.exceptions import ClientError
 
-from pacu.core.lib import strip_lines, downloads_dir
+from pacu.core.lib import save, strip_lines, downloads_dir
 from pacu import Main
 
 module_info = {
@@ -92,7 +92,6 @@ def millisecond(time_stamp):
 
 
 def main(args, pacu_main: 'Main'):
-    global save
     session = pacu_main.get_active_session()
     args = parser.parse_args(args)
     print = pacu_main.print

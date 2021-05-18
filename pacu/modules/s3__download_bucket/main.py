@@ -6,7 +6,7 @@ import os
 
 from botocore.exceptions import ClientError
 
-from pacu.core.lib import strip_lines
+from pacu.core.lib import save, strip_lines
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -115,7 +115,6 @@ def write_bucket_keys_to_file(pacu, objects):
 
 
 def main(args, pacu_main):
-    global save
 
     session = pacu_main.get_active_session()
     args = parser.parse_args(args)

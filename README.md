@@ -1,4 +1,6 @@
-**Update 5/6/2020:** Pacu's database structure has been updated and PacuProxy has been removed. This update will break Pacu's database if you have used previous versions of Pacu. To fix this, rename/backup the old `sqLite.db` file and let a new one be generated on the next startup.
+**Update 5/4/2021:** We recently added support for installing via pip, take a look at the [Installation](#Installation) section for running pacu when installed with pip. If you want to run pacu directly from the checked out repo you'll want to use `./cli.py` instead of `python3 pacu.py`.
+
+With this change files that where written to `./sessions/<session>` before are now output to `~/.local/share/pacu/<session>`.
 
 # Quick reference
 - **Where to get help**:
@@ -16,7 +18,7 @@ Pacu is an open-source AWS exploitation framework, designed for offensive securi
 
 ## Installation
 
-Pacu is a fairly lightweight program, as it requires only [Python3.6+](https://www.python.org/downloads/) and pip3 to install a handful of Python libraries. Running install.sh will check your Python version and ensure all Python packages are up to date.
+Pacu is a fairly lightweight program, as it requires only [Python3.6+](https://www.python.org/downloads/) and pip3 to install a handful of Python libraries.
 
 ## Quick Installation
 

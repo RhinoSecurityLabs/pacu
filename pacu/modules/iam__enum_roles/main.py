@@ -123,7 +123,6 @@ def run(args, role_name, pacu_main, iam):
         print('Checking to see if any of these roles can be assumed for temporary credentials...\n')
         sts = pacu_main.get_boto3_client('sts')
         for role in data['valid_roles']:
-
             try:
                 response = sts.assume_role(
                     RoleArn=role,

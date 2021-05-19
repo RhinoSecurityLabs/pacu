@@ -10,6 +10,7 @@ import string
 import typing
 
 import json
+from copy import deepcopy
 
 if typing.TYPE_CHECKING:
     import mypy_boto3_iam
@@ -118,10 +119,11 @@ def run(args, role_name, pacu_main, iam):
         for role in data['valid_roles']:
             print('    {}'.format(role))
         print()
-
+        update_roles_database(pacu_main, data['valid_roles'])
         print('Checking to see if any of these roles can be assumed for temporary credentials...\n')
         sts = pacu_main.get_boto3_client('sts')
         for role in data['valid_roles']:
+
             try:
                 response = sts.assume_role(
                     RoleArn=role,
@@ -152,6 +154,19 @@ def run(args, role_name, pacu_main, iam):
                     print(response)
 
                     data['roles_assumed'].append(role)
+
+
+def update_roles_database(pacu_main, roles):
+    session = pacu_main.get_active_session()
+    iam_data = deepcopy(session.IAM)
+    if iam_data.get('Roles') is None:
+        iam_data['Roles'] = roles
+    else:
+        # Check for duplicate roels
+        for role in roles:
+            if role not in iam_data['Roles']:
+                iam_data['Roles'].append(role)
+    session.update(pacu_main.database, IAM=iam_data)
 
 
 def main(args, pacu_main):

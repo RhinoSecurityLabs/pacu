@@ -57,6 +57,26 @@ def fetch_transfer_servers(client, func, key, print, **kwargs):
     return []
 
 
+def fetch_transfer_server_users(client, func, key, print, **kwargs):
+    caller = getattr(client, func)
+    try:
+        response = caller(**kwargs)
+        data = response[key]
+        while 'NextToken' in response and response['NextToken'] != '':
+            print({**kwargs, **{'NextToken': response['NextToken']}})
+            response = caller({**kwargs, **{'NextToken': response['NextToken']}})
+            data.extend(response[key])
+        for resource in data:
+            resource['region'] = client.meta.region_name
+        return data
+    except ClientError as error:
+        code = error.response['Error']['Code']
+        if code == 'AccessDeniedException':
+            print('  {} FAILURE: MISSING NEEDED PERMISSIONS'.format(func))
+        else:
+            print(code)
+    return []
+
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
 
@@ -79,11 +99,17 @@ def main(args, pacu_main):
         print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('transfer', region)
 
-        # Database instances
+        # Servers instances
         servers = fetch_transfer_servers(client, 'list_servers', 'Servers', print)
         print('  {} server(s) found.'.format(len(servers)))
-        all_servers += servers
+        for server in servers:
+            server_id = server['ServerId']
+            server_details = client.describe_server(ServerId=server_id)
+            server['Details'] = server_details
+            server['Users'] = fetch_transfer_server_users(client, 'list_users', 'Users', print, ServerId=server_id)
+            server['Endpoint'] = f"{server_id}.server.transfer.{server['region']}.amazonaws.com"
 
+        all_servers += servers
 
     summary_data = {
         'servers': len(all_servers),

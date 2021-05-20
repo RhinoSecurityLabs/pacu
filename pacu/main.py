@@ -608,6 +608,8 @@ class Main:
             self.parse_search_command(command)
         elif command[0] == 'services':
             self.print_all_service_data(command)
+        elif command[0] == 'use_env_creds':
+            self.use_env_creds()
         elif command[0] == 'set_keys':
             self.set_keys()
         elif command[0] == 'set_regions':
@@ -910,14 +912,14 @@ aws_secret_access_key = {}
     def exec_module(self, command: List[str]) -> None:
         session = self.get_active_session()
 
-        # Run key checks so that if no keys have been set, Pacu doesn't default to
-        # the AWSCLI default profile:
-        if not session.access_key_id:
-            print('  No access key has been set. Not running module.')
-            return
-        if not session.secret_access_key:
-            print('  No secret key has been set. Not running module.')
-            return
+        if session.key_alias != '_env_':
+            # Run key checks so that if no keys have been set, Pacu doesn't default to the AWSCLI default profile:
+            if not session.access_key_id:
+                print('  No access key has been set. Not running module.')
+                return
+            if not session.secret_access_key:
+                print('  No secret key has been set. Not running module.')
+                return
 
         module_name = command[1].lower()
         module = import_module_by_name(module_name, include=['main', 'module_info', 'summary'])
@@ -1026,6 +1028,8 @@ aws_secret_access_key = {}
                   'region for the service. Supply "all" to this command to reset the region set to the default of all\n          supported regions\n')
         elif command_name == 'run' or command_name == 'exec':
             print('\n    run/exec <module name>\n        Execute a module\n')
+        elif command_name == 'use_env_creds':
+            print('\n    use_env_creds\n        Use credentials from the environment rather then the Pacu DB.\n')
         elif command_name == 'set_keys':
             print('\n    set_keys\n        Add a set of AWS keys to the session and set them as the default\n')
         elif command_name == 'swap_keys':
@@ -1120,6 +1124,11 @@ aws_secret_access_key = {}
         else:
             print('\nNo modules found.')
         print()
+
+
+    def use_env_creds(self):
+        self.set_keys(key_alias='_env_')
+
 
     def set_keys(self, key_alias: str = None, access_key_id: str = None, secret_access_key: str = None, session_token: str = None):
         session = self.get_active_session()
@@ -1361,18 +1370,23 @@ aws_secret_access_key = {}
     def get_boto_session(self, region: str = None) -> boto3.session.Session:
         session = self.get_active_session()
 
-        if not session.access_key_id:
-            raise UserWarning('  No access key has been set. Failed to generate boto3 Client.')
+        # key_alias is set to _env_ by the use_env_creds command
+        if session.key_alias == '_env_':
+            sess = boto3.session.Session(region_name=region)
+        else:
+            if not session.access_key_id:
+                raise UserWarning('  No access key has been set. Failed to generate boto3 Client.')
 
-        if not session.secret_access_key:
-            raise UserWarning('  No secret key has been set. Failed to generate boto3 Client.')
+            if not session.secret_access_key:
+                raise UserWarning('  No secret key has been set. Failed to generate boto3 Client.')
 
-        return boto3.session.Session(
-            region_name=region,
-            aws_access_key_id=session.access_key_id,
-            aws_secret_access_key=session.secret_access_key,
-            aws_session_token=session.session_token,
-        )
+            sess = boto3.session.Session(
+                region_name=region,
+                aws_access_key_id=session.access_key_id,
+                aws_secret_access_key=session.secret_access_key,
+                aws_session_token=session.session_token,
+            )
+        return sess
 
     def get_botocore_conf(
         self,

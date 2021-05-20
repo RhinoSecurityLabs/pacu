@@ -10,7 +10,7 @@ import random
 import time
 import subprocess
 
-from pacu.core.lib import strip_lines, downloads_dir, session_dir
+from pacu.core.lib import save, strip_lines, downloads_dir, session_dir
 from pacu import Main
 from pacu.utils import remove_empty_from_dict
 
@@ -61,7 +61,6 @@ parser.add_argument('--scan-only', required=False, default=False, action='store_
 
 def main(args, pacu_main: 'Main'):
     session = pacu_main.get_active_session()
-    global save
 
     ###### Don't modify these. They can be removed if you are not using the function.
     args = parser.parse_args(args)

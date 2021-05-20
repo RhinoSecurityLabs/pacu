@@ -125,35 +125,16 @@ def main(args, pacu_main: 'Main'):
 
         if re.match(r'arn:aws:iam::\d{12}:user/', identity['Arn']) is not None:
             is_user = True
-            client = pacu_main.get_boto3_client('iam')
-            try:
-                user = client.get_user()
-                active_aws_key.update(
-                    pacu_main.database,
-                    user_name=user['User']['UserName'],
-                    arn=identity['Arn'],
-                    user_id=identity['UserId'],
-                    account_id=identity['Account']
-                )
-            except botocore.exceptions.ClientError:
-                username = input('Failed to discover the current users username, enter it now or Ctrl+C to exit the module: ').strip()
-                if username:
-                    active_aws_key.update(
-                        pacu_main.database,
-                        user_name=username,
-                        arn=identity['Arn'],
-                        user_id=identity['UserId'],
-                        account_id=identity['Account']
-                    )
-                else:
-                    # Update the information from get_caller_identity and exit
-                    active_aws_key.update(
-                        pacu_main.database,
-                        arn=identity['Arn'],
-                        user_id=identity['UserId'],
-                        account_id=identity['Account']
-                    )
-                    return False
+            # GetCallerIdentity away return user's ARN like this if it was a user
+            # arn:aws:iam::123456789012:user/username
+            username = identity['Arn'].split(':user/')[1]
+            active_aws_key.update(
+                pacu_main.database,
+                user_name=username.split('/')[-1],
+                arn=identity['Arn'],
+                user_id=identity['UserId'],
+                account_id=identity['Account']
+            )
         elif re.match(r'arn:aws:sts::\d{12}:assumed-role/', identity['Arn']) is not None:
             is_role = True
             active_aws_key.update(

@@ -107,6 +107,8 @@ def main(args, pacu_main):
             server_details = client.describe_server(ServerId=server_id)
             server['Details'] = server_details
             server['Users'] = fetch_transfer_server_users(client, 'list_users', 'Users', print, ServerId=server_id)
+            for user in server['Users']:
+                user['Details'] = client.describe_user(ServerId=server_id, UserName=user['UserName'])
             server['Endpoint'] = f"{server_id}.server.transfer.{server['region']}.amazonaws.com"
 
         all_servers += servers

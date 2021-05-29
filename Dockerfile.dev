@@ -29,8 +29,10 @@ RUN --mount=type=cache,target=/root/.cache/pip pip install poetry
 RUN echo 'AWS_EC2_METADATA_DISABLED=true' >> /etc/profile
 
 COPY ./requirements* ./pyproject.toml ./poetry.lock ./
-RUN --mount=type=cache,target=/root/.cache/pypoetry/cache poetry run poetry install --no-root
+#RUN --mount=type=cache,target=/root/.cache/pypoetry/cache poetry run poetry install --no-root
+RUN poetry run poetry install --no-root
 
 COPY ./ ./
 
-ENTRYPOINT ["poetry", "run"]
+ENV SHELL=bash
+ENTRYPOINT ["poetry", "shell"]

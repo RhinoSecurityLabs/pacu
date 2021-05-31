@@ -19,7 +19,7 @@ module_info = {
     'one_liner': 'Enumerates EKS clusters',
 
     # Full description about what the module does and how it works
-    'description': 'This module enumerates all relevant instances eks_clusters from AWS EKS of a given region',
+    'description': 'This module enumerates all relevant data from AWS EKS (mandaged Kubernetes cluster) of a given region',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['EKS'],

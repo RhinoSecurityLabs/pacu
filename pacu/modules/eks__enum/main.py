@@ -112,4 +112,5 @@ def summary(data, pacu_main):
     for key in data:
         out += '  {} total {}(s) found.\n'.format(data[key], key[:-1])
     out += '\n  EKS clusters saved in Pacu database. You can run `data EKS` to view this info.\n'
+    out += '\n  TIP: You can use kube-hunter and hunt for security weaknesses in Kubernetes clusters.\n'
     return out

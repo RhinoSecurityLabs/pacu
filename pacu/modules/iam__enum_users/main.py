@@ -32,8 +32,6 @@ parser.add_argument('--account-id', required=True, help='The AWS account ID of t
 
 
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
-
     args = parser.parse_args(args)
     print = pacu_main.print
 
@@ -90,17 +88,36 @@ def main(args, pacu_main):
             print('    {}'.format(user))
         print('')
 
-        iam_data = deepcopy(session.IAM)
-        if iam_data.get('Users') is None:
-            iam_data['Users'] = data['valid_users']
-        else:
-            # Check for duplicate users
-            for user in data['valid_users']:
-                if user not in iam_data['Users']:
-                    iam_data['Users'].append(user)
-        session.update(pacu_main.database, IAM=iam_data)
+        update_users_database(pacu_main, data['valid_users'])
+
 
     return data
+
+def update_users_database(pacu_main, raw_users):
+    session = pacu_main.get_active_session()
+    users = [ user_formater(user) for user in raw_users]
+    iam_data = deepcopy(session.IAM)
+
+    if iam_data.get('Users') is None:
+        iam_data['Users'] = users
+    else:
+        for user in users:
+            if not is_duplicate_user(user, iam_data['Users']):
+                iam_data['Users'].append(user)
+    session.update(pacu_main.database, IAM=iam_data)
+
+def user_formater(user):
+    return {
+        "Arn": user,
+        "CreateDate": None,
+        "Path": "/" + '/'.join(user.split(':')[-1].split('/')[1:-1]),
+        "UserId": None,
+        "UserName": user.split('/')[-1]
+    }
+
+def is_duplicate_user(user, list_users):
+    user_arns = [ user["Arn"] for user in list_users]
+    return user["Arn"] in user_arns
 
 
 def summary(data, pacu_main):

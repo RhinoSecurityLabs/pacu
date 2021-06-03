@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import botocore
+from copy import deepcopy
 
 
 module_info = {
@@ -87,7 +88,39 @@ def main(args, pacu_main):
             print('    {}'.format(user))
         print('')
 
+        update_users_database(pacu_main, data['valid_users'])
+
+
     return data
+
+
+def update_users_database(pacu_main, raw_users):
+    session = pacu_main.get_active_session()
+    users = [ user_formater(user) for user in raw_users]
+    iam_data = deepcopy(session.IAM)
+
+    if iam_data.get('Users') is None:
+        iam_data['Users'] = users
+    else:
+        for user in users:
+            if not is_duplicate_user(user, iam_data['Users']):
+                iam_data['Users'].append(user)
+    session.update(pacu_main.database, IAM=iam_data)
+
+
+def user_formater(user):
+    return {
+        "Arn": user,
+        "CreateDate": None,
+        "Path": "/" + '/'.join(user.split(':')[-1].split('/')[1:-1]),
+        "UserId": None,
+        "UserName": user.split('/')[-1]
+    }
+
+
+def is_duplicate_user(user, list_users):
+    user_arns = [ user["Arn"] for user in list_users]
+    return user["Arn"] in user_arns
 
 
 def summary(data, pacu_main):

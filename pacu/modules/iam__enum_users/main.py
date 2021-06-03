@@ -93,6 +93,7 @@ def main(args, pacu_main):
 
     return data
 
+
 def update_users_database(pacu_main, raw_users):
     session = pacu_main.get_active_session()
     users = [ user_formater(user) for user in raw_users]
@@ -106,6 +107,7 @@ def update_users_database(pacu_main, raw_users):
                 iam_data['Users'].append(user)
     session.update(pacu_main.database, IAM=iam_data)
 
+
 def user_formater(user):
     return {
         "Arn": user,
@@ -114,6 +116,7 @@ def user_formater(user):
         "UserId": None,
         "UserName": user.split('/')[-1]
     }
+
 
 def is_duplicate_user(user, list_users):
     user_arns = [ user["Arn"] for user in list_users]

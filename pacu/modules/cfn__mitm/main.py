@@ -21,43 +21,17 @@ if TYPE_CHECKING:
 module_info = {
     'name': 'cfn__mitm',
     'author': 'You of your company',
-    'category': 'category_name',
-
-    # One liner description of the module functionality. This shows up when a
-    # user searches for modules.
-    'one_liner': 'Does this thing.',
-
-    # Full description about what the module does and how it works.
-    'description': 'This module does this thing by using xyz and outputs info to abc. Here is a note also.',
-
-    # A list of AWS services that the module utilizes during its execution.
-    'services': ['EC2'],
-
-    # For prerequisite modules, try and see if any existing modules return the
-    # data that is required for your module before writing that code yourself;
-    # that way, session data can stay separated and modular.
+    'category': 'ESCALATE',
+    'one_liner': "Set's up a lambda function to modify CloudFormation templates between execution and upload.",
+    'description': 'TODO',
+    'services': ['S3'],
     'prerequisite_modules': [],
-
-    # External resources that the module depends on. Valid options are either
-    # a GitHub URL (must end in .git), or a single file URL.
     'external_dependencies': [],
-
-    # Module arguments to autocomplete when the user hits tab.
     'arguments_to_autocomplete': [],
 }
 
-# Every module must include an ArgumentParser named "parser", even if it
-# doesn't use any additional arguments.
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-# The two add_argument calls are placeholders for arguments. Change as needed.
-# Arguments that accept multiple options, such as --usernames, should be
-# comma-separated. For example:
-#     --usernames user_a,userb,UserC
-# Arguments that are region-specific, such as --instance-ids, should use
-# an @ symbol to separate the data and its region; for example:
-#     --instance-ids 123@us-west-1,54252@us-east-1,9999@ap-south-1
-# Make sure to add all arguments to module_info['arguments_to_autocomplete']
 parser.add_argument('--principal', help='''
 The principal to set in the injected roles trust policy. If the attack succeeds this user/role will be able to assume the
 newly created role which has admin privileges. Defaults to the current user used by Pacu.

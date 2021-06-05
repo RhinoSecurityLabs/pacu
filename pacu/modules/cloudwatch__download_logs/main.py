@@ -77,7 +77,7 @@ def collect_all(client, func, key, **kwargs):
         response = caller(**kwargs)
         out = response[key]
         while 'nextToken' in response:
-            response = caller({'nextToken': response['nextToken'], **kwargs})
+            response = caller(**{'nextToken': response['nextToken'], **kwargs})
             out += response[key]
         return out
     except ClientError as error:

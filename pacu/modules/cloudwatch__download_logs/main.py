@@ -158,7 +158,7 @@ def main(args, pacu_main: 'Main'):
             'streams': sum([len(log_groups[key]) for key in log_groups]),
             'events': event_count,
         }
-    dl_root = downloads_dir() + '/cloud_watch_logs/'
+    dl_root = str(downloads_dir()) + '/cloud_watch_logs/'
     summary_data['log_download_path'] = '{}{}'.format(dl_root, scan_time)
     return summary_data
 

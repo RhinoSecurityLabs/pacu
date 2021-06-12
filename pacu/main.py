@@ -685,9 +685,13 @@ class Main:
             self.print('\nSession data:')
             session.print_all_data_in_session()
         else:
-            service = command[1].upper()
+            service = command[1]
+            if service.upper() in session.aws_data_field_names:
+                service = service.upper()
+
             if service not in session.aws_data_field_names:
-                print('  Service not found.')
+                print('  Service not found. Please use the service name below.')
+                print('\t'.join(list(session.aws_data_field_names)))
             elif getattr(session, service) == {} or getattr(session, service) == [] or getattr(session, service) == '':
                 print('  No data found.')
             else:

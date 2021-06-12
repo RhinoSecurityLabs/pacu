@@ -685,17 +685,15 @@ class Main:
             self.print('\nSession data:')
             session.print_all_data_in_session()
         else:
-            service = command[1]
-            if service.upper() in session.aws_data_field_names:
-                service = service.upper()
-
-            if service not in session.aws_data_field_names:
+            service = command[1].upper()
+            service_map = dict([(n.upper(), n) for n in session.aws_data_field_names])
+            if service_map.get(service) not in session.aws_data_field_names:
                 print('  Service not found. Please use the service name below.')
                 print('\t'.join(list(session.aws_data_field_names)))
-            elif getattr(session, service) == {} or getattr(session, service) == [] or getattr(session, service) == '':
+            elif not getattr(session, service_map.get(service)):
                 print('  No data found.')
             else:
-                print(json.dumps(getattr(session, service), indent=2, sort_keys=True, default=str))
+                print(json.dumps(getattr(session, service_map.get(service)), indent=2, sort_keys=True, default=str))
 
     def parse_set_regions_command(self, command):
         session = self.get_active_session()

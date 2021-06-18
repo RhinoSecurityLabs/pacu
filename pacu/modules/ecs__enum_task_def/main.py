@@ -89,5 +89,5 @@ def main(args, pacu_main: 'Main'):
 def summary(data, pacu_main):
     return (
         '  ECS Task Definition Data for {} task definition(s) was written to {}'
-        '/ecs_task_def_data/'
+        '/downloads/ecs_task_def_data/'
     ).format(data['task_definitions'], session_dir())

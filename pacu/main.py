@@ -682,18 +682,23 @@ class Main:
         session = self.get_active_session()
 
         if len(command) == 1:
-            self.print('\nSession data:')
+            print('\nSession data:')
             session.print_all_data_in_session()
         else:
-            service = command[1].upper()
-            service_map = dict([(n.upper(), n) for n in session.aws_data_field_names])
-            if service_map.get(service) not in session.aws_data_field_names:
-                print('  Service not found. Please use the service name below.')
-                print('\t'.join(list(session.aws_data_field_names)))
-            elif not getattr(session, service_map.get(service)):
-                print('  No data found.')
-            else:
-                print(json.dumps(getattr(session, service_map.get(service)), indent=2, sort_keys=True, default=str))
+            self.print(self._parse_data_command(command, session))
+
+    def _parse_data_command(self, command: List[str], session: 'PacuSession') -> str:
+        service = command[1].upper()
+        service_map = dict([(n.upper(), n) for n in session.aws_data_field_names])
+        name = service_map.get(service.upper())
+
+        if not name or name not in session.aws_data_field_names:
+            return '  Service not found. Please use the service name below.\n' + \
+                   '\t'.join(list(session.aws_data_field_names))
+        elif not getattr(session, name):
+            return '  No data found.'
+        else:
+            return json.dumps(getattr(session, name), indent=2, sort_keys=True, default=str)
 
     def parse_set_regions_command(self, command):
         session = self.get_active_session()

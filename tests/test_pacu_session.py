@@ -3,7 +3,7 @@ from sqlalchemy import orm, create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from pacu import settings
+from pacu import settings, Main
 from pacu import core
 from pacu.core.models import PacuSession
 
@@ -48,3 +48,44 @@ def active_session(db, pacu_session: PacuSession):
 
 def test_active_session(active_session: PacuSession):
     assert active_session.is_active
+
+
+@pytest.fixture(scope='function')
+def pacu(db):
+    pacu = Main()
+    pacu.database = db
+    return pacu
+
+
+def test_parse_data_command_returns_help(pacu: Main, active_session: PacuSession):
+    msg = pacu._parse_data_command(['data', 'non-existent-service'], active_session)
+    assert 'Service not found. Please use the service name below.' in msg
+    assert 'APIGateway	CloudTrail	CloudWatch	CodeBuild	Config' in msg
+
+
+def test_parse_data_command_returns_no_data_found(pacu: Main, active_session: PacuSession):
+    msg = pacu._parse_data_command(['data', 'CloudWatch'], active_session)
+    assert 'No data found' in msg
+
+
+def test_parse_data_command_returns_no_data_found_case_insensitive(pacu: Main, active_session: PacuSession):
+    msg = pacu._parse_data_command(['data', 'cloudwatch'], active_session)
+    assert 'No data found' in msg
+
+
+@pytest.fixture(scope='function')
+def pacu_with_data(pacu: Main, active_session: PacuSession):
+    active_session.update(pacu.database, CloudWatch={"test_key": "test_value"})
+    return pacu
+
+
+def test_parse_data_command_returns_data(pacu_with_data: Main, active_session: PacuSession):
+    msg = pacu_with_data._parse_data_command(['data', 'CloudWatch'], active_session)
+    assert 'test_key' in msg
+    assert 'test_value' in msg
+
+
+def test_parse_data_command_returns_data_case_insensitive(pacu_with_data: Main, active_session: PacuSession):
+    msg = pacu_with_data._parse_data_command(['data', 'cloudwatch'], active_session)
+    assert 'test_key' in msg
+    assert 'test_value' in msg

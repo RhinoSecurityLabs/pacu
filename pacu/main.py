@@ -682,7 +682,7 @@ class Main:
         session = self.get_active_session()
 
         if len(command) == 1:
-            print('\nSession data:')
+            self.print('\nSession data:')
             session.print_all_data_in_session()
         else:
             self.print(self._parse_data_command(command, session))

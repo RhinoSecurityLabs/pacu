@@ -1,7 +1,6 @@
 import io
 import os
 import json
-import pytest
 import datetime
 
 from pacu.main import Main

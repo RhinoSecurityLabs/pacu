@@ -457,7 +457,7 @@ class Main:
 
     def check_for_updates(self):
         TIME_FORMAT = '%Y-%m-%d'
-        UPDATE_CYCLE = 7 # Days
+        UPDATE_CYCLE = 7  # Days
         UPDATE_INFO_PATH = lib.home_dir()/'update_info.json'
         LAST_UPDATE_PATH = lib.pacu_dir()/'pacu/last_update.txt'
         UPDATE_MSG = '''Pacu has a new version available! Clone it from GitHub to receive the updates.
@@ -469,17 +469,17 @@ class Main:
         datetime_now = datetime.datetime.now()
         datetime_local = datetime.datetime.strptime(local_last_update, TIME_FORMAT)
 
-        # update_info.json structure: 
+        # update_info.json structure:
         # { 'last_check':'YYYY-MM-DD', 'local_lastest':'YYYY-MM-DD'}
         # Create a update_info.json if not exist
         if not os.path.isfile(UPDATE_INFO_PATH):
-            # Require for the first time  check update from upstream 
-            datetime_last_check  = datetime_now - datetime.timedelta(days=UPDATE_CYCLE)
+            # Require for the first time  check update from upstream
+            datetime_last_check = datetime_now - datetime.timedelta(days=UPDATE_CYCLE)
             update_info = {}
             update_info['last_check'] = datetime_last_check.strftime(TIME_FORMAT)
             update_info['local_lastest'] = datetime_local.strftime(TIME_FORMAT)
             with open(UPDATE_INFO_PATH, 'w') as f:
-                json.dump(update_info,f)
+                json.dump(update_info, f)
 
         with open(UPDATE_INFO_PATH, 'r') as f:
             update_info = json.load(f)
@@ -494,14 +494,14 @@ class Main:
             update_info['local_lastest'] = datetime_latest.strftime(TIME_FORMAT)
             update_info['last_check'] = datetime_now.strftime(TIME_FORMAT)
             with open(UPDATE_INFO_PATH, 'w') as f:
-                json.dump(update_info,f)
+                json.dump(update_info, f)
 
             if datetime_local < datetime_latest:
                 print(UPDATE_MSG)
                 return True
         # Local check
         elif datetime_local < datetime_local_latest:
-            print(datetime_local , datetime_local_latest)
+            print(datetime_local, datetime_local_latest)
             print(UPDATE_MSG)
             return True
         return False

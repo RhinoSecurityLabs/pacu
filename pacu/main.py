@@ -455,7 +455,6 @@ class Main:
                 self.exec_module(['exec', module])
         return True
 
-
     def check_for_updates(self):
         TIME_FORMAT = '%Y-%m-%d'
         UPDATE_CYCLE = 7 # Days

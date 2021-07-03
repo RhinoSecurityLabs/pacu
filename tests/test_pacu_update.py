@@ -6,7 +6,6 @@ import datetime
 
 from pacu.main import Main
 from pacu.core import lib
-from pacu.core.models import PacuSession
 
 from unittest import mock
 from freezegun import freeze_time
@@ -97,4 +96,3 @@ def test_local_updatable(pacu_dir, home_dir, tmp_path):
 
     with freeze_time('2021-01-01'):
         assert  True == Main.check_for_updates(None)
-

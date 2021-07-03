@@ -455,21 +455,57 @@ class Main:
                 self.exec_module(['exec', module])
         return True
 
+
     def check_for_updates(self):
-        with open(Path(__file__).parent / 'last_update.txt', 'r') as f:
+        TIME_FORMAT = '%Y-%m-%d'
+        UPDATE_CYCLE = 7 # Days
+        UPDATE_INFO_PATH = lib.home_dir()/'update_info.json'
+        LAST_UPDATE_PATH = lib.pacu_dir()/'pacu/last_update.txt'
+        UPDATE_MSG = '''Pacu has a new version available! Clone it from GitHub to receive the updates.
+        git clone https://github.com/RhinoSecurityLabs/pacu.git'''
+
+        with open(LAST_UPDATE_PATH, 'r') as f:
             local_last_update = f.read().rstrip()
 
-        latest_update = requests.get('https://raw.githubusercontent.com/RhinoSecurityLabs/pacu/master/pacu/last_update.txt').text.rstrip()
+        datetime_now = datetime.datetime.now()
+        datetime_local = datetime.datetime.strptime(local_last_update, TIME_FORMAT)
 
-        local_year, local_month, local_day = local_last_update.split('-')
-        datetime_local = datetime.date(int(local_year), int(local_month), int(local_day))
+        # update_info.json structure: 
+        # { 'last_check':'YYYY-MM-DD', 'local_lastest':'YYYY-MM-DD'}
+        # Create a update_info.json if not exist
+        if not os.path.isfile(UPDATE_INFO_PATH):
+            # Require for the first time  check update from upstream 
+            datetime_last_check  = datetime_now - datetime.timedelta(days=UPDATE_CYCLE)
+            update_info = {}
+            update_info['last_check'] = datetime_last_check.strftime(TIME_FORMAT)
+            update_info['local_lastest'] = datetime_local.strftime(TIME_FORMAT)
+            with open(UPDATE_INFO_PATH, 'w') as f:
+                json.dump(update_info,f)
 
-        latest_year, latest_month, latest_day = latest_update.split('-')
-        datetime_latest = datetime.date(int(latest_year), int(latest_month), int(latest_day))
+        with open(UPDATE_INFO_PATH, 'r') as f:
+            update_info = json.load(f)
+        datetime_last_check = datetime.datetime.strptime(update_info['last_check'], TIME_FORMAT)
+        datetime_local_latest = datetime.datetime.strptime(update_info['local_lastest'], TIME_FORMAT)
 
-        if datetime_local < datetime_latest:
-            print('Pacu has a new version available! Clone it from GitHub to receive the updates.\n    git clone '
-                  'https://github.com/RhinoSecurityLabs/pacu.git\n')
+        # Check upstream
+        if (datetime_now - datetime_last_check).days >= UPDATE_CYCLE:
+            latest_update = requests.get('https://raw.githubusercontent.com/RhinoSecurityLabs/pacu/master/pacu/last_update.txt').text.rstrip()
+            datetime_latest = datetime.datetime.strptime(latest_update, TIME_FORMAT)
+
+            update_info['local_lastest'] = datetime_latest.strftime(TIME_FORMAT)
+            update_info['last_check'] = datetime_now.strftime(TIME_FORMAT)
+            with open(UPDATE_INFO_PATH, 'w') as f:
+                json.dump(update_info,f)
+
+            if datetime_local < datetime_latest:
+                print(UPDATE_MSG)
+                return True
+        # Local check
+        elif datetime_local < datetime_local_latest:
+            print(datetime_local , datetime_local_latest)
+            print(UPDATE_MSG)
+            return True
+        return False
 
     def key_info(self, alias='') -> Union[Dict[str, Any], bool]:
         """ Return the set of information stored in the session's active key

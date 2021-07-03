@@ -20,6 +20,7 @@ def strip_lines(text: str) -> str:
 def home_dir() -> Path:
     return settings.home_dir
 
+
 def pacu_dir() -> Path:
     return Path(__file__).parents[2]
 

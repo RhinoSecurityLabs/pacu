@@ -7,7 +7,6 @@ import random
 import re
 import shlex
 import subprocess
-import datetime
 import sys
 import time
 import traceback
@@ -17,6 +16,7 @@ from typing import List, Optional, Any, Dict, Union, Tuple
 
 from pacu.core import lib
 from pacu.core.lib import session_dir
+from datetime import datetime
 
 try:
     import requests
@@ -466,42 +466,39 @@ class Main:
         with open(LAST_UPDATE_PATH, 'r') as f:
             local_last_update = f.read().rstrip()
 
-        datetime_now = datetime.datetime.now()
-        datetime_local = datetime.datetime.strptime(local_last_update, TIME_FORMAT)
+        datetime_now = datetime.now()
+        datetime_local = datetime.strptime(local_last_update, TIME_FORMAT)
+
+        datetime_last_check = datetime.min
+        latest_cached = datetime.min
 
         # update_info.json structure:
-        # { 'last_check':'YYYY-MM-DD', 'local_lastest':'YYYY-MM-DD'}
+        # { 'last_check':'YYYY-MM-DD', 'latest_cached':'YYYY-MM-DD'}
         # Create a update_info.json if not exist
-        if not os.path.isfile(UPDATE_INFO_PATH):
-            # Require for the first time  check update from upstream
-            datetime_last_check = datetime_now - datetime.timedelta(days=UPDATE_CYCLE)
-            update_info = {}
-            update_info['last_check'] = datetime_last_check.strftime(TIME_FORMAT)
-            update_info['local_lastest'] = datetime_local.strftime(TIME_FORMAT)
-            with open(UPDATE_INFO_PATH, 'w') as f:
-                json.dump(update_info, f)
-
-        with open(UPDATE_INFO_PATH, 'r') as f:
-            update_info = json.load(f)
-        datetime_last_check = datetime.datetime.strptime(update_info['last_check'], TIME_FORMAT)
-        datetime_local_latest = datetime.datetime.strptime(update_info['local_lastest'], TIME_FORMAT)
+        update_info = {}
+        if os.path.isfile(UPDATE_INFO_PATH):
+            with open(UPDATE_INFO_PATH, 'r') as f:
+                update_info = json.load(f)
+                datetime_last_check = datetime.strptime(update_info['last_check'], TIME_FORMAT)
+                latest_cached = datetime.strptime(update_info['latest_cached'], TIME_FORMAT)
 
         # Check upstream
         if (datetime_now - datetime_last_check).days >= UPDATE_CYCLE:
-            latest_update = requests.get('https://raw.githubusercontent.com/RhinoSecurityLabs/pacu/master/pacu/last_update.txt').text.rstrip()
-            datetime_latest = datetime.datetime.strptime(latest_update, TIME_FORMAT)
+            latest_update = requests.get(
+                'https://raw.githubusercontent.com/RhinoSecurityLabs/pacu/master/pacu/last_update.txt').text.rstrip()
+            latest = datetime.strptime(latest_update, TIME_FORMAT)
 
-            update_info['local_lastest'] = datetime_latest.strftime(TIME_FORMAT)
+            update_info['latest_cached'] = latest.strftime(TIME_FORMAT)
             update_info['last_check'] = datetime_now.strftime(TIME_FORMAT)
             with open(UPDATE_INFO_PATH, 'w') as f:
                 json.dump(update_info, f)
 
-            if datetime_local < datetime_latest:
+            if datetime_local < latest:
                 print(UPDATE_MSG)
                 return True
         # Local check
-        elif datetime_local < datetime_local_latest:
-            print(datetime_local, datetime_local_latest)
+        elif datetime_local < latest_cached:
+            print(datetime_local, latest_cached)
             print(UPDATE_MSG)
             return True
         return False

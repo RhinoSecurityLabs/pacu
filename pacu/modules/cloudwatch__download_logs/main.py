@@ -77,7 +77,7 @@ def collect_all(client, func, key, **kwargs):
         response = caller(**kwargs)
         out = response[key]
         while 'nextToken' in response:
-            response = caller({'nextToken': response['nextToken'], **kwargs})
+            response = caller(**{'nextToken': response['nextToken'], **kwargs})
             out += response[key]
         return out
     except ClientError as error:
@@ -158,7 +158,7 @@ def main(args, pacu_main: 'Main'):
             'streams': sum([len(log_groups[key]) for key in log_groups]),
             'events': event_count,
         }
-    dl_root = downloads_dir() + '/cloud_watch_logs/'
+    dl_root = str(downloads_dir()) + '/cloud_watch_logs/'
     summary_data['log_download_path'] = '{}{}'.format(dl_root, scan_time)
     return summary_data
 

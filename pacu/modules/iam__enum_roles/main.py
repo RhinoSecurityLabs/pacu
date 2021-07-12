@@ -10,7 +10,9 @@ import string
 import typing
 
 import json
+
 from copy import deepcopy
+from pacu.core.lib import pacu_dir
 
 if typing.TYPE_CHECKING:
     import mypy_boto3_iam
@@ -61,7 +63,7 @@ def run(args, role_name, pacu_main, iam):
         return None
 
     if args.word_list is None:
-        word_list_path = './modules/{}/default-word-list.txt'.format(module_info['name'])
+        word_list_path = pacu_dir()/f"pacu/modules/{module_info['name']}/default-word-list.txt"
     else:
         word_list_path = args.word_list.strip()
 

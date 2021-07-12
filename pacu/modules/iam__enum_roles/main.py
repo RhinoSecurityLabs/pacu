@@ -13,7 +13,6 @@ import typing
 import json
 
 from copy import deepcopy
-from pacu.core.lib import pacu_dir
 
 if typing.TYPE_CHECKING:
     import mypy_boto3_iam

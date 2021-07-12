@@ -5,7 +5,7 @@ import argparse
 import os
 import json
 
-from pacu.core.lib import strip_lines, save
+from pacu.core.lib import strip_lines, save, session_dir
 from pacu import Main
 
 module_info = {
@@ -88,6 +88,6 @@ def main(args, pacu_main: 'Main'):
 
 def summary(data, pacu_main):
     return (
-        '  ECS Task Definition Data for {} task definition(s) was written to ~/.local/share/pacu/sessions/{}/downloads/'
-        'ecs_task_def_data/'
-    ).format(data['task_definitions'], pacu_main.get_active_session())
+        '  ECS Task Definition Data for {} task definition(s) was written to {}'
+        '/downloads/ecs_task_def_data/'
+    ).format(data['task_definitions'], session_dir())

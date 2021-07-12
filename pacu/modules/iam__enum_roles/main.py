@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import sys
+from pathlib import Path
 
 import botocore
 import botocore.exceptions
@@ -63,7 +64,7 @@ def run(args, role_name, pacu_main, iam):
         return None
 
     if args.word_list is None:
-        word_list_path = pacu_dir()/f"pacu/modules/{module_info['name']}/default-word-list.txt"
+        word_list_path = f'{Path(__file__).parent}/default-word-list.txt'
     else:
         word_list_path = args.word_list.strip()
 
@@ -114,7 +115,7 @@ def run(args, role_name, pacu_main, iam):
                 return data
             else:
                 print('  Unhandled error: {}'.format(str(error)))
-                return data
+                raise error
 
     if len(data['valid_roles']) > 0:
         print('\nFound {} role(s):\n'.format(len(data['valid_roles'])))
@@ -194,7 +195,7 @@ def main(args, pacu_main):
     iam: 'mypy_boto3_iam.IAMClient' = pacu_main.get_boto3_client('iam')
 
     if args.role_name:
-        role_name = args.role_name
+        role_name = args.role_name.split('/')[-1]  # Handle ARN's if that was passed for whatever reason.
         resp = iam.get_role(RoleName=role_name)
         orig_trust_doc = json.dumps(resp['Role']['AssumeRolePolicyDocument'])
     else:

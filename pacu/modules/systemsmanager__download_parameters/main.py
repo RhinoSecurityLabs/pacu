@@ -4,6 +4,8 @@ from botocore.exceptions import ClientError
 import json
 import os
 
+from pacu.core.lib import downloads_dir
+
 module_info = {
     'name': 'systemsmanager__download_parameters',
     'author': 'David Yesland',

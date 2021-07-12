@@ -91,6 +91,7 @@ def export_api_doc(client, session, api_summary, exportType='swagger'):
 
     files_names = []
     output_path = downloads_dir()/'apigateway'
+    output_path.mkdir(exist_ok=True)
 
     api_id = api_summary['id']
     api_name = api_summary['name']
@@ -119,7 +120,7 @@ def parse_method(base_url, method, path, stages):
         'url': []
     }
 
-    if method['methodIntegration'].get('uri'):
+    if method.get('methodIntegration') and method['methodIntegration'].get('uri'):
         api_method['uri'] = method['methodIntegration']['uri']
 
     if method.get('httpMethod'):
@@ -131,7 +132,7 @@ def parse_method(base_url, method, path, stages):
     if method.get('apiKeyRequired'):
         api_method['apiKeyRequired'] = method['apiKeyRequired']
 
-    if method['methodIntegration'].get('requestParameters'):
+    if method.get('methodIntegration') and method['methodIntegration'].get('requestParameters'):
         api_method['requestParameters'] = method['methodIntegration']['requestParameters']
 
     for stage in stages:
@@ -146,7 +147,7 @@ def main(args, pacu):
     session = pacu.get_active_session()
     args = parser.parse_args(args)
 
-    outfile_path = str(downloads_dir()/'apigateway')
+    outfile_path = downloads_dir()/'apigateway'
 
     if args.regions:
         regions = args.regions.split(',')

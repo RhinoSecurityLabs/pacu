@@ -2,7 +2,6 @@
 import argparse
 import requests
 import zipfile
-import os
 import re
 
 from pacu.core.lib import downloads_dir
@@ -44,7 +43,6 @@ parser.add_argument('--versions-all', required=False, default=False, action='sto
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all session regions.')
 parser.add_argument('--checksource', required=False, default=False, action='store_true', help='Download and scan all lambda functions for secrets. Warning this could effect performance.' )
 
-SOURCE_ENTROPY_THRESHOLD = 3.8
 
 def fetch_lambda_data(client, func, key, print, **kwargs):
     caller = getattr(client, func)
@@ -122,7 +120,7 @@ def main(args, pacu_main):
             # Check for secrets in data
             check_evn_secrets(func)
             if args.checksource:
-                check_source_secrets(session.name, func)
+                check_source_secrets(func)
 
         lambda_data['Functions'] += lambda_functions
         if lambda_functions:
@@ -148,10 +146,10 @@ def check_evn_secrets(function):
     except KeyError:
         return
 
-def check_source_secrets(session_name, function):
+def check_source_secrets(function):
     pattern = "(#.*|//.*|\\\".*\\\"|'.*'|/\\*.*|\".*\")"
 
-    source_data = get_function_source(session_name, function)
+    source_data = get_function_source(function)
 
     for key in source_data:
         for line in re.findall(pattern, source_data[key]):
@@ -160,7 +158,7 @@ def check_source_secrets(session_name, function):
                 [Color.print(Color.GREEN, "\t{}: {}".format(key, secrets[key])) for key in secrets]
 
 
-def get_function_source(session_name, func):
+def get_function_source(func):
     try:
         # Get Link and setup file name
         fname = func['FunctionArn'].split(':')

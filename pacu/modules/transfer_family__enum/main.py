@@ -7,7 +7,7 @@ from botocore.exceptions import ClientError
 
 module_info = {
     # Name of the module (should be the same as the filename)
-    'name': 'transfer_family__enum',
+    'name': 'transferfamily__enum',
 
     # Name and any other notes about the author
     'author': 'Julio Melo from appminer.io and eufuihackeado.com.br',
@@ -114,7 +114,7 @@ def main(args, pacu_main):
         all_servers += servers
 
     summary_data = {
-        'servers': len(all_servers),
+        'endpoints': len(all_servers),
     }
 
     for var in vars(args):

@@ -135,5 +135,5 @@ def summary(data, pacu_main):
     out = ''
     for key in data:
         out += '  {} total {}(s) found.\n'.format(data[key], key[:-1])
-    out += '\n  AWS Transfer Family resources saved in Pacu database.\n'
+    out += '\n  AWS Transfer Family resources saved in Pacu database. You can run `data Transfer` to view this info.\n'
     return out

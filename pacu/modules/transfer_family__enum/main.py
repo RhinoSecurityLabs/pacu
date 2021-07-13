@@ -6,7 +6,7 @@ from botocore.exceptions import ClientError
 
 
 module_info = {
-    # Name of the module (should be the same as the filename)
+    # Name of the module (should be the same as the filename
     'name': 'transferfamily__enum',
 
     # Name and any other notes about the author

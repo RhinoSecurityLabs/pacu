@@ -27,7 +27,7 @@ mypy = "^0.812"
 sqlalchemy-stubs = "^0.4"
 pytest = "^6.2.3"
 typing-extensions = "^3.7.4"
-boto3-stubs = {extras = ["iam", "s3"], version = "^1.17.54"}
+boto3-stubs = {extras = ["iam", "s3", "lambda"], version = "^1.17.54"}
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

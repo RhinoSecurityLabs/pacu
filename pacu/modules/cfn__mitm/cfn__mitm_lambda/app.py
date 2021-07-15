@@ -13,15 +13,24 @@ app = Chalice(app_name="cfn_mitm")
 if TYPE_CHECKING:
     import mypy_boto3_s3
 
-sess = boto3.session.Session()
+sess = boto3.session.Session(
+    aws_access_key_id=os.getenv('S3_AWS_ACCESS_KEY_ID'),
+    aws_secret_access_key=os.getenv('S3_AWS_SECRET_ACCESS_KEY'),
+    aws_session_token=os.getenv('S3_AWS_SESSION_TOKEN') or None,
+)
 s3: 'mypy_boto3_s3.S3Client' = sess.client('s3', region_name='us-east-1')
 
 bucket = os.getenv('BUCKET')
 if not bucket:
     raise UserWarning('No BUCKET environment variable found.')
 
-@app.on_s3_event(bucket=bucket)
-def lambda_handler(event: 'S3Event'):
+@app.lambda_function(name='lambda_handler')
+def lambda_handler(event: dict, context: dict):
+    event = S3Event(event, context)
+
+    arn = sess.client('sts').get_caller_identity()['Arn']
+    print(f"Caller identity used for updating cross account S3 Objects: {arn}")
+
     update(event)
 
     return {

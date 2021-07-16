@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "pacu"
 version = "1.0.4"
-description = ""
-authors = ["Ryan Gerstenkorn <ryan.gerstenkorn@rhinosecuritylabs.com>"]
+description = "The AWS exploitation framework, designed for testing the security of Amazon Web Services environments."
+authors = ["Rhino Assessment Team <pacu@rhinosecuritylabs.com>"]
 license = "BSD-3"
 
 [tool.poetry.scripts]

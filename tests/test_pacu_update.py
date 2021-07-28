@@ -17,8 +17,7 @@ def test_fresh_install(pacu_dir, home_dir, get, tmp_path):
     pacu_dir.return_value = tmp_path
     home_dir.return_value = tmp_path
     get.return_value.text = '2021-01-01'
-    (tmp_path/'pacu/').mkdir()
-    with open(tmp_path/'pacu/last_update.txt', 'w') as f:
+    with open(tmp_path/'last_update.txt', 'w') as f:
         f.write('2021-01-01')
 
     with freeze_time('2021-01-01'):
@@ -40,8 +39,7 @@ def test_one_month_no_update(pacu_dir, home_dir, get, tmp_path):
     pacu_dir.return_value = tmp_path
     home_dir.return_value = tmp_path
     get.return_value.text = '2021-01-01'
-    (tmp_path/'pacu/').mkdir()
-    with open(tmp_path/'pacu/last_update.txt', 'w') as f:
+    with open(tmp_path/'last_update.txt', 'w') as f:
         f.write('2021-01-01')
 
     update_info = {
@@ -64,8 +62,7 @@ def test_one_month_updatable(pacu_dir, home_dir, get, tmp_path):
     pacu_dir.return_value = tmp_path
     home_dir.return_value = tmp_path
     get.return_value.text = '2021-02-01'
-    (tmp_path/'pacu/').mkdir()
-    with open(tmp_path/'pacu/last_update.txt', 'w') as f:
+    with open(tmp_path/'last_update.txt', 'w') as f:
         f.write('2021-01-01')
 
     update_info = {
@@ -92,8 +89,7 @@ def test_one_month_updatable(pacu_dir, home_dir, get, tmp_path):
 def test_local_updatable(pacu_dir, home_dir, get, tmp_path):
     pacu_dir.return_value = tmp_path
     home_dir.return_value = tmp_path
-    (tmp_path/'pacu/').mkdir()
-    with open(tmp_path/'pacu/last_update.txt','w') as f:
+    with open(tmp_path/'last_update.txt','w') as f:
         f.write('2021-01-01')
 
     update_info = {

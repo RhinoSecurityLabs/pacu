@@ -459,7 +459,7 @@ class Main:
         TIME_FORMAT = '%Y-%m-%d'
         UPDATE_CYCLE = 7  # Days
         UPDATE_INFO_PATH = lib.home_dir()/'update_info.json'
-        LAST_UPDATE_PATH = lib.pacu_dir()/'pacu/last_update.txt'
+        LAST_UPDATE_PATH = lib.pacu_dir()/'last_update.txt'
         UPDATE_MSG = '''Pacu has a new version available! Clone it from GitHub to receive the updates.
         git clone https://github.com/RhinoSecurityLabs/pacu.git'''
 

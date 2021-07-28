@@ -22,7 +22,7 @@ def home_dir() -> Path:
 
 
 def pacu_dir() -> Path:
-    return Path(__file__).parents[2]
+    return Path(__file__).parents[1]
 
 
 def session_dir() -> Path:

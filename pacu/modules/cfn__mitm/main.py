@@ -23,9 +23,9 @@ if TYPE_CHECKING:
 
 module_info = {
     'name': 'cfn__mitm',
-    'author': 'You of your company',
+    'author': 'Ryan Gerstenkorn of Rhino Security Labs',
     'category': 'ESCALATE',
-    'one_liner': "Set's up a lambda function to modify CloudFormation templates between execution and upload.",
+    'one_liner': "Modifies CloudFormation templates when uploaded",
     'description': 'TODO',
     'services': ['S3'],
     'prerequisite_modules': [],

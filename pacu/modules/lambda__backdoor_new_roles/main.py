@@ -3,7 +3,6 @@ import argparse
 from botocore.exceptions import ClientError
 from pathlib import Path
 from copy import deepcopy
-import subprocess
 import random
 import string
 import zipfile

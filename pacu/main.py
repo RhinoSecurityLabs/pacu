@@ -88,7 +88,7 @@ def display_pacu_help():
         whoami                              Display information regarding to the active access keys
         data                                Display all data that is stored in this session. Only fields
                                               with values will be displayed
-        data <service>                      Display all data for a specified service in this session
+        data <service> [<sub-service>]      Display all data for a specified service in this session
         services                            Display a list of services that have collected data in the
                                               current session to use with the "data" command
         regions                             Display a list of all valid AWS regions

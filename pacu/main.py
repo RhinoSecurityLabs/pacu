@@ -719,7 +719,7 @@ class Main:
         else:
             self.print(self._parse_data_command(command, session))
 
-    def _parse_data_command(self, command: List[str], session: 'PacuSession') -> str:
+    def _parse_data_command(self, command: List[str], session: PacuSession) -> str:
         service = command[1].upper()
         service_map = dict([(key.upper(), key) for key in session.aws_data_field_names])
         name = service_map.get(service.upper())
@@ -740,13 +740,12 @@ class Main:
         name = sub_service_map.get(sub_service.upper())
 
         if not name or name not in service_data.keys():
-            return '  Sub-service not found. Please use the Sub-service name below.\n' + \
+            return '  Sub-service not found. Please use the sub-service name below.\n' + \
                    '\t'.join(service_data.keys())
         elif not service_data[name]:
             return '  No data found.'
         else:
             return json.dumps(service_data[name], indent=2, sort_keys=True, default=str)
-
 
     def parse_set_regions_command(self, command):
         session = self.get_active_session()

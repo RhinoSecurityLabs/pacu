@@ -5,7 +5,7 @@ import moto
 import pytest
 
 from chalice.test import Client
-from pacu.modules.cfn__mitm.cfn__mitm_lambda.app import app, add_role_dict, add_role_bytes, fetch, update
+from pacu.modules.cfn__resource_injection.cfn__resource_injection_lambda.app import app, add_role_dict, add_role_bytes, fetch, update
 
 
 def test_lambda_handler():

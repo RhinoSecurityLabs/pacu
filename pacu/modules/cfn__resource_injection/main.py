@@ -6,19 +6,21 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import TYPE_CHECKING, List, cast
+from typing import TYPE_CHECKING, cast
 
 import boto3
 import botocore.exceptions
 from botocore.exceptions import ClientError
-from chalice import cli
 from mypy_boto3_s3.type_defs import NotificationConfigurationTypeDef
 
 from pacu import Main
 from pacu.core.lib import module_data_dir
 from pacu.core.models import AWSKey
+
+
 class PacuException(Exception):
     pass
+
 
 if TYPE_CHECKING:
     import mypy_boto3_iam
@@ -27,7 +29,7 @@ if TYPE_CHECKING:
     import mypy_boto3_lambda
 
 module_info = {
-    'name': 'cfn__mitm',
+    'name': 'cfn__resource_injection',
     'author': 'Ryan Gerstenkorn of Rhino Security Labs',
     'category': 'ESCALATE',
     'one_liner': "Modifies CloudFormation templates when uploaded",
@@ -53,7 +55,7 @@ parser.add_argument('--s3-access-key', help='Pacu key name to use for the deploy
 parser.add_argument('--s3-notifications-setup-key', help='Pacu key name to use for configuring the victims S3 buckets to send notifications to our lambda function.')
 parser.add_argument('--bucket', help=' The S3 Bucket name to target, this is usually something like cf-templates-*.')
 
-LAMBDA_NAME = "cfn__mitm_lambda-dev-update_template"
+LAMBDA_NAME = "cfn__resource_injection_lambda-dev-update_template"
 
 
 def get_bucket_name(s3: 'mypy_boto3_s3.ServiceResource', lambda_dir: 'Path') -> str:
@@ -127,7 +129,7 @@ def main(args, pacu_main: 'Main'):
     if not principal:
         print("Must use the --principal argument to specify which user we want to be able to elevate permissions.")
 
-    lambda_dir = (module_data_dir(pacu_main.running_module_names[-1])/'cfn__mitm_lambda')
+    lambda_dir = (module_data_dir(pacu_main.running_module_names[-1])/'cfn__resource_injection_lambda')
 
     if args.bucket:
         bucket = args.bucket

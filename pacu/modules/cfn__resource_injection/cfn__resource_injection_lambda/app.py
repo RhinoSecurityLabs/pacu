@@ -10,7 +10,7 @@ import yaml
 from typing import TYPE_CHECKING
 
 
-app = Chalice(app_name="cfn_mitm")
+app = Chalice(app_name="cfn__resource_injection")
 
 
 class CfnType(enum.Enum):

@@ -267,7 +267,7 @@ def remove_bucket_notification(sess: 'boto3.session.Session', bucket: str):
     s3 = sess.client('s3')
     resp = s3.get_bucket_notification_configuration(Bucket=bucket)
     resp = remove_our_notification(resp)
-    
+
     s3.put_bucket_notification_configuration(
         Bucket=bucket,
         NotificationConfiguration=resp,

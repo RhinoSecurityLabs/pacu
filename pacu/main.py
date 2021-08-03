@@ -1269,6 +1269,9 @@ aws_secret_access_key = {}
 
         if key_name:
             chosen_key = self.get_aws_key_by_alias(key_name)
+            if not chosen_key:
+                print(f'No key with the alias {key_name} found.')
+                return
         else:
             self.print('\nSwapping AWS Keys. Press enter to keep the currently active key.')
 

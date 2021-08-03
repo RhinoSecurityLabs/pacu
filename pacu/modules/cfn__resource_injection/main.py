@@ -27,12 +27,51 @@ module_info = {
     'name': 'cfn__resource_injection',
     'author': 'Ryan Gerstenkorn of Rhino Security Labs',
     'category': 'ESCALATE',
-    'one_liner': "Modifies CloudFormation templates when uploaded",
-    'description': 'TODO',
-    'services': ['S3'],
+    'one_liner': "Resource Injection in CloudFormation Templates",
+    'description': '''
+        Given an S3 bucket used for storing CloudFormation templates to be deployed this module will set up the S3 bucket
+        notifications to trigger a lambda in another account when these templates are uploaded. This lambda will then
+        inject an IAM admin role into the template, assuming this modification happens before the template is deployed,
+        the user deploying is an admin, as well as deploys with the CAPABILITY_IAM permission (this more than likely
+        the case) our IAM role will be deployed with the rest of the resources.
+
+        Currently, it takes just under a second for templates to be updated so this module will be most effective
+        against deployment processes that have some delay between the upload and deploy steps. The CloudFormation
+        console wizard is a good target for this, however, there may be other cases that work here as well.
+        
+        After our IAM role is deployed it will have a trust role policy set up to allow AssumeRole from the IAM identity
+        specified by the '--principal' argument, if this isn't specified the principal will be the root principal
+        of the account used for the '--attacker-key' credentials.
+
+        The '--*-key' arguments should reference Pacu credentials set up through 'set_keys'. There are a few seperate
+        credentials needed for this module, these are described below.
+
+        This module is designed to make use of a secondary account where you have full access. This is where the
+        lambda is deployed and it eliminates the need to have the permissions necessary in the target account to
+        run lambda deploys. The credentials for this account should be specified with the '--attacker-key' argument.
+
+        The '--s3-access-key' should have GetObject, PutObject, PutBucketNotification, and GetBucketNotification
+        permissions to the targeted S3 bucket. This credential will be used to set up notifications on the targeted
+        S3 bucket as well as hardcoded in the lambda during deployment and used to read and write templates when
+        triggered.
+
+        Optionally you can split the PutBucketNotification and GetBucketNotification permissions out into a seperate
+        key using '--s3-notifications-setup-key'. If this is not specified it's assumed that '--s3-access-key' has
+        the necessary permissions.
+
+        A specific bucket can be targeted with the '--bucket' argument. If this is not specified Pacu will attempt
+        to enumerate 'cf-template-*' buckets and prompt for the target bucket.
+    '''.strip(),
+    'services': ['CloudFormation'],
     'prerequisite_modules': [],
     'external_dependencies': [],
-    'arguments_to_autocomplete': [],
+    'arguments_to_autocomplete': [
+        '--delete',
+        '--attacker-key',
+        '--s3-access-key',
+        '--s3-notifications-setup-key',
+        '--bucket',
+    ],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])

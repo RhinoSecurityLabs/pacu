@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import argparse
+from pathlib import Path
+
 import botocore
 from copy import deepcopy
 
@@ -40,7 +42,7 @@ def main(args, pacu_main):
         return None
 
     if args.word_list is None:
-        word_list_path = './modules/{}/default-word-list.txt'.format(module_info['name'])
+        word_list_path = f'{Path(__file__).parent}/default-word-list.txt'
     else:
         word_list_path = args.word_list.strip()
 
@@ -65,9 +67,18 @@ def main(args, pacu_main):
         data['attempts'] += 1
 
         try:
+            policy_doc = '''
+            {{
+                "Version":"2012-10-17",
+                "Statement":[{{
+                    "Effect":"Deny",
+                    "Principal":{{"AWS":"{}"}},
+                    "Action":"sts:AssumeRole"
+                }}]
+            }}'''.format(user_arn).strip()
             client.update_assume_role_policy(
-                RoleName=args.role_name,
-                PolicyDocument='{{"Version":"2012-10-17","Statement":[{{"Effect":"Deny","Principal":{{"AWS":"{}"}},"Action":"sts:AssumeRole"}}]}}'.format(user_arn)
+                RoleName=args.role_name.split('/')[-1],  # Handle ARN's if they where accidentally passed here
+                PolicyDocument=policy_doc,
             )
             print('  Found user: {}'.format(user_arn))
             data['valid_users'].append(user_arn)
@@ -80,7 +91,8 @@ def main(args, pacu_main):
                 return data
             else:
                 print('  Unhandled error: {}'.format(str(error)))
-                return data
+                print(policy_doc)
+                raise error
 
     if len(data['valid_users']) > 0:
         print('\nFound {} user(s):\n'.format(len(data['valid_users'])))

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import sys
+from pathlib import Path
 
 import botocore
 import botocore.exceptions
@@ -10,6 +11,8 @@ import string
 import typing
 
 import json
+
+from copy import deepcopy
 
 if typing.TYPE_CHECKING:
     import mypy_boto3_iam
@@ -60,7 +63,7 @@ def run(args, role_name, pacu_main, iam):
         return None
 
     if args.word_list is None:
-        word_list_path = './modules/{}/default-word-list.txt'.format(module_info['name'])
+        word_list_path = f'{Path(__file__).parent}/default-word-list.txt'
     else:
         word_list_path = args.word_list.strip()
 
@@ -111,14 +114,14 @@ def run(args, role_name, pacu_main, iam):
                 return data
             else:
                 print('  Unhandled error: {}'.format(str(error)))
-                return data
+                raise error
 
     if len(data['valid_roles']) > 0:
         print('\nFound {} role(s):\n'.format(len(data['valid_roles'])))
         for role in data['valid_roles']:
             print('    {}'.format(role))
         print()
-
+        update_roles_database(pacu_main, data['valid_roles'])
         print('Checking to see if any of these roles can be assumed for temporary credentials...\n')
         sts = pacu_main.get_boto3_client('sts')
         for role in data['valid_roles']:
@@ -154,12 +157,44 @@ def run(args, role_name, pacu_main, iam):
                     data['roles_assumed'].append(role)
 
 
+def update_roles_database(pacu_main, raw_roles):
+    session = pacu_main.get_active_session()
+    roles = [role_formater(role) for role in raw_roles]
+    iam_data = deepcopy(session.IAM)
+
+    if iam_data.get('Roles') is None:
+        iam_data['Roles'] = roles
+    else:
+        for role in roles:
+            if not is_duplicate_role(role, iam_data['Roles']):
+                iam_data['Roles'].append(role)
+    session.update(pacu_main.database, IAM=iam_data)
+
+
+def role_formater(role):
+    return {                    
+            "Arn": role,
+            "AssumeRolePolicyDocument": None,
+            "CreateDate": None,
+            "Description": None,
+            "MaxSessionDuration": None,
+            "Path": "/" + '/'.join(role.split(':')[-1].split('/')[1:-1]),
+            "RoleId": None,
+            "RoleName": role.split('/')[-1]
+        }
+
+
+def is_duplicate_role(role, list_roles):
+    role_arns = [ role["Arn"] for role in list_roles]
+    return role["Arn"] in role_arns
+
+
 def main(args, pacu_main):
     args = parser.parse_args(args)
     iam: 'mypy_boto3_iam.IAMClient' = pacu_main.get_boto3_client('iam')
 
     if args.role_name:
-        role_name = args.role_name
+        role_name = args.role_name.split('/')[-1]  # Handle ARN's if that was passed for whatever reason.
         resp = iam.get_role(RoleName=role_name)
         orig_trust_doc = json.dumps(resp['Role']['AssumeRolePolicyDocument'])
     else:

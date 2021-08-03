@@ -458,7 +458,7 @@ def main(args, pacu_main: 'Main'):
                         deny_permissions=user['Permissions']['Deny']
                     )
                 else:
-                    with save('confirmed_permissions/user-{}.json'.format(session.name, user['UserName']), 'w+') as f:
+                    with save('confirmed_permissions/user-{}.json'.format(user['UserName']), 'w+') as f:
                         json.dump(user, f, indent=2, default=str)
 
                     print('    Permissions stored in user-{}.json'.format(user['UserName']))

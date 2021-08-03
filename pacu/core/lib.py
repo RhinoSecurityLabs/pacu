@@ -1,5 +1,4 @@
 import contextlib
-import io
 import os
 from typing import Optional, cast, Callable, Generator, IO, Any
 
@@ -8,6 +7,10 @@ from pathlib import Path
 from pacu import settings
 
 get_active_session: Optional[Callable] = None
+
+
+class PacuException(Exception):
+    pass
 
 
 def strip_lines(text: str) -> str:

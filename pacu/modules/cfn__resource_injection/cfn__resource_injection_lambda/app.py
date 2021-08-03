@@ -19,7 +19,7 @@ class CfnType(enum.Enum):
 
 
 # The Role name is used to check if the lambda has already updated the template. It's important to ensure this doesn't
-# break, if it the lambda may end up endlessly triggering itself.
+# break, if it does the lambda may end up endlessly triggering itself.
 # TODO: Figure out a better way to check if a notification is for an already updated file.
 BACKDOORED_IAM_ROLE_NAME = b'MaintenanceRole'
 

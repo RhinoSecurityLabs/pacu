@@ -109,6 +109,9 @@ def display_pacu_help():
                                               at ~/.aws/credentials) to the current sessions database.
                                               Enter the name of a profile you would like to import or
                                               supply --all to import all the credentials in the file.
+        assume_role <role arn>              Call AssumeRole on the specified role from the current
+                                              credentials, add the resulting temporary keys to the Pacu
+                                              key database and start using these new credentials.
         export_keys                         Export the active credentials to a profile in the AWS CLI
                                               credentials file (~/.aws/credentials)
         sessions/list_sessions              List all sessions in the Pacu database
@@ -165,7 +168,7 @@ def get_data_from_traceback(tb) -> Tuple[Optional[PacuSession], List[str], List[
 
 class Main:
     COMMANDS = [
-        'aws', 'data', 'exec', 'exit', 'help', 'import_keys', 'list', 'load_commands_file',
+        'aws', 'data', 'exec', 'exit', 'help', 'import_keys', 'assume_role', 'list', 'load_commands_file',
         'ls', 'quit', 'regions', 'run', 'search', 'services', 'set_keys', 'set_regions',
         'swap_keys', 'update_regions', 'whoami', 'swap_session', 'sessions',
         'list_sessions', 'delete_session', 'export_keys', 'open_console', 'console'
@@ -596,6 +599,8 @@ class Main:
             self.print_web_console_url()
         elif command[0] == 'import_keys':
             self.parse_awscli_keys_import(command)
+        elif command[0] == 'assume_role':
+            self.assume_role(command[1])
         elif command[0] == 'list' or command[0] == 'ls':
             self.parse_list_command(command)
         elif command[0] == 'load_commands_file':
@@ -613,7 +618,10 @@ class Main:
         elif command[0] == 'set_regions':
             self.parse_set_regions_command(command)
         elif command[0] == 'swap_keys':
-            self.swap_keys()
+            try:
+                self.swap_keys(command[1])
+            except IndexError:
+                self.swap_keys()
         elif command[0] == 'update_regions':
             self.update_regions()
         elif command[0] == 'whoami':
@@ -991,6 +999,9 @@ aws_secret_access_key = {}
             print('\n    import_keys <profile name>|--all\n      Import AWS keys from the AWS CLI credentials file (located at ~/.aws/credentials) to the '
                   'current sessions database. Enter the name of a profile you would like to import or supply --all to import all the credentials in the '
                   'file.\n')
+        elif command_name == 'assume_role':
+            print('\n    assume_role <role arn>\n        Call AssumeRole on the specified role from the current credentials, add the resulting temporary '
+                  'keys to the Pacu key database and start using these new credentials.')
         elif command_name == 'aws':
             print('\n    aws <command>\n        Use the AWS CLI directly. This command runs in your local shell to use the AWS CLI. Warning: The AWS CLI\'s '
                   'authentication is not related to Pacu. Be careful to ensure that you are using the keys you want when using the AWS CLI. It is suggested '
@@ -1207,7 +1218,7 @@ aws_secret_access_key = {}
         if key_alias is None:
             self.print('\nKeys saved to database.\n')
 
-    def swap_keys(self) -> None:
+    def swap_keys(self, key_name: str = None) -> None:
         session: PacuSession = self.get_active_session()
 
         # On attr-defined ignore: https://github.com/dropbox/sqlalchemy-stubs/issues/168
@@ -1217,27 +1228,31 @@ aws_secret_access_key = {}
             self.print('\nNo AWS keys set for this session. Run "set_keys" to add AWS keys.\n')
             return
 
-        self.print('\nSwapping AWS Keys. Press enter to keep the currently active key.')
+        if key_name:
+            chosen_key = self.get_aws_key_by_alias(key_name)
+        else:
+            self.print('\nSwapping AWS Keys. Press enter to keep the currently active key.')
 
-        print('AWS keys in this session:')
+            print('AWS keys in this session:')
 
-        for index, aws_key in enumerate(aws_keys, 1):
-            if aws_key.key_alias == session.key_alias:
-                print('  [{}] {} (ACTIVE)'.format(index, aws_key.key_alias))
-            else:
-                print('  [{}] {}'.format(index, aws_key.key_alias))
+            for index, aws_key in enumerate(aws_keys, 1):
+                if aws_key.key_alias == session.key_alias:
+                    print('  [{}] {} (ACTIVE)'.format(index, aws_key.key_alias))
+                else:
+                    print('  [{}] {}'.format(index, aws_key.key_alias))
 
-        choice = input('Choose an option: ')
+            choice = input('Choose an option: ')
 
-        if not str(choice).strip():
-            self.print('The currently active AWS key will remain active. ({})'.format(session.key_alias))
-            return
+            if not str(choice).strip():
+                self.print('The currently active AWS key will remain active. ({})'.format(session.key_alias))
+                return
 
-        if not choice.isdigit() or int(choice) not in range(1, len(aws_keys) + 1):
-            print('Please choose a number from 1 to {}.'.format(len(aws_keys)))
-            return self.swap_keys()
+            if not choice.isdigit() or int(choice) not in range(1, len(aws_keys) + 1):
+                print('Please choose a number from 1 to {}.'.format(len(aws_keys)))
+                return self.swap_keys()
 
-        chosen_key = aws_keys[int(choice) - 1]
+            chosen_key = aws_keys[int(choice) - 1]
+
         session.key_alias = chosen_key.key_alias
         session.access_key_id = chosen_key.access_key_id
         session.secret_access_key = chosen_key.secret_access_key
@@ -1737,6 +1752,22 @@ aws_secret_access_key = {}
             self.run_cli(args)
         else:
             self.run_gui()
+
+    def assume_role(self, role_arn: str):
+        sts = self.get_boto3_client('sts')
+        resp = sts.assume_role(
+            RoleArn=role_arn,
+            RoleSessionName='assume-role',
+        )
+        cur_key_name = self.get_active_session().name
+        new_key_name = f"{cur_key_name}/{resp['AssumedRoleUser']['Arn']}"
+        self.set_keys(
+            key_alias=new_key_name,
+            access_key_id=resp['Credentials']['AccessKeyId'],
+            secret_access_key=resp['Credentials']['SecretAccessKey'],
+            session_token=resp['Credentials']['SessionToken'],
+        )
+        self.swap_keys(new_key_name)
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "app_name": "cfn__mitm_lambda",
+  "app_name": "cfn__resource_injection_lambda",
   "stages": {
     "dev": {
       "autogen_policy": true,

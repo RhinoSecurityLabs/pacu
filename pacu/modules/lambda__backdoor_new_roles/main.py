@@ -8,7 +8,7 @@ import string
 import zipfile
 import os
 
-from pacu.core.lib import session_dir
+from pacu.core.lib import session_dir, module_data_dir
 
 module_info = {
     'name': 'lambda__backdoor_new_roles',
@@ -47,8 +47,7 @@ def main(args, pacu_main):
     fetch_data = pacu_main.fetch_data
 
     MODULE_PATH = Path(__file__).parent
-    MODULE_SESSION_PATH = session_dir()/'modules'/module_info['name']
-    MODULE_SESSION_PATH.mkdir(parents=True, exist_ok=True)
+    MODULE_SESSION_PATH = module_data_dir(module_info['name'])
     CREATED_LAMBDA_FUNCTIONS_PATH = MODULE_SESSION_PATH/'created-lambda-functions.txt'
     CREATED_CLOUDWATCH_EVENTS_RULES_PATH = MODULE_SESSION_PATH/'created-cloudwatch-events-rules.txt'
     LAMBDA_FUNCTION_ZIP_PATH = MODULE_SESSION_PATH/'lambda_function.zip'

@@ -157,7 +157,7 @@ def s3(aws_credentials):
 
 
 def test_update(s3, upload_json):
-    bucket, key, body = upload_json[0], upload_json[1], upload_json[2]
+    bucket, key, _ = upload_json[0], upload_json[1], upload_json[2]
 
     body = s3.get_object(Bucket=bucket, Key=key)['Body'].read()
     assert clean_json(new_cfn_json.decode()) == clean_json(body.decode())

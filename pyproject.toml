@@ -29,6 +29,7 @@ pytest = "^6.2.3"
 freezegun = "^1.1.0"
 typing-extensions = "^3.7.4"
 boto3-stubs = {extras = ["iam", "s3", "lambda"], version = "^1.17.54"}
+moto = "^2.2.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

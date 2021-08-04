@@ -46,7 +46,7 @@ def update_template(event: dict, context: dict):
 
     return {
         "statusCode": 200,
-        "body": '{ "message": "hello world"}',
+        "body": '{ "message": "template updated"}',
     }
 
 

@@ -8,12 +8,6 @@ from chalice.test import Client
 from pacu.modules.cfn__resource_injection.cfn__resource_injection_lambda.app import app, add_role_dict, add_role_bytes, fetch, update
 
 
-def test_lambda_handler():
-    with Client(app) as client:
-        result = client.lambda_.invoke('lambda_handler')
-        assert result.payload == {"message": "hello world"}
-
-
 @pytest.fixture
 def environ():
     os.environ['PRINCIPAL'] = 'asdf'
@@ -163,9 +157,15 @@ def s3(aws_credentials):
 
 
 def test_update(s3, upload_json):
-    bucket, key, body = upload_json[0], upload_json[1], upload_json[2]
+    bucket, key, _ = upload_json[0], upload_json[1], upload_json[2]
+
+    body = s3.get_object(Bucket=bucket, Key=key)['Body'].read()
+    assert clean_json(new_cfn_json.decode()) == clean_json(body.decode())
+
     update(s3, bucket, key)
-    assert body == s3.get_object(Bucket=bucket, Key=key)
+
+    body = s3.get_object(Bucket=bucket, Key=key)['Body'].read()
+    assert clean_json(modified_cfn_json.decode()) == clean_json(body.decode())
 
 
 def test_update_second_time(s3, upload_json):

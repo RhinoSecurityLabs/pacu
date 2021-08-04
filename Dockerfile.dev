@@ -36,5 +36,4 @@ RUN poetry export --without-hashes --dev -o /tmp/requirements-dev.txt && \
 
 COPY ./ ./
 
-ENV SHELL=bash
-ENTRYPOINT ["poetry", "shell"]
+ENTRYPOINT ["bash", "-l"]

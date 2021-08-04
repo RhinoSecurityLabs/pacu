@@ -22,4 +22,4 @@ flake8:
 lint: flake8 mypy
 
 test:
-	pytest ./tests
+	python3 -m pytest ./tests ./pacu/modules/cfn__resource_injection/cfn__resource_injection_lambda/tests

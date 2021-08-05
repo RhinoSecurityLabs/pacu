@@ -133,7 +133,9 @@ def main(args, pacu_main):
 
     created_resources = {'LambdaFunctions': [], 'CWERules': []}
 
-    target_role_arn = input('  What role should be used? Note: The role should allow Lambda to assume it and have at least the IAM UpdateAssumeRolePolicy permission. Enter the ARN now or just press enter to enumerate a list of possible roles to choose from: ')
+    target_role_arn = input('  What role should be used? Note: The role should allow Lambda to assume it and have at '
+                            'least the IAM UpdateAssumeRolePolicy and GetRole permissions. Enter the ARN now or just '
+                            'press enter to enumerate a list of possible roles to choose from: ')
     if not target_role_arn:
         if fetch_data(['IAM', 'Roles'], module_info['prerequisite_modules'][0], '--roles', force=True) is False:
             print('Pre-req module not run successfully. Exiting...')

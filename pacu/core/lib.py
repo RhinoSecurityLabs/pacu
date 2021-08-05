@@ -43,7 +43,7 @@ def downloads_dir() -> Path:
 
 
 def module_data_dir(module: str) -> Path:
-    p = (session_dir()/'module'/module).absolute()
+    p = (session_dir()/'modules'/module).absolute()
     os.makedirs(p, exist_ok=True)
     return p
 

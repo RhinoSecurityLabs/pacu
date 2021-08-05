@@ -29,7 +29,7 @@ try:
 
     from pacu import settings
 
-    from pacu.core.models import AWSKey, PacuSession
+    from pacu.core.models import AWSKey, PacuSession, migrations
     from pacu.setup_database import setup_database_if_not_present
     from sqlalchemy import exc, orm  # type: ignore
     from pacu.utils import get_database_connection, set_sigint_handler
@@ -1599,6 +1599,7 @@ aws_secret_access_key = {}
 
     def run_cli(self, *args) -> None:
         self.database = get_database_connection(settings.DATABASE_CONNECTION_PATH)
+        migrations(self.database)
         sessions: List[PacuSession] = self.database.query(PacuSession).all()
 
         arg = args[0]
@@ -1702,6 +1703,8 @@ aws_secret_access_key = {}
                     set_sigint_handler(exit_text=None, value='SIGINT called')
 
                     self.database = get_database_connection(settings.DATABASE_CONNECTION_PATH)
+
+                    migrations(self.database)
 
                     self.check_sessions()
 

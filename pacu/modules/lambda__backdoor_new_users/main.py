@@ -135,7 +135,7 @@ def main(args, pacu_main):
                                 'at least the IAM CreateAccessKey permission. Enter the ARN now or just press enter to '
                                 'enumerate a list of possible roles to choose from: ')
         if not re.match(r'arn:(aws[a-zA-Z-]*)?:iam::\d{12}:role/?[a-zA-Z_0-9+=,.@\-_/]+', target_role_arn):
-            print('\n[ERROR] ARN format must be: arn:(aws[a-zA-Z-]*)?:iam::\d{12}:role/?[a-zA-Z_0-9+=,.@\-_/]+\n')
+            print('\n[ERROR] ARN format must be: arn:(aws[a-zA-Z-]*)?:iam::\\d{12}:role/?[a-zA-Z_0-9+=,.@\\-_/]+\n')
         else:
             break
 

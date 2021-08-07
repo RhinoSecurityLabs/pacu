@@ -170,7 +170,7 @@ def main(args, pacu_main):
         print('Failed to zip the Lambda function locally: {}\n'.format(error))
         return data
 
-    with open(MODULE_SESSION_PATH/'lambda_function.zip', 'rb') as f:
+    with open(LAMBDA_FUNCTION_ZIP_PATH, 'rb') as f:
         zip_file_bytes = f.read()
 
     client = pacu_main.get_boto3_client('lambda', 'us-east-1')

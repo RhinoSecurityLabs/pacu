@@ -66,8 +66,7 @@ def main(args, pacu_main):
             with open(CREATED_LAMBDA_FUNCTIONS_PATH, 'r') as f:
                 created_lambda_functions = f.readlines()
         if CREATED_CLOUDWATCH_EVENTS_RULES_PATH.is_file():
-            with open(CREATED_CLOUDWATCH_EVENTS_RULES_PATH,
-                      'r') as f:
+            with open(CREATED_CLOUDWATCH_EVENTS_RULES_PATH, 'r') as f:
                 created_cwe_rules = f.readlines()
 
         if created_lambda_functions:

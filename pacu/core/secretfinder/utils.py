@@ -1,7 +1,6 @@
 import math
 import json
 import re
-import os
 from typing import Dict, Any
 
 from pathlib import Path
@@ -15,15 +14,16 @@ class Color:
     ENDC = '\033[0m'
 
     @staticmethod
-    def print(color, text) -> None:
+    def print(color: str, text: str) -> None:
         print('{}{}{}'.format(color, text, Color.ENDC))
 
 
-def shannon_entropy(data):
-    if not data:
-        return 0
+def shannon_entropy(data: str) -> float:
+    entropy = 0.0
 
-    entropy = 0
+    if not data:
+        return entropy 
+
     for character_i in range(256):
         px = data.count(chr(character_i)) / len(data)
         if px > 0:
@@ -31,7 +31,7 @@ def shannon_entropy(data):
     return entropy
 
 
-def regex_checker(userdata) -> Dict[Any, list]:
+def regex_checker(userdata: str) -> Dict[Any, list]:
     results = {}
 
     try:
@@ -54,5 +54,5 @@ def regex_checker(userdata) -> Dict[Any, list]:
     return results
 
 
-def contains_secret(data, THRESHOLD=3.5) -> bool:
+def contains_secret(data: str, THRESHOLD: float = 3.5) -> bool:
     return shannon_entropy(data) > THRESHOLD

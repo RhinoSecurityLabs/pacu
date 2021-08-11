@@ -19,10 +19,11 @@ class Color:
 
 
 def shannon_entropy(data: str) -> float:
-    if not data:
-        return 0
-
     entropy = 0.0
+
+    if not data:
+        return entropy 
+
     for character_i in range(256):
         px = data.count(chr(character_i)) / len(data)
         if px > 0:

@@ -76,6 +76,7 @@ class PacuSession(Base, ModelUpdateMixin):
         'DynamoDB',
         'EC2',
         'ECS',
+        'EKS',
         'Glue',
         'GuardDuty',
         'IAM',
@@ -92,6 +93,7 @@ class PacuSession(Base, ModelUpdateMixin):
         'AccountSpend',
         'Route53',
         'RDS',
+        'Transfer',
     )
 
     aws_keys = relationship('AWSKey', back_populates='session', cascade='all, delete-orphan', lazy='dynamic')
@@ -116,12 +118,14 @@ class PacuSession(Base, ModelUpdateMixin):
     DynamoDB = Column(JSONType, nullable=False, default=dict)
     EC2 = Column(JSONType, nullable=False, default=dict)
     ECS = Column(JSONType, nullable=False, default=dict)
+    EKS = Column(JSONType, nullable=False, default=dict)
     Glue = Column(JSONType, nullable=False, default=dict)
     GuardDuty = Column(JSONType, nullable=False, default=dict)
     IAM = Column(JSONType, nullable=False, default=dict)
     Inspector = Column(JSONType, nullable=False, default=dict)
     Lambda = Column(JSONType, nullable=False, default=dict)
     Lightsail = Column(JSONType, nullable=False, default=dict)
+    RDS = Column(JSONType, nullable=False, default=dict)
     S3 = Column(JSONType, nullable=False, default=dict)
     SecretsManager = Column(JSONType, nullable=False, default=dict)
     SSM = Column(JSONType, nullable=False, default=dict)
@@ -133,6 +137,7 @@ class PacuSession(Base, ModelUpdateMixin):
     AccountSpend = Column(JSONType, nullable=False, default=dict)
     Route53 = Column(JSONType, nullable=False, default=dict)
     RDS = Column(JSONType, nullable=False, default=dict)
+    Transfer = Column(JSONType, nullable=False, default=dict)
 
     def __repr__(self) -> str:
         if self.key_alias:

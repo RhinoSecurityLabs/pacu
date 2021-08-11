@@ -15,11 +15,11 @@ class Color:
     ENDC = '\033[0m'
 
     @staticmethod
-    def print(color, text) -> None:
+    def print(color: str, text: str) -> None:
         print('{}{}{}'.format(color, text, Color.ENDC))
 
 
-def shannon_entropy(data):
+def shannon_entropy(data: str) -> float:
     if not data:
         return 0
 
@@ -31,7 +31,7 @@ def shannon_entropy(data):
     return entropy
 
 
-def regex_checker(userdata) -> Dict[Any, list]:
+def regex_checker(userdata: str) -> Dict[Any, list]:
     results = {}
 
     try:
@@ -54,5 +54,5 @@ def regex_checker(userdata) -> Dict[Any, list]:
     return results
 
 
-def contains_secret(data, THRESHOLD=3.5) -> bool:
+def contains_secret(data: str, THRESHOLD: float = 3.5) -> bool:
     return shannon_entropy(data) > THRESHOLD

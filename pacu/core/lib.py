@@ -1,5 +1,4 @@
 import contextlib
-import io
 import os
 from typing import Optional, cast, Callable, Generator, IO, Any
 
@@ -8,6 +7,10 @@ from pathlib import Path
 from pacu import settings
 
 get_active_session: Optional[Callable] = None
+
+
+class PacuException(Exception):
+    pass
 
 
 def strip_lines(text: str) -> str:
@@ -19,6 +22,10 @@ def strip_lines(text: str) -> str:
 
 def home_dir() -> Path:
     return settings.home_dir
+
+
+def pacu_dir() -> Path:
+    return Path(__file__).parents[1]
 
 
 def session_dir() -> Path:
@@ -36,7 +43,7 @@ def downloads_dir() -> Path:
 
 
 def module_data_dir(module: str) -> Path:
-    p = (session_dir()/'module'/module).absolute()
+    p = (session_dir()/'modules'/module).absolute()
     os.makedirs(p, exist_ok=True)
     return p
 

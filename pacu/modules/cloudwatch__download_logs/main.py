@@ -25,7 +25,8 @@ module_info = {
     'external_dependencies': [],
     'arguments_to_autocomplete': [
         '--from-time',
-        '--to-time'
+        '--to-time',
+        '--regions'
     ],
 }
 DEFAULT_FROM_TIME = datetime.datetime.today().replace(tzinfo=datetime.timezone.utc) - datetime.timedelta(days=1)
@@ -43,6 +44,7 @@ parser.add_argument(
     default=None,
     help='Download logs up to and not including time format "yyyy[-mm[-dd-[hh-mm-ss]]]". Unfilled fields will assume earliest possible time'
 )
+parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format "us-east-1". Defaults to all session regions.')
 
 
 def parse_time(time):
@@ -77,7 +79,7 @@ def collect_all(client, func, key, **kwargs):
         response = caller(**kwargs)
         out = response[key]
         while 'nextToken' in response:
-            response = caller({'nextToken': response['nextToken'], **kwargs})
+            response = caller(**{'nextToken': response['nextToken'], **kwargs})
             out += response[key]
         return out
     except ClientError as error:
@@ -95,9 +97,18 @@ def main(args, pacu_main: 'Main'):
     session = pacu_main.get_active_session()
     args = parser.parse_args(args)
     print = pacu_main.print
-
     get_regions = pacu_main.get_regions
     summary_data = {}
+
+
+    if args.regions is None:
+        regions = get_regions('logs')
+        if regions is None or regions == [] or regions == '' or regions == {}:
+            print('This module is not supported in any regions specified in the current sessions region set. Exiting...')
+            return
+    else:
+        regions = args.regions.split(',')
+
     if isinstance(args.from_time, str):
         from_time = parse_time(args.from_time)
     else:
@@ -106,7 +117,6 @@ def main(args, pacu_main: 'Main'):
         to_time = parse_time(args.to_time)
 
     scan_time = int(datetime.datetime.now().timestamp())
-    regions = get_regions('logs')
     log_groups = {}
     for region in regions:
         print('Enumerating {}...'.format(region))
@@ -158,7 +168,7 @@ def main(args, pacu_main: 'Main'):
             'streams': sum([len(log_groups[key]) for key in log_groups]),
             'events': event_count,
         }
-    dl_root = downloads_dir() + '/cloud_watch_logs/'
+    dl_root = str(downloads_dir()) + '/cloud_watch_logs/'
     summary_data['log_download_path'] = '{}{}'.format(dl_root, scan_time)
     return summary_data
 

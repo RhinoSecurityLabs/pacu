@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 import argparse
+from pathlib import Path
+
 import botocore
+from copy import deepcopy
 
 
 module_info = {
@@ -39,7 +42,7 @@ def main(args, pacu_main):
         return None
 
     if args.word_list is None:
-        word_list_path = './modules/{}/default-word-list.txt'.format(module_info['name'])
+        word_list_path = f'{Path(__file__).parent}/default-word-list.txt'
     else:
         word_list_path = args.word_list.strip()
 
@@ -64,9 +67,18 @@ def main(args, pacu_main):
         data['attempts'] += 1
 
         try:
+            policy_doc = '''
+            {{
+                "Version":"2012-10-17",
+                "Statement":[{{
+                    "Effect":"Deny",
+                    "Principal":{{"AWS":"{}"}},
+                    "Action":"sts:AssumeRole"
+                }}]
+            }}'''.format(user_arn).strip()
             client.update_assume_role_policy(
-                RoleName=args.role_name,
-                PolicyDocument='{{"Version":"2012-10-17","Statement":[{{"Effect":"Deny","Principal":{{"AWS":"{}"}},"Action":"sts:AssumeRole"}}]}}'.format(user_arn)
+                RoleName=args.role_name.split('/')[-1],  # Handle ARN's if they where accidentally passed here
+                PolicyDocument=policy_doc,
             )
             print('  Found user: {}'.format(user_arn))
             data['valid_users'].append(user_arn)
@@ -79,7 +91,8 @@ def main(args, pacu_main):
                 return data
             else:
                 print('  Unhandled error: {}'.format(str(error)))
-                return data
+                print(policy_doc)
+                raise error
 
     if len(data['valid_users']) > 0:
         print('\nFound {} user(s):\n'.format(len(data['valid_users'])))
@@ -87,7 +100,39 @@ def main(args, pacu_main):
             print('    {}'.format(user))
         print('')
 
+        update_users_database(pacu_main, data['valid_users'])
+
+
     return data
+
+
+def update_users_database(pacu_main, raw_users):
+    session = pacu_main.get_active_session()
+    users = [ user_formater(user) for user in raw_users]
+    iam_data = deepcopy(session.IAM)
+
+    if iam_data.get('Users') is None:
+        iam_data['Users'] = users
+    else:
+        for user in users:
+            if not is_duplicate_user(user, iam_data['Users']):
+                iam_data['Users'].append(user)
+    session.update(pacu_main.database, IAM=iam_data)
+
+
+def user_formater(user):
+    return {
+        "Arn": user,
+        "CreateDate": None,
+        "Path": "/" + '/'.join(user.split(':')[-1].split('/')[1:-1]),
+        "UserId": None,
+        "UserName": user.split('/')[-1]
+    }
+
+
+def is_duplicate_user(user, list_users):
+    user_arns = [ user["Arn"] for user in list_users]
+    return user["Arn"] in user_arns
 
 
 def summary(data, pacu_main):

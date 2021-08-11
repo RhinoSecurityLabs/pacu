@@ -7,7 +7,6 @@ import random
 import re
 import shlex
 import subprocess
-import datetime
 import sys
 import time
 import traceback
@@ -17,6 +16,7 @@ from typing import List, Optional, Any, Dict, Union, Tuple
 
 from pacu.core import lib
 from pacu.core.lib import session_dir
+from datetime import datetime
 
 try:
     import requests
@@ -29,7 +29,7 @@ try:
 
     from pacu import settings
 
-    from pacu.core.models import AWSKey, PacuSession
+    from pacu.core.models import AWSKey, PacuSession, migrations
     from pacu.setup_database import setup_database_if_not_present
     from sqlalchemy import exc, orm  # type: ignore
     from pacu.utils import get_database_connection, set_sigint_handler
@@ -109,6 +109,9 @@ def display_pacu_help():
                                               at ~/.aws/credentials) to the current sessions database.
                                               Enter the name of a profile you would like to import or
                                               supply --all to import all the credentials in the file.
+        assume_role <role arn>              Call AssumeRole on the specified role from the current
+                                              credentials, add the resulting temporary keys to the Pacu
+                                              key database and start using these new credentials.
         export_keys                         Export the active credentials to a profile in the AWS CLI
                                               credentials file (~/.aws/credentials)
         sessions/list_sessions              List all sessions in the Pacu database
@@ -165,7 +168,7 @@ def get_data_from_traceback(tb) -> Tuple[Optional[PacuSession], List[str], List[
 
 class Main:
     COMMANDS = [
-        'aws', 'data', 'exec', 'exit', 'help', 'import_keys', 'list', 'load_commands_file',
+        'aws', 'data', 'exec', 'exit', 'help', 'import_keys', 'assume_role', 'list', 'load_commands_file',
         'ls', 'quit', 'regions', 'run', 'search', 'services', 'set_keys', 'set_regions',
         'swap_keys', 'update_regions', 'whoami', 'swap_session', 'sessions',
         'list_sessions', 'delete_session', 'export_keys', 'open_console', 'console'
@@ -456,20 +459,52 @@ class Main:
         return True
 
     def check_for_updates(self):
-        with open(Path(__file__).parent / 'last_update.txt', 'r') as f:
+        TIME_FORMAT = '%Y-%m-%d'
+        UPDATE_CYCLE = 7  # Days
+        UPDATE_INFO_PATH = lib.home_dir()/'update_info.json'
+        LAST_UPDATE_PATH = lib.pacu_dir()/'last_update.txt'
+        UPDATE_MSG = '''Pacu has a new version available! Clone it from GitHub to receive the updates.
+        git clone https://github.com/RhinoSecurityLabs/pacu.git'''
+
+        with open(LAST_UPDATE_PATH, 'r') as f:
             local_last_update = f.read().rstrip()
 
-        latest_update = requests.get('https://raw.githubusercontent.com/RhinoSecurityLabs/pacu/master/pacu/last_update.txt').text.rstrip()
+        datetime_now = datetime.now()
+        datetime_local = datetime.strptime(local_last_update, TIME_FORMAT)
 
-        local_year, local_month, local_day = local_last_update.split('-')
-        datetime_local = datetime.date(int(local_year), int(local_month), int(local_day))
+        datetime_last_check = datetime.min
+        latest_cached = datetime.min
 
-        latest_year, latest_month, latest_day = latest_update.split('-')
-        datetime_latest = datetime.date(int(latest_year), int(latest_month), int(latest_day))
+        # update_info.json structure:
+        # { 'last_check':'YYYY-MM-DD', 'latest_cached':'YYYY-MM-DD'}
+        # Create a update_info.json if not exist
+        update_info = {}
+        if os.path.isfile(UPDATE_INFO_PATH):
+            with open(UPDATE_INFO_PATH, 'r') as f:
+                update_info = json.load(f)
+                datetime_last_check = datetime.strptime(update_info['last_check'], TIME_FORMAT)
+                latest_cached = datetime.strptime(update_info['latest_cached'], TIME_FORMAT)
 
-        if datetime_local < datetime_latest:
-            print('Pacu has a new version available! Clone it from GitHub to receive the updates.\n    git clone '
-                  'https://github.com/RhinoSecurityLabs/pacu.git\n')
+        # Check upstream
+        if (datetime_now - datetime_last_check).days >= UPDATE_CYCLE:
+            latest_update = requests.get(
+                'https://raw.githubusercontent.com/RhinoSecurityLabs/pacu/master/pacu/last_update.txt').text.rstrip()
+            latest = datetime.strptime(latest_update, TIME_FORMAT)
+
+            update_info['latest_cached'] = latest.strftime(TIME_FORMAT)
+            update_info['last_check'] = datetime_now.strftime(TIME_FORMAT)
+            with open(UPDATE_INFO_PATH, 'w') as f:
+                json.dump(update_info, f)
+
+            if datetime_local < latest:
+                print(UPDATE_MSG)
+                return True
+        # Local check
+        elif datetime_local < latest_cached:
+            print(datetime_local, latest_cached)
+            print(UPDATE_MSG)
+            return True
+        return False
 
     def key_info(self, alias='') -> Union[Dict[str, Any], bool]:
         """ Return the set of information stored in the session's active key
@@ -596,6 +631,8 @@ class Main:
             self.print_web_console_url()
         elif command[0] == 'import_keys':
             self.parse_awscli_keys_import(command)
+        elif command[0] == 'assume_role':
+            self.assume_role(command[1])
         elif command[0] == 'list' or command[0] == 'ls':
             self.parse_list_command(command)
         elif command[0] == 'load_commands_file':
@@ -613,7 +650,10 @@ class Main:
         elif command[0] == 'set_regions':
             self.parse_set_regions_command(command)
         elif command[0] == 'swap_keys':
-            self.swap_keys()
+            try:
+                self.swap_keys(command[1])
+            except IndexError:
+                self.swap_keys()
         elif command[0] == 'update_regions':
             self.update_regions()
         elif command[0] == 'whoami':
@@ -685,12 +725,20 @@ class Main:
             self.print('\nSession data:')
             session.print_all_data_in_session()
         else:
-            if command[1] not in session.aws_data_field_names:
-                print('  Service not found.')
-            elif getattr(session, command[1]) == {} or getattr(session, command[1]) == [] or getattr(session, command[1]) == '':
-                print('  No data found.')
-            else:
-                print(json.dumps(getattr(session, command[1]), indent=2, sort_keys=True, default=str))
+            self.print(self._parse_data_command(command, session))
+
+    def _parse_data_command(self, command: List[str], session: 'PacuSession') -> str:
+        service = command[1].upper()
+        service_map = dict([(n.upper(), n) for n in session.aws_data_field_names])
+        name = service_map.get(service.upper())
+
+        if not name or name not in session.aws_data_field_names:
+            return '  Service not found. Please use the service name below.\n' + \
+                   '\t'.join(list(session.aws_data_field_names))
+        elif not getattr(session, name):
+            return '  No data found.'
+        else:
+            return json.dumps(getattr(session, name), indent=2, sort_keys=True, default=str)
 
     def parse_set_regions_command(self, command):
         session = self.get_active_session()
@@ -990,6 +1038,9 @@ aws_secret_access_key = {}
             print('\n    import_keys <profile name>|--all\n      Import AWS keys from the AWS CLI credentials file (located at ~/.aws/credentials) to the '
                   'current sessions database. Enter the name of a profile you would like to import or supply --all to import all the credentials in the '
                   'file.\n')
+        elif command_name == 'assume_role':
+            print('\n    assume_role <role arn>\n        Call AssumeRole on the specified role from the current credentials, add the resulting temporary '
+                  'keys to the Pacu key database and start using these new credentials.')
         elif command_name == 'aws':
             print('\n    aws <command>\n        Use the AWS CLI directly. This command runs in your local shell to use the AWS CLI. Warning: The AWS CLI\'s '
                   'authentication is not related to Pacu. Be careful to ensure that you are using the keys you want when using the AWS CLI. It is suggested '
@@ -1206,7 +1257,7 @@ aws_secret_access_key = {}
         if key_alias is None:
             self.print('\nKeys saved to database.\n')
 
-    def swap_keys(self) -> None:
+    def swap_keys(self, key_name: str = None) -> None:
         session: PacuSession = self.get_active_session()
 
         # On attr-defined ignore: https://github.com/dropbox/sqlalchemy-stubs/issues/168
@@ -1216,27 +1267,34 @@ aws_secret_access_key = {}
             self.print('\nNo AWS keys set for this session. Run "set_keys" to add AWS keys.\n')
             return
 
-        self.print('\nSwapping AWS Keys. Press enter to keep the currently active key.')
+        if key_name:
+            chosen_key = self.get_aws_key_by_alias(key_name)
+            if not chosen_key:
+                print(f'No key with the alias {key_name} found.')
+                return
+        else:
+            self.print('\nSwapping AWS Keys. Press enter to keep the currently active key.')
 
-        print('AWS keys in this session:')
+            print('AWS keys in this session:')
 
-        for index, aws_key in enumerate(aws_keys, 1):
-            if aws_key.key_alias == session.key_alias:
-                print('  [{}] {} (ACTIVE)'.format(index, aws_key.key_alias))
-            else:
-                print('  [{}] {}'.format(index, aws_key.key_alias))
+            for index, aws_key in enumerate(aws_keys, 1):
+                if aws_key.key_alias == session.key_alias:
+                    print('  [{}] {} (ACTIVE)'.format(index, aws_key.key_alias))
+                else:
+                    print('  [{}] {}'.format(index, aws_key.key_alias))
 
-        choice = input('Choose an option: ')
+            choice = input('Choose an option: ')
 
-        if not str(choice).strip():
-            self.print('The currently active AWS key will remain active. ({})'.format(session.key_alias))
-            return
+            if not str(choice).strip():
+                self.print('The currently active AWS key will remain active. ({})'.format(session.key_alias))
+                return
 
-        if not choice.isdigit() or int(choice) not in range(1, len(aws_keys) + 1):
-            print('Please choose a number from 1 to {}.'.format(len(aws_keys)))
-            return self.swap_keys()
+            if not choice.isdigit() or int(choice) not in range(1, len(aws_keys) + 1):
+                print('Please choose a number from 1 to {}.'.format(len(aws_keys)))
+                return self.swap_keys()
 
-        chosen_key = aws_keys[int(choice) - 1]
+            chosen_key = aws_keys[int(choice) - 1]
+
         session.key_alias = chosen_key.key_alias
         session.access_key_id = chosen_key.access_key_id
         session.secret_access_key = chosen_key.secret_access_key
@@ -1541,6 +1599,7 @@ aws_secret_access_key = {}
 
     def run_cli(self, *args) -> None:
         self.database = get_database_connection(settings.DATABASE_CONNECTION_PATH)
+        migrations(self.database)
         sessions: List[PacuSession] = self.database.query(PacuSession).all()
 
         arg = args[0]
@@ -1645,6 +1704,8 @@ aws_secret_access_key = {}
 
                     self.database = get_database_connection(settings.DATABASE_CONNECTION_PATH)
 
+                    migrations(self.database)
+
                     self.check_sessions()
 
                     self.initialize_tab_completion()
@@ -1736,6 +1797,22 @@ aws_secret_access_key = {}
             self.run_cli(args)
         else:
             self.run_gui()
+
+    def assume_role(self, role_arn: str):
+        sts = self.get_boto3_client('sts')
+        resp = sts.assume_role(
+            RoleArn=role_arn,
+            RoleSessionName='assume-role',
+        )
+        cur_key_name = self.get_active_session().name
+        new_key_name = f"{cur_key_name}/{resp['AssumedRoleUser']['Arn']}"
+        self.set_keys(
+            key_alias=new_key_name,
+            access_key_id=resp['Credentials']['AccessKeyId'],
+            secret_access_key=resp['Credentials']['SecretAccessKey'],
+            session_token=resp['Credentials']['SessionToken'],
+        )
+        self.swap_keys(new_key_name)
 
 
 if __name__ == '__main__':

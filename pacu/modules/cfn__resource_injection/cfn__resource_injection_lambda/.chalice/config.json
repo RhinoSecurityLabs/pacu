@@ -1,0 +1,15 @@
+{
+  "version": "2.0",
+  "app_name": "cfn__resource_injection_lambda",
+  "stages": {
+    "dev": {
+      "autogen_policy": true,
+      "environment_variables": {
+        "S3_AWS_ACCESS_KEY_ID": "placeholder, this get's updated by the cfn__module",
+        "S3_AWS_SECRET_ACCESS_KEY": "placeholder, this get's updated by the cfn__module",
+        "PRINCIPAL": "placeholder, this get's updated by the cfn__module",
+        "BUCKET": "placeholder, this get's updated by the cfn__module"
+      }
+    }
+  }
+}

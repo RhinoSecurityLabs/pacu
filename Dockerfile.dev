@@ -29,10 +29,11 @@ RUN --mount=type=cache,target=/root/.cache/pip pip install poetry
 RUN echo 'AWS_EC2_METADATA_DISABLED=true' >> /etc/profile
 
 COPY ./requirements* ./pyproject.toml ./poetry.lock ./
-#RUN --mount=type=cache,target=/root/.cache/pypoetry/cache poetry run poetry install --no-root
-RUN poetry run poetry install --no-root
+
+# Some IDE's will override the entrypoint so install everything globally
+RUN poetry export --without-hashes --dev -o /tmp/requirements-dev.txt && \
+    pip install -r /tmp/requirements-dev.txt
 
 COPY ./ ./
 
-ENV SHELL=bash
-ENTRYPOINT ["poetry", "shell"]
+ENTRYPOINT ["bash", "-l"]

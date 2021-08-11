@@ -423,7 +423,7 @@ class Main:
                 else:
                     return valid_regions
 
-    def display_all_regions(self, command):
+    def display_all_regions(self):
         for region in sorted(self.get_regions('all')):
             print('  {}'.format(region))
 
@@ -638,7 +638,7 @@ class Main:
         elif command[0] == 'load_commands_file':
             self.parse_commands_from_file(command)
         elif command[0] == 'regions':
-            self.display_all_regions(command)
+            self.display_all_regions()
         elif command[0] == 'run' or command[0] == 'exec':
             self.parse_exec_module_command(command)
         elif command[0] == 'search':

@@ -4,7 +4,6 @@ import typing
 from typing import Optional, Union
 
 from sqlalchemy import create_engine, orm
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 from pacu.core.base import DATABASE_CONNECTION_PATH

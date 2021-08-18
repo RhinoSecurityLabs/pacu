@@ -38,7 +38,7 @@ module_info = {
         Currently, it takes just under a second for templates to be updated so this module will be most effective
         against deployment processes that have some delay between the upload and deploy steps. The CloudFormation
         console wizard is a good target for this, however, there may be other cases that work here as well.
-        
+
         After our IAM role is deployed it will have a trust role policy set up to allow AssumeRole from the IAM identity
         specified by the '--principal' argument, if this isn't specified the principal will be the root principal
         of the account used for the '--attacker-key' credentials.
@@ -61,6 +61,8 @@ module_info = {
 
         A specific bucket can be targeted with the '--bucket' argument. If this is not specified Pacu will attempt
         to enumerate 'cf-template-*' buckets and prompt for the target bucket.
+
+        The region for the attacker account can be specified with the '--attacker-region' argument. If this is not specified, Pacu will attempt to determine it automatically.
     '''.strip(),
     'services': ['CloudFormation'],
     'prerequisite_modules': [],
@@ -71,6 +73,7 @@ module_info = {
         '--s3-access-key',
         '--s3-notifications-setup-key',
         '--bucket',
+        '--attacker-region',
     ],
 }
 
@@ -95,6 +98,7 @@ parser.add_argument('--s3-notifications-setup-key',
                          'lambda function. If this is not specified the s3-access-key credentials will be used for '
                          'this instead.')
 parser.add_argument('--bucket', help=' The S3 Bucket name to target, this is usually something like cf-templates-*.')
+parser.add_argument('--attacker-region', required=True, help=' Specify which region to use in the attackers account for the Lambda function. Example: us-west-1 ')
 
 LAMBDA_NAME = "cfn__resource_injection_lambda-dev-update_template"
 
@@ -167,7 +171,8 @@ def main(args, pacu_main: 'Main'):
     else:
         s3_notifications_setup_key = args.s3_access_key
 
-    attacker_sess = get_session_from_key_name(pacu_main, args.attacker_key)
+    # Require the user to specify a region argument to the creation of the attacker_sess session before sending to add_lambda_permission, as otherwise the session will default to us-east-1. In testing this caused an exception to be thrown on line 353 if the Lambda was deployed anywhere besides us-east-1
+    attacker_sess = get_session_from_key_name(pacu_main, args.attacker_key, args.attacker_region)
     account_id = get_account_id(attacker_sess)
     principal = args.principal or f"arn:aws:iam::{account_id}:root"
     if not principal:

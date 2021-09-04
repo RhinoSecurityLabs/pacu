@@ -15,10 +15,10 @@ module_info = {
 
     # One liner description of the module functionality. This shows up when a
     # user searches for modules.
-    'one_liner': 'Enumerates Route53 hosted zones and query loggin congiurations',
+    'one_liner': 'Enumerates Route53 hosted zones and query logging configurations',
 
     # Full description about what the module does and how it works.
-    'description': 'This module enumerates Route53 hosted zones accross an account and correlates them with query logging configs for later use.',
+    'description': 'This module enumerates Route53 hosted zones across an account and correlates them with query logging configs for later use.',
 
     # A list of AWS services that the module utilizes during its execution.
     'services': ['Route53'],

@@ -43,7 +43,7 @@ module_info = {
         specified by the '--principal' argument, if this isn't specified the principal will be the root principal
         of the account used for the '--attacker-key' credentials.
 
-        The '--*-key' arguments should reference Pacu credentials set up through 'set_keys'. There are a few seperate
+        The '--*-key' arguments should reference Pacu credentials set up through 'set_keys'. There are a few separate
         credentials needed for this module, these are described below.
 
         This module is designed to make use of a secondary account where you have full access. This is where the
@@ -55,7 +55,7 @@ module_info = {
         S3 bucket as well as hardcoded in the lambda during deployment and used to read and write templates when
         triggered.
 
-        Optionally you can split the PutBucketNotification and GetBucketNotification permissions out into a seperate
+        Optionally you can split the PutBucketNotification and GetBucketNotification permissions out into a separate
         key using '--s3-notifications-setup-key'. If this is not specified it's assumed that '--s3-access-key' has
         the necessary permissions.
 

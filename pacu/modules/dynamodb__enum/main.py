@@ -107,7 +107,7 @@ def main(args, pacu_main):
 
     summary_data['dump_path'] = False
     if args.dump:
-        # Name but do not wirte until data is found
+        # Name but do not write until data is found
         summary_data['dump_path'] = os.path.join(os.getcwd(), 'sessions', session.name, 'downloads', 'dynamodb_table_dump_' + str(now))
 
     for region in regions:

@@ -874,7 +874,7 @@ class Main:
         sts = self.get_boto3_client('sts')
 
         if active_session.session_token:
-            # Roles cant use get_federation_token
+            # Roles can't use get_federation_token
             res = {
                 'Credentials': {
                     'AccessKeyId': active_session.access_key_id,
@@ -1192,7 +1192,7 @@ aws_secret_access_key = {}
 
         # If key_alias is None, then it's being run normally from the command line (set_keys),
         # otherwise it means it is set programmatically and we don't want any prompts if it is
-        # done programatically
+        # done programmatically
         if key_alias is None:
             self.print('Setting AWS Keys...')
             self.print('Press enter to keep the value currently stored.')

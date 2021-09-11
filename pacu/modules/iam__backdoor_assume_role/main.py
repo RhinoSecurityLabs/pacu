@@ -77,8 +77,8 @@ def main(args, pacu_main):
         active_aws_key = get_aws_key_by_alias(session.key_alias)
 
         if 'Arn' not in user or user['Arn'] is None:
-            client = pacu_main.get_boto3_client('sts')
-            user_info = client.get_caller_identity()
+            sts_client = pacu_main.get_boto3_client('sts')
+            user_info = sts_client.get_caller_identity()
             active_aws_key.update(pacu_main.database, arn=user_info['Arn'], user_id=user_info['UserId'], account_id=user_info['Account'])
 
         user_arns.append(active_aws_key.arn)

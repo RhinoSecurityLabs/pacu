@@ -14,7 +14,9 @@ from pathlib import Path
 
 ERROR_LOG_VERBOSITY = 'minimal'
 
-_home_dir = Path('~/.local/share/pacu')
+# TODO: Restore this to the original path 
+#_home_dir = Path('~/.local/share/pacu')
+_home_dir = Path('~/.local/share/pacu_vectra')
 home_dir = _home_dir.expanduser().absolute()
 
 os.makedirs(home_dir, exist_ok=True, mode=0o700)

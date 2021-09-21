@@ -1498,11 +1498,11 @@ aws_secret_access_key = {}
             user_agent = session.boto_user_agent
 
         if session.user_agent_suffix is not None:
-            user_agent_suffix = session.user_agent_suffix
+            # grab the botocore UA if none is specified yet
             if user_agent is None:
                 boto3_session = boto3.session.Session()
                 user_agent = boto3_session._session.user_agent()
-            user_agent += (" " + user_agent_suffix)
+            user_agent += (" " + session.user_agent_suffix)
 
         return botocore.config.Config(  # type: ignore[attr-defined]
             region_name=region,

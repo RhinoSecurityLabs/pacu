@@ -104,6 +104,7 @@ def display_pacu_help():
         set_ua_suffix [<suffix>]            Set the user agent suffix for this session. The suffix will be 
                                               appended to the user agent for all API calls. If no suffix is 
                                               supplied a UUID-based suffix will be generated.
+        unset_ua_suffix                     Remove the user agent suffix for this session.
         run/exec <module name>              Execute a module
         set_keys                            Add a set of AWS keys to the session and set them as the
                                               default
@@ -174,7 +175,7 @@ class Main:
     COMMANDS = [
         'aws', 'data', 'exec', 'exit', 'help', 'import_keys', 'assume_role', 'list', 'load_commands_file',
         'ls', 'quit', 'regions', 'run', 'search', 'services', 'set_keys', 'set_regions',
-        'swap_keys', 'update_regions', 'set_ua_suffix', 'whoami', 'swap_session', 'sessions',
+        'swap_keys', 'update_regions', 'set_ua_suffix', 'unset_ua_suffix', 'whoami', 'swap_session', 'sessions',
         'list_sessions', 'delete_session', 'export_keys', 'open_console', 'console'
     ]
 
@@ -663,6 +664,8 @@ class Main:
             self.update_regions()
         elif command[0] == 'set_ua_suffix':
             self.parse_set_ua_suffix_command(command)
+        elif command[0] == 'unset_ua_suffix':
+            self.unset_user_agent_suffix()
         elif command[0] == 'whoami':
             self.print_key_info()
         elif command[0] == 'exit' or command[0] == 'quit':
@@ -828,6 +831,9 @@ class Main:
 
     def set_user_agent_suffix(self, user_agent_suffix: str) -> None:
         self.get_active_session().update(self.database, user_agent_suffix=user_agent_suffix)
+
+    def unset_user_agent_suffix(self) -> None:
+        self.get_active_session().update(self.database, user_agent_suffix=None)
     
     def print_user_agent_suffix(self) -> None:
         user_agent_suffix = self.get_active_session().user_agent_suffix 
@@ -1116,6 +1122,8 @@ aws_secret_access_key = {}
         elif command_name == 'set_ua_suffix':
             print('\n    set_ua_suffix [<suffix>]\n        Set the user agent suffix for this session. The suffix will be appended to the user agent for all API \n'
                   '        calls. If no suffix is supplied a UUID-based suffix will be generated in the form Pacu-Session-<UUID>.\n')
+        elif command_name == 'unset_ua_suffix':
+            print('\n    unset_ua_suffix\n        Remove the user agent suffix for this session\n')
         elif command_name == 'run' or command_name == 'exec':
             print('\n    run/exec <module name>\n        Execute a module\n')
         elif command_name == 'set_keys':

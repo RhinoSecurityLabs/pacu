@@ -1497,16 +1497,10 @@ aws_secret_access_key = {}
         if user_agent is None and session.boto_user_agent is not None:
             user_agent = session.boto_user_agent
 
-        if session.user_agent_suffix is not None:
-            # grab the botocore UA if none is specified yet
-            if user_agent is None:
-                boto3_session = boto3.session.Session()
-                user_agent = boto3_session._session.user_agent()
-            user_agent += (" " + session.user_agent_suffix)
-
         return botocore.config.Config(  # type: ignore[attr-defined]
             region_name=region,
             user_agent=user_agent,  # If user_agent=None, botocore will use the real UA which is what we want
+            user_agent_extra=session.user_agent_suffix,
             retries={
                 'max_attempts': 10,
                 'mode': 'adaptive',

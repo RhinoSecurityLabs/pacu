@@ -644,6 +644,7 @@ class Main:
         elif command[0] == 'regions':
             self.display_all_regions()
         elif command[0] == 'run' or command[0] == 'exec':
+            self.print_user_agent_suffix()
             self.parse_exec_module_command(command)
         elif command[0] == 'search':
             self.parse_search_command(command)
@@ -823,9 +824,15 @@ class Main:
         elif len(command) == 2:
             user_agent_suffix = command[1]
         self.set_user_agent_suffix(user_agent_suffix)
+        self.print_user_agent_suffix()
 
     def set_user_agent_suffix(self, user_agent_suffix: str) -> None:
         self.get_active_session().update(self.database, user_agent_suffix=user_agent_suffix)
+    
+    def print_user_agent_suffix(self) -> None:
+        user_agent_suffix = self.get_active_session().user_agent_suffix 
+        if user_agent_suffix is not None:
+            print(f"Using user agent suffix {user_agent_suffix}")
 
     def update_regions(self) -> None:
         py_executable = sys.executable

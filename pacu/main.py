@@ -102,8 +102,8 @@ def display_pacu_help():
                                               command to reset the region set to the default of all
                                               supported regions
         set_ua_suffix [<suffix>]            Set the user agent suffix for this session. The suffix will be 
-                                            appended to the user agent for all API calls. If no suffix is 
-                                            supplied a UUID-based suffix will be generated.
+                                              appended to the user agent for all API calls. If no suffix is 
+                                              supplied a UUID-based suffix will be generated.
         run/exec <module name>              Execute a module
         set_keys                            Add a set of AWS keys to the session and set them as the
                                               default
@@ -819,7 +819,7 @@ class Main:
     
     def parse_set_ua_suffix_command(self, command: List[str]) -> None:
         if len(command) == 1:
-            user_agent_suffix = f"Pacu-Session-{str(uuid.uuid4())}"
+            user_agent_suffix = f"Pacu-Session-{uuid.uuid4()}"
         elif len(command) == 2:
             user_agent_suffix = command[1]
         self.set_user_agent_suffix(user_agent_suffix)

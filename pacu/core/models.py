@@ -103,6 +103,7 @@ class PacuSession(Base, ModelUpdateMixin):
     is_active = Column(Boolean, nullable=False, default=False)
     name = Column(Text)
     boto_user_agent = Column(Text)
+    user_agent_suffix=Column(Text)
     key_alias = Column(Text)
     access_key_id = Column(Text)
     secret_access_key = Column(Text)

@@ -849,10 +849,11 @@ class Main:
         with open('{}/botocore/data/endpoints.json'.format(path), 'r+') as regions_file:
             endpoints = json.load(regions_file)
 
+        regions: Dict[str, Any] = dict()
+        regions['all'] = list()
         for partition in endpoints['partitions']:
             if partition['partition'] == 'aws' or partition['partition'] == 'aws-cn':
-                regions: Dict[str, Any] = dict()
-                regions['all'] = list(partition['regions'].keys())
+                regions['all'] += list(partition['regions'].keys())
                 for service in partition['services']:
                     # fips regions are an alternate endpoint for already existing regions, to prevent duplicates we'll
                     # filter these out for now.

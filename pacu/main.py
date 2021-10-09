@@ -358,7 +358,7 @@ class Main:
                 valid_regions.remove('eu-south-1')
             if 'me-south-1' in valid_regions:
                 valid_regions.remove('me-south-1')
-        if type(regions[service]) == dict and regions[service].get('endpoints'):
+        if service in regions and type(regions[service]) == dict and regions[service].get('endpoints'):
             if 'aws-global' in regions[service]['endpoints']:
                 return [None]
             if 'all' in session.session_regions:
@@ -391,10 +391,12 @@ class Main:
                 else:
                     return valid_regions
         else:
-            if 'aws-global' in regions[service]:
+            if service in regions and 'aws-global' in regions[service]:
                 return [None]
             if 'all' in session.session_regions:
-                valid_regions = regions[service]
+                valid_regions = list()
+                if service in regions:
+                    valid_regions = regions[service]
                 if 'local' in valid_regions:
                     valid_regions.remove('local')
                 if 'af-south-1' in valid_regions:
@@ -407,7 +409,9 @@ class Main:
                     valid_regions.remove('me-south-1')
                 return valid_regions
             else:
-                valid_regions = regions[service]
+                valid_regions = list()
+                if service in regions:
+                    valid_regions = regions[service]
                 if 'local' in valid_regions:
                     valid_regions.remove('local')
                 if 'af-south-1' in valid_regions:
@@ -846,7 +850,7 @@ class Main:
             endpoints = json.load(regions_file)
 
         for partition in endpoints['partitions']:
-            if partition['partition'] == 'aws':
+            if partition['partition'] == 'aws' or partition['partition'] == 'aws-cn':
                 regions: Dict[str, Any] = dict()
                 regions['all'] = list(partition['regions'].keys())
                 for service in partition['services']:

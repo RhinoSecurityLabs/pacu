@@ -857,7 +857,8 @@ class Main:
                 for service in partition['services']:
                     # fips regions are an alternate endpoint for already existing regions, to prevent duplicates we'll
                     # filter these out for now.
-                    regions[service] = {'endpoints': {}}
+                    if not service in regions:
+                        regions[service] = {'endpoints': {}}
                     for region in filter(lambda r: 'fips' not in r, partition['services'][service]['endpoints'].keys()):
                         regions[service]['endpoints'][region] = partition['services'][service]['endpoints'][region]
 

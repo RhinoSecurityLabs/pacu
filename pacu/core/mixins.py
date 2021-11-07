@@ -4,7 +4,9 @@ from pacu.utils import stringify
 
 
 class ModelUpdateMixin:
-    def update(self, database: orm.session.Session, commit: bool = True, **kwargs) -> None:
+    def update(
+        self, database: orm.session.Session, commit: bool = True, **kwargs
+    ) -> None:
         """ Instead of requiring three lines to update a single field inside
         a database session, this method updates a single field in one line.
 

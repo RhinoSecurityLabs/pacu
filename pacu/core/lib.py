@@ -16,8 +16,8 @@ class PacuException(Exception):
 def strip_lines(text: str) -> str:
     out = []
     for line in text.splitlines():
-        out.append(line.strip('\t '))
-    return ' '.join(out)
+        out.append(line.strip("\t "))
+    return " ".join(out)
 
 
 def home_dir() -> Path:
@@ -31,25 +31,27 @@ def pacu_dir() -> Path:
 def session_dir() -> Path:
     if not get_active_session:
         raise UserWarning("No session_name set.")
-    p = (home_dir()/cast(Callable, get_active_session)().name).absolute()
+    p = (home_dir() / cast(Callable, get_active_session)().name).absolute()
     os.makedirs(p, exist_ok=True)
     return p
 
 
 def downloads_dir() -> Path:
-    p = (session_dir()/'downloads').absolute()
+    p = (session_dir() / "downloads").absolute()
     os.makedirs(p, exist_ok=True)
     return p
 
 
 def module_data_dir(module: str) -> Path:
-    p = (session_dir()/'modules'/module).absolute()
+    p = (session_dir() / "modules" / module).absolute()
     os.makedirs(p, exist_ok=True)
     return p
 
 
 @contextlib.contextmanager
-def save(file_name: str, mode: str = 'w', header: Optional[str] = None, **kwargs) -> Generator[IO[Any], None, None]:
+def save(
+    file_name: str, mode: str = "w", header: Optional[str] = None, **kwargs
+) -> Generator[IO[Any], None, None]:
     """Saves the contents of text to {pacu_home}/{session}/downloads/{file_name}.
 
     Use append to avoid overwriting existing content.
@@ -63,7 +65,7 @@ def save(file_name: str, mode: str = 'w', header: Optional[str] = None, **kwargs
 
     with open(str(p), mode, **kwargs) as f:
         if header and not p.exists():
-            f.write(header + '\n')
+            f.write(header + "\n")
         try:
             yield f
         finally:

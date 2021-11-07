@@ -519,6 +519,7 @@ stubs
 
 # vim
 .*.sw[a-p]
+*.bak
 
 # Module-specific
 modules/iam__privesc_scan/lambda_function.zip

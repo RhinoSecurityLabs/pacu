@@ -476,15 +476,19 @@ def summary(data, pacu_main):
     out = ''
     if not data:
         return '  Unable to find users/roles to enumerate permissions\n'
-    if data['users_confirmed'] == 1:
+
+    if data.get('single_user'):
         out += '  Confirmed permissions for user: {}.\n'.format(data['single_user'])
-    else:
+
+    if data.get('users_confirmed'):
         out += '  Confirmed permissions for {} user(s).\n'.format(data['users_confirmed'])
 
-    if data['roles_confirmed'] == 1:
+    if data.get('single_role'):
         out += '  Confirmed permissions for role: {}.\n'.format(data['single_role'])
-    else:
+
+    if data.get('roles_confirmed'):
         out += '  Confirmed permissions for {} role(s).\n'.format(data['roles_confirmed'])
+
     return out
 
 

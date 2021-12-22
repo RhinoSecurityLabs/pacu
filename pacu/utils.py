@@ -11,21 +11,32 @@ from pacu.core.base import DATABASE_CONNECTION_PATH
 from datetime import datetime
 
 
-def get_database_connection(database_connection_path: str=DATABASE_CONNECTION_PATH) -> orm.session.Session:
-    """ Unlike database file paths, database connection paths must begin with
-    sqlite:/// """
-    assert database_connection_path.startswith('sqlite:///'), 'Database connection path must start with sqlite:///'
+def get_database_connection(
+    database_connection_path: str = DATABASE_CONNECTION_PATH,
+) -> orm.session.Session:
+    """Unlike database file paths, database connection paths must begin with
+    sqlite:///"""
+    assert database_connection_path.startswith(
+        "sqlite:///"
+    ), "Database connection path must start with sqlite:///"
 
     engine = create_engine(database_connection_path)
     Session = sessionmaker(bind=engine)
 
     return Session()
 
-def remove_empty_from_dict(d: Union[dict, list, typing.Any]) -> Union[dict, list, typing.Any]:
-    """ Reference: https://stackoverflow.com/a/24893252 """
+
+def remove_empty_from_dict(
+    d: Union[dict, list, typing.Any]
+) -> Union[dict, list, typing.Any]:
+    """Reference: https://stackoverflow.com/a/24893252"""
     if type(d) is dict:
         d = typing.cast(dict, d)
-        return dict((k, remove_empty_from_dict(v)) for k, v in d.items() if v and remove_empty_from_dict(v))
+        return dict(
+            (k, remove_empty_from_dict(v))
+            for k, v in d.items()
+            if v and remove_empty_from_dict(v)
+        )
 
     elif type(d) is list:
         d = typing.cast(list, d)
@@ -36,9 +47,9 @@ def remove_empty_from_dict(d: Union[dict, list, typing.Any]) -> Union[dict, list
 
 
 def stringify(obj: Union[dict, list, datetime]) -> Union[dict, list, str]:
-    """ The sqlalchemy-utils' JSONType doesn't accept Python datetime objects.
+    """The sqlalchemy-utils' JSONType doesn't accept Python datetime objects.
     This method converts all datetime objects in JSONizable data structures
-    into strings, allowing the ORM to save them. """
+    into strings, allowing the ORM to save them."""
 
     if isinstance(obj, dict):
         # If obj is a dict, iterate over its items and recusrively call
@@ -68,11 +79,12 @@ def stringify(obj: Union[dict, list, datetime]) -> Union[dict, list, str]:
         return obj
 
 
-def set_sigint_handler(exit_text: Optional[str]=None, value: Union[str, int]=0) -> None:
-
+def set_sigint_handler(
+    exit_text: Optional[str] = None, value: Union[str, int] = 0
+) -> None:
     def sigint_handler(signum, frame):
-        """ This is to stop the error printed when CTRL+Cing out of the program
-        so it can exit gracefully. """
+        """This is to stop the error printed when CTRL+Cing out of the program
+        so it can exit gracefully."""
         if exit_text is not None:
             print(exit_text)
 

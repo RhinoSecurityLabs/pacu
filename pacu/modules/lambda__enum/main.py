@@ -11,37 +11,46 @@ from botocore.exceptions import ClientError
 
 module_info = {
     # Name of the module (should be the same as the filename)
-    'name': 'lambda__enum',
-
+    "name": "lambda__enum",
     # Name and any other notes about the author
-    'author': 'Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com',
-
+    "author": "Alexander Morgenstern alexander.morgenstern@rhinosecuritylabs.com",
     # Category of the module. Make sure the name matches an existing category.
-    'category': 'ENUM',
-
+    "category": "ENUM",
     # One liner description of the module functionality. This shows up when a user searches for modules.
-    'one_liner': 'Enumerates data from AWS Lambda.',
-
+    "one_liner": "Enumerates data from AWS Lambda.",
     # Full description about what the module does and how it works
-    'description': 'This module pulls data related to Lambda Functions, source code, aliases, event source mappings, versions, tags, and policies.',
-
+    "description": "This module pulls data related to Lambda Functions, source code, aliases, event source mappings, versions, tags, and policies.",
     # A list of AWS services that the module utilizes during its execution
-    'services': ['Lambda'],
-
+    "services": ["Lambda"],
     # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself, that way, session data can stay separated and modular.
-    'prerequisite_modules': [],
-
+    "prerequisite_modules": [],
     # External resources that the module depends on. Valid options are either a GitHub URL (must end in .git) or single file URL.
-    'external_dependencies': [],
-
+    "external_dependencies": [],
     # Module arguments to autocomplete when the user hits tab
-    'arguments_to_autocomplete': ['--versions-all', '--regions', '--checksource'],
+    "arguments_to_autocomplete": ["--versions-all", "--regions", "--checksource"],
 }
 
-parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
-parser.add_argument('--versions-all', required=False, default=False, action='store_true', help='Grab all versions instead of just the latest')
-parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format us-east-1. Defaults to all session regions.')
-parser.add_argument('--checksource', required=False, default=False, action='store_true', help='Download and scan all lambda functions for secrets. Warning this could effect performance.' )
+parser = argparse.ArgumentParser(add_help=False, description=module_info["description"])
+parser.add_argument(
+    "--versions-all",
+    required=False,
+    default=False,
+    action="store_true",
+    help="Grab all versions instead of just the latest",
+)
+parser.add_argument(
+    "--regions",
+    required=False,
+    default=None,
+    help="One or more (comma separated) AWS regions in the format us-east-1. Defaults to all session regions.",
+)
+parser.add_argument(
+    "--checksource",
+    required=False,
+    default=False,
+    action="store_true",
+    help="Download and scan all lambda functions for secrets. Warning this could effect performance.",
+)
 
 
 def fetch_lambda_data(client, func, key, print, **kwargs):
@@ -51,17 +60,17 @@ def fetch_lambda_data(client, func, key, print, **kwargs):
         data = response[key]
         if isinstance(data, (dict, str)):
             return data
-        while 'nextMarker' in response:
-            response = caller({**kwargs, **{'NextMarker': response['nextMarker']}})
+        while "nextMarker" in response:
+            response = caller({**kwargs, **{"NextMarker": response["nextMarker"]}})
             data.extend(response[key])
         return data
     except client.exceptions.ResourceNotFoundException:
         pass
     except ClientError as error:
-        print('  FAILURE:')
-        code = error.response['Error']['Code']
-        if code == 'AccessDeniedException':
-            print('    MISSING NEEDED PERMISSIONS')
+        print("  FAILURE:")
+        code = error.response["Error"]["Code"]
+        if code == "AccessDeniedException":
+            print("    MISSING NEEDED PERMISSIONS")
         else:
             print(code)
     return []
@@ -76,53 +85,73 @@ def main(args, pacu_main):
     get_regions = pacu_main.get_regions
     ######
 
-
-
     if args.regions:
-        regions = args.regions.split(',')
+        regions = args.regions.split(",")
     else:
-        regions = get_regions('Lambda')
+        regions = get_regions("Lambda")
 
     lambda_data = {}
     summary_data = {}
-    lambda_data['Functions'] = []
+    lambda_data["Functions"] = []
     for region in regions:
-        print('Starting region {}...'.format(region))
+        print("Starting region {}...".format(region))
 
-        client = pacu_main.get_boto3_client('lambda', region)
+        client = pacu_main.get_boto3_client("lambda", region)
 
         try:
             account_settings = client.get_account_settings()
             # Delete any ResponseMetaData to have cleaner account_settings response
-            del account_settings['ResponseMetadata']
+            del account_settings["ResponseMetadata"]
             for key in account_settings:
                 lambda_data[key] = account_settings[key]
         except ClientError as error:
-            if error.response['Error']['Code'] == 'AccessDeniedException':
-                print('Access Denied for get-account-settings')
+            if error.response["Error"]["Code"] == "AccessDeniedException":
+                print("Access Denied for get-account-settings")
             else:
                 print(error)
 
-        lambda_functions = fetch_lambda_data(client, 'list_functions', 'Functions', print)
+        lambda_functions = fetch_lambda_data(
+            client, "list_functions", "Functions", print
+        )
 
         for func in lambda_functions:
-            print('  Enumerating data for {}'.format(func['FunctionName']))
-            func_arn = func['FunctionArn']
-            func['Region'] = region
-            func['Code'] = fetch_lambda_data(client, 'get_function', 'Code', print, FunctionName=func_arn)
-            func['Aliases'] = fetch_lambda_data(client, 'list_aliases', 'Aliases', print, FunctionName=func_arn)
-            func['EventSourceMappings'] = fetch_lambda_data(client, 'list_event_source_mappings', 'EventSourceMappings', print, FunctionName=func_arn)
-            func['Tags'] = fetch_lambda_data(client, 'list_tags', 'Tags', print, Resource=func_arn)
-            func['Policy'] = fetch_lambda_data(client, 'get_policy', 'Policy', print, FunctionName=func_arn)
+            print("  Enumerating data for {}".format(func["FunctionName"]))
+            func_arn = func["FunctionArn"]
+            func["Region"] = region
+            func["Code"] = fetch_lambda_data(
+                client, "get_function", "Code", print, FunctionName=func_arn
+            )
+            func["Aliases"] = fetch_lambda_data(
+                client, "list_aliases", "Aliases", print, FunctionName=func_arn
+            )
+            func["EventSourceMappings"] = fetch_lambda_data(
+                client,
+                "list_event_source_mappings",
+                "EventSourceMappings",
+                print,
+                FunctionName=func_arn,
+            )
+            func["Tags"] = fetch_lambda_data(
+                client, "list_tags", "Tags", print, Resource=func_arn
+            )
+            func["Policy"] = fetch_lambda_data(
+                client, "get_policy", "Policy", print, FunctionName=func_arn
+            )
             if args.versions_all:
-                func['Versions'] = fetch_lambda_data(client, 'list_versions_by_function', 'Versions', print, FunctionName=func_arn)
+                func["Versions"] = fetch_lambda_data(
+                    client,
+                    "list_versions_by_function",
+                    "Versions",
+                    print,
+                    FunctionName=func_arn,
+                )
 
             # Check for secrets in data
             check_evn_secrets(func)
             if args.checksource:
                 check_source_secrets(func)
 
-        lambda_data['Functions'] += lambda_functions
+        lambda_data["Functions"] += lambda_functions
         if lambda_functions:
             summary_data[region] = len(lambda_functions)
     session.update(pacu_main.database, Lambda=lambda_data)
@@ -131,23 +160,32 @@ def main(args, pacu_main):
 
 
 def summary(data, pacu_main):
-    out = ''
+    out = ""
     for region in sorted(data):
-        out += '  {} functions found in {}. View more information in the DB \n'.format(data[region], region)
+        out += "  {} functions found in {}. View more information in the DB \n".format(
+            data[region], region
+        )
     if not out:
-        out = '  Nothing was enumerated'
+        out = "  Nothing was enumerated"
     return out
 
 
 def check_evn_secrets(function):
     try:
-        env_vars = function['Environment']['Variables']
-        [Color.print(Color.GREEN, '\t[+] Secret (ENV): {}= {}'.format(key, env_vars[key])) for key in env_vars if contains_secret(env_vars[key])]
+        env_vars = function["Environment"]["Variables"]
+        [
+            Color.print(
+                Color.GREEN, "\t[+] Secret (ENV): {}= {}".format(key, env_vars[key])
+            )
+            for key in env_vars
+            if contains_secret(env_vars[key])
+        ]
     except KeyError:
         return
 
+
 def check_source_secrets(function):
-    pattern = "(#.*|//.*|\\\".*\\\"|'.*'|/\\*.*|\".*\")"
+    pattern = '(#.*|//.*|\\".*\\"|\'.*\'|/\\*.*|".*")'
 
     source_data = get_function_source(function)
 
@@ -155,30 +193,35 @@ def check_source_secrets(function):
         for line in re.findall(pattern, source_data[key]):
             secrets = regex_checker(line)
             if secrets:
-                [Color.print(Color.GREEN, "\t{}: {}".format(key, secrets[key])) for key in secrets]
+                [
+                    Color.print(Color.GREEN, "\t{}: {}".format(key, secrets[key]))
+                    for key in secrets
+                ]
 
 
 def get_function_source(func):
     try:
         # Get Link and setup file name
-        fname = func['FunctionArn'].split(':')
-        fname = fname[len(fname)-1]
+        fname = func["FunctionArn"].split(":")
+        fname = fname[len(fname) - 1]
 
-        code_url = func['Code']['Location']
+        code_url = func["Code"]["Location"]
 
         # Download File from URL
         r = requests.get(code_url, stream=True)
 
         # Write Zip to output file
-        fname = str(downloads_dir()/f'lambda_{fname}.zip')
-        with open(fname, 'wb') as f:
+        fname = str(downloads_dir() / f"lambda_{fname}.zip")
+        with open(fname, "wb") as f:
             f.write(r.content)
 
         # Load Zip contents into memory
         lambda_zip = zipfile.ZipFile(fname)
 
-        return {id: lambda_zip.read(name).decode("utf-8", errors='ignore') for name in lambda_zip.namelist()}
+        return {
+            id: lambda_zip.read(name).decode("utf-8", errors="ignore")
+            for name in lambda_zip.namelist()
+        }
 
     except KeyError:
-        print(Color.RED, 'Error getting {fname} Source'.format(fname))
-
+        print(Color.RED, "Error getting {fname} Source".format(fname))

@@ -78,7 +78,7 @@ def download_s3_file(pacu, key, bucket):
         if confirm != 'y':
             return False
     try:
-        with save(base_directory + key) as f:
+        with save(base_directory + key, 'wb') as f:
             s3.Bucket(bucket).download_fileobj(key, f)
     except Exception as error:
         pacu.print('  {}'.format(error))

@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 import argparse
+import time
+import os
 from copy import deepcopy
 from random import choice
 
+
+from pacu.core.lib import save
 from botocore.exceptions import ClientError
 from pacu.core.secretfinder.utils import regex_checker, Color
 
@@ -232,20 +236,58 @@ def main(args, pacu_main):
 
         # Public IPs
         if args.public_ips:
-            try:
-                response = client.describe_addresses()
-            except ClientError as error:
-                code = error.response['Error']['Code']
-                print('FAILURE: ')
-                if code == 'UnauthorizedOperation':
-                    print('  Access denied to DescribeAddresses.')
-                else:
-                    print('  ' + code)
-                print('    Skipping public IP enumeration...')
-                args.public_ips = False
-            print('  {} public IP address(es) found.'.format(len(public_ips)))
-            all_public_ips += public_ips
+            now = time.time()
+            p = 'download_ec2_public_ips_{}.txt'.format(session.name, now)
+            response = None
+            next_token = False
+            public_ip_counter = 0
+            with save(p, 'w+') as f:
+                while (response is None or 'NextToken' in response):
+                    if next_token is False:
+                        try:
+                            response = client.describe_instances(MaxResults=1000)
+                            for reservation in response['Reservations']:
+                                for instance in reservation['Instances']:
+                                    public = instance.get("PublicIpAddress")
+                                    if public:
+                                        # got a non-empty string
+                                        f.write('{}\n'.format(public))
+                                        public_ip_counter += 1
+                                    else:
+                                        print('No public ip found in EC2 instance - Name: {} ID: {}.'.format(instance.tags['Name'], instance.id))
+                                        break
+                        except ClientError as error:
+                            code = error.response['Error']['Code']
+                            print('FAILURE: ')
+                            if code == 'UnauthorizedOperation':
+                                print('  Access denied to DescribeInstances.')
+                            else:
+                                print('  ' + code)
+                            print('  Skipping public IP enumeration...')
+                            args.instances = False
+                            break
+                    else:
+                        response = client.describe_instances(MaxResults=1000,NextToken=next_token)
+                        for reservation in response['Reservations']:
+                            for instance in reservation['Instances']:
+                                public = instance.get("PublicIpAddress")
+                                if public:
+                                    # got a non-empty string
+                                    f.write('{}\n'.format(public))
+                                    public_ip_counter += 1
+                                else:
+                                    print('No public ip found in EC2 instance - Name: {} ID: {}.'.format(instance.tags['Name'], instance.id))
+                                    break
+                    if 'NextToken' in response:
+                        next_token = response['NextToken']
+            if public_ip_counter > 0:
+                #public ips found and contained in text file
+                print('{}: publics ips found and added to text file located at: {}'.format(public_ip_counter,p))                
+            else:     
+                #No public ips found and nothing added to file
+                print('No public ips found in EC2 instances...')
 
+                   
         # VPN Customer Gateways
         if args.customer_gateways:
             try:

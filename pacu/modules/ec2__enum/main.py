@@ -57,6 +57,7 @@ parser.add_argument('--regions', required=False, default=None, help='One or more
 parser.add_argument('--instances', required=False, default=False, action='store_true', help='Enumerate EC2 instances')
 parser.add_argument('--security-groups', required=False, default=False, action='store_true', help='Enumerate EC2 security groups')
 parser.add_argument('--elastic-ips', required=False, default=False, action='store_true', help='Enumerate EC2 elastic IP addresses')
+parser.add_argument('--public-ips', required=False, default=False, action='store_true', help='Enumerate EC2 public IP addresses')
 parser.add_argument('--customer-gateways', required=False, default=False, action='store_true', help='Enumerate EC2 VPN customer gateways')
 parser.add_argument('--dedicated-hosts', required=False, default=False, action='store_true', help='Enumerate EC2 dedicated hosts')
 parser.add_argument('--network-acls', required=False, default=False, action='store_true', help='Enumerate EC2 network ACLs')
@@ -72,6 +73,7 @@ ARG_FIELD_MAPPER = {
     'instances': 'Instances',
     'security_groups': 'SecurityGroups',
     'elastic_ips': 'ElasticIPs',
+    'public_ips': 'PublicIPs',
     'customer_gateways': 'VPNCustomerGateways',
     'dedicated_hosts': 'DedicatedHosts',
     'network_acls': 'NetworkACLs',
@@ -92,8 +94,8 @@ def main(args, pacu_main):
     print = pacu_main.print
     get_regions = pacu_main.get_regions
 
-    if args.instances is False and args.security_groups is False and args.elastic_ips is False and args.customer_gateways is False and args.dedicated_hosts is False and args.network_acls is False and args.nat_gateways is False and args.network_interfaces is False and args.route_tables is False and args.subnets is False and args.vpcs is False and args.vpc_endpoints is False and args.launch_templates is False:
-        args.instances = args.security_groups = args.elastic_ips = args.customer_gateways = args.dedicated_hosts = args.network_acls = args.nat_gateways = args.network_interfaces = args.route_tables = args.subnets = args.vpcs = args.vpc_endpoints = args.launch_templates = True
+    if args.instances is False and args.security_groups is False and args.elastic_ips is False and args.public_ips is False and args.customer_gateways is False and args.dedicated_hosts is False and args.network_acls is False and args.nat_gateways is False and args.network_interfaces is False and args.route_tables is False and args.subnets is False and args.vpcs is False and args.vpc_endpoints is False and args.launch_templates is False:
+        args.instances = args.security_groups = args.elastic_ips = args.public_ips = args.customer_gateways = args.dedicated_hosts = args.network_acls = args.nat_gateways = args.network_interfaces = args.route_tables = args.subnets = args.vpcs = args.vpc_endpoints = args.launch_templates = True
 
     if args.regions is None:
         regions = get_regions('ec2')
@@ -108,6 +110,7 @@ def main(args, pacu_main):
     all_instances = []
     all_security_groups = []
     all_elastic_ips = []
+    all_public_ips = []
     all_vpn_customer_gateways = []
     all_dedicated_hosts = []
     all_network_acls = []
@@ -122,6 +125,7 @@ def main(args, pacu_main):
         instances = []
         security_groups = []
         elastic_ips = []
+        public_ips = []
         vpn_customer_gateways = []
         dedicated_hosts = []
         network_acls = []
@@ -133,7 +137,7 @@ def main(args, pacu_main):
         vpc_endpoints = []
         launch_templates = []
 
-        if any([args.instances, args.security_groups, args.elastic_ips, args.customer_gateways, args.dedicated_hosts, args.network_acls, args.nat_gateways, args.network_interfaces, args.route_tables, args.subnets, args.vpcs, args.vpc_endpoints, args.launch_templates]):
+        if any([args.instances, args.security_groups, args.elastic_ips, args.public_ips, args.customer_gateways, args.dedicated_hosts, args.network_acls, args.nat_gateways, args.network_interfaces, args.route_tables, args.subnets, args.vpcs, args.vpc_endpoints, args.launch_templates]):
             print('Starting region {}...'.format(region))
         client = pacu_main.get_boto3_client('ec2', region)
 
@@ -225,6 +229,22 @@ def main(args, pacu_main):
                 args.elastic_ips = False
             print('  {} elastic IP address(es) found.'.format(len(elastic_ips)))
             all_elastic_ips += elastic_ips
+
+        # Public IPs
+        if args.public_ips:
+            try:
+                response = client.describe_addresses()
+            except ClientError as error:
+                code = error.response['Error']['Code']
+                print('FAILURE: ')
+                if code == 'UnauthorizedOperation':
+                    print('  Access denied to DescribeAddresses.')
+                else:
+                    print('  ' + code)
+                print('    Skipping public IP enumeration...')
+                args.public_ips = False
+            print('  {} public IP address(es) found.'.format(len(public_ips)))
+            all_public_ips += public_ips
 
         # VPN Customer Gateways
         if args.customer_gateways:

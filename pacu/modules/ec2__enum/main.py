@@ -273,8 +273,6 @@ def main(args, pacu_main):
             with save(p, 'w+') as f:    
                 for public in public_ips:
                     f.write('{}\n'.format(public))
-                    print("Try to set region")
-                    public['Region'] = region
             print('  {} publics IP address(es) found and added to text file located at: ~/.local/share/pacu/{}/downloads/{}'.format(len(public_ips),session.name,p))                
             all_public_ips += public_ips
 

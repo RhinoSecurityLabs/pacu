@@ -270,7 +270,7 @@ def main(args, pacu_main):
                                     public_ips.append(public)
                     if 'NextToken' in response:
                         next_token = response['NextToken']     
-            print('  {}: publics IP address(es) found and added to text file located at: ~/.local/share/pacu/{}/downloads/{}'.format(len(public_ips),session.name,p))                
+            print('  {} publics IP address(es) found and added to text file located at: ~/.local/share/pacu/{}/downloads/{}'.format(len(public_ips),session.name,p))                
             all_public_ips += public_ips
 
                    

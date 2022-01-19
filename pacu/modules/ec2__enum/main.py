@@ -174,7 +174,6 @@ def main(args, pacu_main):
                     next_token = response['NextToken']
                 for reservation in response['Reservations']:
                     for instance in reservation['Instances']:
-                        print("instance type is {}".format(type(instance)))
                         instance['Region'] = region
                         instances.append(instance)
                         # Scan tags for secrets
@@ -241,7 +240,6 @@ def main(args, pacu_main):
             p = 'download_ec2_public_ips_{}.txt'.format(session.name, now)
             response = None
             next_token = False
-            public_ip_counter = 0
             with save(p, 'w+') as f:
                 while (response is None or 'NextToken' in response):
                     if next_token is False:
@@ -270,14 +268,12 @@ def main(args, pacu_main):
                                                 print("public_ips is a set")
                                             f.write('{}\n'.format(public))                                        
                                             print("Set region")
-                                            publicobj = []
+                                            publicobj = {}
                                             publicobj['Region'] = region
+                                            print("Add to public obj list")
                                             publicobj.append(public)
                                             print("Add to public ips list")
                                             public_ips.append(publicobj)
-                                        else:
-                                            print('  No publics IP address(es) found')
-                                            break
                         except ClientError as error:
                             code = error.response['Error']['Code']
                             print('FAILURE: ')
@@ -307,10 +303,7 @@ def main(args, pacu_main):
                                     publicobj = []
                                     publicobj['Address'] = public
                                     publicobj['Region'] = region
-                                    public_ips.append(publicobj)
-                                else:
-                                    print('  No publics IP address(es) found.')
-                                    break
+                                    public_ips.append(public)
                     if 'NextToken' in response:
                         next_token = response['NextToken']     
             print('  {}: publics IP address(es) found and added to text file located at: ~/.local/share/pacu/{}/downloads/{}'.format(len(public_ips),session.name,p))                

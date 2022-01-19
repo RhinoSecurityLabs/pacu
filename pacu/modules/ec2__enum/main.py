@@ -249,33 +249,33 @@ def main(args, pacu_main):
                             response = client.describe_instances(MaxResults=1000)
                             for reservation in response['Reservations']:
                                 for instance in reservation['Instances']:
-                                    public = instance["PublicIpAddress"]
-                                    if public:
-                                        # got a non-empty string
-                                        if type(public) == str:
-                                            print("Public IP is a string")
-                                        if type(public) == int:
-                                            print("Public IP is a integer")
-                                        if type(region) == str:
-                                            print("Region is a string")
-                                        if type(region) == int:
-                                            print("Region is a string")
-                                        if type(public_ips) == dict:
-                                            print("public_ips is a dictionary")
-                                        if type(public_ips) == tuple:
-                                            print("public_ips is a tuple")
-                                        if type(public_ips) == list:
-                                            print("public_ips is a list")
-                                        if type(public_ips) == set:
-                                            print("public_ips is a set")
-                                        f.write('{}\n'.format(public))                                        
-                                        print("Set region")
-                                        public['Region'] = region
-                                        print("Add to public ips list")
-                                        public_ips.append(public)
-                                    else:
-                                        print('  No publics IP address(es) found')
-                                        break
+                                    for public in instance["PublicIpAddress"]:
+                                        if public:
+                                            # got a non-empty string
+                                            if type(public) == str:
+                                                print("Public IP is a string")
+                                            if type(public) == int:
+                                                print("Public IP is a integer")
+                                            if type(region) == str:
+                                                print("Region is a string")
+                                            if type(region) == int:
+                                                print("Region is a string")
+                                            if type(public_ips) == dict:
+                                                print("public_ips is a dictionary")
+                                            if type(public_ips) == tuple:
+                                                print("public_ips is a tuple")
+                                            if type(public_ips) == list:
+                                                print("public_ips is a list")
+                                            if type(public_ips) == set:
+                                                print("public_ips is a set")
+                                            f.write('{}\n'.format(public))                                        
+                                            print("Set region")
+                                            public['Region'] = region
+                                            print("Add to public ips list")
+                                            public_ips.append(public)
+                                        else:
+                                            print('  No publics IP address(es) found')
+                                            break
                         except ClientError as error:
                             code = error.response['Error']['Code']
                             print('FAILURE: ')

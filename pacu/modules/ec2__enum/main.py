@@ -241,6 +241,7 @@ def main(args, pacu_main):
             response = None
             next_token = False
             public_ip_counter = 0
+            print("Made it to open file statement")
             with save(p, 'w+') as f:
                 print("Made it to while statement")
                 while (response is None or 'NextToken' in response):
@@ -250,7 +251,9 @@ def main(args, pacu_main):
                             print("Made it to try statement")
                             response = client.describe_instances(MaxResults=1000)
                             for reservation in response['Reservations']:
+                                print("Made it to reservation")
                                 for instance in reservation['Instances']:
+                                    print("Made it to instances")
                                     public = instance["PublicIpAddress"]
                                     if public:
                                         # got a non-empty string
@@ -283,7 +286,7 @@ def main(args, pacu_main):
                                     break
                     if 'NextToken' in response:
                         next_token = response['NextToken']
-                        
+            print("Made it to last for loop")      
             if public_ip_counter > 0:
                 #public ips found and contained in text file
                 print('{}: publics ips found and added to text file located at: {}'.format(public_ip_counter,p))                

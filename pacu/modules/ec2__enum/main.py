@@ -241,26 +241,20 @@ def main(args, pacu_main):
             response = None
             next_token = False
             public_ip_counter = 0
-            print("Made it to open file statement")
             with save(p, 'w+') as f:
-                print("Made it to while statement")
                 while (response is None or 'NextToken' in response):
-                    print("Made it to if next token statement")
                     if next_token is False:
                         try:
-                            print("Made it to try statement")
                             response = client.describe_instances(MaxResults=1000)
                             for reservation in response['Reservations']:
-                                print("Made it to reservation")
                                 for instance in reservation['Instances']:
-                                    print("Made it to instances")
                                     public = instance["PublicIpAddress"]
                                     if public:
                                         # got a non-empty string
                                         f.write('{}\n'.format(public))
                                         public_ip_counter += 1
                                     else:
-                                        print('No public ip found in EC2 instance - Name: {} ID: {}.'.format(instance.tags['Name'], instance.id))
+                                        print('  No publics IP address(es) found')
                                         break
                         except ClientError as error:
                             code = error.response['Error']['Code']
@@ -282,17 +276,17 @@ def main(args, pacu_main):
                                     f.write('{}\n'.format(public))
                                     public_ip_counter += 1
                                 else:
-                                    print('No public ip found in EC2 instance - Name: {} ID: {}.'.format(instance.tags['Name'], instance.id))
+                                    print('  No publics IP address(es) found.')
                                     break
                     if 'NextToken' in response:
-                        next_token = response['NextToken']
-            print("Made it to last for loop")      
+                        next_token = response['NextToken']     
             if public_ip_counter > 0:
                 #public ips found and contained in text file
-                print('{}: publics ips found and added to text file located at: {}'.format(public_ip_counter,p))                
+                print('  {}: publics IP address(es) found and added to text file located at: ~/.local/share/pacu/{}/downloads/{}'.format(len(public_ip_counter),session.name,p))                
             else:     
                 #No public ips found and nothing added to file
                 print('No public ips found in EC2 instances...')
+            all_public_ips += public_ip_counter
 
                    
         # VPN Customer Gateways
@@ -600,6 +594,9 @@ def summary(data, pacu_main):
 
     if 'ElasticIPs' in data:
         results.append('    {} total elastic IP address(es) found.'.format(len(data['ElasticIPs'])))
+
+    if 'PublicIPs' in data:
+        results.append('    {} total public IP address(es) found.'.format(len(data['PublicIPs'])))
 
     if 'VPNCustomerGateways' in data:
         results.append('    {} total VPN customer gateway(s) found.'.format(len(data['VPNCustomerGateways'])))

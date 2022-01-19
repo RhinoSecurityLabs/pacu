@@ -174,6 +174,8 @@ def main(args, pacu_main):
                     next_token = response['NextToken']
                 for reservation in response['Reservations']:
                     for instance in reservation['Instances']:
+                        if type(instance) == str:
+                            print("instance type is a string")
                         instance['Region'] = region
                         instances.append(instance)
                         # Scan tags for secrets

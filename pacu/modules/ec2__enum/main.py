@@ -41,6 +41,7 @@ module_info = {
         '--instances',
         '--security-groups',
         '--elastic-ips',
+        '--public-ips',
         '--customer-gateways',
         '--dedicated-hosts',
         '--network-acls',
@@ -236,40 +237,43 @@ def main(args, pacu_main):
         # Public IPs
         if args.public_ips:
             now = time.time()
-            p = 'download_ec2_public_ips_{}.txt'.format(session.name, now)
+            p = 'ec2_public_ips_{}_{}.txt'.format(session.name, now)
             response = None
             next_token = False
-            with save(p, 'w+') as f:
-                while (response is None or 'NextToken' in response):
-                    if next_token is False:
-                        try:
-                            response = client.describe_instances(MaxResults=1000)
-                            for reservation in response['Reservations']:
-                                for instance in reservation['Instances']:
-                                    public = instance["PublicIpAddress"]
-                                    if public:
-                                        f.write('{}\n'.format(public))                                        
-                                        public_ips.append(public)
-                        except ClientError as error:
-                            code = error.response['Error']['Code']
-                            print('FAILURE: ')
-                            if code == 'UnauthorizedOperation':
-                                print('  Access denied to DescribeInstances.')
-                            else:
-                                print('  ' + code)
-                            print('  Skipping public IP enumeration...')
-                            args.instances = False
-                            break
-                    else:
-                        response = client.describe_instances(MaxResults=1000,NextToken=next_token)
+            
+            while (response is None or 'NextToken' in response):
+                if next_token is False:
+                    try:
+                        response = client.describe_instances(MaxResults=1000)
                         for reservation in response['Reservations']:
                             for instance in reservation['Instances']:
                                 public = instance["PublicIpAddress"]
                                 if public:
-                                    f.write('{}\n'.format(public))
+                                    #f.write('{}\n'.format(public))                                        
                                     public_ips.append(public)
-                    if 'NextToken' in response:
-                        next_token = response['NextToken']     
+                    except ClientError as error:
+                        code = error.response['Error']['Code']
+                        print('FAILURE: ')
+                        if code == 'UnauthorizedOperation':
+                            print('  Access denied to DescribeInstances.')
+                        else:
+                            print('  ' + code)
+                        print('  Skipping public IP enumeration...')
+                        args.instances = False
+                        break
+                else:
+                    response = client.describe_instances(MaxResults=1000,NextToken=next_token)
+                    for reservation in response['Reservations']:
+                        for instance in reservation['Instances']:
+                            public = instance["PublicIpAddress"]
+                            if public:
+                                #f.write('{}\n'.format(public))
+                                public_ips.append(public)
+                if 'NextToken' in response:
+                    next_token = response['NextToken']    
+            with save(p, 'w+') as f:    
+                for public in public_ips:
+                    f.write('{}\n'.format(public))
             print('  {} publics IP address(es) found and added to text file located at: ~/.local/share/pacu/{}/downloads/{}'.format(len(public_ips),session.name,p))                
             all_public_ips += public_ips
 

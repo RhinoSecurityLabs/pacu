@@ -247,10 +247,10 @@ def main(args, pacu_main):
                             response = client.describe_instances(MaxResults=1000)
                             for reservation in response['Reservations']:
                                 for instance in reservation['Instances']:
-                                    for public in instance["PublicIpAddress"]:
-                                        if public:
-                                            f.write('{}\n'.format(public))                                        
-                                            public_ips.append(public)
+                                    public = instance["PublicIpAddress"]
+                                    if public:
+                                        f.write('{}\n'.format(public))                                        
+                                        public_ips.append(public)
                         except ClientError as error:
                             code = error.response['Error']['Code']
                             print('FAILURE: ')
@@ -265,10 +265,10 @@ def main(args, pacu_main):
                         response = client.describe_instances(MaxResults=1000,NextToken=next_token)
                         for reservation in response['Reservations']:
                             for instance in reservation['Instances']:
-                                for public in instance["PublicIpAddress"]:
-                                    if public:
-                                        f.write('{}\n'.format(public))
-                                        public_ips.append(public)
+                                public = instance["PublicIpAddress"]
+                                if public:
+                                    f.write('{}\n'.format(public))
+                                    public_ips.append(public)
                     if 'NextToken' in response:
                         next_token = response['NextToken']     
             print('  {}: publics IP address(es) found and added to text file located at: ~/.local/share/pacu/{}/downloads/{}'.format(len(public_ips),session.name,p))                

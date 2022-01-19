@@ -242,9 +242,12 @@ def main(args, pacu_main):
             next_token = False
             public_ip_counter = 0
             with save(p, 'w+') as f:
+                print("Made it to while statement")
                 while (response is None or 'NextToken' in response):
+                    print("Made it to if next token statement")
                     if next_token is False:
                         try:
+                            print("Made it to try statement")
                             response = client.describe_instances(MaxResults=1000)
                             for reservation in response['Reservations']:
                                 for instance in reservation['Instances']:

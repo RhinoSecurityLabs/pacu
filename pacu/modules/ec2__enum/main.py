@@ -237,10 +237,9 @@ def main(args, pacu_main):
         # Public IPs
         if args.public_ips:
             now = time.time()
-            p = 'ec2_public_ips_{}_{}.txt'.format(session.name, now)
+            p = 'ec2_public_ips_{}_{}_{}.txt'.format(session.name, region, now)
             response = None
             next_token = False
-            
             while (response is None or 'NextToken' in response):
                 if next_token is False:
                     try:
@@ -274,6 +273,8 @@ def main(args, pacu_main):
             with save(p, 'w+') as f:    
                 for public in public_ips:
                     f.write('{}\n'.format(public))
+                    print("Try to set region")
+                    public['Region'] = region
             print('  {} publics IP address(es) found and added to text file located at: ~/.local/share/pacu/{}/downloads/{}'.format(len(public_ips),session.name,p))                
             all_public_ips += public_ips
 

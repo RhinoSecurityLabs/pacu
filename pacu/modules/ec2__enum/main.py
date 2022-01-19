@@ -248,7 +248,7 @@ def main(args, pacu_main):
                             response = client.describe_instances(MaxResults=1000)
                             for reservation in response['Reservations']:
                                 for instance in reservation['Instances']:
-                                    public = instance.get("PublicIpAddress")
+                                    public = instance["PublicIpAddress"]
                                     if public:
                                         # got a non-empty string
                                         f.write('{}\n'.format(public))
@@ -280,6 +280,7 @@ def main(args, pacu_main):
                                     break
                     if 'NextToken' in response:
                         next_token = response['NextToken']
+                        
             if public_ip_counter > 0:
                 #public ips found and contained in text file
                 print('{}: publics ips found and added to text file located at: {}'.format(public_ip_counter,p))                
@@ -535,6 +536,7 @@ def main(args, pacu_main):
         'Instances': all_instances,
         'SecurityGroups': all_security_groups,
         'ElasticIPs': all_elastic_ips,
+        'PublicIPs': all_public_ips,
         'VPNCustomerGateways': all_vpn_customer_gateways,
         'DedicatedHosts': all_dedicated_hosts,
         'NetworkACLs': all_network_acls,

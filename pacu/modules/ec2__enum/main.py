@@ -255,6 +255,18 @@ def main(args, pacu_main):
                                             print("Public IP is a string")
                                         if type(public) == int:
                                             print("Public IP is a integer")
+                                        if type(region) == str:
+                                            print("Region is a string")
+                                        if type(region) == int:
+                                            print("Region is a string")
+                                        if type(public_ips) == dict:
+                                            print("public_ips is a dictionary")
+                                        if type(public_ips) == tuple:
+                                            print("public_ips is a tuple")
+                                        if type(public_ips) == list:
+                                            print("public_ips is a list")
+                                        if type(public_ips) == set:
+                                            print("public_ips is a set")
                                         f.write('{}\n'.format(public))                                        
                                         publicobj = []
                                         publicobj['Address'] = public
@@ -284,6 +296,10 @@ def main(args, pacu_main):
                                         print("Public IP is a string")
                                     if type(public) == int:
                                         print("Public IP is a integer")
+                                    if type(region) == str:
+                                        print("Region is a string")
+                                    if type(region) == int:
+                                        print("Region is a integer")
                                     f.write('{}\n'.format(public))
                                     publicobj = []
                                     publicobj['Address'] = public

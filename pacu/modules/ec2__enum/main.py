@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import time
 from copy import deepcopy
 from random import choice
 
@@ -236,8 +235,7 @@ def main(args, pacu_main):
 
         # Public IPs
         if args.public_ips:
-            now = time.time()
-            p = 'ec2_public_ips_{}_{}_{}.txt'.format(session.name, region, now)
+            p = 'ec2_public_ips_{}_{}.txt'.format(session.name, region)
             response = None
             next_token = False
             while (response is None or 'NextToken' in response):
@@ -275,7 +273,6 @@ def main(args, pacu_main):
             print('  {} publics IP address(es) found and added to text file located at: ~/.local/share/pacu/{}/downloads/{}'.format(len(public_ips),session.name,p))                
             all_public_ips += public_ips
 
-                   
         # VPN Customer Gateways
         if args.customer_gateways:
             try:

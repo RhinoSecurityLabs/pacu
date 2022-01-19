@@ -252,7 +252,8 @@ def main(args, pacu_main):
                                     if public:
                                         # got a non-empty string
                                         f.write('{}\n'.format(public))
-                                        public_ip_counter += 1
+                                        public['Region'] = region
+                                        public_ips.append(public)
                                     else:
                                         print('  No publics IP address(es) found')
                                         break
@@ -274,7 +275,8 @@ def main(args, pacu_main):
                                 if public:
                                     # got a non-empty string
                                     f.write('{}\n'.format(public))
-                                    public_ip_counter += 1
+                                    public['Region'] = region
+                                    public_ips.append(public)
                                 else:
                                     print('  No publics IP address(es) found.')
                                     break
@@ -282,11 +284,11 @@ def main(args, pacu_main):
                         next_token = response['NextToken']     
             if public_ip_counter > 0:
                 #public ips found and contained in text file
-                print('  {}: publics IP address(es) found and added to text file located at: ~/.local/share/pacu/{}/downloads/{}'.format(len(public_ip_counter),session.name,p))                
+                print('  {}: publics IP address(es) found and added to text file located at: ~/.local/share/pacu/{}/downloads/{}'.format(len(public_ips),session.name,p))                
             else:     
                 #No public ips found and nothing added to file
-                print('No public ips found in EC2 instances...')
-            all_public_ips += public_ip_counter
+                print('  No publics IP address(es) found.')
+            all_public_ips += public_ips
 
                    
         # VPN Customer Gateways

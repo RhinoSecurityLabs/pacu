@@ -249,31 +249,8 @@ def main(args, pacu_main):
                                 for instance in reservation['Instances']:
                                     for public in instance["PublicIpAddress"]:
                                         if public:
-                                            # got a non-empty string
-                                            if type(public) == str:
-                                                print("Public IP is a string")
-                                            if type(public) == int:
-                                                print("Public IP is a integer")
-                                            if type(region) == str:
-                                                print("Region is a string")
-                                            if type(region) == int:
-                                                print("Region is a string")
-                                            if type(public_ips) == dict:
-                                                print("public_ips is a dictionary")
-                                            if type(public_ips) == tuple:
-                                                print("public_ips is a tuple")
-                                            if type(public_ips) == list:
-                                                print("public_ips is a list")
-                                            if type(public_ips) == set:
-                                                print("public_ips is a set")
                                             f.write('{}\n'.format(public))                                        
-                                            print("Set region")
-                                            publicobj = {}
-                                            publicobj['Region'] = region
-                                            print("Add to public obj list")
-                                            publicobj.append(public)
-                                            print("Add to public ips list")
-                                            public_ips.append(publicobj)
+                                            public_ips.append(public)
                         except ClientError as error:
                             code = error.response['Error']['Code']
                             print('FAILURE: ')
@@ -288,22 +265,10 @@ def main(args, pacu_main):
                         response = client.describe_instances(MaxResults=1000,NextToken=next_token)
                         for reservation in response['Reservations']:
                             for instance in reservation['Instances']:
-                                public = instance.get("PublicIpAddress")
-                                if public:
-                                    # got a non-empty string
-                                    if type(public) == str:
-                                        print("Public IP is a string")
-                                    if type(public) == int:
-                                        print("Public IP is a integer")
-                                    if type(region) == str:
-                                        print("Region is a string")
-                                    if type(region) == int:
-                                        print("Region is a integer")
-                                    f.write('{}\n'.format(public))
-                                    publicobj = []
-                                    publicobj['Address'] = public
-                                    publicobj['Region'] = region
-                                    public_ips.append(public)
+                                for public in instance["PublicIpAddress"]:
+                                    if public:
+                                        f.write('{}\n'.format(public))
+                                        public_ips.append(public)
                     if 'NextToken' in response:
                         next_token = response['NextToken']     
             print('  {}: publics IP address(es) found and added to text file located at: ~/.local/share/pacu/{}/downloads/{}'.format(len(public_ips),session.name,p))                

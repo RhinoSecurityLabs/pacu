@@ -268,10 +268,10 @@ def main(args, pacu_main):
                                         if type(public_ips) == set:
                                             print("public_ips is a set")
                                         f.write('{}\n'.format(public))                                        
-                                        publicobj = []
-                                        publicobj['Address'] = public
-                                        publicobj['Region'] = region
-                                        public_ips.append(publicobj)
+                                        print("Set region")
+                                        public['Region'] = region
+                                        print("Add to public ips list")
+                                        public_ips.append(public)
                                     else:
                                         print('  No publics IP address(es) found')
                                         break

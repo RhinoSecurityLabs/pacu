@@ -251,6 +251,10 @@ def main(args, pacu_main):
                                     public = instance["PublicIpAddress"]
                                     if public:
                                         # got a non-empty string
+                                        if type(public) == str:
+                                            print("Public IP is a string")
+                                        if type(public) == int:
+                                            print("Public IP is a integer")
                                         f.write('{}\n'.format(public))                                        
                                         publicobj = []
                                         publicobj['Address'] = public
@@ -276,6 +280,10 @@ def main(args, pacu_main):
                                 public = instance.get("PublicIpAddress")
                                 if public:
                                     # got a non-empty string
+                                    if type(public) == str:
+                                        print("Public IP is a string")
+                                    if type(public) == int:
+                                        print("Public IP is a integer")
                                     f.write('{}\n'.format(public))
                                     publicobj = []
                                     publicobj['Address'] = public

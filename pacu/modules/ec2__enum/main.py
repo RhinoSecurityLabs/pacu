@@ -247,8 +247,7 @@ def main(args, pacu_main):
                         for reservation in response['Reservations']:
                             for instance in reservation['Instances']:
                                 public = instance["PublicIpAddress"]
-                                if public:
-                                    #f.write('{}\n'.format(public))                                        
+                                if public:                                      
                                     public_ips.append(public)
                     except ClientError as error:
                         code = error.response['Error']['Code']
@@ -266,13 +265,13 @@ def main(args, pacu_main):
                         for instance in reservation['Instances']:
                             public = instance["PublicIpAddress"]
                             if public:
-                                #f.write('{}\n'.format(public))
                                 public_ips.append(public)
                 if 'NextToken' in response:
                     next_token = response['NextToken']    
-            with save(p, 'w+') as f:    
-                for public in public_ips:
-                    f.write('{}\n'.format(public))
+            if len(public_ips) > 0:
+                with save(p, 'w+') as f:    
+                    for public in public_ips:
+                        f.write('{}\n'.format(public))
             print('  {} publics IP address(es) found and added to text file located at: ~/.local/share/pacu/{}/downloads/{}'.format(len(public_ips),session.name,p))                
             all_public_ips += public_ips
 

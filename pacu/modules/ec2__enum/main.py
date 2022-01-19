@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import time
-import os
 from copy import deepcopy
 from random import choice
 

@@ -244,7 +244,7 @@ def main(args, pacu_main):
                         response = client.describe_instances(MaxResults=1000)
                         for reservation in response['Reservations']:
                             for instance in reservation['Instances']:
-                                public = instance["PublicIpAddress"]
+                                public = instance.get("PublicIpAddress")
                                 if public:                                      
                                     public_ips.append(public)
                     except ClientError as error:

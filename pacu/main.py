@@ -115,7 +115,7 @@ def display_pacu_help():
         export_keys                         Export the active credentials to a profile in the AWS CLI
                                               credentials file (~/.aws/credentials)
         sessions/list_sessions              List all sessions in the Pacu database
-        swap_session                        Change the active Pacu session to another one in the database
+        swap_session <session name>         Change the active Pacu session to another one in the database
         delete_session                      Delete a Pacu session from the database. Note that the output
                                               folder for that session will not be deleted
 
@@ -620,7 +620,7 @@ class Main:
         elif command[0] == 'sessions' or command[0] == 'list_sessions':
             self.list_sessions()
         elif command[0] == 'swap_session':
-            self.check_sessions()
+            self.check_sessions(command)
         elif command[0] == 'delete_session':
             self.delete_session()
         elif command[0] == 'export_keys':
@@ -1318,29 +1318,41 @@ aws_secret_access_key = {}
         self.database.commit()
         self.print('AWS key is now {}.'.format(session.key_alias))
 
-    def check_sessions(self) -> None:
+    def check_sessions(self, command: List[str] = []) -> None:
         sessions = self.database.query(PacuSession).all()
 
         if not sessions:
             session = self.new_session()
-
+        elif len(command) == 2:
+            session_name = command[1]
+            found_session = False
+            for _session in sessions:
+                if getattr(_session, 'name').upper() == session_name.upper():
+                    session = _session
+                    found_session = True
+            if not found_session:
+                print('Session not found! Please use the session name below:')
+                print('\t'.join([getattr(_session, 'name') for _session in sessions]))
+                return
         else:
-            print('Found existing sessions:')
-            print('  [0] New session')
+            while True:
+                print('Found existing sessions:')
+                print('  [0] New session')
 
-            for index, session in enumerate(sessions, 1):
-                print('  [{}] {}'.format(index, session.name))
+                for index, session in enumerate(sessions, 1):
+                    print('  [{}] {}'.format(index, session.name))
 
-            choice = input('Choose an option: ')
+                choice = input('Choose an option: ')
 
-            try:
-                if int(choice) == 0:
-                    session = self.new_session()
-                else:
-                    session = sessions[int(choice) - 1]
-            except (ValueError, IndexError):
-                print('Please choose a number from 0 to {}.'.format(len(sessions)))
-                return self.check_sessions()
+                try:
+                    if int(choice) == 0:
+                        session = self.new_session()
+                    else:
+                        session = sessions[int(choice) - 1]
+                except (ValueError, IndexError):
+                    print('Please choose a number from 0 to {}.'.format(len(sessions)))
+                    continue
+                break
 
         session.activate(self.database)
 

@@ -167,12 +167,6 @@ def main(args, pacu_main: 'Main'):
     else:
         s3_notifications_setup_key = args.s3_access_key
 
-    attacker_sess = get_session_from_key_name(pacu_main, args.attacker_key)
-    account_id = get_account_id(attacker_sess)
-    principal = args.principal or f"arn:aws:iam::{account_id}:root"
-    if not principal:
-        print("Must use the --principal argument to specify which user we want to be able to elevate permissions.")
-
     lambda_dir = (module_data_dir(pacu_main.running_module_names[-1])/'cfn__resource_injection_lambda')
 
     if args.bucket:
@@ -187,7 +181,13 @@ def main(args, pacu_main: 'Main'):
 
     env = lambda_env(pacu_main, bucket, deploy_key)
 
+    region = get_region(bucket, pacu_main.get_regions('lambda'))
+
+    attacker_sess = get_session_from_key_name(pacu_main, args.attacker_key, region)
+    account_id = get_account_id(attacker_sess)
+    principal = args.principal or f"arn:aws:iam::{account_id}:root"
     deploy_dir = (lambda_dir / bucket)
+
     if args.delete:
         delete_lambda(deploy_dir, env)
     else:
@@ -195,7 +195,6 @@ def main(args, pacu_main: 'Main'):
         s3_access_key: 'AWSKey' = pacu_main.get_aws_key_by_alias(args.s3_access_key)
         deploy_lambda(pacu_main, env, deploy_dir, bucket, principal, s3_access_key)
 
-    region = get_region(bucket, pacu_main.get_regions('lambda'))
     s3_notifications_sess = get_session_from_key_name(pacu_main, s3_notifications_setup_key, region)
 
     # No need to remove this on args.delete since we are deleting the lambda either way.

@@ -20,7 +20,7 @@ module_info = {
     'one_liner': 'Stops and restarts EC2 instances to execute code.',
 
     # Description about what the module does and how it works
-    'description': 'This module will attempt to stop the chosen EC2 instances, store/display the User Data that is already set for each EC2 instance, update it with a shell script (.sh) of your choosing, then start the instances again. The shell script will be executed as root/SYSTEM everytime the specific instances are booted up.',
+    'description': 'This module will attempt to stop the chosen EC2 instances, store/display the User Data that is already set for each EC2 instance, update it with a shell script (.sh) of your choosing, then start the instances again. The shell script will be executed as root/SYSTEM every time the specific instances are booted up.',
 
     # A list of AWS services that the module utilizes during its execution
     'services': ['EC2'],

@@ -105,12 +105,12 @@ If you are ever stuck, `help` will bring up a list of available commands.
 * `pacu --session <session name>` sets the session to use for commands that require one
 * `pacu --list-modules` will list all modules available (does not require session)
 * `pacu --pacu-help` will list the pacu help window (does not require session)
-* `pacu --module-name <module name>` the name of a moudule to perform an action on, you can execute or get information on the module
+* `pacu --module-name <module name>` the name of a module to perform an action on, you can execute or get information on the module
 * `pacu --exec` execute the module provided in `--module-name`
-* `pacu --module-info` get information on the module provded in `--module-name`
+* `pacu --module-info` get information on the module provided in `--module-name`
 * `pacu --data <service name || all>` query the local SQLAlchemy database to retrieve enumerated information
 * `pacu --module-args="<arg1> <value> <arg2> <value>"` supply optional module arguments to the module being executed
-* `pacu --set-regions <region1 region2 || all>` set the regions to use in the session, seperate regions by a space or enter `all` for all regions
+* `pacu --set-regions <region1 region2 || all>` set the regions to use in the session, separate regions by a space or enter `all` for all regions
 * `pacu --whoami` get information about the current user
 
 ## Submitting Requests / Bug Reports

@@ -101,8 +101,8 @@ def display_pacu_help():
                                               every supported region for the service. Supply "all" to this
                                               command to reset the region set to the default of all
                                               supported regions
-        set_ua_suffix [<suffix>]            Set the user agent suffix for this session. The suffix will be 
-                                              appended to the user agent for all API calls. If no suffix is 
+        set_ua_suffix [<suffix>]            Set the user agent suffix for this session. The suffix will be
+                                              appended to the user agent for all API calls. If no suffix is
                                               supplied a UUID-based suffix will be generated.
         unset_ua_suffix                     Remove the user agent suffix for this session.
         run/exec <module name>              Execute a module
@@ -820,7 +820,7 @@ class Main:
         elif len(command) >= 3:
             if command[1] in ('cat', 'category'):
                 self.list_modules(command[2], by_category=True)
-    
+
     def parse_set_ua_suffix_command(self, command: List[str]) -> None:
         if len(command) == 1:
             user_agent_suffix = f"Pacu-Session-{uuid.uuid4()}"
@@ -834,9 +834,9 @@ class Main:
 
     def unset_user_agent_suffix(self) -> None:
         self.get_active_session().update(self.database, user_agent_suffix=None)
-    
+
     def print_user_agent_suffix(self) -> None:
-        user_agent_suffix = self.get_active_session().user_agent_suffix 
+        user_agent_suffix = self.get_active_session().user_agent_suffix
         if user_agent_suffix is not None:
             print(f"Using user agent suffix {user_agent_suffix}")
 

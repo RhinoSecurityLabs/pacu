@@ -241,6 +241,9 @@ def migrations(database: 'Session'):
         if svc not in rows:
             column = getattr(PacuSession, svc)
             column_type = column.type.compile(engine.dialect)
-            database.execute('ALTER TABLE %s ADD COLUMN %s %s DEFAULT "{}" NOT NULL' % (PacuSession.__tablename__, svc, column_type))
+            database.execute(
+                'ALTER TABLE %s ADD COLUMN %s %s DEFAULT "{}" NOT NULL' % 
+                (PacuSession.__tablename__, svc, column_type)
+            )
 
 

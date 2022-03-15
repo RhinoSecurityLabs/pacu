@@ -1120,8 +1120,8 @@ aws_secret_access_key = {}
                   'modules where\n          regions are required, but not supplied by the user. The default set of regions is every supported\n          '
                   'region for the service. Supply "all" to this command to reset the region set to the default of all\n          supported regions\n')
         elif command_name == 'set_ua_suffix':
-            print('\n    set_ua_suffix [<suffix>]\n        Set the user agent suffix for this session. The suffix will be appended to the user agent for all API \n'
-                  '        calls. If no suffix is supplied a UUID-based suffix will be generated in the form Pacu-Session-<UUID>.\n')
+            print('\n    set_ua_suffix [<suffix>]\n        Set the user agent suffix for this session. The suffix will be appended to the user agent for all\n'
+                  '        API calls. If no suffix is supplied a UUID-based suffix will be generated in the form Pacu-Session-<UUID>.\n')
         elif command_name == 'unset_ua_suffix':
             print('\n    unset_ua_suffix\n        Remove the user agent suffix for this session\n')
         elif command_name == 'run' or command_name == 'exec':

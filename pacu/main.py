@@ -11,6 +11,7 @@ import sys
 import time
 import traceback
 import argparse
+import uuid
 from pathlib import Path
 from typing import List, Optional, Any, Dict, Union, Tuple
 
@@ -100,6 +101,10 @@ def display_pacu_help():
                                               every supported region for the service. Supply "all" to this
                                               command to reset the region set to the default of all
                                               supported regions
+        set_ua_suffix [<suffix>]            Set the user agent suffix for this session. The suffix will be
+                                              appended to the user agent for all API calls. If no suffix is
+                                              supplied a UUID-based suffix will be generated.
+        unset_ua_suffix                     Remove the user agent suffix for this session.
         run/exec <module name>              Execute a module
         set_keys                            Add a set of AWS keys to the session and set them as the
                                               default
@@ -170,7 +175,7 @@ class Main:
     COMMANDS = [
         'aws', 'data', 'exec', 'exit', 'help', 'import_keys', 'assume_role', 'list', 'load_commands_file',
         'ls', 'quit', 'regions', 'run', 'search', 'services', 'set_keys', 'set_regions',
-        'swap_keys', 'update_regions', 'whoami', 'swap_session', 'sessions',
+        'swap_keys', 'update_regions', 'set_ua_suffix', 'unset_ua_suffix', 'whoami', 'swap_session', 'sessions',
         'list_sessions', 'delete_session', 'export_keys', 'open_console', 'console'
     ]
 
@@ -640,6 +645,7 @@ class Main:
         elif command[0] == 'regions':
             self.display_all_regions()
         elif command[0] == 'run' or command[0] == 'exec':
+            self.print_user_agent_suffix()
             self.parse_exec_module_command(command)
         elif command[0] == 'search':
             self.parse_search_command(command)
@@ -656,6 +662,10 @@ class Main:
                 self.swap_keys()
         elif command[0] == 'update_regions':
             self.update_regions()
+        elif command[0] == 'set_ua_suffix':
+            self.parse_set_ua_suffix_command(command)
+        elif command[0] == 'unset_ua_suffix':
+            self.unset_user_agent_suffix()
         elif command[0] == 'whoami':
             self.print_key_info()
         elif command[0] == 'exit' or command[0] == 'quit':
@@ -810,6 +820,25 @@ class Main:
         elif len(command) >= 3:
             if command[1] in ('cat', 'category'):
                 self.list_modules(command[2], by_category=True)
+
+    def parse_set_ua_suffix_command(self, command: List[str]) -> None:
+        if len(command) == 1:
+            user_agent_suffix = f"Pacu-Session-{uuid.uuid4()}"
+        elif len(command) == 2:
+            user_agent_suffix = command[1]
+        self.set_user_agent_suffix(user_agent_suffix)
+        self.print_user_agent_suffix()
+
+    def set_user_agent_suffix(self, user_agent_suffix: str) -> None:
+        self.get_active_session().update(self.database, user_agent_suffix=user_agent_suffix)
+
+    def unset_user_agent_suffix(self) -> None:
+        self.get_active_session().update(self.database, user_agent_suffix=None)
+
+    def print_user_agent_suffix(self) -> None:
+        user_agent_suffix = self.get_active_session().user_agent_suffix
+        if user_agent_suffix is not None:
+            print(f"Using user agent suffix {user_agent_suffix}")
 
     def update_regions(self) -> None:
         py_executable = sys.executable
@@ -1090,6 +1119,11 @@ aws_secret_access_key = {}
             print('\n    set_regions <region> [<region>...]\n        Set the default regions for this session. These space-separated regions will be used for '
                   'modules where\n          regions are required, but not supplied by the user. The default set of regions is every supported\n          '
                   'region for the service. Supply "all" to this command to reset the region set to the default of all\n          supported regions\n')
+        elif command_name == 'set_ua_suffix':
+            print('\n    set_ua_suffix [<suffix>]\n        Set the user agent suffix for this session. The suffix will be appended to the user agent for all\n'
+                  '        API calls. If no suffix is supplied a UUID-based suffix will be generated in the form Pacu-Session-<UUID>.\n')
+        elif command_name == 'unset_ua_suffix':
+            print('\n    unset_ua_suffix\n        Remove the user agent suffix for this session\n')
         elif command_name == 'run' or command_name == 'exec':
             print('\n    run/exec <module name>\n        Execute a module\n')
         elif command_name == 'set_keys':
@@ -1478,6 +1512,7 @@ aws_secret_access_key = {}
         return botocore.config.Config(  # type: ignore[attr-defined]
             region_name=region,
             user_agent=user_agent,  # If user_agent=None, botocore will use the real UA which is what we want
+            user_agent_extra=session.user_agent_suffix,
             retries={
                 'max_attempts': 10,
                 'mode': 'adaptive',

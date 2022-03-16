@@ -103,6 +103,7 @@ class PacuSession(Base, ModelUpdateMixin):
     is_active = Column(Boolean, nullable=False, default=False)
     name = Column(Text)
     boto_user_agent = Column(Text)
+    user_agent_suffix = Column(Text)
     key_alias = Column(Text)
     access_key_id = Column(Text)
     secret_access_key = Column(Text)
@@ -226,14 +227,23 @@ def migrations(database: 'Session'):
     only add columns that are included in PacuSession.aws_data_field_names and will assume the columns should be NOT
     NULL.
     """
-    db_svcs = []
+    rows = []
     for row in database.execute(f'pragma table_info({PacuSession.__tablename__})').fetchall():
-        db_svcs.append(row[1])
+        rows.append(row[1])
+
+    # If more rows are added here change this to update the db dynamically. Not worrying about this for now since it
+    # doesn't happen often, and we'll likely rewrite things before then.
+    if "user_agent_suffix" not in rows:
+        column_type = PacuSession.user_agent_suffix.type.compile(engine.dialect)
+        database.execute('ALTER TABLE %s ADD COLUMN user_agent_suffix %s' % (PacuSession.__tablename__, column_type))
 
     for svc in PacuSession.aws_data_field_names:
-        if svc not in db_svcs:
+        if svc not in rows:
             column = getattr(PacuSession, svc)
             column_type = column.type.compile(engine.dialect)
-            database.execute('ALTER TABLE %s ADD COLUMN %s %s DEFAULT "{}" NOT NULL' % (PacuSession.__tablename__, svc, column_type))
+            database.execute(
+                'ALTER TABLE %s ADD COLUMN %s %s DEFAULT "{}" NOT NULL'
+                % (PacuSession.__tablename__, svc, column_type)
+            )
 
 

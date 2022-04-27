@@ -1688,10 +1688,12 @@ aws_secret_access_key = {}
             alias = keys[0]
             access_key = keys[1]
             secert_key = keys[2]
-            if len(keys) > 2:
-                token = keys[3]
+            
+            if len(keys) > 3:
+                self.set_keys(alias,access_key,secert_key, keys[3])
+            else:
+                self.set_keys(alias,access_key,secert_key)
 
-            self.set_keys(alias,access_key,secert_key,token)
         
         if session is not None:
             session_names = [x.name for x in sessions]

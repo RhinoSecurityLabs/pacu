@@ -1857,7 +1857,7 @@ aws_secret_access_key = {}
         parser = argparse.ArgumentParser()
         parser.add_argument('--session', required=False, default=None, help='<session name>', metavar='')
         parser.add_argument('--new-session', required=False, default=None, help='<session name>', metavar='')
-        parser.add_argument('--set-keys', required=False, default=None, help='access id, secrect key, token', metavar='')
+        parser.add_argument('--set-keys', required=False, default=None, help='alias, access id, secrect key, token', metavar='')
         parser.add_argument('--module-name', required=False, default=None, help='<module name>', metavar='')
         parser.add_argument('--data', required=False, default=None, help='<service name/all>', metavar='')
         parser.add_argument('--module-args', default=None, help='<--module-args=\'--regions us-east-1,us-east-1\'>', metavar='')

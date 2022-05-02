@@ -60,7 +60,6 @@ def main(args, pacu_main):
     LAMBDA_FUNCTION_ZIP_PATH = MODULE_SESSION_PATH/'lambda_function.zip'
     ######
 
-    print(args.role_arn)
     if args.cleanup:
         created_lambda_functions = []
         created_cwe_rules = []

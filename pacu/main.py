@@ -1352,6 +1352,20 @@ aws_secret_access_key = {}
         self.database.commit()
         self.print('AWS key is now {}.'.format(session.key_alias))
 
+    def activate_session(self, session_name) -> None:
+        sessions = self.database.query(PacuSession).all()
+        found_session = False
+        for _session in sessions:
+            if getattr(_session, 'name').upper() == session_name.upper():
+                session = _session
+                found_session = True
+        if not found_session:
+            print('Session not found! Please use the session name below:')
+            print('\t'.join([getattr(_session, 'name') for _session in sessions]))
+            return
+
+        session.activate(self.database)
+
     def check_sessions(self, command: List[str] = []) -> None:
         sessions = self.database.query(PacuSession).all()
 
@@ -1669,6 +1683,7 @@ aws_secret_access_key = {}
         arg = args[0]
 
         new_session =  arg.new_session
+        activate_session = arg.activate_session
         session: str = arg.session
         module_name: str = arg.module_name
         service = arg.data
@@ -1682,6 +1697,9 @@ aws_secret_access_key = {}
         if new_session is not None:
             n_session = self.new_session(new_session)
             n_session.activate(self.database)
+            
+        if activate_session is True:
+            self.activate_session(session)
         
         if set_keys is not None:
             keys = set_keys.split(',')
@@ -1858,6 +1876,7 @@ aws_secret_access_key = {}
     def run(self) -> None:
         parser = argparse.ArgumentParser()
         parser.add_argument('--session', required=False, default=None, help='<session name>', metavar='')
+        parser.add_argument('--activate-session', action='store_true', help='activate session, use session arg to set session name')
         parser.add_argument('--new-session', required=False, default=None, help='<session name>', metavar='')
         parser.add_argument('--set-keys', required=False, default=None, help='alias, access id, secrect key, token', metavar='')
         parser.add_argument('--module-name', required=False, default=None, help='<module name>', metavar='')
@@ -1871,7 +1890,7 @@ aws_secret_access_key = {}
         parser.add_argument('--whoami', action='store_true', help='Display information on current IAM user')
         args = parser.parse_args()
 
-        if any([args.session, args.data, args.module_args, args.exec, args.set_regions, args.whoami, args.new_session, args.set_keys]):
+        if any([args.session, args.data, args.module_args, args.exec, args.set_regions, args.whoami, args.new_session, args.set_keys, args.activate_session]):
             if args.session is None and args.new_session is None:
                 print('When running Pacu from the CLI, a session is necessary')
                 exit()

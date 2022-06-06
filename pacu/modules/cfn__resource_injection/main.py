@@ -192,7 +192,6 @@ def main(args, pacu_main: 'Main'):
         delete_lambda(deploy_dir, env)
     else:
         principal = principal
-        print(args.s3_access_key)
         s3_access_key: 'AWSKey' = pacu_main.get_aws_key_by_alias_from_db(args.s3_access_key)
         deploy_lambda(pacu_main, env, deploy_dir, bucket, principal, s3_access_key)
 
@@ -250,9 +249,6 @@ def deploy_lambda(pacu: 'Main', env: dict, deploy_dir: Path, bucket: str, princi
 
     config_path = deploy_dir / '.chalice' / 'config.json'
     config = json.loads(config_path.read_text())
-    print(s3_key)
-    print(principal)
-
     config['stages']['dev']['environment_variables']['PRINCIPAL'] = principal
     config['stages']['dev']['environment_variables']['BUCKET'] = bucket
     config['stages']['dev']['environment_variables']['S3_AWS_ACCESS_KEY_ID'] = s3_key.access_key_id

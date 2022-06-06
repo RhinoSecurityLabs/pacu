@@ -242,8 +242,6 @@ def deploy_lambda(pacu: 'Main', env: dict, deploy_dir: Path, bucket: str, princi
     print = pacu.print
 
     print(f"Will deploy lambda to {env['AWS_DEFAULT_REGION']}")
-    print((Path(__file__).parent / 'cfn__resource_injection_lambda'))
-    print(deploy_dir)
     if not deploy_dir.exists():
         shutil.copytree((Path(__file__).parent / 'cfn__resource_injection_lambda'), deploy_dir, dirs_exist_ok=False)
 

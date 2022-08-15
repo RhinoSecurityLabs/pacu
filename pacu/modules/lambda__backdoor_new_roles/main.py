@@ -176,7 +176,7 @@ def main(args, pacu_main):
         function_name = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(15))
         response = client.create_function(
             FunctionName=function_name,
-            Runtime='python3.6',
+            Runtime='python3.9',
             Role=target_role_arn,
             Handler='lambda_function.lambda_handler',
             Code={

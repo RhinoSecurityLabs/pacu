@@ -609,7 +609,40 @@ class Main:
         command = command.strip()
 
         if command.split(' ')[0] == 'aws':
-            self.run_aws_cli_command(command)
+            command_lowercase = command.lower()
+            command_splitted = command.split(' ')
+            if '--profile' in command_splitted or '--p' in command_splitted:
+                # user sets profile, so we don't use our pacu keys
+                self.run_aws_cli_command(command)
+            else:
+                session_dir = lib.session_dir()
+                active_session = self.get_active_session()
+                if active_session.access_key_id and active_session.secret_access_key:
+                    credentials_file_name = '{}/credentials.tmp'.format(session_dir)
+                    config_file_name = '{}/config.tmp'.format(session_dir)
+                    fd_credentials = open(credentials_file_name, 'w')
+                    fd_config = open(config_file_name, 'w')
+                    fd_credentials.write('[default]\n')
+                    fd_credentials.write('aws_access_key_id = %s\n' % active_session.access_key_id)
+                    fd_credentials.write('aws_secret_access_key = %s\n' % active_session.secret_access_key)
+                    if active_session.session_token:
+                        fd_credentials.write('aws_session_token = %s\n' % active_session.session_token)
+                    # if region only one, then use it as a default region
+                    # else left it empty, so user should use --region manually
+                    regions = self.get_regions('all')
+                    if len(regions) == 1:
+                        fd_credentials.write('region=%s' % regions[0])
+                    if len(regions) == 1:
+                        fd_config.write('[default]\n')
+                        fd_config.write('region=%s' % regions[0])
+                    fd_credentials.close()
+                    fd_config.close()
+                    command_with_new_env = 'AWS_SHARED_CREDENTIALS_FILE=%s AWS_CONFIG_FILE=%s %s' % (credentials_file_name, config_file_name, command)
+                    self.run_aws_cli_command(command_with_new_env)
+                    os.remove(credentials_file_name)
+                    os.remove(config_file_name)
+                else:
+                    raise UserWarning(' You didn\'t set Keys and didn\'t set --profile argument. If you want to use default system aws credentials, use --profile arg. For example: aws --profile default. In another case - set default keys in session.')
             return
 
         try:

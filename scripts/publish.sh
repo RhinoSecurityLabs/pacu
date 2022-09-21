@@ -7,7 +7,7 @@ err() {
 }
 trap 'err "$LINENO"' err
 
-if ! git branch --show-current|grep master; then
+if ! git status | grep 'On branch master'; then
     echo "[ERR] Must be on the master branch."
     exit 2
 fi

@@ -1,3 +1,12 @@
+# The pyproject.toml file is specified by PEP 621 
+# https://peps.python.org/pep-0621/
+
+# A pyproject.toml tells “frontend” build tools (like pip and build) 
+# what “backend” tool to use to create distribution packages for your project.
+
+# The tool.poetry section of the pyproject.toml file is composed of multiple sections.
+# https://toml.io/en/v1.0.0#table
+# https://python-poetry.org/docs/pyproject/
 [tool.poetry]
 name = "pacu"
 version = "1.1.1"
@@ -5,9 +14,15 @@ description = "The AWS exploitation framework, designed for testing the security
 authors = ["Rhino Assessment Team <pacu@rhinosecuritylabs.com>"]
 license = "BSD-3"
 
+# This section describes the scripts or executables that will be installed when installing the package
+# https://python-poetry.org/docs/pyproject/#scripts
 [tool.poetry.scripts]
+# Here, we will have the 'pacu' script installed which will 
+# execute the 'main' function in the '__main' module in the 'pacu' package.
 pacu = "pacu.__main__:main"
 
+# Poetry is configured to look for dependencies on PyPI by default. 
+# Only the name and a version string are required in this case.
 [tool.poetry.dependencies]
 python = "^3.6"
 awscli = "^1.18"
@@ -21,6 +36,9 @@ typing-extensions = "^3.7.4.3"
 dsnap = "^1.0.0"
 chalice = "^1.23.0"
 
+# Development requirements
+# You can specify PEP-508 Extras for a dependency.
+# These configure an optional dependency for the dependency.
 [tool.poetry.dev-dependencies]
 flake8 = "^3.9.1"
 mypy = "^0.812"
@@ -31,6 +49,11 @@ typing-extensions = "^3.7.4"
 boto3-stubs = {extras = ["iam", "s3", "lambda"], version = "^1.17.54"}
 moto = "^2.2.1"
 
+# https://peps.python.org/pep-0518/#build-system-table
+# The [build-system] table is used to store build-related data.
+# Initially only one key of the table will be valid and is mandatory for the table: requires. 
+# This key must have a value of a list of strings representing PEP 508 dependencies required 
+# to execute the build system.
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"

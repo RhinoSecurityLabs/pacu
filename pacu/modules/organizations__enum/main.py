@@ -12,7 +12,7 @@ module_info = {
     'name': 'organizations__enum',
 
     # Name and any other notes about the author.
-    'author': 'Scott (@WebbinRoot) from NetSPI LLC, most of template (minus graph) taken from Spencer Gietzen glue__enum module',
+    'author': 'Scott (@WebbinRoot:/in/webbinroot/), most of template (minus recursive graph) taken from Spencer Gietzen\'s glue__enum module',
 
     # Category of the module. Make sure the name matches an existing category.
     'category': 'ENUM',

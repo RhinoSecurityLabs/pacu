@@ -52,6 +52,7 @@ parser.add_argument('--roots', required = False, default=False, action='store_tr
 parser.add_argument('--policies', required = False, default=False, action='store_true',  help='List Policies in org')
 parser.add_argument('--accounts', required=False, default=False, action='store_true',  help='List Accounts in org')
 parser.add_argument('--organizational-units', required=False, default=False, action='store_true', help='List Organizational Units in org')
+parser.add_argument('--enabled-services', required=False, default=False, action='store_true', help='List Enabled Service Access in org')
 parser.add_argument('--delegated-admins', required=False, default=False, action='store_true', help='List Delegated Administrators in org')
 parser.add_argument('--tree', required=False, default=False, action='store_true', help='Generate visual tree using root, accounts, and OUs')
 
@@ -126,14 +127,15 @@ def main(args, pacu_main):
     get_regions = pacu_main.get_regions
     ######
 
-    if True not in [ args.description, args.accounts, args.policies, args.roots, args.organizational_units, args.delegated_admins]:
-        args.description = args.accounts = args.policies = args.roots = args.organizational_units = args.delegated_admins = args.tree = True
+    if True not in [ args.description, args.accounts, args.policies, args.roots, args.organizational_units, args.enabled_services, args.delegated_admins]:
+        args.description = args.accounts = args.policies = args.roots = args.organizational_units = args.enabled_services = args.delegated_admins = args.tree = True
 
     all_description = []
     all_accounts = []
     all_policies = []
     all_roots = []
     all_org_units = []
+    all_enabled_services = []
     all_delegated_admins = []
 
     client = pacu_main.get_boto3_client('organizations')
@@ -178,6 +180,13 @@ def main(args, pacu_main):
                 
         print('{} organizational unit(s) found.'.format(len(all_org_units)))
 
+    # Enabled Services
+    if args.enabled_services:
+        enabled_services = fetch_org_data(client, 'list_aws_service_access_for_organization', 'EnabledServicePrincipals', print)
+        print('{} enabled service(s) found.'.format(len(enabled_services)))
+        all_enabled_services += enabled_services
+
+
     # Note need root, accounts, and OUs to do this assessment
     if args.tree:
         print("Trying to create tree of all collected so far")
@@ -200,6 +209,7 @@ def main(args, pacu_main):
         'policies': len(all_policies),
         'roots': len(all_roots),
         'organizational units': len(all_org_units),
+        'enabled services': len(all_enabled_services),
         'delegated admins': len(all_delegated_admins)
     }
 
@@ -208,6 +218,7 @@ def main(args, pacu_main):
     org_data['Accounts'] = all_accounts
     org_data['Policies'] = all_policies
     org_data['Organizational Units'] = all_org_units
+    org_data['Enabled Services'] = all_enabled_services
     org_data['Delegated Administrators'] = all_delegated_admins
     session.update(pacu_main.database, Organizations=org_data)
 

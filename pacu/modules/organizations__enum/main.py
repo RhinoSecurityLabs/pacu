@@ -54,6 +54,7 @@ parser.add_argument('--accounts', required=False, default=False, action='store_t
 parser.add_argument('--organizational-units', required=False, default=False, action='store_true', help='List Organizational Units in org')
 parser.add_argument('--enabled-services', required=False, default=False, action='store_true', help='List Enabled Service Access in org')
 parser.add_argument('--delegated-admins', required=False, default=False, action='store_true', help='List Delegated Administrators in org')
+parser.add_argument('--delegated-services', required=False, default=False, nargs='*', help='List Delegated Services in org per account ID. If necessary manualy pass in organization IDs.')
 parser.add_argument('--tree', required=False, default=False, action='store_true', help='Generate visual tree using root, accounts, and OUs')
 
 
@@ -73,7 +74,10 @@ def fetch_org_data(client, func, key, print, **kwargs):
     except ClientError as error:
         code = error.response['Error']['Code']
         if code == 'AccessDeniedException':
-            print('  {} FAILURE: MISSING NEEDED PERMISSIONS'.format(func))
+            print('{} PERMISSION FAILURE: MISSING NEEDED PERMISSIONS'.format(func))
+        elif code == 'AccountNotRegisteredException' and func == 'list_delegated_services_for_account':
+            print(code)
+            print('{} LOGIC FAILURE: AWS ACCOUNT NOT DELEGATED ADMINISTRATOR'.format(func)) 
         else:
             print(code)
     return []
@@ -119,6 +123,8 @@ def get_org_units(client, print, parent_node, starting_orgs):
 
 # Main is the first function that is called when this module is executed.
 def main(args, pacu_main):
+
+
     session = pacu_main.get_active_session()
 
     ###### These can be removed if you are not using the function.
@@ -127,16 +133,21 @@ def main(args, pacu_main):
     get_regions = pacu_main.get_regions
     ######
 
-    if True not in [ args.description, args.accounts, args.policies, args.roots, args.organizational_units, args.enabled_services, args.delegated_admins]:
-        args.description = args.accounts = args.policies = args.roots = args.organizational_units = args.enabled_services = args.delegated_admins = args.tree = True
+    # If all false, set all to true for following checks
+    if True not in [ args.description, args.accounts, args.policies, args.roots, args.organizational_units, args.enabled_services, args.delegated_admins, args.tree] \
+    and args.delegated_services == False:
+
+        args.description = args.accounts = args.policies = args.roots = args.organizational_units = args.enabled_services = args.delegated_admins = args.delegated_services = args.tree = True
+
 
     all_description = []
-    all_accounts = []
-    all_policies = []
     all_roots = []
+    all_policies = []
+    all_accounts = []
     all_org_units = []
     all_enabled_services = []
     all_delegated_admins = []
+    all_delegated_services = []
 
     client = pacu_main.get_boto3_client('organizations')
 
@@ -146,11 +157,11 @@ def main(args, pacu_main):
         print('{} general info(s) found.'.format(len(description)))
         all_description += description
     
-    # Accounts
-    if args.accounts:
-        accounts = fetch_org_data(client, 'list_accounts', 'Accounts', print)
-        print('{} accounts (s) found.'.format(len(accounts)))
-        all_accounts += accounts
+    # Roots
+    if args.roots:
+        roots = fetch_org_data(client, 'list_roots', 'Roots', print)
+        print('{} root(s) found.'.format(len(roots)))
+        all_roots += roots
 
     # Policies 
     if args.policies:
@@ -159,18 +170,11 @@ def main(args, pacu_main):
             print('{} polices of type {} found.'.format(len(policies), policy_filter))
             all_policies += policies
 
-
-    # Roots
-    if args.roots:
-        roots = fetch_org_data(client, 'list_roots', 'Roots', print)
-        print('{} root(s) found.'.format(len(roots)))
-        all_roots += roots
-
-    # Delegated Admins
-    if args.delegated_admins:
-        delegated_admins = fetch_org_data(client, 'list_delegated_administrators', 'DelegatedAdministrators', print)
-        print('{} delegated administrator(s) found.'.format(len(delegated_admins)))
-        all_delegated_admins += delegated_admins
+    # Accounts
+    if args.accounts:
+        accounts = fetch_org_data(client, 'list_accounts', 'Accounts', print)
+        print('{} accounts (s) found.'.format(len(accounts)))
+        all_accounts += accounts
 
     # Organizational Units (no list function, have to check graph)
     if args.organizational_units:
@@ -180,60 +184,96 @@ def main(args, pacu_main):
                 
         print('{} organizational unit(s) found.'.format(len(all_org_units)))
 
-    # Enabled Services
+    # Enabled
     if args.enabled_services:
         enabled_services = fetch_org_data(client, 'list_aws_service_access_for_organization', 'EnabledServicePrincipals', print)
         print('{} enabled service(s) found.'.format(len(enabled_services)))
         all_enabled_services += enabled_services
 
+    # Delegated Admins
+    if args.delegated_admins:
+        delegated_admins = fetch_org_data(client, 'list_delegated_administrators', 'DelegatedAdministrators', print)
+        print('{} delegated administrator(s) found.'.format(len(delegated_admins)))
+        all_delegated_admins += delegated_admins
 
+    # Delegated Services; list with content defaults to true
+    if args.delegated_services or args.delegated_services == []:
+        # Auto-Generate Account Numbers
+        extract_flag = False
+        if type(args.delegated_services) == list and len(args.delegated_services) != 0:
+            accounts = args.delegated_services
+        else:
+            extract_flag = True
+            accounts = fetch_org_data(client, 'list_accounts', 'Accounts', print)
+            if len(accounts) == 0:
+                 print('It appears like trying to list Organization AWS Account Numbers returned nothing. If necessary try passing in the same argument with specified organization IDs via --delegated-services ACCOUNT1 ACCOUNT2 ...')
+
+        #TODO fix bug test case of pass in valid account, followed by invalid account, voids previous one
+        for account in accounts:
+            if extract_flag: 
+                account = account['Id']
+            delegated_services = fetch_org_data(client, 'list_delegated_services_for_account', 'DelegatedServices', print, AccountId=account)
+            print('{} delegated services(s) found in Account {}.'.format(len(delegated_services), account))
+            if len(delegated_services) != 0:
+                all_delegated_services += [{account: delegated_services}]
+          
     # Note need root, accounts, and OUs to do this assessment
     if args.tree:
         print("Trying to create tree of all collected so far")
         
         all_roots = fetch_org_data(client, 'list_roots', 'Roots', print)
-        for root in all_roots:
+        if len(all_roots) != 0:
+            for root in all_roots:
 
-            global dot 
-            dot = graphviz.Digraph(comment="Organization Hierarchy for Root "+root["Id"])
+                global dot 
+                dot = graphviz.Digraph(comment="Organization Hierarchy for Root "+root["Id"])
 
-            create_tree(client, print, root)
-            dot.render(directory="GraphOutput/"+root["Id"])
+                create_tree(client, print, root)
+                dot.render(directory="GraphOutput/"+root["Id"])
 
-        print("New Organization Chart Created at ./GraphOutput/"+root["Id"])
+            print("New Organization Chart Created at ./GraphOutput/"+root["Id"])
  
-
-    summary_data = {
-        'overviews': len(all_description),
-        'accounts': len(all_accounts),
-        'policies': len(all_policies),
-        'roots': len(all_roots),
-        'organizational units': len(all_org_units),
-        'enabled services': len(all_enabled_services),
-        'delegated admins': len(all_delegated_admins)
-    }
-
+    summary_data = {}
     org_data = deepcopy(session.Organizations)
-    org_data['Overview'] = all_description
-    org_data['Accounts'] = all_accounts
-    org_data['Policies'] = all_policies
-    org_data['Organizational Units'] = all_org_units
-    org_data['Enabled Services'] = all_enabled_services
-    org_data['Delegated Administrators'] = all_delegated_admins
-    session.update(pacu_main.database, Organizations=org_data)
 
-    # Trim out things we don't want as specifying flags makes summary empty
-    for var in vars(args):
-        if not getattr(args, var):
-            del summary_data[var]
-   
+    if args.description: 
+        summary_data['description'] = len(all_description)
+        org_data['Overview'] = all_description
+
+    if args.roots: 
+        summary_data['roots'] = len(all_roots)
+        org_data['Roots'] = all_roots
+
+    if args.policies: 
+        summary_data['policies'] = len(all_policies)
+        org_data['Policies'] = all_policies
+
+    if args.accounts: 
+        summary_data['accounts'] = len(all_accounts)
+        org_data['Accounts'] = all_accounts
+
+    if args.organizational_units: 
+        summary_data['organizational units'] = len(all_org_units)
+        org_data['Organizational Units'] = all_org_units
+
+    if args.enabled_services: 
+        summary_data['enabled services'] = len(all_enabled_services)
+        org_data['Enabled Services'] = all_enabled_services
+
+    if args.delegated_admins: 
+        summary_data['delegated admins'] = len(all_delegated_admins)
+        org_data['Delegated Administrators'] = all_delegated_admins
+
+    if args.delegated_services: 
+        summary_data['delegated services'] = len(all_delegated_services)
+        org_data['Delegated Services'] = all_delegated_services
+
+    session.update(pacu_main.database, Organizations=org_data)   
     return summary_data
-
 
 def summary(data, pacu_main):
     out = ''
     for key in data:
-        out += '  {} total {}(s) found.\n'.format(data[key], key[:-1])
+        out += '{} total {}(s) found.\n'.format(data[key], key)
     out += '\n  Organization resources saved in Pacu database.\n'
     return out
-

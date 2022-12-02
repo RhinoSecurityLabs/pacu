@@ -2,7 +2,6 @@
 import argparse
 from botocore.exceptions import ClientError
 from copy import deepcopy
-import graphviz
 
 # When writing a module, feel free to remove any comments, placeholders, or
 # anything else that doesn't relate to your module.
@@ -55,7 +54,7 @@ parser.add_argument('--organizational-units', required=False, default=False, act
 parser.add_argument('--enabled-services', required=False, default=False, action='store_true', help='List Enabled Service Access in org')
 parser.add_argument('--delegated-admins', required=False, default=False, action='store_true', help='List Delegated Administrators in org')
 parser.add_argument('--delegated-services', required=False, default=False, nargs='*', help='List Delegated Services in org per account ID. If necessary manualy pass in organization IDs.')
-parser.add_argument('--tree', required=False, default=False, action='store_true', help='Generate visual tree using root, accounts, and OUs')
+parser.add_argument('--tree', required=False, default=False, nargs='?', help='Generate visual tree using root, accounts, and OUs')
 
 
 def fetch_org_data(client, func, key, print, **kwargs):
@@ -132,10 +131,12 @@ def main(args, pacu_main):
     print = pacu_main.print
     get_regions = pacu_main.get_regions
     ######
+    
+    # If we have supplied an argument OR if it is None (meaning flag is there but no value)
+    tree_bool = True if args.tree == None else  args.tree
 
     # If all false, set all to true for following checks
-    if True not in [ args.description, args.accounts, args.policies, args.roots, args.organizational_units, args.enabled_services, args.delegated_admins, args.tree] \
-    and args.delegated_services == False:
+    if True not in [ args.description, args.accounts, args.policies, args.roots, args.organizational_units, bool(args.enabled_services), args.delegated_admins, bool(tree_bool)]:
 
         args.description = args.accounts = args.policies = args.roots = args.organizational_units = args.enabled_services = args.delegated_admins = args.delegated_services = args.tree = True
 
@@ -218,21 +219,36 @@ def main(args, pacu_main):
                 all_delegated_services += [{account: delegated_services}]
           
     # Note need root, accounts, and OUs to do this assessment
-    if args.tree:
+    if args.tree != False:
         print("Trying to create tree of all collected so far")
         
         all_roots = fetch_org_data(client, 'list_roots', 'Roots', print)
-        if len(all_roots) != 0:
-            for root in all_roots:
+        
+        try:
+            import graphviz
+            if len(all_roots) != 0:
+                for root in all_roots:
 
-                global dot 
-                dot = graphviz.Digraph(comment="Organization Hierarchy for Root "+root["Id"])
+                    global dot 
 
-                create_tree(client, print, root)
-                dot.render(directory="GraphOutput/"+root["Id"])
+                    dot = graphviz.Digraph(format="pdf",comment="Organization Hierarchy for Root "+root["Id"])
 
-            print("New Organization Chart Created at ./GraphOutput/"+root["Id"])
- 
+                    create_tree(client, print, root)
+            
+                    if args.tree == None:
+                        file_path = "./GraphOutput/"+root["Id"]+".gv"
+                    elif bool(args.tree) == True:
+                        file_path = args.tree
+
+                    dot.render(filename=file_path)
+
+                print("New Organization Chart Created at "+file_path)
+            else:
+                print("No roots were found to begin building a tree. Exiting tree build...")
+        except Exception as e:
+            print("Graphical Tree could not be created due to following exception: {}".format(e))
+
+
     summary_data = {}
     org_data = deepcopy(session.Organizations)
 

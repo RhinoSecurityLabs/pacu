@@ -280,7 +280,7 @@ def main(args, pacu_main):
         summary_data['delegated admins'] = len(all_delegated_admins)
         org_data['Delegated Administrators'] = all_delegated_admins
 
-    if args.delegated_services: 
+    if args.delegated_services or args.delegated_services == []: 
         summary_data['delegated services'] = len(all_delegated_services)
         org_data['Delegated Services'] = all_delegated_services
 

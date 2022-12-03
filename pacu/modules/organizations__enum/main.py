@@ -11,7 +11,7 @@ module_info = {
     'name': 'organizations__enum',
 
     # Name and any other notes about the author.
-    'author': 'Scott (@WebbinRoot:/in/webbinroot/), most of template (minus recursive graph) taken from Spencer Gietzen\'s glue__enum module',
+    'author': 'Scott (@WebbinRoot:/in/webbinroot/), some of base template from Spencer Gietzen\'s glue__enum module',
 
     # Category of the module. Make sure the name matches an existing category.
     'category': 'ENUM',
@@ -56,29 +56,57 @@ parser.add_argument('--delegated-admins', required=False, default=False, action=
 parser.add_argument('--delegated-services', required=False, default=False, nargs='*', help='List Delegated Services in org per account ID. If necessary manualy pass in organization IDs.')
 parser.add_argument('--tree', required=False, default=False, nargs='?', help='Generate visual tree using root, accounts, and OUs')
 
+paginated_operations = [
+    "list_accounts",
+    "list_accounts_for_parent",
+    "list_aws_service_access_for_organization",
+    "list_children",
+    "list_create_account_status",
+    "list_delegated_administrators",
+    "list_delegated_services_for_account",
+    "list_handshakes_for_account",
+    "list_handshakes_for_organization",
+    "list_organizational_units_for_parent",
+    "list_parents",
+    "list_policies",
+    "list_policies_for_target",
+    "list_roots",
+    "list_tags_for_resource",
+    "list_targets_for_policy"
+]
 
 def fetch_org_data(client, func, key, print, **kwargs):
-    caller = getattr(client, func)
     try:
-        response = caller(**kwargs)
-        data = response[key]
-
-        while 'NextToken' in response and response['NextToken'] != '':
-            print({**kwargs, **{'NextToken': response['NextToken']}})
-            response = caller({**kwargs, **{'NextToken': response['NextToken']}})
-            data.extend(response[key])
-
-        return data
+        if func in paginated_operations:
+            
+            response = []
+            paginator = client.get_paginator(func)
+            page_iterator = paginator.paginate(**kwargs)
+            for page in page_iterator:
+                response += page[key]
+            return response
+          
+    
+        else:
+            caller = getattr(client, func)
+            response = caller(**kwargs)
+            return response[key]
 
     except ClientError as error:
         code = error.response['Error']['Code']
+        
         if code == 'AccessDeniedException':
-            print('{} PERMISSION FAILURE: MISSING NEEDED PERMISSIONS'.format(func))
+            print('({}) PERMISSION FAILURE: MISSING NEEDED PERMISSIONS'.format(func))
+        
         elif code == 'AccountNotRegisteredException' and func == 'list_delegated_services_for_account':
-            print(code)
-            print('{} LOGIC FAILURE: AWS ACCOUNT NOT DELEGATED ADMINISTRATOR'.format(func)) 
+            print('({}) LOGIC FAILURE: AWS ACCOUNT NOT DELEGATED ADMINISTRATOR'.format(func)) 
+        
         else:
-            print(code)
+            print('({}) DEFAULT FAILURE: {}'.format(func, code))
+    
+    except Exception as error:
+            print('({}) UNABLE TO EXECUTE DUE TO GENERIC FAILURE: {}'.format(func, error))
+
     return []
 
 # Recursive build for tree
@@ -160,10 +188,12 @@ def main(args, pacu_main):
     
     # Roots
     if args.roots:
+
         roots = fetch_org_data(client, 'list_roots', 'Roots', print)
         print('{} root(s) found.'.format(len(roots)))
         all_roots += roots
 
+    # TODO List Attached Policies as Well
     # Policies 
     if args.policies:
         for policy_filter in ["AISERVICES_OPT_OUT_POLICY", "BACKUP_POLICY", "SERVICE_CONTROL_POLICY", "TAG_POLICY"]:
@@ -177,15 +207,16 @@ def main(args, pacu_main):
         print('{} accounts (s) found.'.format(len(accounts)))
         all_accounts += accounts
 
+    # TODO Add multiple ways to get this besides root
     # Organizational Units (no list function, have to check graph)
     if args.organizational_units:
-        current_scoped_targets = all_roots
-        for root in all_roots:
+        all_roots_alt = fetch_org_data(client, 'list_roots', 'Roots', print)
+        for root in all_roots_alt:
             all_org_units = get_org_units(client, print, root, starting_orgs = [])
                 
         print('{} organizational unit(s) found.'.format(len(all_org_units)))
 
-    # Enabled
+    # Enabled Services
     if args.enabled_services:
         enabled_services = fetch_org_data(client, 'list_aws_service_access_for_organization', 'EnabledServicePrincipals', print)
         print('{} enabled service(s) found.'.format(len(enabled_services)))
@@ -222,12 +253,12 @@ def main(args, pacu_main):
     if args.tree != False:
         print("Trying to create tree of all collected so far")
         
-        all_roots = fetch_org_data(client, 'list_roots', 'Roots', print)
+        all_roots_alt = fetch_org_data(client, 'list_roots', 'Roots', print)
         
         try:
             import graphviz
-            if len(all_roots) != 0:
-                for root in all_roots:
+            if len(all_roots_alt) != 0:
+                for root in all_roots_alt:
 
                     global dot 
 

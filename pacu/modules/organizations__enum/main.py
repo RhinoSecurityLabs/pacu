@@ -160,14 +160,17 @@ def main(args, pacu_main):
     get_regions = pacu_main.get_regions
     ######
     
-    # If we have supplied an argument OR if it is None (meaning flag is there but no value)
-    tree_bool = True if args.tree == None else  args.tree
+    # None is --tree with no argument
+    args.tree = True if args.tree == None else args.tree
+    args.delegated_services = True if args.delegated_services == [] else args.delegated_services
 
     # If all false, set all to true for following checks
-    if True not in [ args.description, args.accounts, args.policies, args.roots, args.organizational_units, bool(args.enabled_services), args.delegated_admins, bool(tree_bool)]:
+    if True not in [ args.description, args.accounts, args.policies, args.roots, args.organizational_units, args.enabled_services, args.delegated_admins, bool(args.delegated_services), bool(args.tree)]:
 
         args.description = args.accounts = args.policies = args.roots = args.organizational_units = args.enabled_services = args.delegated_admins = args.delegated_services = args.tree = True
-
+        
+        # If empty list passed in retain that value for later
+        #args.delegated_services = True if args.delegated_services == None else args.delegated_services
 
     all_description = []
     all_roots = []
@@ -228,12 +231,15 @@ def main(args, pacu_main):
         print('{} delegated administrator(s) found.'.format(len(delegated_admins)))
         all_delegated_admins += delegated_admins
 
-    # Delegated Services; list with content defaults to true
-    if args.delegated_services or args.delegated_services == []:
-        # Auto-Generate Account Numbers
+    # Delegated Services; If list exists either set to true or will default to true
+    if bool(args.delegated_services):
+
+        # full list [A,B,C]
         extract_flag = False
         if type(args.delegated_services) == list and len(args.delegated_services) != 0:
             accounts = args.delegated_services
+        
+        # empty list []
         else:
             extract_flag = True
             accounts = fetch_org_data(client, 'list_accounts', 'Accounts', print)
@@ -250,7 +256,7 @@ def main(args, pacu_main):
                 all_delegated_services += [{account: delegated_services}]
           
     # Note need root, accounts, and OUs to do this assessment
-    if args.tree != False:
+    if bool(args.tree):
         print("Trying to create tree of all collected so far")
         
         all_roots_alt = fetch_org_data(client, 'list_roots', 'Roots', print)
@@ -266,9 +272,9 @@ def main(args, pacu_main):
 
                     create_tree(client, print, root)
             
-                    if args.tree == None:
+                    if type(args.tree) == bool and args.tree == True:
                         file_path = "./GraphOutput/"+root["Id"]+".gv"
-                    elif bool(args.tree) == True:
+                    elif type(args.tree) != bool:
                         file_path = args.tree
 
                     dot.render(filename=file_path)

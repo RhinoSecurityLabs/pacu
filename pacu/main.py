@@ -608,11 +608,11 @@ class Main:
          PacuSession from the database, or None if no AWSKey
         with the supplied alias exists. If more than one key with the alias
         exists for the active session, an exception will be raised. """
-        session = self.get_active_session()
+        # session = self.get_active_session()
         key = self.database.query(AWSKey) \
             .filter(AWSKey.key_alias == alias) \
             .scalar()
-        return key    
+        return key
 
     # Pacu commands and execution
 

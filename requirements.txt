@@ -38,6 +38,8 @@ docutils==0.15.2 ; python_version >= "3.6" and python_version < "4.0" \
 dsnap==1.0.0 ; python_version >= "3.6" and python_version < "4.0" \
     --hash=sha256:9009a98a70770259d18cae88d806a5baf7cd80ecf2ee148888831f0ba28b8f24 \
     --hash=sha256:fc11265438fb5a0af79f02f276468e75b0b36f49d545c85454831c2e5698e035
+graphviz==0.20.1; python_version >= "3.6" and python_version < "4.0" \
+    --hash=sha256:587c58a223b51611c0cf461132da386edd896a029524ca61a1462b880bf97977
 idna==3.2 ; python_version >= "3.6" and python_version < "4.0" \
     --hash=sha256:14475042e284991034cb48e06f6851428fb14c4dc953acd9be9a5e95c7b6dd7a \
     --hash=sha256:467fbad99067910785144ce333826c71fb0e63a425657295239737f7ecd125f3

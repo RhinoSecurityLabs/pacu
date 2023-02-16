@@ -603,6 +603,17 @@ class Main:
             .scalar()
         return key
 
+    def get_aws_key_by_alias_from_db(self, alias: str) -> AWSKey:
+        """ Return an AWSKey with the supplied alias that is assigned to the
+         PacuSession from the database, or None if no AWSKey
+        with the supplied alias exists. If more than one key with the alias
+        exists for the active session, an exception will be raised. """
+        # session = self.get_active_session()
+        key = self.database.query(AWSKey) \
+            .filter(AWSKey.key_alias == alias) \
+            .scalar()
+        return key
+
     # Pacu commands and execution
 
     def parse_command(self, command):

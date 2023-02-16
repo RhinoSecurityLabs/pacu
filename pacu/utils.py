@@ -1,10 +1,11 @@
 import signal
 import sys
 import typing
+import zipfile
+from pathlib import Path
 from typing import Optional, Union
 
 from sqlalchemy import create_engine, orm
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 from pacu.core.base import DATABASE_CONNECTION_PATH
@@ -79,3 +80,19 @@ def set_sigint_handler(exit_text: Optional[str]=None, value: Union[str, int]=0) 
         sys.exit(value)
 
     signal.signal(signal.SIGINT, sigint_handler)
+
+
+def zip_file(file_path: Path, file_data: dict) -> bytes:
+    '''
+    file_data structure
+    {
+        'file_name_1': 'some_text_data',
+        'file_name_2': 'some_text_data'
+    }
+    '''
+    with zipfile.ZipFile(file_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for file_name in file_data.keys():
+            zf.writestr(file_name, file_data[file_name])
+
+    with open(file_path, 'rb') as f:
+        return f.read()

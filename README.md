@@ -4,7 +4,7 @@ With this change files that where written to `./sessions/<session>` before are n
 
 # Quick reference
 - **Where to get help**:
-[the Pacu Community Slack](https://join.slack.com/t/pacu-cloudgoat/shared_invite/enQtNDE3OTk0MjA3NTA2LTRmOTVmZjEyYjIzOTYxMGJmZDc4ZDVkOGU3ZmJlOWZhNzdkYWQ2ZmQxNTFjZThjMmJlMDFmMTU4NzUwMDM2NmY), or [Stack Overflow](https://stackoverflow.com/search?tab=newest&q=pacu)
+[the Rhino Security Labs Discord](https://discord.gg/8vFE7ucx9W), or [Stack Overflow](https://stackoverflow.com/search?tab=newest&q=pacu)
 
 - **Where to file issues**:
 [https://github.com/RhinoSecurityLabs/pacu/issues](https://github.com/RhinoSecurityLabs/pacu/issues)

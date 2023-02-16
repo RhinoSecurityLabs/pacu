@@ -11,6 +11,7 @@ import zipfile
 import os
 
 from pacu.core.lib import module_data_dir
+from pacu.utils import zip_file
 
 module_info = {
     'name': 'lambda__backdoor_new_users',
@@ -170,14 +171,11 @@ def main(args, pacu_main):
     # Zip the Lambda function
     try:
         print('  Zipping the Lambda function...\n')
-        with zipfile.ZipFile(LAMBDA_FUNCTION_ZIP_PATH, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            zip_file.writestr('lambda_function.py', source_code)
+        zip_data = {'lambda_function.py': source_code}
+        zip_file_bytes = zip_file(LAMBDA_FUNCTION_ZIP_PATH, zip_data)
     except Exception as error:
         print('Failed to zip the Lambda function locally: {}\n'.format(error))
         return data
-
-    with open(LAMBDA_FUNCTION_ZIP_PATH, 'rb') as f:
-        zip_file_bytes = f.read()
 
     client = pacu_main.get_boto3_client('lambda', 'us-east-1')
 

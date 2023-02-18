@@ -1260,6 +1260,7 @@ aws_secret_access_key = {}
         if found_modules_by_category:
             for category in self.CATEGORIES:
                 if category in found_modules_by_category:
+                    found_modules_by_category[category].sort()
                     search_results = '\n'.join(found_modules_by_category[category]).strip('\n')
                     print('\n[Category: {}]\n\n{}'.format(category, search_results))
         else:

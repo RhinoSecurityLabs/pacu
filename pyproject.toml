@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pacu"
-version = "1.1.1"
+version = "1.1.2"
 description = "The AWS exploitation framework, designed for testing the security of Amazon Web Services environments."
 authors = ["Rhino Assessment Team <pacu@rhinosecuritylabs.com>"]
 license = "BSD-3"

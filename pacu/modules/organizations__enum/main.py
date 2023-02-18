@@ -54,6 +54,7 @@ parser.add_argument('--organizational-units', required=False, default=False, act
 parser.add_argument('--enabled-services', required=False, default=False, action='store_true', help='List Enabled Service Access in org')
 parser.add_argument('--delegated-admins', required=False, default=False, action='store_true', help='List Delegated Administrators in org')
 parser.add_argument('--delegated-services', required=False, default=False, nargs='*', help='List Delegated Services in org per account ID. If necessary manualy pass in organization IDs.')
+parser.add_argument('--delegation-policy', required = False, default=False, action='store_true',  help='Get Organization Resource-Based Delegation Policy')
 parser.add_argument('--tree', required=False, default=False, nargs='?', help='Generate visual tree using root, accounts, and OUs')
 
 paginated_operations = [
@@ -165,9 +166,9 @@ def main(args, pacu_main):
     args.delegated_services = True if args.delegated_services == [] else args.delegated_services
 
     # If all false, set all to true for following checks
-    if True not in [ args.description, args.accounts, args.policies, args.roots, args.organizational_units, args.enabled_services, args.delegated_admins, bool(args.delegated_services), bool(args.tree)]:
+    if True not in [ args.description, args.accounts, args.policies, args.roots, args.organizational_units, args.enabled_services, args.delegated_admins, bool(args.delegated_services), bool(args.tree), args.delegation_policy]:
 
-        args.description = args.accounts = args.policies = args.roots = args.organizational_units = args.enabled_services = args.delegated_admins = args.delegated_services = args.tree = True
+        args.description = args.accounts = args.policies = args.roots = args.organizational_units = args.enabled_services = args.delegated_admins = args.delegated_services = args.tree = args.delegation_policy = True
         
         # If empty list passed in retain that value for later
         #args.delegated_services = True if args.delegated_services == None else args.delegated_services
@@ -180,12 +181,18 @@ def main(args, pacu_main):
     all_enabled_services = []
     all_delegated_admins = []
     all_delegated_services = []
+    all_delegation_policy = []
 
     client = pacu_main.get_boto3_client('organizations')
 
     # General Description
     if args.description:
-        description = [fetch_org_data(client, 'describe_organization', 'Organization', print)]
+        description = fetch_org_data(client, 'describe_organization', 'Organization', print)
+
+        # Dictionary returning means data was found
+        if type(description) == dict:
+            description = [description]
+            
         print('{} general info(s) found.'.format(len(description)))
         all_description += description
     
@@ -285,6 +292,16 @@ def main(args, pacu_main):
         except Exception as e:
             print("Graphical Tree could not be created due to following exception: {}".format(e))
 
+    # Resource Policies (Accessible for Delegated Admins)
+    if args.delegation_policy:
+        delegation_policy = fetch_org_data(client, 'describe_resource_policy', 'ResourcePolicy', print)
+
+        # Dictionary returning means data was found
+        if type(delegation_policy) == dict:
+            delegation_policy = [delegation_policy]
+
+        print('{} resource-based delegation policy(s) found.'.format(len(delegation_policy)))
+        all_delegation_policy += delegation_policy
 
     summary_data = {}
     org_data = deepcopy(session.Organizations)
@@ -321,6 +338,10 @@ def main(args, pacu_main):
         summary_data['delegated services'] = len(all_delegated_services)
         org_data['Delegated Services'] = all_delegated_services
 
+    if args.delegation_policy:
+        summary_data['resource-based delegation policies'] = len(all_delegation_policy)
+        org_data['Resource-Based Delegation Policy'] = all_delegation_policy       
+
     session.update(pacu_main.database, Organizations=org_data)   
     return summary_data
 
@@ -330,3 +351,4 @@ def summary(data, pacu_main):
         out += '{} total {}(s) found.\n'.format(data[key], key)
     out += '\n  Organization resources saved in Pacu database.\n'
     return out
+

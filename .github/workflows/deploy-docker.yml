@@ -2,7 +2,7 @@ name: Deploy Docker Image
 
 on:
   workflow_run:
-    workflows: ["Upload Python Package"]
+    workflows: ["PyPi and Docker Deploy"]
     types:
       - completed
 

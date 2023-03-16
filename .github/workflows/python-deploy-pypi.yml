@@ -5,7 +5,7 @@
 # 
 
 
-name: Upload Python Package
+name: PyPi and Docker Deploy
 
 on: workflow_dispatch
 

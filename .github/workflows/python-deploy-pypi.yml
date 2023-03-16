@@ -1,0 +1,42 @@
+# This will publish the package to PyPi when pushing to master*.
+#
+
+name: Upload Python Package
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install poetry
+    - name: Bump version
+      run: |
+        poetry version patch
+    - name: Commit and push version changes
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        ver="$(poetry version -s)"
+        git tag "v${ver}"
+        git config --global user.email "actions@github.com"
+        git config --global user.name "GitHub Actions"
+        git add .
+        git commit -m "Bump version"
+        git push origin "refs/tags/v${ver}"
+    - name: Build and publish
+      run: |
+        poetry publish --build -u "__token__" -p "${{ secrets.PYPI_TOKEN }}"

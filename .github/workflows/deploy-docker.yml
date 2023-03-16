@@ -1,6 +1,10 @@
 name: Deploy Docker Image
 
-on: workflow_dispatch
+on:
+  workflow_run:
+    workflows: ["Upload Python Package"]
+    types:
+      - completed
 
 jobs:
 

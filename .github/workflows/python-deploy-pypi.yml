@@ -26,12 +26,12 @@ jobs:
       run: |
         poetry version patch
     - name: Commit and push version changes
-      env:
-        GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}
       run: |
         ver="$(poetry version -s)"
-        git config --global user.email "assessments@rhinoseucritylabs.com"
-        git config --global user.name "rhinoassessments"
+        git config --global user.email "<>"
+        git config --global user.name "Github-Actions"
+        git config --global credential.helper store
+        echo "https://${{secrets.GIT_USERNAME}}:${{secrets.GIT_TOKEN}}@github.com" > ~/.git-credentials
         git add .
         git commit -m "Release v${ver}"
         git push

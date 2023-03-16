@@ -1,5 +1,9 @@
-# This will publish the package to PyPi when pushing to master*.
-#
+# This is triggered manually.
+# This will bump the version and publish a package to PyPi.
+# if it completes it will also trigger a new Docker image build and push to DockHub at:
+# https://github.com/RhinoSecurityLabs/pacu/blob/master/.github/workflows/deploy-docker.yml
+# 
+
 
 name: Upload Python Package
 

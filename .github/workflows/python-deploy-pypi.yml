@@ -31,8 +31,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}
       run: |
         ver="$(poetry version -s)"
-        git config --global user.email "actions@github.com"
-        git config --global user.name "GitHub Actions"
+        git config --global user.email "assessments@rhinoseucritylabs.com"
+        git config --global user.name "rhinoassessments"
         git add .
         git commit -m "Release v${ver}"
         git push

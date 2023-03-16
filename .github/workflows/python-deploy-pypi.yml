@@ -28,7 +28,7 @@ jobs:
         poetry version patch
     - name: Commit and push version changes
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}
       run: |
         ver="$(poetry version -s)"
         git config --global user.email "actions@github.com"

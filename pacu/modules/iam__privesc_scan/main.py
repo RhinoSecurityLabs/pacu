@@ -383,7 +383,7 @@ def main(args, pacu_main: 'Main'):
 
         if args.folder is None:
             folder = '{}/confirmed_permissions/'.format(downloads_dir())
-            print('No --folder argument passed to offline mode, using the default: ./{}\n'.format(folder))
+            print('No --folder argument passed to offline mode, using the default: {}\n'.format(folder))
             if os.path.isdir(folder) is False:
                 print('{} not found! Maybe you have not run {} yet...\n'.format(folder, module_info['prerequisite_modules'][0]))
                 if fetch_data(['All users/roles permissions'], module_info['prerequisite_modules'][0], '--all-users --all-roles') is False:
@@ -416,6 +416,7 @@ def main(args, pacu_main: 'Main'):
 
                         for permission in user_escalation_methods[method]:
                             if user_escalation_methods[method][permission] is True:  # If the permission is required for the method
+                                permission = permission.lower()
                                 if permission in user['Permissions']['Deny']:
                                     is_possible = False
                                     break
@@ -423,10 +424,11 @@ def main(args, pacu_main: 'Main'):
                                 elif permission not in user['Permissions']['Allow']:  # and the user doesn't have it allowed
                                     wildcard_match = False
 
-                                    for user_perm in user['Permissions']['Allow']:
-                                        if '*' in user_perm:
-                                            if re.match(user_perm.replace('*', '.*'), permission):
-                                                wildcard_match = True
+                                    # This should no longer be needed when using policyuniverse for enum_permissions
+                                    # for user_perm in user['Permissions']['Allow']:
+                                    #     if '*' in user_perm:
+                                    #         if re.match(user_perm.replace('*', '.*'), permission):
+                                    #             wildcard_match = True
 
                                     if wildcard_match is False:
                                         is_possible = False
@@ -446,6 +448,7 @@ def main(args, pacu_main: 'Main'):
 
                         for permission in role_escalation_methods[method]:
                             if role_escalation_methods[method][permission] is True:  # If the permission is required for the method
+                                permission = permission.lower()
                                 if permission in role['Permissions']['Deny']:
                                     is_possible = False
                                     break
@@ -453,10 +456,11 @@ def main(args, pacu_main: 'Main'):
                                 elif permission not in role['Permissions']['Allow']:  # and the role doesn't have it allowed
                                     wildcard_match = False
 
-                                    for role_perm in role['Permissions']['Allow']:
-                                        if '*' in role_perm:
-                                            if re.match(role_perm.replace('*', '.*'), permission):
-                                                wildcard_match = True
+                                    # This should no longer be needed when using policyuniverse for enum_permissions
+                                    # for role_perm in role['Permissions']['Allow']:
+                                    #     if '*' in role_perm:
+                                    #         if re.match(role_perm.replace('*', '.*'), permission):
+                                    #             wildcard_match = True
 
                                     if wildcard_match is False:
                                         is_possible = False

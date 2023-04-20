@@ -1920,6 +1920,7 @@ aws_secret_access_key = {}
                     return
 
     def run(self) -> None:
+        setup_database_if_not_present(settings.DATABASE_FILE_PATH)
         parser = argparse.ArgumentParser()
         parser.add_argument('--session', required=False, default=None, help='<session name>', metavar='')
         parser.add_argument('--activate-session', action='store_true', help='activate session, use session arg to set session name')

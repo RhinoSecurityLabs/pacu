@@ -418,11 +418,16 @@ def main(args, pacu_main: 'Main'):
                             if user_escalation_methods[method][permission] is True:  # If the permission is required for the method
                                 permission = permission.lower()
                                 if permission in user['Permissions']['Deny']:
-                                    is_possible = False
-                                    break
+                                    if 'IfResourcesNotIn' in str(user['Permissions']['Deny'][permission]["Conditions"]):
+                                        pass
+                                    else:
+                                        is_possible = False
+                                        break
 
                                 elif permission not in user['Permissions']['Allow']:  # and the user doesn't have it allowed
-                                    wildcard_match = False
+                                    is_possible = False
+                                    break
+                                    # wildcard_match = False
 
                                     # This should no longer be needed when using policyuniverse for enum_permissions
                                     # for user_perm in user['Permissions']['Allow']:
@@ -430,9 +435,7 @@ def main(args, pacu_main: 'Main'):
                                     #         if re.match(user_perm.replace('*', '.*'), permission):
                                     #             wildcard_match = True
 
-                                    if wildcard_match is False:
-                                        is_possible = False
-                                        break
+                                    # if wildcard_match is False:
 
                         if is_possible is True:
                             potential_methods[name].append(method)
@@ -450,11 +453,15 @@ def main(args, pacu_main: 'Main'):
                             if role_escalation_methods[method][permission] is True:  # If the permission is required for the method
                                 permission = permission.lower()
                                 if permission in role['Permissions']['Deny']:
-                                    is_possible = False
-                                    break
+                                    if 'IfResourcesNotIn' in str(role['Permissions']['Deny'][permission]["Conditions"]):
+                                        pass
+                                    else:
+                                        is_possible = False
+                                        break
 
                                 elif permission not in role['Permissions']['Allow']:  # and the role doesn't have it allowed
-                                    wildcard_match = False
+                                    is_possible = False
+                                    break
 
                                     # This should no longer be needed when using policyuniverse for enum_permissions
                                     # for role_perm in role['Permissions']['Allow']:
@@ -462,9 +469,9 @@ def main(args, pacu_main: 'Main'):
                                     #         if re.match(role_perm.replace('*', '.*'), permission):
                                     #             wildcard_match = True
 
-                                    if wildcard_match is False:
-                                        is_possible = False
-                                        break
+                                    # if wildcard_match is False:
+                                    #     is_possible = False
+                                    #     break
 
                         if is_possible is True:
                             potential_methods[name].append(method)

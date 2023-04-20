@@ -1234,7 +1234,13 @@ aws_secret_access_key = {}
 
                     regions = []
                     for service in services:
-                        regions += self.get_regions(service)
+                        try:
+                            regions += self.get_regions(service)
+                        # If there is no session, the get_regions function will throw an AttributeError.
+                        # This happens when running from CLI with no sessions created.
+                        # Just skip and list the modules anyways.
+                        except AttributeError:
+                            regions = ['all']
 
                     # Skip modules with no regions in the list of set regions.
                     if len(regions) == 0:

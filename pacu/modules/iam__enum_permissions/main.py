@@ -580,9 +580,8 @@ def get_attached_policy(client, policy_arn):
 
 def parse_document(document, user):
     """Loop permissions, resources, and conditions"""
-    if isinstance(document["Statement"], dict):
+    if isinstance(document["Statement"], dict) or isinstance(document["Statement"], str):
         document["Statement"] = [document["Statement"]]
-
     statement_actions = get_resources_for_actions_from_statements(document["Statement"])
 
     for action in statement_actions:
@@ -650,6 +649,8 @@ def get_resources_for_actions_from_statements(list_of_statements):
         def notresources(self):
             # If the statement has NotResource, add a notresources attribute to the PU statement object
             if "NotResource" in self.statement:
+                if isinstance(self.statement.get("NotResource"), str):
+                    return set([self.statement.get("NotResource")])
                 return set(self.statement.get("NotResource"))
             else:
                 return set()

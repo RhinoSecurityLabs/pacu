@@ -702,6 +702,14 @@ def get_resources_for_actions_from_statements(list_of_statements):
                     {"IfResourcesNotIn": statement.notresources}
                 )
 
+            if statement.notresources and statement.effect == "Allow":
+                # Add a condition in this case since it means access is allowed
+                # to everything except the notresources
+                # TODO maybe a better way to do this but for now here we are.
+                action_dict["Allow_conditions"].append(
+                    {"IfResourcesNotIn": statement.notresources}
+                )
+
             # Update the Allow or Deny resources
             updated_resources = action_dict[f"{effect_key}_resources"].union(
                 statement.resources

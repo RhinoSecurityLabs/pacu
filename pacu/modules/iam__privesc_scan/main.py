@@ -424,7 +424,7 @@ def main(args, pacu_main: 'Main'):
                                         is_possible = False
                                         break
 
-                                elif permission not in user['Permissions']['Allow']:  # and the user doesn't have it allowed
+                                if permission not in user['Permissions']['Allow']:  # and the user doesn't have it allowed
                                     is_possible = False
                                     break
                                     # wildcard_match = False
@@ -459,7 +459,7 @@ def main(args, pacu_main: 'Main'):
                                         is_possible = False
                                         break
 
-                                elif permission not in role['Permissions']['Allow']:  # and the role doesn't have it allowed
+                                if permission not in role['Permissions']['Allow']:  # and the role doesn't have it allowed
                                     is_possible = False
                                     break
 

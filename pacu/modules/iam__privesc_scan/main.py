@@ -104,64 +104,6 @@ def main(args, pacu_main: "Main"):
 
     summary_data = {"scan_only": args.scan_only}
 
-    # all_perms = [
-    #     "iam:AddRoleToInstanceProfile",
-    #     "iam:AddUserToGroup",
-    #     "iam:AttachGroupPolicy",
-    #     "iam:AttachRolePolicy",
-    #     "iam:AttachUserPolicy",
-    #     "iam:CreateAccessKey",
-    #     "iam:CreateInstanceProfile",
-    #     "iam:CreateLoginProfile",
-    #     "iam:CreatePolicyVersion",
-    #     "iam:DeletePolicyVersion",
-    #     "iam:ListAttachedGroupPolicies",
-    #     "iam:ListAttachedUserPolicies",
-    #     "iam:ListAttachedRolePolicies",
-    #     "iam:ListGroupPolicies",
-    #     "iam:ListGroups",
-    #     "iam:ListGroupsForUser",
-    #     "iam:ListInstanceProfiles",
-    #     "iam:ListPolicies",
-    #     "iam:ListPolicyVersions",
-    #     "iam:ListRolePolicies",
-    #     "iam:ListRoles",
-    #     "iam:ListUserPolicies",
-    #     "iam:ListUsers",
-    #     "iam:PassRole",
-    #     "iam:PutGroupPolicy",
-    #     "iam:PutRolePolicy",
-    #     "iam:PutUserPolicy",
-    #     "iam:SetDefaultPolicyVersion",
-    #     "iam:UpdateAssumeRolePolicy",
-    #     "iam:UpdateLoginProfile",
-    #     "sts:AssumeRole",
-    #     "ec2:AssociateIamInstanceProfile",
-    #     "ec2:DescribeInstances",
-    #     "ec2:RunInstances",
-    #     "lambda:CreateEventSourceMapping",
-    #     "lambda:CreateFunction",
-    #     "lambda:InvokeFunction",
-    #     "lambda:UpdateFunctionCode",
-    #     "lambda:ListFunctions",
-    #     "dynamodb:CreateTable",
-    #     "dynamodb:DescribeTables",
-    #     "dynamodb:ListStreams",
-    #     "dynamodb:PutItem",
-    #     "glue:CreateDevEndpoint",
-    #     "glue:DescribeDevEndpoints",
-    #     "glue:GetDevEndpoint",
-    #     "glue:GetDevEndpoints",
-    #     "glue:UpdateDevEndpoint",
-    #     "cloudformation:CreateStack",
-    #     "cloudformation:DescribeStacks",
-    #     "datapipeline:CreatePipeline",
-    #     "datapipeline:PutPipelineDefinition",
-    #     "codestar:CreateProject",
-    #     "codestar:AssociateTeamMember",
-    #     "codestar:CreateProjectFromTemplate",
-    # ]
-
     all_perms = [
         "iam:addroletoinstanceprofile",
         "iam:addusertogroup",
@@ -780,6 +722,8 @@ def main(args, pacu_main: "Main"):
                             ):  # If the permission is required for the method
                                 permission = permission.lower()
                                 if permission in user["Permissions"]["Deny"]:
+                                    # Check for the custom deny condition which may
+                                    # mean it is not actually denied for all resources
                                     if "IfResourcesNotIn" in str(
                                         user["Permissions"]["Deny"][permission][
                                             "Conditions"
@@ -795,15 +739,6 @@ def main(args, pacu_main: "Main"):
                                 ):  # and the user doesn't have it allowed
                                     is_possible = False
                                     break
-                                    # wildcard_match = False
-
-                                    # This should no longer be needed when using policyuniverse for enum_permissions
-                                    # for user_perm in user['Permissions']['Allow']:
-                                    #     if '*' in user_perm:
-                                    #         if re.match(user_perm.replace('*', '.*'), permission):
-                                    #             wildcard_match = True
-
-                                    # if wildcard_match is False:
 
                         if is_possible is True:
                             potential_methods[name].append(method)
@@ -844,16 +779,6 @@ def main(args, pacu_main: "Main"):
                                 ):  # and the role doesn't have it allowed
                                     is_possible = False
                                     break
-
-                                    # This should no longer be needed when using policyuniverse for enum_permissions
-                                    # for role_perm in role['Permissions']['Allow']:
-                                    #     if '*' in role_perm:
-                                    #         if re.match(role_perm.replace('*', '.*'), permission):
-                                    #             wildcard_match = True
-
-                                    # if wildcard_match is False:
-                                    #     is_possible = False
-                                    #     break
 
                         if is_possible is True:
                             potential_methods[name].append(method)

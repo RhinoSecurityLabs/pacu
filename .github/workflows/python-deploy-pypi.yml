@@ -7,8 +7,13 @@
 
 name: PyPi and Docker Deploy
 
-on: workflow_dispatch
-
+on: 
+  workflow_dispatch:
+    inputs:
+      SemVer_level:
+        description: 'Semantic version level to use (patch,minor,major) https://python-poetry.org/docs/cli/'
+        required: true
+        default: 'patch'
 jobs:
   deploy:
 
@@ -29,7 +34,7 @@ jobs:
         pip install poetry
     - name: Bump version
       run: |
-        poetry version patch
+        poetry version ${{ github.event.inputs.SemVer_level }}
     - name: Commit and push version changes
       run: |
         ver="$(poetry version -s)"

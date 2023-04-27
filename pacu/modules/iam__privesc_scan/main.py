@@ -485,7 +485,10 @@ def main(args, pacu_main: "Main"):
         },
     }
     if args.method_info:
-        print(escalation_methods_info[args.method_info]["info"])
+        def dict_lower(input_dict):
+            return {key.lower(): value for key, value in input_dict.items()}
+        escalation_methods_info = dict_lower(escalation_methods_info)
+        print(escalation_methods_info[args.method_info.lower()]["info"])
         return
     if args.method_list:
         print("Available escalation methods:")

@@ -20,7 +20,7 @@ module_info = {
     "arguments_to_autocomplete": [],
 }
 
-parser = argparse.ArgumentParser(add_help=False, description=module_info["description"])
+parser = argparse.ArgumentParser(description=module_info["description"])
 parser.add_argument(
     "--query",
     required=True,
@@ -101,7 +101,7 @@ def main(args, pacu_main):
 
     if os.path.isdir(iam_enum_folder) is False:
         print(
-            f'{iam_enum_folder} not found! Maybe you have not run {module_info["prerequisite_modules"][0]} yet...\n'
+            f'{iam_enum_folder} not found! Maybe you have not run {module_info["prerequisite_modules"][module_info["prerequisite_modules"].index("iam__enum_permissions")]} yet...\n'
         )
         if (
             fetch_data(
@@ -118,12 +118,30 @@ def main(args, pacu_main):
     # which is created by the iam__enum_permissions module
     files = os.listdir(iam_enum_folder)
 
+    def filter_files(files, filter):
+        """
+        Filter a list of files based on a filter
+        Args: files (list): list of files to filter
+        Args: filter (string): filter to apply to the list of files
+        returns: list: list of filtered files
+        """
+        filtered_files = []
+        for file in files:
+            if filter.lower() in file.lower():
+                filtered_files.append(file)
+        return filtered_files
+
     # If the user has specified a role or user to filter by
     # then only use the files that match that role or user
+    filtered_files = []
     if args.role:
-        files = [file for file in files if f"role-{args.role}.json" in file]
-    elif args.user:
-        files = [file for file in files if f"user-{args.user}.json" in file]
+        for role in args.role.split(","):
+            filtered_files += filter_files(files, f"{role}.json")
+    if args.user:
+        for user in args.user.split(","):
+            filtered_files += filter_files(files, f"{user}.json")
+    if filtered_files:
+        files = filtered_files
 
     # Setup query
     query_actions = args.query.split(",")

@@ -1778,8 +1778,6 @@ aws_secret_access_key = {}
             else:
                 self.set_keys(alias, access_key, secert_key)
 
-
-
         if module_name is not None:
             module = ['exec', module_name]
             if arg.module_args is not None:

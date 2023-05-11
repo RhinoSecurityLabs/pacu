@@ -1756,16 +1756,6 @@ aws_secret_access_key = {}
             n_session.activate(self.database)
         if activate_session is True:
             self.activate_session(session)
-        if set_keys is not None:
-            keys = set_keys.split(',')
-            alias = keys[0]
-            access_key = keys[1]
-            secert_key = keys[2]
-            if len(keys) > 3:
-                self.set_keys(alias, access_key, secert_key, keys[3])
-            else:
-                self.set_keys(alias, access_key, secert_key)
-
         if session is not None:
             session_names = [x.name for x in sessions]
 
@@ -1777,6 +1767,18 @@ aws_secret_access_key = {}
                 self.exit()
 
             self.activate_session(session)
+
+        if set_keys is not None:
+            keys = set_keys.split(',')
+            alias = keys[0]
+            access_key = keys[1]
+            secert_key = keys[2]
+            if len(keys) > 3:
+                self.set_keys(alias, access_key, secert_key, keys[3])
+            else:
+                self.set_keys(alias, access_key, secert_key)
+
+
 
         if module_name is not None:
             module = ['exec', module_name]

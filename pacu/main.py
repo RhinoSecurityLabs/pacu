@@ -1747,6 +1747,7 @@ aws_secret_access_key = {}
         list_mods: bool = arg.list_modules
         list_cmd = ['ls']
         set_keys = arg.set_keys
+        set_profile = arg.set_profile
 
         pacu_help: bool = arg.pacu_help
         pacu_help_cmd = ['help']
@@ -1756,6 +1757,8 @@ aws_secret_access_key = {}
             n_session.activate(self.database)
         if activate_session is True:
             self.activate_session(session)
+        if set_profile is not None:
+            self.import_awscli_key(set_profile)
         if set_keys is not None:
             keys = set_keys.split(',')
             alias = keys[0]
@@ -1932,6 +1935,7 @@ aws_secret_access_key = {}
         parser.add_argument('--activate-session', action='store_true', help='activate session, use session arg to set session name')
         parser.add_argument('--new-session', required=False, default=None, help='<session name>', metavar='')
         parser.add_argument('--set-keys', required=False, default=None, help='alias, access id, secrect key, token', metavar='')
+        parser.add_argument('--set-profile', default=None, help='Import keys from an AWS profile to use.', metavar='')
         parser.add_argument('--module-name', required=False, default=None, help='<module name>', metavar='')
         parser.add_argument('--data', required=False, default=None, help='<service name/all>', metavar='')
         parser.add_argument('--module-args', default=None, help='<--module-args=\'--regions us-east-1,us-east-1\'>', metavar='')

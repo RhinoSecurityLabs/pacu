@@ -1935,7 +1935,7 @@ aws_secret_access_key = {}
         parser.add_argument('--activate-session', action='store_true', help='activate session, use session arg to set session name')
         parser.add_argument('--new-session', required=False, default=None, help='<session name>', metavar='')
         parser.add_argument('--set-keys', required=False, default=None, help='alias, access id, secrect key, token', metavar='')
-        parser.add_argument('--set-profile', default=None, help='Import keys from an AWS profile to use.', metavar='')
+        parser.add_argument('--set-profile', required=False, default=None, help='Import keys from an AWS profile to use.', metavar='')
         parser.add_argument('--module-name', required=False, default=None, help='<module name>', metavar='')
         parser.add_argument('--data', required=False, default=None, help='<service name/all>', metavar='')
         parser.add_argument('--module-args', default=None, help='<--module-args=\'--regions us-east-1,us-east-1\'>', metavar='')

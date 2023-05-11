@@ -1770,11 +1770,13 @@ aws_secret_access_key = {}
             session_names = [x.name for x in sessions]
 
             if session not in session_names:
+                print('Choose from the following sessions:')
+                for _session in sessions:
+                    print('  {}'.format(_session.name))
                 print('Session could not be found. Exiting...')
                 self.exit()
 
-            session_index = session_names.index(session)
-            sessions[session_index].is_active = True
+            self.activate_session(session)
 
         if module_name is not None:
             module = ['exec', module_name]

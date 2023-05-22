@@ -18,7 +18,7 @@ Pacu is an open-source AWS exploitation framework, designed for offensive securi
 
 ## Installation
 
-Pacu is a fairly lightweight program, as it requires only [Python3.6+](https://www.python.org/downloads/) and pip3 to install a handful of Python libraries.
+Pacu is a fairly lightweight program, as it requires only [Python3.7+](https://www.python.org/downloads/) and pip3 to install a handful of Python libraries.
 
 ## Quick Installation
 

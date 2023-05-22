@@ -938,6 +938,9 @@ class Main:
     def print_web_console_url(self) -> None:
         active_session = self.get_active_session()
 
+        if active_session.key_alias is None:
+            print('  No keys have been set. Not generating the URL.')
+            return
         if not active_session.access_key_id:
             print('  No access key has been set. Not generating the URL.')
             return
@@ -1231,7 +1234,13 @@ aws_secret_access_key = {}
 
                     regions = []
                     for service in services:
-                        regions += self.get_regions(service)
+                        try:
+                            regions += self.get_regions(service)
+                        # If there is no session, the get_regions function will throw an AttributeError.
+                        # This happens when running from CLI with no sessions created.
+                        # Just skip and list the modules anyways.
+                        except AttributeError:
+                            regions = ['all']
 
                     # Skip modules with no regions in the list of set regions.
                     if len(regions) == 0:
@@ -1277,17 +1286,20 @@ aws_secret_access_key = {}
             self.print('Setting AWS Keys...')
             self.print('Press enter to keep the value currently stored.')
             self.print('Enter the letter C to clear the value, rather than set it.')
-            self.print('If you enter an existing key_alias, that key\'s fields will be updated instead of added.\n')
+            self.print('If you enter an existing key_alias, that key\'s fields will be updated instead of added.')
+            self.print('Key alias must be at least 2 characters\n')
 
         # Key alias
         if key_alias is None:
-            new_value = self.input('Key alias [{}]: '.format(session.key_alias))
+            new_value = ""
+            while (new_value.strip().lower() != 'c') and (len(new_value) < 2):
+                new_value = self.input('Key alias [{}]: '.format(session.key_alias))
         else:
             new_value = key_alias.strip()
             self.print('Key alias [{}]: {}'.format(session.key_alias, new_value), output='file')
         if str(new_value.strip().lower()) == 'c':
             session.key_alias = None
-        elif str(new_value) != '':
+        elif not len(new_value) < 2:
             session.key_alias = new_value.strip()
 
         # Access key ID
@@ -1914,6 +1926,7 @@ aws_secret_access_key = {}
                     return
 
     def run(self) -> None:
+        setup_database_if_not_present(settings.DATABASE_FILE_PATH)
         parser = argparse.ArgumentParser()
         parser.add_argument('--session', required=False, default=None, help='<session name>', metavar='')
         parser.add_argument('--activate-session', action='store_true', help='activate session, use session arg to set session name')

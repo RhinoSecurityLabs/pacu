@@ -3,11 +3,6 @@ import argparse
 from botocore.exceptions import ClientError
 import boto3, random, string
 
-
-
-# When writing a module, feel free to remove any comments, placeholders, or
-# anything else that doesn't relate to your module.
-
 module_info = {
     # Name of the module (should be the same as the filename).
     'name': 'organizations__assume_role',
@@ -42,12 +37,14 @@ module_info = {
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
+group_accounts = parser.add_mutually_exclusive_group()
+group_roles = parser.add_mutually_exclusive_group()
 
-parser.add_argument('--accounts', required=False, nargs='+', default=None,  help='Pass in a list of accounts to try assuming, --accounts 1 2 3')
-parser.add_argument('--accounts-file', required=False, nargs=1, default=None, help="Pass in a filename containing a list of accounts to try assuming")
-parser.add_argument('--roles', required = False, nargs = '+', default=None,  help='Pass in a list of roles to try assuming. If non are specified uses default OrganizationAccountAccessRole, --roles a b c')
-parser.add_argument('--roles-file', required=False, nargs=1, default=None, help='Pass in a filename containing a list of roles to try assuming')
-#parser.add_argument('--create-sessions', required=False, action="store_true", help='Will automatically create a session for every successful AssumeRole operation. Can check all of them after with swap_keys command.')
+group_accounts.add_argument('--accounts', required=False, nargs='+', default=None,  help='Pass in a list of accounts to try assuming, --accounts 1 2 3')
+group_accounts.add_argument('--accounts-file', required=False, nargs=1, default=None, help="Pass in a filename containing a list of accounts to try assuming")
+group_roles.add_argument('--roles', required = False, nargs = '+', default=None,  help='Pass in a list of roles to try assuming. If non are specified uses default OrganizationAccountAccessRole, --roles a b c')
+group_roles.add_argument('--roles-file', required=False, nargs=1, default=None, help='Pass in a filename containing a list of roles to try assuming')
+
 
 roles_list = []
 
@@ -62,20 +59,6 @@ def assume_role(args, session, role_arn):
         roles_list.append(role_arn)
         print("SUCCESS: " + role_arn)
         
-        # See if I can create a key set automatically in background
-        #if args.create_sessions:
-
-        #    print("CREATING KEYS FOR: " + role_arn)
-        #    new_key_name = f"{resp['AssumedRoleUser']['Arn']}"
-        #    aws.create_session
-        #    session.set_keys(
-        #        key_alias=new_key_name,
-        #        access_key_id=resp['Credentials']['AccessKeyId'],
-        #        secret_access_key=resp['Credentials']['SecretAccessKey'],
-        #        session_token=resp['Credentials']['SessionToken'],
-        #    )
-        #else:
-        #    pass
 
     except ClientError as error:
         code = error.response['Error']['Code']
@@ -98,14 +81,10 @@ def main(args, pacu_main):
     accounts = []
     roles = ["OrganizationAccountAccessRole"]
     
-    if args.accounts and args.accounts_file:
-        print("You must choose either accounts or the accounts-file argument or neither, you cannot choose both")
-    if args.roles and args.roles_file:
-        print("You must choose either roles or roles-file or neither, you cannot choose both")
-
     # If user did not specify an account to try brute forcing, then try pre-requisite
     if not args.accounts and not args.accounts_file:
         if fetch_data(['Organizations'], 'organizations__enum', '--accounts') is False:
+            print("Prerequisite module was not run. Exiting...")
             return
         accounts = session.Organizations['Accounts']
 
@@ -145,6 +124,6 @@ def summary(data, pacu_main):
         return "No roles were found that could be assumed"
     else:
         summary = 'The following roles can be assumed as shown below:'
-        for vuln in data:
-            summary = summary + "\nassume_role " + str(vuln)
+        for arn in data:
+            summary = summary + "\nassume_role " + str(arn)
         return summary

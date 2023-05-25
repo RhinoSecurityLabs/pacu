@@ -65,7 +65,7 @@ def assume_role(args, session, role_arn):
         if code == 'AccessDenied':
             print("FAILURE: "+role_arn)
         else:
-            print('(DEFAULT FAILURE: {}'.format(code))
+            print('DEFAULT FAILURE: {}'.format(code))
 
 
 # Main is the first function that is called when this module is executed.

@@ -69,6 +69,8 @@ def assume_role(args, client, role_arn):
 
 # Main is the first function that is called when this module is executed.
 def main(args, pacu_main):
+
+    session = pacu_main.get_active_session()
     client = pacu_main.get_boto3_client('sts')
 
     ###### These can be removed if you are not using the function.

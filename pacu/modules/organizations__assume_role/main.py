@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 from botocore.exceptions import ClientError
-import boto3, random, string
+import random, string
 
 module_info = {
     # Name of the module (should be the same as the filename).
@@ -48,11 +48,10 @@ group_roles.add_argument('--roles-file', required=False, nargs=1, default=None, 
 
 roles_list = []
 
-def assume_role(args, session, role_arn):
+def assume_role(args, client, role_arn):
     global roles_list
-    sts = boto3.client('sts')
     try:
-        resp = sts.assume_role(
+        resp = client.assume_role(
             RoleArn=role_arn,
             RoleSessionName=''.join(random.choice(string.ascii_letters) for _ in range(20)),
         )
@@ -70,7 +69,7 @@ def assume_role(args, session, role_arn):
 
 # Main is the first function that is called when this module is executed.
 def main(args, pacu_main):
-    session = pacu_main.get_active_session()
+    client = pacu_main.get_boto3_client('sts')
 
     ###### These can be removed if you are not using the function.
     args = parser.parse_args(args)
@@ -111,7 +110,7 @@ def main(args, pacu_main):
 
         for role in roles:
             role_arn = "arn:aws:iam::"+str(account)+":role/"+str(role)
-            assume_role(args, session, role_arn)
+            assume_role(args, client, role_arn)
 
 
     # Make sure your main function returns whatever data you need to construct

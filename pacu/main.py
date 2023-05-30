@@ -1294,6 +1294,8 @@ aws_secret_access_key = {}
             new_value = ""
             while (new_value.strip().lower() != 'c') and (len(new_value) < 2):
                 new_value = self.input('Key alias [{}]: '.format(session.key_alias))
+                if new_value == '':
+                    new_value = session.key_alias
         else:
             new_value = key_alias.strip()
             self.print('Key alias [{}]: {}'.format(session.key_alias, new_value), output='file')

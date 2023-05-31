@@ -1334,7 +1334,7 @@ aws_secret_access_key = {}
         if key_alias is None:
             new_value = self.input('Session token (Optional - for temp AWS keys only) [{}]: '.format(session.session_token))
         else:
-            new_value = session_token or ''
+            new_value = session_token
             if new_value is None:
                 new_value = 'c'
             self.print('Session token [{}]: {}'.format(session.session_token, new_value), output='file')

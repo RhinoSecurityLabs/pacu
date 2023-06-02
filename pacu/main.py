@@ -1747,6 +1747,7 @@ aws_secret_access_key = {}
         list_mods: bool = arg.list_modules
         list_cmd = ['ls']
         set_keys = arg.set_keys
+        import_keys = arg.import_keys
 
         pacu_help: bool = arg.pacu_help
         pacu_help_cmd = ['help']
@@ -1768,15 +1769,18 @@ aws_secret_access_key = {}
 
             self.activate_session(session)
 
+        if import_keys is not None:
+            self.import_awscli_key(import_keys)
+
         if set_keys is not None:
             keys = set_keys.split(',')
             alias = keys[0]
             access_key = keys[1]
-            secert_key = keys[2]
+            secret_key = keys[2]
             if len(keys) > 3:
-                self.set_keys(alias, access_key, secert_key, keys[3])
+                self.set_keys(alias, access_key, secret_key, keys[3])
             else:
-                self.set_keys(alias, access_key, secert_key)
+                self.set_keys(alias, access_key, secret_key)
 
         if module_name is not None:
             module = ['exec', module_name]
@@ -1933,7 +1937,8 @@ aws_secret_access_key = {}
         parser.add_argument('--session', required=False, default=None, help='<session name>', metavar='')
         parser.add_argument('--activate-session', action='store_true', help='activate session, use session arg to set session name')
         parser.add_argument('--new-session', required=False, default=None, help='<session name>', metavar='')
-        parser.add_argument('--set-keys', required=False, default=None, help='alias, access id, secrect key, token', metavar='')
+        parser.add_argument('--set-keys', required=False, default=None, help='alias, access id, secret key, token', metavar='')
+        parser.add_argument('--import-keys', required=False, default=None, help='AWS profile name to import keys from', metavar='')
         parser.add_argument('--module-name', required=False, default=None, help='<module name>', metavar='')
         parser.add_argument('--data', required=False, default=None, help='<service name/all>', metavar='')
         parser.add_argument('--module-args', default=None, help='<--module-args=\'--regions us-east-1,us-east-1\'>', metavar='')

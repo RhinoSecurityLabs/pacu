@@ -5,7 +5,6 @@ import json
 import os
 import random
 import re
-import jq
 import shlex
 import subprocess
 import sys
@@ -21,6 +20,7 @@ from pacu.core.lib import session_dir
 from datetime import datetime
 
 try:
+    import jq  # type: ignore
     import requests
     import boto3
     import botocore

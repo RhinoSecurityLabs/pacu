@@ -5,12 +5,13 @@ import copy
 from sqlalchemy import (
     Boolean, Column, DateTime, ForeignKey, inspect, Integer, Text, orm
 )
-from sqlalchemy.orm import relationship, Session
+from sqlalchemy.orm import relationship
 from sqlalchemy_utils import JSONType  # type: ignore
 
-from pacu.core.base import Base, engine
+from pacu.core.base import Base
 from pacu.core.mixins import ModelUpdateMixin
 from pacu.utils import remove_empty_from_dict
+from sqlalchemy.orm.session import Session
 
 
 class AWSKey(Base, ModelUpdateMixin):
@@ -63,7 +64,6 @@ class AWSKey(Base, ModelUpdateMixin):
         })
 
 
-
 class PacuSession(Base, ModelUpdateMixin):
     __tablename__ = 'pacu_session'
     aws_data_field_names = (
@@ -71,12 +71,12 @@ class PacuSession(Base, ModelUpdateMixin):
         'CloudTrail',
         'CloudWatch',
         'CodeBuild',
+        'Cognito',
         'Config',
         'DataPipeline',
         'DynamoDB',
         'EC2',
         'ECS',
-        'EKS',
         'Glue',
         'GuardDuty',
         'IAM',
@@ -92,9 +92,7 @@ class PacuSession(Base, ModelUpdateMixin):
         'Account',
         'AccountSpend',
         'Route53',
-        'RDS',
-        'Transfer',
-        'Organizations'
+        'RDS'
     )
 
     aws_keys = relationship('AWSKey', back_populates='session', cascade='all, delete-orphan', lazy='dynamic')
@@ -104,7 +102,6 @@ class PacuSession(Base, ModelUpdateMixin):
     is_active = Column(Boolean, nullable=False, default=False)
     name = Column(Text)
     boto_user_agent = Column(Text)
-    user_agent_suffix = Column(Text)
     key_alias = Column(Text)
     access_key_id = Column(Text)
     secret_access_key = Column(Text)
@@ -115,19 +112,18 @@ class PacuSession(Base, ModelUpdateMixin):
     CloudTrail = Column(JSONType, nullable=False, default=dict)
     CloudWatch = Column(JSONType, nullable=False, default=dict)
     CodeBuild = Column(JSONType, nullable=False, default=dict)
+    Cognito = Column(JSONType, nullable=False, default=dict)
     Config = Column(JSONType, nullable=False, default=dict)
     DataPipeline = Column(JSONType, nullable=False, default=dict)
     DynamoDB = Column(JSONType, nullable=False, default=dict)
     EC2 = Column(JSONType, nullable=False, default=dict)
     ECS = Column(JSONType, nullable=False, default=dict)
-    EKS = Column(JSONType, nullable=False, default=dict)
     Glue = Column(JSONType, nullable=False, default=dict)
     GuardDuty = Column(JSONType, nullable=False, default=dict)
     IAM = Column(JSONType, nullable=False, default=dict)
     Inspector = Column(JSONType, nullable=False, default=dict)
     Lambda = Column(JSONType, nullable=False, default=dict)
     Lightsail = Column(JSONType, nullable=False, default=dict)
-    RDS = Column(JSONType, nullable=False, default=dict)
     S3 = Column(JSONType, nullable=False, default=dict)
     SecretsManager = Column(JSONType, nullable=False, default=dict)
     SSM = Column(JSONType, nullable=False, default=dict)
@@ -139,8 +135,6 @@ class PacuSession(Base, ModelUpdateMixin):
     AccountSpend = Column(JSONType, nullable=False, default=dict)
     Route53 = Column(JSONType, nullable=False, default=dict)
     RDS = Column(JSONType, nullable=False, default=dict)
-    Transfer = Column(JSONType, nullable=False, default=dict)
-    Organizations = Column(JSONType, nullable=False, default=dict)
 
     def __repr__(self) -> str:
         if self.key_alias:
@@ -152,10 +146,9 @@ class PacuSession(Base, ModelUpdateMixin):
         return '<PacuSession #{} ({}:{})>'.format(self.id, self.name, key_alias)
 
     @classmethod
-    def get_active_session(cls, database: Session) -> 'PacuSession':
+    def get_active_session(cls, database) -> 'PacuSession':
         # SQLAlchemy's query filters disallow the use of `cond is True`.
         return database.query(PacuSession).filter(PacuSession.is_active == True).scalar()  # noqa: E712
-
 
     def get_active_aws_key(self, database: Session) -> AWSKey:
         """ Return the AWSKey with the same key_alias as the PacuSession.
@@ -220,32 +213,3 @@ class PacuSession(Base, ModelUpdateMixin):
                     all_data[attribute.key] = attribute.value
 
         return remove_empty_from_dict(all_data)
-
-
-def migrations(database: 'Session'):
-    """Very hacky migrations for the pacu_session table.
-
-    This exists to prevent broken installs on update when modules add new columns to the PacuSession table. This will
-    only add columns that are included in PacuSession.aws_data_field_names and will assume the columns should be NOT
-    NULL.
-    """
-    rows = []
-    for row in database.execute(f'pragma table_info({PacuSession.__tablename__})').fetchall():
-        rows.append(row[1])
-
-    # If more rows are added here change this to update the db dynamically. Not worrying about this for now since it
-    # doesn't happen often, and we'll likely rewrite things before then.
-    if "user_agent_suffix" not in rows:
-        column_type = PacuSession.user_agent_suffix.type.compile(engine.dialect)
-        database.execute('ALTER TABLE %s ADD COLUMN user_agent_suffix %s' % (PacuSession.__tablename__, column_type))
-
-    for svc in PacuSession.aws_data_field_names:
-        if svc not in rows:
-            column = getattr(PacuSession, svc)
-            column_type = column.type.compile(engine.dialect)
-            database.execute(
-                'ALTER TABLE %s ADD COLUMN %s %s DEFAULT "{}" NOT NULL'
-                % (PacuSession.__tablename__, svc, column_type)
-            )
-
-

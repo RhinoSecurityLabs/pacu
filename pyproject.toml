@@ -21,6 +21,8 @@ typing-extensions = "^3.7.4.3"
 dsnap = "^1.0.0"
 chalice = "^1.23.0"
 policyuniverse = "^1.5.0.20220613"
+pycognito = "^2023.5.0"
+qrcode = "^7.4.2"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^3.9.1"

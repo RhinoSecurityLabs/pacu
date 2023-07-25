@@ -363,8 +363,6 @@ def main(args, pacu_main):
                                     if user_writable_attribute == 'email':  
                                         if user_writable_attribute not in verify_attributes:
                                             print('Attribute \'email\' does not require verification before changing!')
-                                if client_scope_user_writable_attributes:
-                                    print('The following attributes can be modified by users and are used for access control by this client (this may allow privilege escalation): ' + str(client_scope_user_writable_attributes))
                                 if resource_server_scope_user_writable_attributes:
                                     print('The following attributes can be modified by users and are used for access control by a resource server (this may allow privilege escalation): ' + str(resource_server_scope_user_writable_attributes))
                                 else:
@@ -397,7 +395,6 @@ def main(args, pacu_main):
                         print(f'  {len(user_pool_clients)} user pool client(s) found in user pool {user_pool["Id"]}.')
                     except Exception as e:
                         print(f"Error: {e}")
-                    print('Still here!')
                     all_user_pool_clients += user_pool_clients
 
         

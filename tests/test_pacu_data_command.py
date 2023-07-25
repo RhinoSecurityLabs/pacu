@@ -36,7 +36,7 @@ def pacu_session(db: orm.session.Session):
 def test_parse_data_command_returns_help(pacu: Main, active_session: PacuSession):
     msg = pacu._parse_data_command(['data', 'non-existent-service'], active_session)
     assert 'Service not found. Please use the service name below.' in msg
-    assert 'APIGateway	CloudTrail	CloudWatch	CodeBuild	Config' in msg
+    assert 'APIGateway	CloudTrail	CloudWatch	CodeBuild	Cognito' in msg
 
 
 def test_parse_data_command_returns_no_data_found(pacu: Main, active_session: PacuSession):

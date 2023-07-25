@@ -71,6 +71,7 @@ class PacuSession(Base, ModelUpdateMixin):
         'CloudTrail',
         'CloudWatch',
         'CodeBuild',
+        'Cognito',
         'Config',
         'DataPipeline',
         'DynamoDB',
@@ -115,6 +116,7 @@ class PacuSession(Base, ModelUpdateMixin):
     CloudTrail = Column(JSONType, nullable=False, default=dict)
     CloudWatch = Column(JSONType, nullable=False, default=dict)
     CodeBuild = Column(JSONType, nullable=False, default=dict)
+    Cognito = Column(JSONType, nullable=False, default=dict)
     Config = Column(JSONType, nullable=False, default=dict)
     DataPipeline = Column(JSONType, nullable=False, default=dict)
     DynamoDB = Column(JSONType, nullable=False, default=dict)

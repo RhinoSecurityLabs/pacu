@@ -151,109 +151,60 @@ def main(args, pacu_main):
                     if "NextToken" in response:
                         next_token = response["NextToken"]
                     for userpool in response["UserPools"]:
+                        print(
+                            "Scanning user pool "
+                            + userpool["Id"]
+                            + " for vulnerabilities."
+                        )
                         userpool["Region"] = region
+                        userpool["Description"] = client.describe_user_pool(
+                            UserPoolId=userpool["Id"]
+                        )
+                        password_policy = userpool["Description"]["UserPool"][
+                            "Policies"
+                        ]["PasswordPolicy"]
+                        if password_policy:
+                            if (
+                                password_policy["MinimumLength"] < 12
+                                or password_policy["RequireLowercase"] is False
+                                or password_policy["RequireUppercase"] is False
+                                or password_policy["RequireNumbers"] is False
+                                or password_policy["RequireSymbols"] is False
+                            ):
+                                print("Weak password policy!")
+                                if password_policy["MinimumLength"] < 12:
+                                    print(
+                                        "Minimum password length is fewer than 12 characters ("
+                                        + str(password_policy["MinimumLength"])
+                                        + ")."
+                                    )
+                                if password_policy["RequireLowercase"] is False:
+                                    print(
+                                        "Password does not require a lowercase letter."
+                                    )
+                                if password_policy["RequireUppercase"] is False:
+                                    print(
+                                        "Password does not require an uppercase letter."
+                                    )
+                                if password_policy["RequireNumbers"] is False:
+                                    print("Password does not require a number.")
+                                if password_policy["RequireSymbols"] is False:
+                                    print("Password does not require a symbol.")
+                        if (
+                            userpool["Description"]["UserPool"]["MfaConfiguration"]
+                            == "OFF"
+                            or userpool["Description"]["UserPool"]["MfaConfiguration"]
+                            == "OPTIONAL"
+                        ):
+                            print(
+                                "MFA is not required for user pool: "
+                                + userpool["Id"]
+                                + "."
+                            )
                         user_pools.append(userpool)
-
                 print("  {} user pool(s) found.".format(len(user_pools)))
                 all_user_pools += user_pools
 
-            # User Pool Clients
-            if args.user_pool_clients:
-                for user_pool in user_pools:
-                    client = pacu_main.get_boto3_client("cognito-idp", region)
-                    response = None
-                    next_token = False
-                    while response is None or "NextToken" in response:
-                        if next_token is False:
-                            try:
-                                print(
-                                    f"Trying to list original user pool clients for UserPoolId: {user_pool['Id']}"
-                                )  # Add this line
-                                response = client.list_user_pool_clients(
-                                    UserPoolId=user_pool["Id"], MaxResults=60
-                                )
-
-                                print("Testing.")
-                                for user_pool_client in response["UserPoolClients"]:
-                                    client_info = {}
-                                    print("User pool client found.")
-                                    client_info["ClientId"] = user_pool_client[
-                                        "ClientId"
-                                    ]
-                                    client_info["UserPoolId"] = user_pool_client[
-                                        "UserPoolId"
-                                    ]
-                                    client_info["Region"] = region
-                                    user_pool_clients.append(client_info)
-
-                            except ClientError as error:
-                                code = error.response["Error"]["Code"]
-                                print("FAILURE: ")
-                                if code == "UnauthorizedOperation":
-                                    print("  Access denied to ListUserPoolClients.")
-                                elif (
-                                    code == "InvalidParameterException"
-                                ):  # Add this block
-                                    print("  InvalidParameterException")
-                                    print(
-                                        f"  UserPoolId causing the issue: {user_pool['Id']}"
-                                    )
-                                    break
-                                else:
-                                    print("  " + code)
-                                print("  Skipping user pool client enumeration...")
-                        else:
-                            try:
-                                print(
-                                    f"Trying to list else-block user pool clients for UserPoolId: {user_pool['Id']}"
-                                )  # Add this line
-                                response = client.list_user_pool_clients(
-                                    NextToken=next_token,
-                                    UserPoolId=user_pool["Id"],
-                                    MaxResults=60,
-                                )
-
-                                print("Testing.")
-                                for user_pool_client in response["UserPoolClients"]:
-                                    client_info = {}
-                                    print("User pool client found.")
-                                    client_info["ClientId"] = user_pool_client[
-                                        "ClientId"
-                                    ]
-                                    client_info["UserPoolId"] = user_pool_client[
-                                        "UserPoolId"
-                                    ]
-                                    client_info["Region"] = region
-                                    user_pool_clients.append(client_info)
-                            except ClientError as error:
-                                code = error.response["Error"]["Code"]
-                                print("FAILURE: ")
-                                if code == "UnauthorizedOperation":
-                                    print("  Access denied to ListUserPoolClients.")
-                                elif (
-                                    code == "InvalidParameterException"
-                                ):  # Add this block
-                                    print("  InvalidParameterException")
-                                    print(
-                                        f"  UserPoolId causing the issue: {user_pool['Id']}"
-                                    )
-                                    break
-                                else:
-                                    print("  " + code)
-                                print("  Skipping user pool client enumeration...")
-                                break
-
-                            if "NextToken" in response:
-                                next_token = response["NextToken"]
-                            else:
-                                next_token = None
-
-                    print(
-                        f'  {len(user_pool_clients)} user pool client(s) found in user pool {user_pool["Id"]}.'
-                    )
-                    all_user_pool_clients += user_pool_clients
-
-            # Identity Pools
             if args.identity_pools:
                 client = pacu_main.get_boto3_client("cognito-identity", region)
                 response = None
@@ -281,9 +232,14 @@ def main(args, pacu_main):
                         next_token = response["NextToken"]
                     for identity_pool in response["IdentityPools"]:
                         identity_pool["Region"] = region
+                        print("Attempting unauthenticated retrieval of identity Id")
                         try:
                             identity_id = client.get_id(
                                 IdentityPoolId=identity_pool["IdentityPoolId"]
+                            )
+                            print(f"Identity ID: {identity_id}")
+                            print(
+                                "Attempting unauthenticated retrieval of identity Id credentials"
                             )
                             identity_creds = client.get_credentials_for_identity(
                                 IdentityId=identity_id["IdentityId"]
@@ -293,11 +249,13 @@ def main(args, pacu_main):
                                 identity_pool["AccessKeyId"] = identity_creds[
                                     "Credentials"
                                 ]["AccessKeyId"]
+                                print(identity_pool["AccessKeyId"])
                             if identity_creds["Credentials"]["SecretKey"] is not None:
                                 print("Secret Key found.")
                                 identity_pool["SecretKey"] = identity_creds[
                                     "Credentials"
                                 ]["SecretKey"]
+                                print(identity_pool["SecretKey"])
                             if (
                                 identity_creds["Credentials"]["SessionToken"]
                                 is not None
@@ -306,24 +264,346 @@ def main(args, pacu_main):
                                 identity_pool["SessionToken"] = identity_creds[
                                     "Credentials"
                                 ]["SessionToken"]
+                                print(identity_pool["SessionToken"])
                             if identity_creds["Credentials"]["Expiration"] is not None:
                                 print("Expiration found.")
                                 identity_pool["Expiration"] = identity_creds[
                                     "Credentials"
                                 ]["Expiration"]
+                                print(identity_pool["Expiration"])
+                        except ClientError as error:
+                            print("FAILURE: ")
+                            code = error.response["Error"]["Code"]
+                            print("  " + code)
+                        try:
+                            identity_pool["Roles"] = client.get_identity_pool_roles(
+                                IdentityPoolId=identity_pool["IdentityPoolId"]
+                            )
                         except ClientError as error:
                             code = error.response["Error"]["Code"]
                             if code == "UnauthorizedOperation":
-                                print(
-                                    "  Access denied to GetId or GetCredentialsForIdentity."
-                                )
+                                print("  Access denied to GetIdentityPoolRoles.")
                             else:
                                 print("  " + code)
-                            print("  Skipping identity pool credentials enumeration...")
+                        identity_pool["PrincipalTagAttributes"] = []
+                        for user_pool in user_pools:
+                            try:
+                                identity_provider_name = str(
+                                    "cognito-idp."
+                                    + region
+                                    + ".amazonaws.com/"
+                                    + user_pool["Id"]
+                                )
+                                try:
+                                    identity_pool_principal_tag_attributes = (
+                                        client.get_principal_tag_attribute_map(
+                                            IdentityPoolId=identity_pool[
+                                                "IdentityPoolId"
+                                            ],
+                                            IdentityProviderName=identity_provider_name,
+                                        )
+                                    )
+                                except Exception as e:
+                                    print(f"Error: {e}")
+                                    identity_pool_principal_tag_attributes = None
+                                if identity_pool_principal_tag_attributes is not None:
+                                    identity_pool["PrincipalTagAttributes"].append(
+                                        identity_pool_principal_tag_attributes
+                                    )
+                            except ClientError as error:
+                                code = error.response["Error"]["Code"]
+                                if code == "UnauthorizedOperation":
+                                    print(
+                                        "  Access denied to GetPrincipalTagAttributeMap."
+                                    )
+                                elif code == "ResourceNotFoundException":
+                                    print(
+                                        "No principal tags configured for user pool IdP"
+                                        + identity_provider_name
+                                    )
+                                else:
+                                    print("  " + code)
+                                print(
+                                    "  Skipping identity pool principal tag attribute enumeration..."
+                                )
                         identity_pools.append(identity_pool)
-
                 print("  {} identity pool(s) found.".format(len(identity_pools)))
                 all_identity_pools += identity_pools
+
+            # User Pool Clients
+            if args.user_pool_clients:
+                for user_pool in user_pools:
+                    client = pacu_main.get_boto3_client("cognito-idp", region)
+                    next_token = None
+                    while True:
+                        try:
+                            print(
+                                f"Trying to list user pool clients for UserPoolId: {user_pool['Id']}"
+                            )
+                            if next_token is None:
+                                response = client.list_user_pool_clients(
+                                    UserPoolId=user_pool["Id"], MaxResults=60
+                                )
+                            else:
+                                response = client.list_user_pool_clients(
+                                    UserPoolId=user_pool["Id"],
+                                    MaxResults=60,
+                                    NextToken=next_token,
+                                )
+                            for user_pool_client in response["UserPoolClients"]:
+                                resource_server_scopes = []
+                                client_info = {}
+                                print("User pool client found.")
+                                print(
+                                    "Scanning user pool client "
+                                    + user_pool_client["ClientId"]
+                                    + " in user pool "
+                                    + user_pool["Id"]
+                                    + " for vulnerabilities."
+                                )
+                                client_info["ClientId"] = user_pool_client["ClientId"]
+                                client_info["UserPoolId"] = user_pool_client[
+                                    "UserPoolId"
+                                ]
+                                client_info["Region"] = region
+                                client_info[
+                                    "Description"
+                                ] = client.describe_user_pool_client(
+                                    UserPoolId=user_pool_client["UserPoolId"],
+                                    ClientId=user_pool_client["ClientId"],
+                                )
+                                resource_servers = []
+                                next_token_resource = None
+                                while True:
+                                    if next_token_resource is None:
+                                        resource_servers_response = (
+                                            client.list_resource_servers(
+                                                UserPoolId=user_pool_client[
+                                                    "UserPoolId"
+                                                ],
+                                                MaxResults=50,
+                                            )
+                                        )
+                                    else:
+                                        resource_servers_response = (
+                                            client.list_resource_servers(
+                                                UserPoolId=user_pool_client[
+                                                    "UserPoolId"
+                                                ],
+                                                MaxResults=50,
+                                                NextToken=next_token_resource,
+                                            )
+                                        )
+                                    resource_servers.extend(
+                                        resource_servers_response["ResourceServers"]
+                                    )
+                                    next_token_resource = resource_servers_response.get(
+                                        "NextToken"
+                                    )
+                                    if next_token_resource is None:
+                                        break
+                                try:
+                                    for resource_server in resource_servers:
+                                        if "Scopes" in resource_server:
+                                            for scope in resource_server["Scopes"]:
+                                                resource_server_scopes.append(
+                                                    scope["ScopeName"]
+                                                )
+                                except Exception as error:
+                                    code = error.response["Error"]["Code"]
+                                    if code == "UnauthorizedOperation":
+                                        print("  Access denied to ListResourceServers.")
+                                    else:
+                                        print("  " + code)
+                                    print("  Skipping resource server enumeration...")
+                                if resource_servers:
+                                    user_pool["Description"]["UserPool"][
+                                        "ResourceServers"
+                                    ] = resource_servers
+                                write_attributes = client_info["Description"][
+                                    "UserPoolClient"
+                                ]["WriteAttributes"]
+                                if (
+                                    user_pool.get("Description")
+                                    and user_pool["Description"].get("UserPool")
+                                    and user_pool["Description"]["UserPool"].get(
+                                        "UserAttributeUpdateSettings"
+                                    )
+                                    and user_pool["Description"]["UserPool"][
+                                        "UserAttributeUpdateSettings"
+                                    ].get("AttributesRequireVerificationBeforeUpdate")
+                                ):
+                                    verify_attributes = user_pool["Description"][
+                                        "UserPool"
+                                    ]["UserAttributeUpdateSettings"][
+                                        "AttributesRequireVerificationBeforeUpdate"
+                                    ]
+                                if (
+                                    client_info.get("Description")
+                                    and client_info["Description"].get("UserPoolClient")
+                                    and client_info["Description"][
+                                        "UserPoolClient"
+                                    ].get("AllowedOAuthScopes")
+                                ):
+                                    client_scopes = client_info["Description"][
+                                        "UserPoolClient"
+                                    ]["AllowedOAuthScopes"]
+                                identity_attributes = []
+                                identity_claims = []
+                                for identity_pool in identity_pools:
+                                    if identity_pool.get(
+                                        "PrincipalTagAttributes"
+                                    ) and identity_pool["PrincipalTagAttributes"].get(
+                                        "PrincipalTags"
+                                    ):
+                                        identity_attributes.append(
+                                            identity_pool["PrincipalTagAttributes"][
+                                                "PrincipalTags"
+                                            ]
+                                        )
+                                    if (
+                                        identity_pool.get("Roles")
+                                        and identity_pool["Roles"].get("RoleMappings")
+                                        and identity_pool["Roles"]["RoleMappings"].get(
+                                            "RulesConfiguration"
+                                        )
+                                        and identity_pool["Roles"]["RoleMappings"][
+                                            "RulesConfiguration"
+                                        ].get("Rules")
+                                        and identity_pool["Roles"]["RoleMappings"][
+                                            "RulesConfiguration"
+                                        ]["Rules"].get("Claim")
+                                    ):
+                                        identity_claims.append(
+                                            identity_pool["Roles"]["RoleMappings"][
+                                                "RulesConfiguration"
+                                            ]["Rules"]["Claim"]
+                                        )
+                                user_writable_attributes = []
+                                client_scope_user_writable_attributes = []
+                                resource_server_scope_user_writable_attributes = []
+                                identity_attributes_user_writable_attributes = []
+                                identity_claims_user_writable_attributes = []
+                                verify_attributes = []
+                                for schema_attribute in user_pool["Description"][
+                                    "UserPool"
+                                ]["SchemaAttributes"]:
+                                    if schema_attribute["Name"] in write_attributes:
+                                        if (
+                                            schema_attribute["DeveloperOnlyAttribute"]
+                                            is False
+                                            and schema_attribute["Mutable"] is True
+                                        ):
+                                            user_writable_attributes.append(
+                                                schema_attribute["Name"]
+                                            )
+                                print(
+                                    "The following attributes can be modified by users: "
+                                    + str(user_writable_attributes)
+                                )
+                                client_scope_user_writable_attributes = [
+                                    attr
+                                    for attr in user_writable_attributes
+                                    if any(
+                                        attr == scope
+                                        or attr.replace("custom:", "")
+                                        == scope.split("/")[-1]
+                                        for scope in client_scopes
+                                    )
+                                ]
+                                resource_server_scope_user_writable_attributes = [
+                                    attr
+                                    for attr in user_writable_attributes
+                                    if attr in resource_server_scopes
+                                    or attr.replace("custom:", "")
+                                    in resource_server_scopes
+                                ]
+                                identity_attributes_user_writable_attributes = [
+                                    attr
+                                    for attr in user_writable_attributes
+                                    if attr in identity_attributes
+                                    or attr.replace("custom:", "")
+                                    in identity_attributes
+                                ]
+                                identity_claims_user_writable_attributes = [
+                                    attr
+                                    for attr in user_writable_attributes
+                                    if attr in identity_claims
+                                    or attr.replace("custom:", "") in identity_claims
+                                ]
+                                for user_writable_attribute in user_writable_attributes:
+                                    if user_writable_attribute == "phone_number":
+                                        if (
+                                            user_writable_attribute
+                                            not in verify_attributes
+                                        ):
+                                            print(
+                                                "Attribute 'phone_number' does not require verification before changing!"
+                                            )
+                                    if user_writable_attribute == "email":
+                                        if (
+                                            user_writable_attribute
+                                            not in verify_attributes
+                                        ):
+                                            print(
+                                                "Attribute 'email' does not require verification before changing!"
+                                            )
+                                if client_scope_user_writable_attributes:
+                                    print(
+                                        "The following attributes can be modified by users and are used for access control by this client (this may allow privilege escalation): "
+                                        + str(client_scope_user_writable_attributes)
+                                    )
+                                if resource_server_scope_user_writable_attributes:
+                                    print(
+                                        "The following attributes can be modified by users and are used for access control by a resource server (this may allow privilege escalation): "
+                                        + str(
+                                            resource_server_scope_user_writable_attributes
+                                        )
+                                    )
+                                else:
+                                    print("No resource servers found.")
+                                if identity_attributes_user_writable_attributes:
+                                    print(
+                                        "The following attributes can be modified by users and are used for access control by an identity pool (this may allow privilege escalation): "
+                                        + str(
+                                            identity_attributes_user_writable_attributes
+                                        )
+                                    )
+                                else:
+                                    print("No identity pools found.")
+                                if identity_claims_user_writable_attributes:
+                                    print(
+                                        "The following attributes can be modified by users and may be used for access control by an identity pool rule (this may allow privilege escalation): "
+                                        + str(identity_claims_user_writable_attributes)
+                                    )
+                                else:
+                                    print("No identity pools found.")
+                                user_pool_clients.append(client_info)
+                            if not response.get("NextToken"):
+                                break
+                        except ClientError as error:
+                            code = error.response["Error"]["Code"]
+                            print("FAILURE: ")
+                            if code == "UnauthorizedOperation":
+                                print("  Access denied to ListUserPoolClients.")
+                            elif code == "InvalidParameterException":  # Add this block
+                                print("  InvalidParameterException")
+                                print(
+                                    f"  UserPoolId causing the issue: {user_pool['Id']}"
+                                )
+                                break
+                            else:
+                                print("  " + code)
+                            print("  Skipping user pool client enumeration...")
+                            break
+                    try:
+                        print(
+                            f'  {len(user_pool_clients)} user pool client(s) found in user pool {user_pool["Id"]}.'
+                        )
+                    except Exception as e:
+                        print(f"Error: {e}")
+                    print("Still here!")
+                    all_user_pool_clients += user_pool_clients
 
             # List Users in each User Pool
             if args.users:
@@ -332,13 +612,12 @@ def main(args, pacu_main):
                     response = None
                     iterate = 0
                     pagination_token = ""
-                    while iterate is 0 or "PaginationToken" in response:
+                    while iterate == 0 or "PaginationToken" in response:
                         try:
                             iterate += 1
                             print(
                                 f"Trying to list users for UserPoolId: {user_pool['Id']}"
                             )  # Add this line
-                            print("Stage two")
                             response = (
                                 client.list_users(
                                     UserPoolId=user_pool["Id"],
@@ -356,7 +635,6 @@ def main(args, pacu_main):
                                 else ""
                             )
 
-                            print("Testing.")
                             for user in response["Users"]:
                                 user["UserPoolId"] = user_pool["Id"]
                                 user["Region"] = region

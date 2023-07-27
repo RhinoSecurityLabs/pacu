@@ -173,12 +173,14 @@ def main(args, pacu_main):
                         next_token = response['NextToken']
                     for identity_pool in response['IdentityPools']:
                         identity_pool['Region'] = region
+                        print("Scanning identity pool " + identity_pool['IdentityPoolId'] + " for vulnerabilities.")
                         print("Attempting unauthenticated retrieval of identity Id")
                         try:
                             identity_id = client.get_id(
                                 IdentityPoolId=identity_pool["IdentityPoolId"]
                             )
-                            print(f"Identity ID: {identity_id}")
+                            if identity_id is not None:
+                                print("Identity id successfully retrieved: " + identity_id["IdentityId"])
                             print(
                             "Attempting unauthenticated retrieval of identity Id credentials"
                             )

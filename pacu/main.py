@@ -20,6 +20,7 @@ from pacu.core.lib import session_dir
 from datetime import datetime
 
 try:
+    import jq  # type: ignore
     import requests
     import boto3
     import botocore
@@ -90,6 +91,7 @@ def display_pacu_help():
         data                                Display all data that is stored in this session. Only fields
                                               with values will be displayed
         data <service> [<sub-service>]      Display all data for a specified service in this session
+        jq <query> <service> [<sub-service>] Run a jq statement on the specified service's data
         services                            Display a list of services that have collected data in the
                                               current session to use with the "data" command
         regions                             Display a list of all valid AWS regions
@@ -667,6 +669,8 @@ class Main:
             return
         elif command[0] == 'data':
             self.parse_data_command(command)
+        elif command[0] == 'jq':
+            self.parse_jq_command(command)
         elif command[0] == 'sessions' or command[0] == 'list_sessions':
             self.list_sessions()
         elif command[0] == 'swap_session':
@@ -809,6 +813,22 @@ class Main:
             return '  No data found.'
         else:
             return json.dumps(service_data[name], indent=2, sort_keys=True, default=str)
+
+    def parse_jq_command(self, command):
+        session = self.get_active_session()
+        data_command = ["data"] + command[2:]
+        data = self._parse_data_command(data_command, session)
+        try:
+            data = json.loads(data)
+        except json.decoder.JSONDecodeError:
+            print(data)
+            return
+        try:
+            jq_output = jq.all(command[1], data)
+        except ValueError as e:
+            print(e)
+            return
+        print(json.dumps(jq_output, indent=2, sort_keys=True, default=str))
 
     def parse_set_regions_command(self, command):
         session = self.get_active_session()

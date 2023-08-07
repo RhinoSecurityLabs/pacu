@@ -1,4 +1,4 @@
-FROM python:3.9-alpine3.12
+FROM python:3.9-alpine
 
 LABEL maintainer="Rhino Assessment Team <pacu@rhinosecuritylabs.com>"
 LABEL pacu.version="1.0.1"

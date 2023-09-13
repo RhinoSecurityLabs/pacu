@@ -23,6 +23,7 @@ chalice = "^1.23.0"
 policyuniverse = "^1.5.0.20220613"
 pycognito = "^2023.5.0"
 qrcode = "^7.4.2"
+jq = "^1.4.1"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^3.9.1"

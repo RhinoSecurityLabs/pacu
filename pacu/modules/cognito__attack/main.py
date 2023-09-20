@@ -378,8 +378,8 @@ def main(args, pacu_main):
                     up_client["Region"],
                 )
                 all_new_regions.append(up_client["Region"])
-            elif "exists" in str(response):
-                print("User exists")
+            elif "exists" or "permitted" in str(response):
+                print("User may exist; attempting login.")
             try:
                 aws = AWSSRP(
                     username=args.username,

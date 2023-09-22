@@ -365,9 +365,13 @@ def main(args, pacu_main):
         identity_client = pacu_main.get_boto3_client(
             "cognito-identity", up_client["Region"]
         )
-        response = sign_up(
-            client, args.email, up_client["ClientId"], args.username, args.password
-        )
+        try:
+            response = sign_up(
+                client, args.email, up_client["ClientId"], args.username, args.password
+            )
+        except Exception as e:
+            test = "yes"
+
         if response is True or "exists" in str(response):
             if response is True:
                 tokens = verify(
@@ -378,8 +382,8 @@ def main(args, pacu_main):
                     up_client["Region"],
                 )
                 all_new_regions.append(up_client["Region"])
-            elif "exists" or "permitted" in str(response):
-                print("User may exist; attempting login.")
+            elif "yes" in test:
+                print("User exists.")
             try:
                 aws = AWSSRP(
                     username=args.username,

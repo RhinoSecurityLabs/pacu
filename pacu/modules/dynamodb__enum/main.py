@@ -50,7 +50,7 @@ def fetch_dynamodb_data(client, func, key, print, **kwargs):
         if isinstance(data, (dict, str)):
             return data
         while 'LastEvaluatedTableName' in response:
-            response = caller({**kwargs, **{'ExclusiveStartTableName': response['LastEvaluatedTableName']}})
+            response = caller(ExclusiveStartTableName=response['LastEvaluatedTableName'], **kwargs)
             data.extend(response[key])
         return data
     except client.exceptions.ResourceNotFoundException:

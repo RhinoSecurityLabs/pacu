@@ -114,7 +114,7 @@ def main(args, pacu_main):
     all_new_regions = []
     attack_user_pool_clients = []
     cognito_identity_pools = []
-
+    identity_pool = ''
     session = pacu_main.get_active_session()
     args = parser.parse_args(args)
     print = pacu_main.print
@@ -360,6 +360,7 @@ def main(args, pacu_main):
         aws = []
         aws2session = ""
         qr_img = []
+        test = ""
         tokens = []
         client = pacu_main.get_boto3_client("cognito-idp", up_client["Region"])
         identity_client = pacu_main.get_boto3_client(
@@ -571,7 +572,7 @@ def main(args, pacu_main):
                     identity_client,
                     identity_pool,
                     roles,
-                    region,
+                    up_client["Region"],
                     up_client["UserPoolId"],
                     tokens["AuthenticationResult"]["IdToken"],
                 )
@@ -583,7 +584,7 @@ def main(args, pacu_main):
                     )
                     attack_user["UserAttributes"] = attack_user_data["UserAttributes"]
                     attack_users.append(attack_user)
-                exit
+                continue
 
             if tokens["ChallengeName"] == "MFA_SETUP":
                 try:
@@ -759,7 +760,7 @@ def main(args, pacu_main):
                             "UserAttributes"
                         ]
                         attack_users.append(attack_user)
-                    exit
+                    continue
 
                 except ClientError as err:
                     print(err)
@@ -875,7 +876,7 @@ def main(args, pacu_main):
 
     print(f"List all custom attributes for all users in all user pools (y/n)?")
     choice = input()
-    if choice.lower() == "y":
+    if choice.lower() == "y" and session.Cognito["UsersInPools"] is not None:
         for user in session.Cognito["UsersInPools"]:
             if any(
                 search_string in attribute["Name"] for attribute in user["Attributes"]
@@ -1014,7 +1015,7 @@ def prompt_assume_roles(
         print(f"{i + 1}. {role}")
     choice = input('Enter the number of the role you want to assume (or "n" to skip): ')
     if choice.lower() == "n":
-        return
+        return False
     try:
         index = int(choice) - 1
         if 0 <= index < len(roles):
@@ -1043,10 +1044,10 @@ def prompt_assume_roles(
             return new_role
         else:
             print("Invalid choice.")
-            return
+            return False
     except ValueError:
         print("Invalid choice.")
-        return
+        return False
 
 
 def get_custom_attributes(
@@ -1079,13 +1080,13 @@ def get_custom_attributes(
     print("Printing all current attributes: ")
     print(currentuser["UserAttributes"])
     prompt = (
-        f"Enter attribute name to modify for user"
+        f"Enter attribute name to modify for user "
         + currentuser["Username"]
         + " or hit enter to skip: "
     )
     attribute_name = input(prompt)
     prompt = (
-        f"Enter attribute value to set for user"
+        f"Enter attribute value to set for user "
         + currentuser["Username"]
         + " or hit enter to skip: "
     )
@@ -1300,7 +1301,7 @@ def get_identity_credentials(
                 print("FAILURE: ")
                 code = error.response["Error"]["Code"]
                 print("  " + code)
-                return False
+                continue
             if id_token is not None:
                 try:
                     logins = {
@@ -1319,7 +1320,7 @@ def get_identity_credentials(
                         print("  Access denied to GetId or GetCredentialsForIdentity.")
                     else:
                         print("  " + code)
-                    print("  Skipping identity pool enumeration...")
+                    print("  Skipping identity pool enumeration for this identity client...")
             else:
                 try:
                     print(
@@ -1334,7 +1335,7 @@ def get_identity_credentials(
                         print("  Access denied to GetId or GetCredentialsForIdentity.")
                     else:
                         print("  " + code)
-                    print("  Skipping identity pool enumeration...")
+                    print("  Skipping identity pool enumeration for this identity client...")
             if identity_creds["Credentials"]["AccessKeyId"] is not None:
                 print("Access Key ID found.")
                 identity_pool["AccessKeyId"] = identity_creds["Credentials"][
@@ -1357,4 +1358,4 @@ def get_identity_credentials(
                     "Expiration"
                 ]
                 print(identity_pool["Expiration"])
-            return identity_pool
+                return identity_pool

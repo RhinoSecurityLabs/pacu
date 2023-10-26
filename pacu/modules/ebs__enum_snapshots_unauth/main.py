@@ -95,7 +95,7 @@ def main(args, pacu_main: 'Main'):
         os.makedirs(directory)
 
     for region in regions:
-        print('[ebs__enum_snapshots_unauth] Starting region {}...'.format(region))
+        print('Starting region {}...'.format(region))
         ec2Client = pacu_main.get_boto3_client('ec2', region)
 
         for keyword in keyword_list:
@@ -106,7 +106,7 @@ def main(args, pacu_main: 'Main'):
                 snapshot['Keyword'] = keyword
                 snapshot.setdefault('AccountId', '')
                 snapshot.setdefault('Description', '')
-                print('[+] Snapshot found: {}'.format(snapshot['SnapshotId']))
+                print('Snapshot found: {}'.format(snapshot['SnapshotId']))
                 snapshots_found.append(snapshot)
                 if snapshot['SnapshotId'] not in existing_snapshots_ids:
                     ec2_data['Snapshots'].append(snapshot)

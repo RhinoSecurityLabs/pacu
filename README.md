@@ -123,7 +123,7 @@ For walkthroughs and full documentation, please visit the [Pacu wiki](https://gi
 
 ## Contact Us
 
-* We'd love to hear from you, whatever the reason. Shoot us an email at [pacu@rhinosecuritylabs.com](mailto:pacu@rhinosecuritylabs.com) anytime!
+* We'd love to hear from you, whatever the reason. Reach out on [the Rhino Security Labs Discord](https://discord.gg/8vFE7ucx9W).
 
 ## Disclaimers, and the AWS Acceptable Use Policy
 

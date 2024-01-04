@@ -17,7 +17,6 @@ from typing import List, Optional, Any, Dict, Union, Tuple
 
 from pacu.core import lib
 from pacu.core.lib import session_dir
-from datetime import datetime
 
 try:
     import jq  # type: ignore

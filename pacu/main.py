@@ -38,7 +38,7 @@ try:
 except ModuleNotFoundError:
     exception_type, exception_value, tb = sys.exc_info()
     print('Traceback (most recent call last):\n{}{}: {}\n'.format(''.join(traceback.format_tb(tb)), str(exception_type), str(exception_value)))
-    print('Pacu was not able to start because a required Python package was not found.\nRun `sh install.sh` to check and install Pacu\'s Python requirements.')
+    print('Refer to https://github.com/RhinoSecurityLabs/pacu/wiki/Installation')
     sys.exit(1)
 
 

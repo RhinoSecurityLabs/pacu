@@ -4,6 +4,7 @@ version = "1.4.2"
 description = "The AWS exploitation framework, designed for testing the security of Amazon Web Services environments."
 authors = ["Rhino Assessment Team <pacu@rhinosecuritylabs.com>"]
 license = "BSD-3"
+include = ["pyproject.toml"]
 
 [tool.poetry.scripts]
 pacu = "pacu.__main__:main"
@@ -25,6 +26,7 @@ pycognito = "^2023.5.0"
 qrcode = "^7.4.2"
 jq = "^1.4.1"
 pyyaml = "^6.0.1"
+toml = "^0.10.2"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^3.9.1"

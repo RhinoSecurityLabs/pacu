@@ -65,12 +65,12 @@ def main(args, pacu_main):
         print('Invalid arguments received. Expecting one or zero of --all-instances and --target-instances, received both.\n')
         return
 
-    if fetch_data(['EC2', 'Instances'], module_info['prerequisite_modules'][0], '--instances') is False:
-        print('Pre-req module not run successfully. Exiting...\n')
-        return
-    instances = session.EC2['Instances']
-
-    regions = get_regions('EC2')
+    if args.target_instances is None: # If --target-instances is not specified, then we need to enumerate instances
+        if fetch_data(['EC2', 'Instances'], module_info['prerequisite_modules'][0], '--instances') is False:
+            print('Pre-req module not run successfully. Exiting...\n')
+            return
+        instances = session.EC2['Instances']
+        regions = get_regions('EC2')
 
     targeted_instances = []
     ssm_role_name = ''
@@ -252,23 +252,18 @@ def main(args, pacu_main):
                 print('  Unable to create an instance profile: {}\n'.format(str(error)))
                 return
 
-    # If there are target instances passed in as arguments, fix instances and regions
+    # If there are target instances passed in as arguments, get the EC2 info for those
     if args.target_instances is not None:
         instances = []
         regions = []
-        if ',' in args.target_instances:
-            # Multiple instances passed in
-            split = args.target_instances.split(',')
-        else:
-            # Only one instance passed in
-            split = [args.target_instances]
-        for instance in split:
-            instance_at_region_split = instance.split('@')
-            instances.append({
-                'InstanceId': instance_at_region_split[0],
-                'Region': instance_at_region_split[1]
-            })
-            regions.append(instance_at_region_split[1])
+        instances_id_regions = args.target_instances.split(',')
+        for instance_id_region in instances_id_regions:
+            instance_id, instance_region = instance_id_region.split('@')
+            regions.append(instance_region)
+            client = pacu_main.get_boto3_client('ec2', instance_region)
+            instance = client.describe_instances(InstanceIds=[instance_id])["Reservations"][0]["Instances"][0]
+            instance["Region"] = instance_region
+            instances.append(instance)
         # Kill duplicate regions
         regions = list(set(regions))
 
@@ -304,7 +299,11 @@ def main(args, pacu_main):
                             elif args.replace is True and replace is True:
                                 instances_to_replace.append(instance['InstanceId'])
                             else:
-                                print('  Instance ID {} already has an instance profile attached to it, skipping...'.format(instance['InstanceId']))
+                                if args.target_instances is not None:
+                                    print('  Instance ID {} already has an instance profile attached to it, will try to attack anyways...'.format(instance['InstanceId']))
+                                    targeted_instances.append(instance['InstanceId'])
+                                else:
+                                    print('  Instance ID {} already has an instance profile attached to it, skipping...'.format(instance['InstanceId']))
                                 pass
                         else:
                             # There is no instance profile attached yet, do it now
@@ -397,25 +396,37 @@ def main(args, pacu_main):
             client = pacu_main.get_boto3_client('ssm', region)
 
             # Enumerate instances that appear available to Systems Manager
-            response = client.describe_instance_information()
-            for instance in response['InstanceInformationList']:
-                discovered_instances.append([instance['InstanceId'], instance['PlatformType']])
-            while 'NextToken' in response:
-                response = client.describe_instance_information(
-                    NextToken=response['NextToken']
-                )
+            try:
+                response = client.describe_instance_information()
                 for instance in response['InstanceInformationList']:
-                    discovered_instances.append([instance['InstanceId'], instance['PlatformType']])
+                    discovered_instances.append([instance['InstanceId'], instance.get('PlatformType', None)])
+                while 'NextToken' in response:
+                    response = client.describe_instance_information(
+                        NextToken=response['NextToken']
+                    )
+                    for instance in response['InstanceInformationList']:
+                        discovered_instances.append([instance['InstanceId'], instance.get('PlatformType', None)])
+            except ClientError:
+                print('  Access denied to DescribeInstanceInformation in region {}.\n'.format(region))
+                continue
 
+            ignore_all = False
             for instance in discovered_instances:
                 # Has this instance been attacked yet?
                 if instance[0] not in attacked_instances and instance[0] not in ignored_instances:
                     if args.target_os.lower() == 'all' or instance[1].lower() == args.target_os.lower():
                         # Is this instance eligible for an attack, but was not targeted?
                         if instance[0] not in targeted_instances:
-                            action = input('  Instance ID {} (Platform: {}) was not found in the list of targeted instances, but it might be possible to attack it, do you want to try and attack this instance (a) or ignore it (i)? (a/i) '.format(instance[0], instance[1]))
+                            if ignore_all:
+                                ignored_instances.append(instance[0])
+                                continue
+                            action = input('  Instance ID {} (Platform: {}) was not found in the list of targeted instances, but it might be possible to attack it, do you want to try and attack this instance (a) or ignore it (i) or ignore all (I)? (a/i/I) '.format(instance[0], instance[1]))
                             if action == 'i':
                                 ignored_instances.append(instance[0])
+                                continue
+                            if action == 'I':
+                                ignored_instances.append(instance[0])
+                                ignore_all = True
                                 continue
                             else:
                                 print('  Adding instance ID {} to list of targets.\n'.format(instance[0]))

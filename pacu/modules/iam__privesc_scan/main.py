@@ -1231,7 +1231,7 @@ def main(args, pacu_main: "Main"):
                 if perm in target["Permissions"][effect]:
                     checked_perms[effect][perm] = target["Permissions"][effect][perm]
                 else:
-                    for target_perm in target["Permissions"][effect].keys():
+                    for target_perm in target["Permissions"][effect]:
                         if "*" in target_perm:
                             pattern = re.compile(target_perm.replace("*", ".*"))
                             if pattern.search(perm) is not None:

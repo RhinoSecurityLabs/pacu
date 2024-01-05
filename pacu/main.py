@@ -28,6 +28,7 @@ try:
     import botocore.session
     import botocore.exceptions
     import urllib.parse
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     from pacu import settings
 
@@ -351,84 +352,15 @@ class Main:
         with open(Path(__file__).parent/'modules/service_regions.json', 'r') as regions_file:
             regions = json.load(regions_file)
 
-        # TODO: Add an option for GovCloud regions
+        valid_regions = regions[service]
 
-        if service == 'all':
-            valid_regions = regions['all']
-            if 'local' in valid_regions:
-                valid_regions.remove('local')
-            if 'af-south-1' in valid_regions:
-                valid_regions.remove('af-south-1')  # Doesn't work currently
-            if 'ap-east-1' in valid_regions:
-                valid_regions.remove('ap-east-1')
-            if 'eu-south-1' in valid_regions:
-                valid_regions.remove('eu-south-1')
-            if 'me-south-1' in valid_regions:
-                valid_regions.remove('me-south-1')
-        if type(regions[service]) == dict and regions[service].get('endpoints'):
-            if 'aws-global' in regions[service]['endpoints']:
-                return [None]
-            if 'all' in session.session_regions:
-                valid_regions = list(regions[service]['endpoints'].keys())
-                if 'local' in valid_regions:
-                    valid_regions.remove('local')
-                if 'af-south-1' in valid_regions:
-                    valid_regions.remove('af-south-1')
-                if 'ap-east-1' in valid_regions:
-                    valid_regions.remove('ap-east-1')
-                if 'eu-south-1' in valid_regions:
-                    valid_regions.remove('eu-south-1')
-                if 'me-south-1' in valid_regions:
-                    valid_regions.remove('me-south-1')
-                return valid_regions
+        if 'all' not in session.session_regions:
+            if check_session is True:
+                return [region for region in valid_regions if region in session.session_regions]
             else:
-                valid_regions = list(regions[service]['endpoints'].keys())
-                if 'local' in valid_regions:
-                    valid_regions.remove('local')
-                if 'af-south-1' in valid_regions:
-                    valid_regions.remove('af-south-1')
-                if 'ap-east-1' in valid_regions:
-                    valid_regions.remove('ap-east-1')
-                if 'eu-south-1' in valid_regions:
-                    valid_regions.remove('eu-south-1')
-                if 'me-south-1' in valid_regions:
-                    valid_regions.remove('me-south-1')
-                if check_session is True:
-                    return [region for region in valid_regions if region in session.session_regions]
-                else:
-                    return valid_regions
+                return session.session_regions
         else:
-            if 'aws-global' in regions[service]:
-                return [None]
-            if 'all' in session.session_regions:
-                valid_regions = regions[service]
-                if 'local' in valid_regions:
-                    valid_regions.remove('local')
-                if 'af-south-1' in valid_regions:
-                    valid_regions.remove('af-south-1')
-                if 'ap-east-1' in valid_regions:
-                    valid_regions.remove('ap-east-1')
-                if 'eu-south-1' in valid_regions:
-                    valid_regions.remove('eu-south-1')
-                if 'me-south-1' in valid_regions:
-                    valid_regions.remove('me-south-1')
-                return valid_regions
-            else:
-                valid_regions = regions[service]
-                if 'local' in valid_regions:
-                    valid_regions.remove('local')
-                if 'af-south-1' in valid_regions:
-                    valid_regions.remove('af-south-1')
-                if 'ap-east-1' in valid_regions:
-                    valid_regions.remove('ap-east-1')
-                if 'eu-south-1' in valid_regions:
-                    valid_regions.remove('eu-south-1')
-                if 'me-south-1' in valid_regions:
-                    valid_regions.remove('me-south-1')
-                if check_session is True:
-                    return [region for region in valid_regions if region in session.session_regions]
-                else:
-                    return valid_regions
+            return valid_regions
 
     def display_all_regions(self):
         for region in sorted(self.get_regions('all')):
@@ -906,54 +838,59 @@ class Main:
             print(f"Using user agent suffix {user_agent_suffix}")
 
     def update_regions(self) -> None:
-        py_executable = sys.executable
-        # Update botocore to fetch the latest version of the AWS region_list
+        def get_aws_regions_and_services():
+            # Create a SSM client from the session
+            client = self.get_boto3_client('ssm')
 
-        cmd = [py_executable, '-m', 'pip', 'install', '--upgrade', 'botocore']
-        try:
-            self.print('  Fetching latest botocore...\n')
-            subprocess.run(cmd, check=True)
-        except subprocess.CalledProcessError as e:
-            self.print('"{}" returned {}'.format(' '.join(cmd), e.returncode))
-            pip = self.input('Could not use pip3 or pip to update botocore to the latest version. Enter the name of '
-                             'your pip binary to continue: ').strip()
-            subprocess.run(['{}'.format(pip), 'install', '--upgrade', 'botocore'])
+            def get_all_parameters(path):
+                """Retrieve all parameters under a specified path, handling pagination"""
+                parameters = []
+                paginator = client.get_paginator('get_parameters_by_path')
 
-        path = ''
+                for page in paginator.paginate(Path=path):
+                    parameters.extend(page['Parameters'])
 
-        try:
-            self.print('  Using pip3 to locate botocore...\n')
-            output = subprocess.check_output('{} -m pip show botocore'.format(py_executable), shell=True)
-        except subprocess.CalledProcessError as e:
-            self.print('Cmd: "{}" returned {}'.format(' '.join(cmd), e.returncode))
-            path = self.input('Could not use pip to determine botocore\'s location. Enter the path to your Python '
-                              '"dist-packages" folder (example: /usr/local/bin/python3.6/lib/dist-packages): ').strip()
+                return parameters
 
-        if path == '':
-            # Account for Windows \r and \\ in file path (Windows)
-            rows = output.decode('utf-8').replace('\r', '').replace('\\\\', '/').split('\n')
-            for row in rows:
-                if row.startswith('Location: '):
-                    path = row.split('Location: ')[1]
+            # Function to process each service and fetch its regions
+            def process_service(service):
+                service_regions = get_all_parameters(f'/aws/service/global-infrastructure/services/{service}/regions')
+                return service, [param['Value'] for param in service_regions]
 
-        with open('{}/botocore/data/endpoints.json'.format(path), 'r+') as regions_file:
-            endpoints = json.load(regions_file)
+            # Retrieve all regions
+            all_regions = get_all_parameters('/aws/service/global-infrastructure/regions')
 
-        for partition in endpoints['partitions']:
-            if partition['partition'] == 'aws':
-                regions: Dict[str, Any] = dict()
-                regions['all'] = list(partition['regions'].keys())
-                for service in partition['services']:
-                    # fips regions are an alternate endpoint for already existing regions, to prevent duplicates we'll
-                    # filter these out for now.
-                    regions[service] = {'endpoints': {}}
-                    for region in filter(lambda r: 'fips' not in r, partition['services'][service]['endpoints'].keys()):
-                        regions[service]['endpoints'][region] = partition['services'][service]['endpoints'][region]
+            # Retrieve all services
+            all_services = get_all_parameters('/aws/service/global-infrastructure/services')
 
-        with open(Path(__file__).parent/'modules/service_regions.json', 'w+') as services_file:
-            json.dump(regions, services_file, default=str, sort_keys=True)
+            # Extract region and service names
+            region_names = [param['Value'] for param in all_regions]
+            service_names = [param['Value'] for param in all_services]
 
-        self.print('  Region list updated to the latest version!')
+            # Initialize JSON object
+            regions_services = {"all": region_names}
+
+            # Use ThreadPoolExecutor to parallelize fetching regions for each service
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                # Start the load operations and mark each future with its service
+                future_to_service = {executor.submit(process_service, service): service for service in service_names}
+                for future in as_completed(future_to_service):
+                    service, regions = future.result()
+                    regions_services[service] = regions
+
+            return regions_services
+
+        answer = input("  This requires calls to the AWS SSM API using the currently configure credentials. Continue? (y/n) ")
+        if answer.lower() == 'y':
+            print('  Updating region list...')
+            regions_services_json = get_aws_regions_and_services()
+
+            with open(Path(__file__).parent/'modules/service_regions.json', 'w+') as services_file:
+                json.dump(regions_services_json, services_file, default=str, sort_keys=True, indent=4)
+
+            self.print('  Region list updated to the latest version!')
+        else:
+            self.print('  Region list not updated.')
 
     def print_web_console_url(self) -> None:
         active_session = self.get_active_session()

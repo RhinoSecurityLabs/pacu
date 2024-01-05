@@ -30,7 +30,6 @@ try:
     import toml
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
-
     from pacu import settings
 
     from pacu.core.models import AWSKey, PacuSession, migrations

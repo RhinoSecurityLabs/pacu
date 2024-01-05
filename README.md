@@ -51,39 +51,6 @@ $ docker run -it --entrypoint /bin/sh rhinosecuritylabs/pacu:latest
 ```console
 $ docker run -it -v ~/.aws:/root/.aws rhinosecuritylabs/pacu:latest
 ```
-
-## Pacu's Modular Power
-
-Pacu uses a range of [plug-in modules](https://github.com/RhinoSecurityLabs/pacu/wiki/Module-Details) to assist an attacker in enumeration, privilege escalation, data exfiltration, service exploitation, and log manipulation within AWS environments. At present, Pacu has 36 modules for executing AWS attacks, but we'll be working hard to add more modules in the future, and suggestions for new modules (or even contributions of whole completed modules) are welcome.
-
-To keep pace with ongoing AWS product developments, we've designed Pacu from the ground up with extensibility in mind. A common syntax and data structure keep modules easy to build and expand on - no need to specify AWS regions or make redundant permission checks between modules.  A local SQLite database is used to manage and manipulate retrieved data, minimizing API calls (and associated logs). Reporting and attack auditing is also built into the framework; Pacu assists the documentation process through command logging and exporting, helping build a timeline for the testing process.
-
-We'll be working on improving Pacu's core capabilities and building out a well-documented ecosystem so that cybersecurity researchers and developers can make new modules quickly and easily.
-
-## Community
-
-We're always happy to get bugs reports in the Pacu framework itself, as well as testing and feedback on different modules, and generally, critical feedback to help refine the framework. We hope to see this grow into a key open-source tool for testing AWS security, and we need your help to make that happen! Any support towards this effort through use, testing, improvement, or just by spreading the word, would be very much appreciated.
-
-If you're interested in contributing directly to the Pacu Framework itself, please read our [contribution guidelines](https://github.com/RhinoSecurityLabs/pacu/wiki/Contribution-Guidelines) for code conventions and git-flow notes.
-
-## Developing Pacu Modules
-
-If you're interested in writing your own modules for Pacu, check out our [Module Development](https://github.com/RhinoSecurityLabs/pacu/wiki/Module-Development-Guide) wiki page. As you develop new capabilities please reach out to us -- we'd love to add your new modules into the core collection that comes with Pacu.
-
-## Pacu Framework Development Goals
-  * Improve interface formatting
-  * Database forward-migrations and version tracking
-  * "Attack Playbooks" to allow for easier use of complex module execution chains
-  * Colored console output
-  * Module Dry-Run functionality
-  * Allow use of standalone config files
-  * Plugin architecture improvements
-
-## Notes
-
-* Pacu is officially supported in OSX and Linux.
-* Pacu is Open-Source Software and is distributed with a BSD-3-Clause License.
-
 ## Getting Started
 
 The first time Pacu is launched, you will be prompted to start and name a new session. This session will be used to store AWS key pairs, as well as any data obtained from running various modules. You can have any number of different sessions in Pacu, each with their own sets of AWS keys and data, and resume a session at any time (though a restart is currently required to switch between sessions).
@@ -113,6 +80,36 @@ If you are ever stuck, `help` will bring up a list of available commands.
 * `pacu --set-regions <region1 region2 || all>` set the regions to use in the session, separate regions by a space or enter `all` for all regions
 * `pacu --whoami` get information about the current user
 
+## Pacu's Modular Power
+
+Pacu uses a range of [plug-in modules](https://github.com/RhinoSecurityLabs/pacu/wiki/Module-Details) to assist an attacker in enumeration, privilege escalation, data exfiltration, service exploitation, and log manipulation within AWS environments. Contributions or ideas for new modules are welcome.
+
+To keep pace with ongoing AWS product developments, we've designed Pacu from the ground up with extensibility in mind. A common syntax and data structure keep modules easy to build and expand on - no need to specify AWS regions or make redundant permission checks between modules.  A local SQLite database is used to manage and manipulate retrieved data, minimizing API calls (and associated logs). Reporting and attack auditing is also built into the framework; Pacu assists the documentation process through command logging and exporting, helping build a timeline for the testing process.
+
+## Community
+
+We're always happy to get bug reports in the Pacu framework itself, as well as testing and feedback on different modules, and generally, critical feedback to help refine the framework. Any support for Pacu through use, testing, improvement, or just by spreading the word, would be very much appreciated.
+
+If you're interested in contributing directly to the Pacu Framework itself, please read our [contribution guidelines](https://github.com/RhinoSecurityLabs/pacu/wiki/Contribution-Guidelines) for code conventions and git-flow notes.
+
+## Developing Pacu Modules
+
+If you're interested in writing your own modules for Pacu, check out our [Module Development](https://github.com/RhinoSecurityLabs/pacu/wiki/Module-Development-Guide) wiki page. As you develop new capabilities please reach out to us -- we'd love to add your new modules into the core collection that comes with Pacu.
+
+## Pacu Framework Development Goals
+  * Improve interface formatting
+  * Database forward-migrations and version tracking
+  * "Attack Playbooks" to allow for easier use of complex module execution chains
+  * Colored console output
+  * Module Dry-Run functionality
+  * Allow use of standalone config files
+  * Plugin architecture improvements
+
+## Notes
+
+* Pacu is officially supported in OSX and Linux.
+* Pacu is Open-Source Software and is distributed with a BSD-3-Clause License.
+
 ## Submitting Requests / Bug Reports
 
 - Report vulnerabilities in Pacu directly to us via email: [pacu@rhinosecuritylabs.com](mailto:pacu@rhinosecuritylabs.com) .
@@ -126,11 +123,11 @@ For walkthroughs and full documentation, please visit the [Pacu wiki](https://gi
 
 ## Contact Us
 
-* We'd love to hear from you, whatever the reason. Shoot us an email at [pacu@rhinosecuritylabs.com](mailto:pacu@rhinosecuritylabs.com) anytime!
+* We'd love to hear from you, whatever the reason. Reach out on [the Rhino Security Labs Discord](https://discord.gg/8vFE7ucx9W).
 
 ## Disclaimers, and the AWS Acceptable Use Policy
 
 * To the best of our knowledge Pacu's capabilities are compliant with the AWS Acceptable Use Policy, but as a flexible and modular tool, we cannot guarantee this will be true in every situation. It is entirely your responsibility to ensure that how you use Pacu is compliant with the AWS Acceptable Use Policy.
-* Depending on what AWS services you use and what your planned testing entails, you may need to [request authorization from Amazon](https://aws.amazon.com/security/penetration-testing/) before actually running Pacu against your infrastructure. Determining whether or not such authorization is necessary is your responsibility.
+* Depending on what AWS services you use and what your planned testing entails, you may need to review [AWS Customer Support Policy for Penetration Testing](https://aws.amazon.com/security/penetration-testing/) before actually running Pacu against your infrastructure.
 * As with any penetration testing tool, it is your responsibility to get proper authorization before using Pacu outside of your environment.
 * Pacu is software that comes with absolutely no warranties whatsoever. By using Pacu, you take full responsibility for any and all outcomes that result.

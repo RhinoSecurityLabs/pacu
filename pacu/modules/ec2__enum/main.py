@@ -162,7 +162,7 @@ def main(args, pacu_main):
                         else:
                             print('  ' + code)
                         print('  Skipping instance enumeration...')
-                        args.instances = False
+                        
                         break
                 else:
                     response = client.describe_instances(
@@ -199,7 +199,7 @@ def main(args, pacu_main):
                         else:
                             print('  ' + code)
                         print('    Skipping security group enumeration...')
-                        args.security_groups = False
+                        
                         break
                 else:
                     response = client.describe_security_groups(
@@ -229,7 +229,7 @@ def main(args, pacu_main):
                 else:
                     print('  ' + code)
                 print('    Skipping elastic IP enumeration...')
-                args.elastic_ips = False
+                
             print('  {} elastic IP address(es) found.'.format(len(elastic_ips)))
             all_elastic_ips += elastic_ips
 
@@ -255,7 +255,7 @@ def main(args, pacu_main):
                         else:
                             print('  ' + code)
                         print('  Skipping public IP enumeration...')
-                        args.instances = False
+                        
                         break
                 else:
                     response = client.describe_instances(MaxResults=1000,NextToken=next_token)
@@ -270,7 +270,7 @@ def main(args, pacu_main):
                 with save(p, 'w+') as f:    
                     for public in public_ips:
                         f.write('{}\n'.format(public))
-            print('  {} publics IP address(es) found and added to text file located at: ~/.local/share/pacu/{}/downloads/{}'.format(len(public_ips),session.name,p))                
+                print('  {} publics IP address(es) found and added to text file located at: ~/.local/share/pacu/{}/downloads/{}'.format(len(public_ips),session.name,p))                
             all_public_ips += public_ips
 
         # VPN Customer Gateways
@@ -288,7 +288,7 @@ def main(args, pacu_main):
                 else:
                     print('  ' + code)
                 print('    Skipping VPN customer gateway enumeration...')
-                args.customer_gateways = False
+                
             print('  {} VPN customer gateway(s) found.'.format(len(vpn_customer_gateways)))
             all_vpn_customer_gateways += vpn_customer_gateways
 
@@ -310,7 +310,7 @@ def main(args, pacu_main):
                         else:
                             print('  ' + code)
                         print('    Skipping dedicated host enumeration...')
-                        args.dedicated_hosts = False
+                        
                         break
                 else:
                     response = client.describe_hosts(
@@ -340,7 +340,7 @@ def main(args, pacu_main):
                 else:
                     print('  ' + code)
                 print('    Skipping network ACL enumeration...')
-                args.network_acls = False
+                
             print('  {} network ACL(s) found.'.format(len(network_acls)))
             all_network_acls += network_acls
 
@@ -362,7 +362,7 @@ def main(args, pacu_main):
                         else:
                             print('  ' + code)
                         print('    Skipping NAT gateway enumeration...')
-                        args.nat_gateways = False
+                        
                         break
                 else:
                     response = client.describe_nat_gateways(
@@ -392,7 +392,7 @@ def main(args, pacu_main):
                 else:
                     print('  ' + code)
                 print('    Skipping network interface enumeration...')
-                args.network_interfaces = False
+                
             print('  {} network interface(s) found.'.format(len(network_interfaces)))
             all_network_interfaces += network_interfaces
 
@@ -411,7 +411,7 @@ def main(args, pacu_main):
                 else:
                     print('  ' + code)
                 print('    Skipping route table enumeration...')
-                args.route_tables = False
+                
             print('  {} route table(s) found.'.format(len(route_tables)))
             all_route_tables += route_tables
 
@@ -430,7 +430,7 @@ def main(args, pacu_main):
                 else:
                     print('  ' + code)
                 print('    Skipping subnet enumeration...')
-                args.subnets = False
+                
             print('  {} subnet(s) found.'.format(len(subnets)))
             all_subnets += subnets
 
@@ -449,7 +449,7 @@ def main(args, pacu_main):
                 else:
                     print('  ' + code)
                 print('    Skipping VPC enumeration...')
-                args.vpcs = False
+                
             print('  {} VPC(s) found.'.format(len(vpcs)))
             all_vpcs += vpcs
 
@@ -471,7 +471,7 @@ def main(args, pacu_main):
                         else:
                             print('  ' + code)
                         print('    Skipping VPC endpoint enumeration...')
-                        args.vpc_endpoints = False
+                        
                         break
                 else:
                     response = client.describe_vpc_endpoints(
@@ -502,7 +502,7 @@ def main(args, pacu_main):
                         else:
                             print('  ' + code)
                         print('    Skipping launch template enumeration...')
-                        args.launch_templates = False
+                        
                         break
                 else:
                     response = client.describe_launch_templates(

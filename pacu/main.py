@@ -17,7 +17,6 @@ from typing import List, Optional, Any, Dict, Union, Tuple
 
 from pacu.core import lib
 from pacu.core.lib import session_dir
-from datetime import datetime
 
 try:
     import jq  # type: ignore
@@ -28,6 +27,7 @@ try:
     import botocore.session
     import botocore.exceptions
     import urllib.parse
+    import toml
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     from pacu import settings
@@ -397,53 +397,19 @@ class Main:
                 self.exec_module(['exec', module])
         return True
 
-    def check_for_updates(self):
-        TIME_FORMAT = '%Y-%m-%d'
-        UPDATE_CYCLE = 7  # Days
-        UPDATE_INFO_PATH = lib.home_dir()/'update_info.json'
-        LAST_UPDATE_PATH = lib.pacu_dir()/'last_update.txt'
-        UPDATE_MSG = '''Pacu has a new version available! Clone it from GitHub to receive the updates.
-        git clone https://github.com/RhinoSecurityLabs/pacu.git'''
-
-        with open(LAST_UPDATE_PATH, 'r') as f:
-            local_last_update = f.read().rstrip()
-
-        datetime_now = datetime.now()
-        datetime_local = datetime.strptime(local_last_update, TIME_FORMAT)
-
-        datetime_last_check = datetime.min
-        latest_cached = datetime.min
-
-        # update_info.json structure:
-        # { 'last_check':'YYYY-MM-DD', 'latest_cached':'YYYY-MM-DD'}
-        # Create a update_info.json if not exist
-        update_info = {}
-        if os.path.isfile(UPDATE_INFO_PATH):
-            with open(UPDATE_INFO_PATH, 'r') as f:
-                update_info = json.load(f)
-                datetime_last_check = datetime.strptime(update_info['last_check'], TIME_FORMAT)
-                latest_cached = datetime.strptime(update_info['latest_cached'], TIME_FORMAT)
-
-        # Check upstream
-        if (datetime_now - datetime_last_check).days >= UPDATE_CYCLE:
-            latest_update = requests.get(
-                'https://raw.githubusercontent.com/RhinoSecurityLabs/pacu/master/pacu/last_update.txt').text.rstrip()
-            latest = datetime.strptime(latest_update, TIME_FORMAT)
-
-            update_info['latest_cached'] = latest.strftime(TIME_FORMAT)
-            update_info['last_check'] = datetime_now.strftime(TIME_FORMAT)
-            with open(UPDATE_INFO_PATH, 'w') as f:
-                json.dump(update_info, f)
-
-            if datetime_local < latest:
-                print(UPDATE_MSG)
-                return True
-        # Local check
-        elif datetime_local < latest_cached:
-            print(datetime_local, latest_cached)
-            print(UPDATE_MSG)
-            return True
-        return False
+    def get_pacu_version(self):
+        try:
+            # Get the directory where this file is located
+            current_dir = os.path.dirname(__file__)
+            # Go up one level to the root of package
+            package_root = os.path.abspath(os.path.join(current_dir, os.pardir))
+            # Construct the path to pyproject.toml
+            toml_path = os.path.join(package_root, 'pyproject.toml')
+            with open(toml_path, 'r') as file:
+                pyproject = toml.load(file)
+            return pyproject['tool']['poetry']['version']
+        except Exception:
+            return "unknown"
 
     def key_info(self, alias='') -> Union[Dict[str, Any], bool]:
         """ Return the set of information stored in the session's active key
@@ -1784,7 +1750,7 @@ aws_secret_access_key = {}
             try:
                 if not idle_ready:
                     try:
-                        print("""
+                        print(f"""
  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⣶⣿⣿⣿⣿⣿⣿⣶⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣾⣿⡿⠛⠉⠁⠀⠀⠈⠙⠻⣿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -1809,6 +1775,7 @@ aws_secret_access_key = {}
  ⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⡏⠉⠉⠉⠉⠀⠀⠀⢸⣿⣿⡏⠉⠉⢹⣿⣿⡇⠀⢸⣿⣿⣇⣀⣀⣸⣿⣿⣿⠀⢸⣿⣿⣿⣀⣀⣀⣿⣿⣿
  ⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⢸⣿⣿⡇⠀⠸⣿⣿⣿⣿⣿⣿⣿⣿⡿⠀⠀⢿⣿⣿⣿⣿⣿⣿⣿⡟
  ⠀⠀⠀⠀⠀⠀⠀⠀⠘⠛⠛⠃⠀⠀⠀⠀⠀⠀⠀⠘⠛⠛⠃⠀⠀⠘⠛⠛⠃⠀⠀⠉⠛⠛⠛⠛⠛⠛⠋⠀⠀⠀⠀⠙⠛⠛⠛⠛⠛⠉⠀
+Version: {self.get_pacu_version()}
 """)
                     except UnicodeEncodeError:
                         pass
@@ -1825,8 +1792,6 @@ aws_secret_access_key = {}
 
                     self.initialize_tab_completion()
                     display_pacu_help()
-
-                    self.check_for_updates()
 
                     idle_ready = True
 
@@ -1905,6 +1870,7 @@ aws_secret_access_key = {}
         parser.add_argument('--exec', action='store_true', help='exec module')
         parser.add_argument('--set-regions', nargs='+', default=None, help='<region1 region2 ...> or <all> for all', metavar='')
         parser.add_argument('--whoami', action='store_true', help='Display information on current IAM user')
+        parser.add_argument('--version', action='version', version=f'Pacu {self.get_pacu_version()}', help='Display Pacu version')
         args = parser.parse_args()
 
         if any([args.session, args.data, args.module_args, args.exec, args.set_regions, args.whoami, args.new_session, args.set_keys, args.activate_session]):
@@ -1913,7 +1879,6 @@ aws_secret_access_key = {}
                 exit()
             self.run_cli(args)
         elif any([args.list_modules, args.pacu_help, args.module_info]):
-            self.check_for_updates()
             self.run_cli(args)
         else:
             self.run_gui()

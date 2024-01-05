@@ -36,8 +36,8 @@ jobs:
       run: |
         poetry version ${{ github.event.inputs.SemVer_level }}
         ver="$(poetry version -s)"
-        sed -i 's/pacu.version=".*"/pacu.version="${ver}"/' Dockerfile
-        sed -i 's/pacu.version=".*"/pacu.version="${ver}"/' Dockerfile.dev
+        sed -i "s/pacu.version=\".*\"/pacu.version=\"$ver\"/" Dockerfile
+        sed -i "s/pacu.version=\".*\"/pacu.version=\"$ver\"/" Dockerfile.dev
     - name: Commit and push version changes
       run: |
         ver="$(poetry version -s)"

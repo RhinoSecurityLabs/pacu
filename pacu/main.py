@@ -352,7 +352,11 @@ class Main:
         with open(Path(__file__).parent/'modules/service_regions.json', 'r') as regions_file:
             regions = json.load(regions_file)
 
-        valid_regions = regions[service]
+        # Try to get the regions for the service, if the service does not exist just set to all
+        try:
+            valid_regions = regions[service]
+        except KeyError:
+            valid_regions = regions['all']
 
         if 'all' not in session.session_regions:
             if check_session is True:

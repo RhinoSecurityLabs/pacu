@@ -2,6 +2,8 @@ import signal
 import sys
 import typing
 import zipfile
+import base64
+import binascii
 from pathlib import Path
 from typing import Optional, Union
 
@@ -96,3 +98,20 @@ def zip_file(file_path: Path, file_data: dict) -> bytes:
 
     with open(file_path, 'rb') as f:
         return f.read()
+
+
+def get_aws_account_from_id(AWSKeyID):
+    '''
+    Taken from: https://medium.com/@TalBeerySec/a-short-note-on-aws-key-id-f88cc4317489
+    AWSKeyID is the AWS Access Key ID
+    This function returns the AWS Account ID
+    '''
+    trimmed_AWSKeyID = AWSKeyID[4:]
+    x = base64.b32decode(trimmed_AWSKeyID)
+    y = x[0:6]
+
+    z = int.from_bytes(y, byteorder='big', signed=False)
+    mask = int.from_bytes(binascii.unhexlify(b'7fffffffff80'), byteorder='big', signed=False)
+
+    e = (z & mask) >> 7
+    return (e)

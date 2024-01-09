@@ -1189,7 +1189,7 @@ aws_secret_access_key = {}
 
     def set_keys(self, key_alias: str = None, access_key_id: str = None, secret_access_key: str = None, session_token: str = None):
         session = self.get_active_session()
-        reservered_key_names = ['imported-','from_default-','import_from_default']
+        reservered_key_names = ['imported-', 'from_default-', 'import_from_default']
 
         # If key_alias is None, then it's being run normally from the command line (set_keys),
         # otherwise it means it is set programmatically and we don't want any prompts if it is
@@ -1471,17 +1471,17 @@ aws_secret_access_key = {}
             account_id = decode_accesskey_id(creds.access_key)
             if not key_alias:
                 key_alias = f'from_default-{account_id}'
-            self.set_keys(key_alias=key_alias, access_key_id=creds.access_key, secret_access_key=creds.secret_key,
-                        session_token=creds.token)
+            self.set_keys(key_alias=key_alias, access_key_id=creds.access_key, secret_access_key=creds.secret_key, session_token=creds.token)
 
         session = self.get_active_session()
-        
+        key_alias = session.key_alias or ''
+
         # If the user has not set any keys, check if they want to use the default system credentials
         if (not session.access_key_id) or (not session.secret_access_key):
             answer = ''
-            if session.key_alias != 'import_from_default':
+            if key_alias != 'import_from_default':
                 answer = input('  Access keys not currently set, do you want to use the system default credentials? (y/n): ')
-            if (answer.lower() == 'y') or (session.key_alias == 'import_from_default'):
+            if (answer.lower() == 'y') or (key_alias == 'import_from_default'):
                 self.print('  Setting keys from AWS system default credentials')
                 boto3_session = boto3.session.Session(region_name=region)
                 set_keys_in_session(boto3_session)
@@ -1491,15 +1491,16 @@ aws_secret_access_key = {}
                 return None
 
         # Check if the keys were imported from a profile and refresh those creds
-        if session.key_alias.startswith('imported-'):
-            boto3_session = boto3.session.Session(profile_name=session.key_alias.replace('imported-', ''))
-            set_keys_in_session(boto3_session, session.key_alias)
+        if key_alias.startswith('imported-'):
+            profile_name = key_alias.replace('imported-', '')
+            boto3_session = boto3.session.Session(profile_name=profile_name)
+            set_keys_in_session(boto3_session, key_alias)
             return boto3_session
-        
+
         # Check if the keys were set from system default and refresh
-        if session.key_alias.startswith('from_default-'):
+        if key_alias.startswith('from_default-'):
             boto3_session = boto3.session.Session(region_name=region)
-            set_keys_in_session(boto3_session, session.key_alias)
+            set_keys_in_session(boto3_session, key_alias)
             return boto3_session
 
         # If there are explicit keys set, which were not imported just get a session with them

@@ -2,6 +2,9 @@ import signal
 import sys
 import typing
 import zipfile
+import base64
+import binascii
+import re
 from pathlib import Path
 from typing import Optional, Union
 
@@ -96,3 +99,25 @@ def zip_file(file_path: Path, file_data: dict) -> bytes:
 
     with open(file_path, 'rb') as f:
         return f.read()
+
+
+def decode_accesskey_id(AWSKeyID):
+    '''
+    Taken from: https://medium.com/@TalBeerySec/a-short-note-on-aws-key-id-f88cc4317489
+    AWSKeyID is the AWS Access Key ID
+    This function returns the AWS Account ID
+    '''
+    regex = re.compile('(?<![A-Z0-9])[A-Z0-9]{20}(?![A-Z0-9])')
+    if not regex.match(AWSKeyID):
+        print('Invalid AWS Access Key ID')
+        return
+
+    trimmed_AWSKeyID = AWSKeyID[4:]
+    x = base64.b32decode(trimmed_AWSKeyID)
+    y = x[0:6]
+
+    z = int.from_bytes(y, byteorder='big', signed=False)
+    mask = int.from_bytes(binascii.unhexlify(b'7fffffffff80'), byteorder='big', signed=False)
+
+    e = (z & mask) >> 7
+    return ("{:012d}".format(e))

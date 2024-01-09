@@ -6,6 +6,7 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/.venv/bin/pacu",
+            "python": "${workspaceFolder}/.venv/bin/python3",
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
             "console": "integratedTerminal"

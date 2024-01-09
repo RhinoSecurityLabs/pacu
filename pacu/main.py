@@ -1471,6 +1471,7 @@ aws_secret_access_key = {}
             account_id = decode_accesskey_id(creds.access_key)
             if not key_alias:
                 key_alias = f'from_default-{account_id}'
+                print(f'  Setting keys for account: {account_id}')
             self.set_keys(key_alias=key_alias, access_key_id=creds.access_key, secret_access_key=creds.secret_key, session_token=creds.token)
 
         session = self.get_active_session()

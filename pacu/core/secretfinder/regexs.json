@@ -5,9 +5,12 @@
     "Bearer_Auth": "bearer [a-zA-Z0-9_\\-\\.=]+",
     "AWS_Client": "(?:A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}",
     "AWS_MWS": "amzn\\.mws\\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
-    "GitHub": "[g|G][i|I][t|T][h|H][u|U][b|B].*['|\"][0-9a-zA-Z]{35,40}['|\"]",
-    "Generic API Key": "[a|A][p|P][i|I][_]?[k|K][e|E][y|Y].*['|\"][0-9a-zA-Z]{32,45}['|\"]",
-    "Generic Secret": "[s|S][e|E][c|C][r|R][e|E][t|T].*['|\"][0-9a-zA-Z]{32,45}['|\"]",
+    "GitHub Generic": "[g|G][i|I][t|T][h|H][u|U][b|B].*['|\"][0-9a-zA-Z]{35,40}['|\"]",
+    "GitHub Personal Token": "ghp_[a-zA-Z0-9]{36}",
+    "GitHub Actions Token": "ghs_[a-zA-Z0-9]{36}",
+    "GitHub Fine-grained Token": "github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}",
+    "Generic API Key": "[a|A][p|P][i|I].?[k|K][e|E][y|Y].*['|\"][a-zA-Z0-9!@#$%^*()&]{0,60}['|\"]",
+    "Generic Secret": "['|\"][s|S][e|E][c|C][r|R][e|E][t|T].*['|\"].*[a-zA-Z0-9!@#$%^*()&]{0,60}['|\"]",
     "Google API Key": "AIza[0-9A-Za-z\\-_]{35}",
     "Google Cloud Platform API Key": "AIza[0-9A-Za-z\\-_]{35}",
     "Google Cloud Platform OAuth": "[0-9]+-[0-9A-Za-z_]{32}\\.apps\\.googleusercontent\\.com",
@@ -23,9 +26,9 @@
     "RSA private key": "-----BEGIN RSA PRIVATE KEY-----",
     "SSH (DSA) private key": "-----BEGIN DSA PRIVATE KEY-----",
     "SSH (EC) private key": "-----BEGIN EC PRIVATE KEY-----",
-    "SSH (ed25519) private key": "-----BEGIN OPENSSH PRIVATE KEY-----"
+    "SSH (ed25519) private key": "-----BEGIN OPENSSH PRIVATE KEY-----",
     "PGP private key block": "-----BEGIN PGP PRIVATE KEY BLOCK-----",
     "Twilio API Key": "SK[0-9a-fA-F]{32}",
-    "Twitter Access Token": "[t|T][w|W][i|I][t|T][t|T][e|E][r|R].*[1-9][0-9]+-[0-9a-zA-Z]{40}",
-    "Twitter OAuth": "[t|T][w|W][i|I][t|T][t|T][e|E][r|R].*['|\"][0-9a-zA-Z]{35,44}['|\"]"
+    "Twitter Access Token": "[t|T][w|W][i|I][t|T][t|T][e|E][r|R].*[1-9][0-9]+-[0-9a-zA-Z]{40}"
 }
+

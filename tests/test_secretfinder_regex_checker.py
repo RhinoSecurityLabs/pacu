@@ -33,7 +33,7 @@ TEST_DATA = [
     ("DSA Private Key: -----BEGIN DSA PRIVATE KEY-----", True, "SSH (DSA) private key"),
     ("EC Private Key: -----BEGIN EC PRIVATE KEY-----", True, "SSH (EC) private key"),
     ("PGP Private Key: -----BEGIN PGP PRIVATE KEY BLOCK-----", True, "PGP private key block"),
-    ("OpenSSH Private Key: -----BEGIN OPENSSH PRIVATE KEY-----", True, "OpenSSH private key"),
+    ("SSH (ed25519) private key: -----BEGIN OPENSSH PRIVATE KEY-----", True, "SSH (ed25519) private key"),
     ("Twilio API Key: SKAbCdEf123AbCdEf123AbCdEf123AbCdE", True, "Twilio API Key"),
     ("Twitter Access Token: twitter_1234567890123456789012345678901234567890-1234567890123456789012345678901234567890", True, "Twitter Access Token"),
 ]

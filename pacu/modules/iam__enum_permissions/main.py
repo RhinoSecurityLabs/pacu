@@ -580,7 +580,9 @@ def get_attached_policy(client, policy_arn):
 
 def parse_document(document, user):
     """Loop permissions, resources, and conditions"""
-    if isinstance(document["Statement"], dict) or isinstance(document["Statement"], str):
+    if isinstance(document["Statement"], dict) or isinstance(
+        document["Statement"], str
+    ):
         document["Statement"] = [document["Statement"]]
     statement_actions = get_resources_for_actions_from_statements(document["Statement"])
 

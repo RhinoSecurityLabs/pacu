@@ -125,7 +125,8 @@ def main(args, pacu_main: "Main"):
     ######
     escalation_methods_info = {
         "AddUserToGroup": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: AddUserToGroup
             Description: An attacker with the iam:AddUserToGroup permission can use it to add themselves to an existing IAM Group in the AWS account.
 
@@ -136,10 +137,12 @@ def main(args, pacu_main: "Main"):
             Where target_group has more/different privileges than the attacker’s user account.
 
             Potential Impact: The attacker would be able to gain privileges of any existing group in the account, which could range from no privilege escalation to full administrator access to the account.
-            """)
+            """
+            )
         },
         "AttachGroupPolicy": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: AttachGroupPolicy
             Description: An attacker with the iam:AttachGroupPolicy permission can escalate privileges by attaching a policy to a group that they are a part of, adding the permissions of that policy to the attacker.
 
@@ -150,10 +153,12 @@ def main(args, pacu_main: "Main"):
             Where the group is a group the current user is a part of.
 
             Potential Impact: An attacker would be able to use this method to attach the AdministratorAccess AWS managed policy to a group, giving them full administrator access to the AWS environment.
-            """)
+            """
+            )
         },
         "AttachRolePolicy": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: AttachRolePolicy
             Description: An attacker with the iam:AttachRolePolicy permission can escalate privileges by attaching a policy to a role that they have access to, adding the permissions of that policy to the attacker.
 
@@ -164,10 +169,12 @@ def main(args, pacu_main: "Main"):
             Where the role is a role that the current user can temporarily assume with sts:AssumeRole.
 
             Potential Impact: An attacker would be able to use this method to attach the AdministratorAccess AWS managed policy to a role, giving them full administrator access to the AWS environment.
-            """)
+            """
+            )
         },
         "AttachUserPolicy": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: AttachUserPolicy
             Description: An attacker with the iam:AttachUserPolicy permission can escalate privileges by attaching a policy to a user that they have access to, adding the permissions of that policy to the attacker.
 
@@ -178,24 +185,30 @@ def main(args, pacu_main: "Main"):
             Where the user name is the current user.
 
             Potential Impact: An attacker would be able to use this method to attach the AdministratorAccess AWS managed policy to a user, giving them full administrator access to the AWS environment.
-            """)
+            """
+            )
         },
         "CodeStarCreateProjectFromTemplate": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: CodeStarCreateProjectFromTemplate
             See: https://rhinosecuritylabs.com/aws/escalating-aws-iam-privileges-undocumented-codestar-api/
-            """)
+            """
+            )
         },
         "CodeStarCreateProjectThenAssociateTeamMember": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: CodeStarCreateProjectThenAssociateTeamMember
             With access to the codestar:CreateProject and codestar:AssociateTeamMember permissions, an adversary can create a new CodeStar project and associate themselves as an Owner of the project.
 
             This will attach a new policy to the user that provides access to a number of permissions for AWS services. This is most useful for further enumeration as it gives access to lambda:List*, iam:ListRoles, iam:ListUsers, and more.
-            """)
+            """
+            )
         },
         "CreateAccessKey": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: CreateAccessKey
             Description: An attacker with the iam:CreateAccessKey permission on other users can create an access key ID and secret access key belonging to another user in the AWS environment, if they don’t already have two sets associated with them (which best practice says they shouldn’t).
 
@@ -206,10 +219,12 @@ def main(args, pacu_main: "Main"):
             Where target_user has an extended set of permissions compared to the current user.
 
             Potential Impact: This method would give an attacker the same level of permissions as any user they were able to create an access key for, which could range from no privilege escalation to full administrator access to the account.
-            """)
+            """
+            )
         },
         "CreateEC2WithExistingIP": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: CreateEC2WithExistingIP
             Description: An attacker with the iam:PassRole and ec2:RunInstances permissions can create a new EC2 instance that they will have operating system access to and pass an existing EC2 instance profile/service role to it. They can then login to the instance and request the associated AWS keys from the EC2 instance meta data, which gives them access to all the permissions that the associated instance profile/service role has.
 
@@ -230,10 +245,12 @@ def main(args, pacu_main: "Main"):
             An important note to make about this attack is that an obvious indicator of compromise is when EC2 instance profile credentials are used outside of the specific instance. Even AWS GuardDuty triggers on this (https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_finding-types.html#unauthorized11), so it is not a smart move to exfiltrate these credentials and run them locally, but rather access the AWS API from within that EC2 instance.
 
             Potential Impact: This attack would give an attacker access to the set of permissions that the instance profile/role has, which again could range from no privilege escalation to full administrator access of the AWS account.
-            """)
+            """
+            )
         },
         "CreateLoginProfile": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: CreateLoginProfile
             Description: An attacker with the iam:CreateLoginProfile permission on other users can create a password to use to login to the AWS console on any user that does not already have a login profile setup.
 
@@ -244,10 +261,12 @@ def main(args, pacu_main: "Main"):
             Where target_user has an extended set of permissions compared to the current user and the password is the max possible length (128 characters) with all types of characters (symbols, lowercase, uppercase, numbers) so that you can guarantee that it will meet the accounts minimum password requirements.
 
             Potential Impact: This method would give an attacker the same level of permissions as any user they were able to create a login profile for, which could range from no privilege escalation to full administrator access to the account.
-            """)
+            """
+            )
         },
         "CreateNewPolicyVersion": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: CreateNewPolicyVersion
             Description: An attacker with the iam:CreatePolicyVersion permission can create a new version of an IAM policy that they have access to. This allows them to define their own custom permissions. When creating a new policy version, it needs to be set as the default version to take effect, which you would think would require the iam:SetDefaultPolicyVersion permission, but when creating a new policy version, it is possible to include a flag (–set-as-default) that will automatically create it as the new default version. That flag does not require the iam:SetDefaultPolicyVersion permission to use.
 
@@ -258,10 +277,12 @@ def main(args, pacu_main: "Main"):
             Where the policy.json file would include a policy document that allows any action against any resource in the account.
 
             Potential Impact: This privilege escalation method could allow a user to gain full administrator access of the AWS account.
-            """)
+            """
+            )
         },
         "EditExistingLambdaFunctionWithRole": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: EditExistingLambdaFunctionWithRole
             Description: An attacker with the lambda:UpdateFunctionCode permission could update the code in an existing Lambda function with an IAM role attached so that it would import the relevant AWS library in that programming language and use it to perform actions on behalf of that role. They would then need to wait for it to be invoked if they were not able to do so directly, but if it already exists, there is likely some way that it will be invoked.
 
@@ -272,10 +293,12 @@ def main(args, pacu_main: "Main"):
             Where the associated .zip file contains code that utilizes the Lambda’s role. An example could include the code snippet from methods 11 and 12.
 
             Potential Impact: This would give an attacker access to the privileges associated with the Lambda service role that is attached to that function, which could range from no privilege escalation to full administrator access to the account.
-            """)
+            """
+            )
         },
         "PassExistingRoleToNewCloudFormation": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: PassExistingRoleToNewCloudFormation
             Description: An attacker with the iam:PassRole and cloudformation:CreateStack permissions would be able to escalate privileges by creating a CloudFormation template that will perform actions and create resources using the permissions of the role that was passed when creating a CloudFormation stack.
 
@@ -286,16 +309,20 @@ def main(args, pacu_main: "Main"):
             Where the template located at the attacker’s website includes directions to perform malicious actions, such as creating an administrator user and then using those credentials to escalate their own access.
 
             Potential Impact: This would give an attacker access to the privileges associated with the role that was passed when creating the CloudFormation stack, which could range from no privilege escalation to full administrator access to the account.
-            """)
+            """
+            )
         },
         "PassExistingRoleToNewCodeStarProject": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: PassExistingRoleToNewCodeStarProject
             With access to the iam:PassRole and codestar:CreateProject permissions, an adversary can create a new CodeStar project and pass a more privileged role to it. This would allow an adversary to escalate privileges to that more privileged role including that of an administrator.
-            """)
+            """
+            )
         },
         "PassExistingRoleToNewDataPipeline": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: PassExistingRoleToNewDataPipeline
             Description: An attacker with the iam:PassRole, datapipeline:CreatePipeline, and datapipeline:PutPipelineDefinition permissions would be able to escalate privileges by creating a pipeline and updating it to run an arbitrary AWS CLI command or create other resources, either once or on an interval with the permissions of the role that was passed in.
 
@@ -310,10 +337,12 @@ def main(args, pacu_main: "Main"):
             Where the pipeline definition file contains a directive to run a command or create resources using the AWS API that could help the attacker gain additional privileges.
 
             Potential Impact: This would give the attacker access to the privileges associated with the role that was passed when creating the pipeline, which could range from no privilege escalation to full administrator access to the account.
-            """)
+            """
+            )
         },
         "PassExistingRoleToNewGlueDevEndpoint": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: PassExistingRoleToNewGlueDevEndpoint
             Description: An attacker with the iam:PassRole and glue:CreateDevEndpoint permissions could create a new AWS Glue development endpoint and pass an existing service role to it. They then could SSH into the instance and use the AWS CLI to have access of the permissions the role has access to.
 
@@ -324,10 +353,12 @@ def main(args, pacu_main: "Main"):
             Now the attacker would just need to SSH into the development endpoint to access the roles credentials. Even though it is not specifically noted in the GuardDuty documentation, like method number 2 (Creating an EC2 instance with an existing instance profile), it would be a bad idea to exfiltrate the credentials from the Glue Instance. Instead, the AWS API should be accessed directly from the new instance.
 
             Potential Impact: This would give an attacker access to the privileges associated with any Glue service role that exists in the account, which could range from no privilege escalation to full administrator access to the account.
-            """)
+            """
+            )
         },
         "PassExistingRoleToNewLambdaThenInvoke": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: PassExistingRoleToNewLambdaThenInvoke
             Description: A user with the iam:PassRole, lambda:CreateFunction, and lambda:InvokeFunction permissions can escalate privileges by passing an existing IAM role to a new Lambda function that includes code to import the relevant AWS library to their programming language of choice, then using it perform actions of their choice. The code could then be run by invoking the function through the AWS API.
 
@@ -344,16 +375,20 @@ def main(args, pacu_main: "Main"):
             Where output.txt is where the results of the invocation will be stored.
 
             Potential Impact: This would give a user access to the privileges associated with any Lambda service role that exists in the account, which could range from no privilege escalation to full administrator access to the account.
-            """)
+            """
+            )
         },
         "PassExistingRoleToNewLambdaThenInvokeCrossAccount": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: PassExistingRoleToNewLambdaThenInvokeCrossAccount
             Description: A user with the iam:PassRole, lambda:CreateFunction, and lambda:AddPermission permissions can escalate privileges by passing an existing IAM role to a new Lambda function that includes code to import the relevant AWS library to their programming language of choice, then using it perform actions of their choice. The code could then be run by invoking the function cross-account after adding the permissions via lambda:AddPermission.
-            """)
+            """
+            )
         },
         "PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo
             Description: A user with the iam:PassRole, lambda:CreateFunction, and lambda:CreateEventSourceMapping (and possibly dynamodb:PutItem and dynamodb:CreateTable) permissions, but without the lambda:InvokeFunction permission, can escalate privileges by passing an existing IAM role to a new Lambda function that includes code to import the relevant AWS library to their programming language of choice, then using it perform actions of their choice. They then would need to either create a DynamoDB table or use an existing one, to create an event source mapping for the Lambda function pointing to that DynamoDB table. Then they would need to either put an item into the table or wait for another method to do so that the Lambda function will be invoked.
 
@@ -378,15 +413,19 @@ def main(args, pacu_main: "Main"):
             At this point, the Lambda function will be invoked, and the attacker will be made an administrator of the AWS account.
 
             Potential Impact: This would give an attacker access to the privileges associated with any Lambda service role that exists in the account, which could range from no privilege escalation to full administrator access to the account.
-            """)
+            """
+            )
         },
         "PassExistingRoleToNewLambdaThenTriggerWithNewDynamo": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: PassExistingRoleToNewLambdaThenTriggerWithNewDynamo
-            """)
+            """
+            )
         },
         "PutGroupPolicy": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: PutGroupPolicy
             Description: An attacker with the iam:PutGroupPolicy permission can escalate privileges by creating or updating an inline policy for a group that they are a part of, adding the permissions of that policy to the attacker.
 
@@ -397,10 +436,12 @@ def main(args, pacu_main: "Main"):
             Where the group is a group the current user is in.
 
             Potential Impact: Due to the ability to specify an arbitrary policy document with this method, the attacker could specify a policy that gives permission to perform any action on any resource, ultimately escalating to full administrator privileges in the AWS environment.
-            """)
+            """
+            )
         },
         "PutRolePolicy": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: PutRolePolicy
             Description: An attacker with the iam:PutRolePolicy permission can escalate privileges by creating or updating an inline policy for a role that they have access to, adding the permissions of that policy to the attacker.
 
@@ -411,10 +452,12 @@ def main(args, pacu_main: "Main"):
             Where the role is a role that the current user can temporarily assume with sts:AssumeRole.
 
             Potential Impact: Due to the ability to specify an arbitrary policy document with this method, the attacker could specify a policy that gives permission to perform any action on any resource, ultimately escalating to full administrator privileges in the AWS environment.
-            """)
+            """
+            )
         },
         "PutUserPolicy": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: PutUserPolicy
             Description: An attacker with the iam:PutUserPolicy permission can escalate privileges by creating or updating an inline policy for a user that they have access to, adding the permissions of that policy to the attacker.
 
@@ -425,10 +468,12 @@ def main(args, pacu_main: "Main"):
             Where the user name is the current user.
 
             Potential Impact: Due to the ability to specify an arbitrary policy document with this method, the attacker could specify a policy that gives permission to perform any action on any resource, ultimately escalating to full administrator privileges in the AWS environment.
-            """)
+            """
+            )
         },
         "SetExistingDefaultPolicyVersion": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: SetExistingDefaultPolicyVersion
             Description: An attacker with the iam:SetDefaultPolicyVersion permission may be able to escalate privileges through existing policy versions that are not currently in use. If a policy that they have access to has versions that are not the default, they would be able to change the default version to any other existing version.
 
@@ -439,10 +484,12 @@ def main(args, pacu_main: "Main"):
             Where “v2” is the policy version with the most privileges available.
 
             Potential Impact: The potential impact is associated with the level of permissions that the inactive policy version has. This could range from no privilege escalation at all to gaining full administrator access to the AWS account, depending on what the inactive policy versions have access to.
-            """)
+            """
+            )
         },
         "UpdateExistingGlueDevEndpoint": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: UpdateExistingGlueDevEndpoint
             Description: An attacker with the glue:UpdateDevEndpoint permission would be able to update the associated SSH public key of an existing Glue development endpoint, to then SSH into it and have access to the permissions the attached role has access to.
 
@@ -453,10 +500,12 @@ def main(args, pacu_main: "Main"):
             Now the attacker would just need to SSH into the development endpoint to access the roles credentials. Like method number 14, even though it is not specifically noted in the GuardDuty documentation, it would be a bad idea to exfiltrate the credentials from the Glue Instance. Instead, the AWS API should be accessed directly from the new instance.
 
             Potential Impact: This would give an attacker access to the privileges associated with the role attached to the specific Glue development endpoint, which could range from no privilege escalation to full administrator access to the account.
-            """)
+            """
+            )
         },
         "UpdateLoginProfile": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: UpdateLoginProfile
             Description: An attacker with the iam:UpdateLoginProfile permission on other users can change the password used to login to the AWS console on any user that already has a login profile setup.
 
@@ -469,10 +518,12 @@ def main(args, pacu_main: "Main"):
             
 
             Potential Impact: This method would give an attacker the same level of permissions as any user they were able to update the login profile for, which could range from no privilege escalation to full administrator access to the account.
-            """)
+            """
+            )
         },
         "UpdateRolePolicyToAssumeIt": {
-            "info": dedent("""
+            "info": dedent(
+                """
             Escalation method: UpdateRolePolicyToAssumeIt
             Description: An attacker with the iam:UpdateAssumeRolePolicy and sts:AssumeRole permissions would be able to change the assume role policy document of any existing role to allow them to assume that role.
 
@@ -481,12 +532,15 @@ def main(args, pacu_main: "Main"):
             aws iam update-assume-role-policy –role-name role_i_can_assume –policy-document file://path/to/assume/role/policy.json
 
             Where the policy looks like the following, which gives the user permission to assume the role:
-            """)
+            """
+            )
         },
     }
     if args.method_info:
+
         def dict_lower(input_dict):
             return {key.lower(): value for key, value in input_dict.items()}
+
         escalation_methods_info = dict_lower(escalation_methods_info)
         print(escalation_methods_info[args.method_info.lower()]["info"])
         return
@@ -803,10 +857,7 @@ def main(args, pacu_main: "Main"):
     # }
 
     user_escalation_methods = {
-        "AddUserToGroup": {
-            "iam:addusertogroup": True, 
-            "iam:listgroups": False
-        },
+        "AddUserToGroup": {"iam:addusertogroup": True, "iam:listgroups": False},
         "AttachGroupPolicy": {
             "iam:attachgrouppolicy": True,
             "iam:listgroupsforuser": False,
@@ -816,10 +867,7 @@ def main(args, pacu_main: "Main"):
             "iam:listroles": False,
             "sts:assumerole": True,
         },
-        "AttachUserPolicy": {
-            "iam:attachuserpolicy": True, 
-            "iam:listusers": False
-        },
+        "AttachUserPolicy": {"iam:attachuserpolicy": True, "iam:listusers": False},
         "CodeStarCreateProjectFromTemplate": {
             "codestar:createprojectfromtemplate": True
         },
@@ -827,19 +875,13 @@ def main(args, pacu_main: "Main"):
             "codestar:associateteammember": True,
             "codestar:createproject": True,
         },
-        "CreateAccessKey": {
-            "iam:createaccesskey": True,
-            "iam:listusers": False
-        },
+        "CreateAccessKey": {"iam:createaccesskey": True, "iam:listusers": False},
         "CreateEC2WithExistingIP": {
             "ec2:runinstances": True,
             "iam:listinstanceprofiles": False,
             "iam:passrole": True,
         },
-        "CreateLoginProfile": {
-            "iam:createloginprofile": True, 
-            "iam:listusers": False
-        },
+        "CreateLoginProfile": {"iam:createloginprofile": True, "iam:listusers": False},
         "CreateNewPolicyVersion": {
             "iam:createpolicyversion": True,
             "iam:listattachedgrouppolicies": False,
@@ -903,19 +945,13 @@ def main(args, pacu_main: "Main"):
             "lambda:createeventsourcemapping": True,
             "lambda:createfunction": True,
         },
-        "PutGroupPolicy": {
-            "iam:listgrouppolicies": False, 
-            "iam:putgrouppolicy": True
-        },
+        "PutGroupPolicy": {"iam:listgrouppolicies": False, "iam:putgrouppolicy": True},
         "PutRolePolicy": {
             "iam:listrolepolicies": False,
             "iam:putrolepolicy": True,
             "sts:assumerole": True,
         },
-        "PutUserPolicy": {
-            "iam:listuserpolicies": False, 
-            "iam:putuserpolicy": True
-        },
+        "PutUserPolicy": {"iam:listuserpolicies": False, "iam:putuserpolicy": True},
         "SetExistingDefaultPolicyVersion": {
             "iam:listattachedgrouppolicies": False,
             "iam:listattachedrolepolicies": False,
@@ -928,10 +964,7 @@ def main(args, pacu_main: "Main"):
             "glue:describedevendpoints": False,
             "glue:updatedevendpoint": True,
         },
-        "UpdateLoginProfile": {
-            "iam:listusers": False, 
-            "iam:updateloginprofile": True
-        },
+        "UpdateLoginProfile": {"iam:listusers": False, "iam:updateloginprofile": True},
         "UpdateRolePolicyToAssumeIt": {
             "iam:listroles": False,
             "iam:updateassumerolepolicy": True,
@@ -939,23 +972,14 @@ def main(args, pacu_main: "Main"):
         },
     }
     role_escalation_methods = {
-        "AttachRolePolicy": {
-            "iam:attachrolepolicy": True, 
-            "iam:listroles": False
-        },
-        "CreateAccessKey": {
-            "iam:createaccesskey": True, 
-            "iam:listusers": False
-        },
+        "AttachRolePolicy": {"iam:attachrolepolicy": True, "iam:listroles": False},
+        "CreateAccessKey": {"iam:createaccesskey": True, "iam:listusers": False},
         "CreateEC2WithExistingIP": {
             "ec2:runinstances": True,
             "iam:listinstanceprofiles": False,
             "iam:passrole": True,
         },
-        "CreateLoginProfile": {
-            "iam:createloginprofile": True, 
-            "iam:listusers": False
-        },
+        "CreateLoginProfile": {"iam:createloginprofile": True, "iam:listusers": False},
         "CreateNewPolicyVersion": {
             "iam:createpolicyversion": True,
             "iam:listattachedgrouppolicies": False,
@@ -1019,10 +1043,7 @@ def main(args, pacu_main: "Main"):
             "lambda:createeventsourcemapping": True,
             "lambda:createfunction": True,
         },
-        "PutRolePolicy": {
-            "iam:listrolepolicies": False, 
-            "iam:putrolepolicy": True
-        },
+        "PutRolePolicy": {"iam:listrolepolicies": False, "iam:putrolepolicy": True},
         "SetExistingDefaultPolicyVersion": {
             "iam:listattachedgrouppolicies": False,
             "iam:listattachedrolepolicies": False,
@@ -1035,10 +1056,7 @@ def main(args, pacu_main: "Main"):
             "glue:describedevendpoints": False,
             "glue:updatedevendpoint": True,
         },
-        "UpdateLoginProfile": {
-            "iam:listusers": False, 
-            "iam:updateloginprofile": True
-        },
+        "UpdateLoginProfile": {"iam:listusers": False, "iam:updateloginprofile": True},
         "UpdateRolePolicyToAssumeIt": {
             "iam:listroles": False,
             "iam:updateassumerolepolicy": True,

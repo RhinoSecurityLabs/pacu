@@ -13,7 +13,7 @@ module_info = {
     "author": "Dave Yesland (@daveysec)",
     "category": "ENUM",
     "one_liner": "Allows you to query enumerated user and role permissions.",
-    "description": "This module allows you to query IAM permissions for users and roles and see what resources if any they have those permissions on. For example --query s3:get*,iam:create*.", # noqa
+    "description": "This module allows you to query IAM permissions for users and roles and see what resources if any they have those permissions on. For example --query s3:get*,iam:create*.",  # noqa
     "services": ["IAM"],
     "prerequisite_modules": ["iam__enum_permissions"],
     "external_dependencies": [],
@@ -149,7 +149,6 @@ def main(args, pacu_main):
 
     # Loop through each file and parse the statements
     for file_name in files:
-
         with open(f"{iam_enum_folder}{file_name}", "r") as principal_file:
             principal = json.load(principal_file)
 
@@ -164,26 +163,36 @@ def main(args, pacu_main):
                     # Print out the info for the principal with relation to
                     # the action that was queried
                     print(
-                            f"({principal_type}) {color.green(principal_name)} can perform {color.green(action)} on these resources:"
-                        )
-                    for resource in principal["Permissions"]["Allow"][action]["Resources"]:
+                        f"({principal_type}) {color.green(principal_name)} can perform {color.green(action)} on these resources:"
+                    )
+                    for resource in principal["Permissions"]["Allow"][action][
+                        "Resources"
+                    ]:
                         print(resource)
 
                     # If there are conditions on the Allow action, print them out
                     if principal["Permissions"]["Allow"][action]["Conditions"]:
                         print(color.yellow("With the following conditions:"))
-                        for condition in principal["Permissions"]["Allow"][action]["Conditions"]:
+                        for condition in principal["Permissions"]["Allow"][action][
+                            "Conditions"
+                        ]:
                             print(condition)
 
                     # Check if there are any Deny rules for the action
                     # If there are, print them out
                     if action in principal["Permissions"]["Deny"]:
-                        print(
-                            color.red("If the resources are not included in:")
-                        )
-                        for resource in principal["Permissions"]["Deny"][action]["Resources"]:
+                        print(color.red("If the resources are not included in:"))
+                        for resource in principal["Permissions"]["Deny"][action][
+                            "Resources"
+                        ]:
                             print(resource)
                         if principal["Permissions"]["Deny"][action]["Conditions"]:
-                            print(color.yellow("These Deny rules only apply if the following conditions are met:"))
-                            for condition in principal["Permissions"]["Deny"][action]["Conditions"]:
+                            print(
+                                color.yellow(
+                                    "These Deny rules only apply if the following conditions are met:"
+                                )
+                            )
+                            for condition in principal["Permissions"]["Deny"][action][
+                                "Conditions"
+                            ]:
                                 print(condition)

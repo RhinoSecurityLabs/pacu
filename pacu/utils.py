@@ -15,21 +15,32 @@ from pacu.core.base import DATABASE_CONNECTION_PATH
 from datetime import datetime
 
 
-def get_database_connection(database_connection_path: str=DATABASE_CONNECTION_PATH) -> orm.session.Session:
-    """ Unlike database file paths, database connection paths must begin with
-    sqlite:/// """
-    assert database_connection_path.startswith('sqlite:///'), 'Database connection path must start with sqlite:///'
+def get_database_connection(
+    database_connection_path: str = DATABASE_CONNECTION_PATH,
+) -> orm.session.Session:
+    """Unlike database file paths, database connection paths must begin with
+    sqlite:///"""
+    assert database_connection_path.startswith(
+        "sqlite:///"
+    ), "Database connection path must start with sqlite:///"
 
     engine = create_engine(database_connection_path)
     Session = sessionmaker(bind=engine)
 
     return Session()
 
-def remove_empty_from_dict(d: Union[dict, list, typing.Any]) -> Union[dict, list, typing.Any]:
-    """ Reference: https://stackoverflow.com/a/24893252 """
+
+def remove_empty_from_dict(
+    d: Union[dict, list, typing.Any]
+) -> Union[dict, list, typing.Any]:
+    """Reference: https://stackoverflow.com/a/24893252"""
     if type(d) is dict:
         d = typing.cast(dict, d)
-        return dict((k, remove_empty_from_dict(v)) for k, v in d.items() if v and remove_empty_from_dict(v))
+        return dict(
+            (k, remove_empty_from_dict(v))
+            for k, v in d.items()
+            if v and remove_empty_from_dict(v)
+        )
 
     elif type(d) is list:
         d = typing.cast(list, d)
@@ -40,9 +51,9 @@ def remove_empty_from_dict(d: Union[dict, list, typing.Any]) -> Union[dict, list
 
 
 def stringify(obj: Union[dict, list, datetime]) -> Union[dict, list, str]:
-    """ The sqlalchemy-utils' JSONType doesn't accept Python datetime objects.
+    """The sqlalchemy-utils' JSONType doesn't accept Python datetime objects.
     This method converts all datetime objects in JSONizable data structures
-    into strings, allowing the ORM to save them. """
+    into strings, allowing the ORM to save them."""
 
     if isinstance(obj, dict):
         # If obj is a dict, iterate over its items and recusrively call
@@ -72,11 +83,12 @@ def stringify(obj: Union[dict, list, datetime]) -> Union[dict, list, str]:
         return obj
 
 
-def set_sigint_handler(exit_text: Optional[str]=None, value: Union[str, int]=0) -> None:
-
+def set_sigint_handler(
+    exit_text: Optional[str] = None, value: Union[str, int] = 0
+) -> None:
     def sigint_handler(signum, frame):
-        """ This is to stop the error printed when CTRL+Cing out of the program
-        so it can exit gracefully. """
+        """This is to stop the error printed when CTRL+Cing out of the program
+        so it can exit gracefully."""
         if exit_text is not None:
             print(exit_text)
 
@@ -86,38 +98,40 @@ def set_sigint_handler(exit_text: Optional[str]=None, value: Union[str, int]=0) 
 
 
 def zip_file(file_path: Path, file_data: dict) -> bytes:
-    '''
+    """
     file_data structure
     {
         'file_name_1': 'some_text_data',
         'file_name_2': 'some_text_data'
     }
-    '''
-    with zipfile.ZipFile(file_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+    """
+    with zipfile.ZipFile(file_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for file_name in file_data.keys():
             zf.writestr(file_name, file_data[file_name])
 
-    with open(file_path, 'rb') as f:
+    with open(file_path, "rb") as f:
         return f.read()
 
 
 def decode_accesskey_id(AWSKeyID):
-    '''
+    """
     Taken from: https://medium.com/@TalBeerySec/a-short-note-on-aws-key-id-f88cc4317489
     AWSKeyID is the AWS Access Key ID
     This function returns the AWS Account ID
-    '''
-    regex = re.compile('(?<![A-Z0-9])[A-Z0-9]{20}(?![A-Z0-9])')
+    """
+    regex = re.compile("(?<![A-Z0-9])[A-Z0-9]{20}(?![A-Z0-9])")
     if not regex.match(AWSKeyID):
-        print('Invalid AWS Access Key ID')
+        print("Invalid AWS Access Key ID")
         return
 
     trimmed_AWSKeyID = AWSKeyID[4:]
     x = base64.b32decode(trimmed_AWSKeyID)
     y = x[0:6]
 
-    z = int.from_bytes(y, byteorder='big', signed=False)
-    mask = int.from_bytes(binascii.unhexlify(b'7fffffffff80'), byteorder='big', signed=False)
+    z = int.from_bytes(y, byteorder="big", signed=False)
+    mask = int.from_bytes(
+        binascii.unhexlify(b"7fffffffff80"), byteorder="big", signed=False
+    )
 
     e = (z & mask) >> 7
-    return ("{:012d}".format(e))
+    return "{:012d}".format(e)

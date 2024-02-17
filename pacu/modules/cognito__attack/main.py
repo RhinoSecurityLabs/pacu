@@ -1374,7 +1374,9 @@ def get_identity_credentials(
                         print("  Access denied to GetId or GetCredentialsForIdentity.")
                     else:
                         print("  " + code)
-                    print("  Skipping identity pool enumeration for this identity client...")
+                    print(
+                        "  Skipping identity pool enumeration for this identity client..."
+                    )
             else:
                 try:
                     print(

@@ -1213,9 +1213,8 @@ def get_custom_attributes(
         print("Attributes not updated.")
         return None, None
     prompt = (
-        f"Authenticate again as user "
-        + currentuser["Username"]
-        + " to check for privilege escalation/account takeover? (Y/N): "
+        f"Authenticate again as user {currentuser['Username']} "
+        "to check for privilege escalation/account takeover? (Y/N): "
     )
     choice = input(prompt)
     if choice.lower() == "y":

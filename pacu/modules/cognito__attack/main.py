@@ -46,6 +46,7 @@ module_info = {
         "--email",
         "--username",
         "--password",
+        "--user_attributes",
     ],
 }
 
@@ -97,6 +98,13 @@ parser.add_argument(
     default=False,
     action="store",
     help="Password for sign-up or login. Defaults to TesPas808@!.",
+)
+parser.add_argument(
+    "--user_attributes",
+    required=False,
+    default=[],
+    action="store",
+    help='User attributes for sign-up. Format: \'[{"Name":"given_name","Value":"lorem"},{"Name":"custom:access","Value":"admin"}]\'',
 )
 
 

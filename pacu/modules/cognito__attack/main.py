@@ -1173,7 +1173,7 @@ def get_custom_attributes(
     attribute_value = input(prompt)
     if attribute_name != "" and attribute_value != "":
         try:
-            update = client.update_user_attributes(
+            client.update_user_attributes(
                 AccessToken=tokens["AuthenticationResult"]["AccessToken"],
                 UserAttributes=[
                     {"Name": attribute_name, "Value": attribute_value},

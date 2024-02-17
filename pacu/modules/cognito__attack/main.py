@@ -22,10 +22,19 @@ module_info = {
     # One liner description of the module functionality. This shows up when a user searches for modules.
     "one_liner": "Attacks user pool clients and identity pools by creating users and exploiting misconfigurations.",
     # Description about what the module does and how it works
-    "description": "Attempts to retrieve IAM credentials from identity pools, create (or log in) a Cognito user with each user pool client, search and modify custom user attributes, assume extra user roles, and obtain IAM credentials at each step to facilitate privilege escalation. A standard attack on an external AWS account requires four arguments: username, password, and user pool client or identity pool (ideally both). An attack on the current Pacu session's AWS account requires two arguments: username and password. If no other arguments are specified, cognito__enum will first be run to populate the Cognito database.",
+    "description": (
+        "Attempts to retrieve IAM credentials from identity pools, create (or log in) a Cognito "
+        "user with each user pool client, search and modify custom user attributes, assume extra "
+        "user roles, and obtain IAM credentials at each step to facilitate privilege escalation. A "
+        "standard attack on an external AWS account requires four arguments: username, password, and "
+        "user pool client or identity pool (ideally both). An attack on the current Pacu session's AWS "
+        "account requires two arguments: username and password. If no other arguments are specified, "
+        "cognito__enum will first be run to populate the Cognito database."
+    ),
     # A list of AWS services that the module utilizes during its execution
     "services": ["cognito-idp", "cognito-identity"],
-    # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself; that way, session data can stay separated and modular.
+    # For prerequisite modules, try and see if any existing modules return the data that is
+    # required for your module before writing that code yourself; that way, session data can stay separated and modular.
     "prerequisite_modules": ["cognito__enum"],
     # External resources that the module depends on. Valid options are either a GitHub URL (must end in .git) or single file URL.
     "external_dependencies": [],
@@ -54,28 +63,42 @@ parser.add_argument(
     "--regions",
     required=False,
     default=None,
-    help="Region(s) to target. Defaults to region(s) indicated in other arguments, and to Pacu Cognito database regions if none is found. Standard format (e.g. us-west-2).",
+    help=(
+        "Region(s) to target. Defaults to region(s) indicated in other arguments, "
+        "and to Pacu Cognito database regions if none is found. Standard format (e.g. us-west-2)."
+    ),
 )
 parser.add_argument(
     "--user_pools",
     required=False,
     default=False,
     action="store",
-    help="User pool(s) to target. This will attempt to list their user pool clients and target them also. Defaults to user pools indicated in user pool clients argument, and to all session user pools if none is found. Standard format of REGION_GUID (e.g. us-west-2_uS2erhWzQ).",
+    help=(
+        "User pool(s) to target. This will attempt to list their user pool clients and "
+        "target them also. Defaults to user pools indicated in user pool clients argument, "
+        "and to all session user pools if none is found. Standard format of REGION_GUID (e.g. us-west-2_uS2erhWzQ)."
+    ),
 )
 parser.add_argument(
     "--user_pool_clients",
     required=False,
     default=False,
     action="store",
-    help="User pool client(s) to target. Defaults to all session user pool clients. Format: ClientID@UserPoolID (e.g. 1june8@us-west-2_uS2erhWzQ).",
+    help=(
+        "User pool client(s) to target. Defaults to all session user pool clients. "
+        "Format: ClientID@UserPoolID (e.g. 1june8@us-west-2_uS2erhWzQ)."
+    ),
 )
 parser.add_argument(
     "--identity_pools",
     required=False,
     default=False,
     action="store",
-    help="Identity pool(s) to target. Defaults to all session identity pools. Standard format of 'REGION:GUID' and requires the single quotes due to colon (e.g. 'us-east-1:7dbbvc22-b905-4d75-9b2a-54ade5132076').",
+    help=(
+        "Identity pool(s) to target. Defaults to all session identity pools."
+        "Standard format of 'REGION:GUID' and requires the single quotes due to colon "
+        "(e.g. 'us-east-1:7dbbvc22-b905-4d75-9b2a-54ade5132076')."
+    ),
 )
 parser.add_argument(
     "--username",
@@ -96,7 +119,10 @@ parser.add_argument(
     required=False,
     default=[],
     action="store",
-    help='User attributes for sign-up. Format: \'[{"Name":"given_name","Value":"lorem"},{"Name":"custom:access","Value":"admin"}]\'',
+    help=(
+        "User attributes for sign-up. "
+        'Format: \'[{"Name":"given_name","Value":"lorem"},{"Name":"custom:access","Value":"admin"}]\''
+    ),
 )
 
 

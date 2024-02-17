@@ -6,6 +6,7 @@ import boto3
 import pycognito
 from pycognito import Cognito
 from pycognito.aws_srp import AWSSRP
+from typing import List, Dict
 from pycognito.exceptions import SoftwareTokenMFAChallengeException
 import argparse
 from copy import deepcopy

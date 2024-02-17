@@ -1391,7 +1391,9 @@ def get_identity_credentials(
                         print("  Access denied to GetId or GetCredentialsForIdentity.")
                     else:
                         print("  " + code)
-                    print("  Skipping identity pool enumeration for this identity client...")
+                    print(
+                        "  Skipping identity pool enumeration for this identity client..."
+                    )
             if identity_creds["Credentials"]["AccessKeyId"] is not None:
                 print("Access Key ID found.")
                 identity_pool["AccessKeyId"] = identity_creds["Credentials"][

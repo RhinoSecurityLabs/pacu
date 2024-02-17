@@ -1058,7 +1058,6 @@ def sign_up(client, email, client_id, username, password, user_attributes: list 
 
 
 def verify(client, username, client_id, user_pool_id, region):
-    new_users = []
     prompt = (
         f"Enter verification code for user {username} in user pool client {client_id}: "
     )

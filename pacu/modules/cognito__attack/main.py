@@ -909,8 +909,7 @@ def main(args, pacu_main):
 
     search_string = "custom"
 
-    print(f"List all custom attributes for all users in all user pools (y/n)?")
-    choice = input()
+    choice = input("List all custom attributes for all users in all user pools (y/n)?")
     if choice.lower() == "y" and session.Cognito["UsersInPools"] is not None:
         for user in session.Cognito["UsersInPools"]:
             if any(

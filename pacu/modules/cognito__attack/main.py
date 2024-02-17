@@ -1188,7 +1188,7 @@ def get_custom_attributes(
                 )
                 modified_value = attribute_value.swapcase()
                 try:
-                    update = client.update_user_attributes(
+                    client.update_user_attributes(
                         AccessToken=tokens["AuthenticationResult"]["AccessToken"],
                         UserAttributes=[
                             {"Name": attribute_name, "Value": modified_value},

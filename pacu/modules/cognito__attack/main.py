@@ -910,9 +910,8 @@ def main(args, pacu_main):
     for var in vars(args):
         if var == "regions":
             continue
-        if not getattr(args, var):
-            if ARG_FIELD_MAPPER[var] in gathered_data:
-                del gathered_data[ARG_FIELD_MAPPER[var]]
+        if not getattr(args, var) and ARG_FIELD_MAPPER[var] in gathered_data:
+            del gathered_data[ARG_FIELD_MAPPER[var]]
 
     cognito_data = deepcopy(session.Cognito)
     for key, value in gathered_data.items():

@@ -1166,7 +1166,8 @@ def get_custom_attributes(
             )
             print("Attribute updated!")
         except ClientError as error:
-            if attribute_name == "email" and code == "InvalidParameterException":
+            error_code = error.response["Error"]["Code"]
+            if attribute_name == "email" and error_code == "InvalidParameterException":
                 print(
                     "Error when updating email attribute. This may be because the email is already in use. Attempting to change case to bypass this defense."
                 )

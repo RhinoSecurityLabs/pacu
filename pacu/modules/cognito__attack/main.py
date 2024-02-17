@@ -1230,7 +1230,7 @@ def get_custom_attributes(
                 att_userPoolId,
                 tokens["AuthenticationResult"]["IdToken"],
             )
-            prompt = "Modify more custom attributes?"
+            prompt = "Modify more custom attributes? (y/n):"
             choice = input(prompt)
             if choice.lower() == "y":
                 get_custom_attributes(

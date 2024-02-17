@@ -1162,15 +1162,13 @@ def get_custom_attributes(
     print("Printing all current attributes: ")
     print(currentuser["UserAttributes"])
     prompt = (
-        f"Enter attribute name to modify for user "
-        + currentuser["Username"]
-        + " or hit enter to skip: "
+        f"Enter attribute name to modify for user {currentuser['Username']} "
+        "or hit enter to skip: "
     )
     attribute_name = input(prompt)
     prompt = (
-        f"Enter attribute value to set for user "
-        + currentuser["Username"]
-        + " or hit enter to skip: "
+        f"Enter attribute value to set for user {currentuser['Username']} "
+        "or hit enter to skip: "
     )
     attribute_value = input(prompt)
     if attribute_name != "" and attribute_value != "":

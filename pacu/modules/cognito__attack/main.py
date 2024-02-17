@@ -635,7 +635,7 @@ def main(args, pacu_main):
                     )
                     try:
                         webbrowser.open("qr.png")
-                    except:
+                    except Exception:
                         print(
                             "Something went wrong when opening the file. Note that this cannot be done as root. Please manually open qr.png in the working directory to scan the QR code."
                         )

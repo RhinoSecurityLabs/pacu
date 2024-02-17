@@ -968,12 +968,10 @@ def sign_up(client, email, client_id, username, password, user_attributes: list 
     try:
         if not user_attributes:
             print("No user attributes specified.")
-            response = client.sign_up(
-                ClientId=client_id, Username=username, Password=password
-            )
+            client.sign_up(ClientId=client_id, Username=username, Password=password)
         else:
             print("User attributes specified.")
-            response = client.sign_up(
+            client.sign_up(
                 ClientId=client_id,
                 Username=username,
                 Password=password,

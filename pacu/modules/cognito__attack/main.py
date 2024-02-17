@@ -355,6 +355,9 @@ def main(args, pacu_main):
                 }
             )
 
+    if isinstance(args.user_attributes, str):
+        args.user_attributes = parse_user_attributes(args.user_attributes)
+
     for up_client in up_clients:
         print(
             "Attempting to sign up user in user pool client "
@@ -377,7 +380,12 @@ def main(args, pacu_main):
         )
         try:
             response = sign_up(
-                client, args.email, up_client["ClientId"], args.username, args.password
+                client,
+                args.email,
+                up_client["ClientId"],
+                args.username,
+                args.password,
+                args.user_attributes,
             )
         except Exception as e:
             test = "yes"
@@ -912,8 +920,45 @@ def main(args, pacu_main):
     session.update(pacu_main.database, Cognito=cognito_data)
 
 
-def sign_up(client, email, client_id, username, password, user_attributes=None):
-    user_attributes = [] if user_attributes is None else user_attributes
+def validate_json_data(data, schema):
+    if not isinstance(data, dict):
+        return False
+
+    for key in schema["required"]:
+        if key not in data:
+            return False
+
+    for key, value in data.items():
+        if key in schema["properties"] and not isinstance(
+            value, schema["properties"][key]["type"]
+        ):
+            return False
+
+    return True
+
+
+def parse_user_attributes(user_attributes: str) -> List[Dict[str, str]]:
+    try:
+        json_data = json.loads(user_attributes)
+    except json.decoder.JSONDecodeError:
+        print("Provided user attributes could not be parsed. Please check your format.")
+        raise
+
+    schema = {
+        "required": ["Name", "Value"],
+        "properties": {"Name": {"type": str}, "Value": {"type": str}},
+    }
+
+    for obj in json_data:
+
+        if validate_json_data(obj, schema) is False:
+            print("Provided user attributes are not valid. Please check your format.")
+            raise
+
+    return json_data
+
+
+def sign_up(client, email, client_id, username, password, user_attributes: list = []):
     print(user_attributes)
     print(email)
     if email is not False:

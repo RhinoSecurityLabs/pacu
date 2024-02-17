@@ -1,22 +1,14 @@
+import re
 import base64
 import webbrowser
 import qrcode
+import argparse
 import json
-import boto3
-import pycognito
-from pycognito import Cognito
 from pycognito.aws_srp import AWSSRP
 from typing import List, Dict
 from pycognito.exceptions import SoftwareTokenMFAChallengeException
-import argparse
 from copy import deepcopy
-import re
-
-import pacu.core
-from pacu.modules.cognito__enum import main as enum_main
-from pacu.core.lib import save
 from botocore.exceptions import ClientError
-from pacu.core.secretfinder.utils import regex_checker, Color
 
 # Using Spencer's iam_enum.py as a template
 

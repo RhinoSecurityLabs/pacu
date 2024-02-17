@@ -960,7 +960,10 @@ def parse_user_attributes(user_attributes: str) -> List[Dict[str, str]]:
 def sign_up(client, email, client_id, username, password, user_attributes: list = []):
     print(user_attributes)
     print(email)
-    if email is not False:
+
+    email_exists = any(attribute["Name"] == "email" for attribute in user_attributes)
+
+    if not email_exists:
         user_attributes.append({"Name": "email", "Value": email})
     try:
         if user_attributes == []:

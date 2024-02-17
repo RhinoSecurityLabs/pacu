@@ -404,7 +404,7 @@ def main(args, pacu_main):
                 args.password,
                 args.user_attributes,
             )
-        except Exception as e:
+        except Exception:
             test = "yes"
 
         if response is True or "exists" in str(response):

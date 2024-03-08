@@ -63,11 +63,11 @@ def main(args, pacu_main):
             print(f"Error: Could not enumerate region {region}")
             print(f"Error: {e}")
             continue
-            exports = client.list_exports()
-            if exports:
-                with outfile('exports', region) as (f):
-                    json.dump(exports, f, indent=1)
-                find_secrets(json.dumps(exports))
+        exports = client.list_exports()
+        if exports:
+            with outfile('exports', region) as (f):
+                json.dump(exports, f, indent=1)
+            find_secrets(json.dumps(exports))
         while 'NextToken' in stacks_data:
             stacks_data = client.describe_stacks(NextToken=(stacks_data['NextToken']))
             stacks += stacks_data['Stacks']

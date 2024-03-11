@@ -53,19 +53,21 @@ def main(args, pacu_main):
     all_stacks = []
     found_regions = []
     for region in regions:
-        client = pacu_main.get_boto3_client('cloudformation', region)
-        print('Looking for CloudFormation Stacks in region {}...'.format(region))
-        stacks_data = client.describe_stacks()
-        stacks = stacks_data['Stacks']
-        all_stacks += stacks
-
-        if stacks_data['Stacks']:
-            print('Getting exports for region: {}'.format(region))
-            exports = client.list_exports()
-            if exports:
-                with outfile('exports', region) as (f):
-                    json.dump(exports, f, indent=1)
-                find_secrets(json.dumps(exports))
+        try:
+            client = pacu_main.get_boto3_client("cloudformation", region)
+            print("Looking for CloudFormation Stacks in region {}...".format(region))
+            stacks_data = client.describe_stacks()
+            stacks = stacks_data["Stacks"]
+            all_stacks += stacks
+        except ClientError as e:
+            print(f"Error: Could not enumerate region {region}")
+            print(f"Error: {e}")
+            continue
+        exports = client.list_exports()
+        if exports:
+            with outfile('exports', region) as (f):
+                json.dump(exports, f, indent=1)
+            find_secrets(json.dumps(exports))
         while 'NextToken' in stacks_data:
             stacks_data = client.describe_stacks(NextToken=(stacks_data['NextToken']))
             stacks += stacks_data['Stacks']

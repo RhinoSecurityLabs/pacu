@@ -980,8 +980,9 @@ def sign_up(client, email, client_id, username, password, user_attributes: list 
 
     email_exists = any(attribute["Name"] == "email" for attribute in user_attributes)
 
-    if not email_exists:
+    if email and not email_exists:
         user_attributes.append({"Name": "email", "Value": email})
+
     try:
         if not user_attributes:
             print("No user attributes specified.")

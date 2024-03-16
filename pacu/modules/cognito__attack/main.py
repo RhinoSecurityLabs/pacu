@@ -974,7 +974,9 @@ def parse_user_attributes(user_attributes: str) -> List[Dict[str, str]]:
     return json_data
 
 
-def sign_up(client, email, client_id, username, password, user_attributes: list = []):
+def sign_up(client, email, client_id, username, password, user_attributes=None):
+    if user_attributes is None:
+        user_attributes = []
     print(user_attributes)
     print(email)
 
@@ -984,17 +986,12 @@ def sign_up(client, email, client_id, username, password, user_attributes: list 
         user_attributes.append({"Name": "email", "Value": email})
 
     try:
-        if not user_attributes:
-            print("No user attributes specified.")
-            client.sign_up(ClientId=client_id, Username=username, Password=password)
-        else:
-            print("User attributes specified.")
-            client.sign_up(
-                ClientId=client_id,
-                Username=username,
-                Password=password,
-                UserAttributes=user_attributes,
-            )
+        client.sign_up(
+            ClientId=client_id,
+            Username=username,
+            Password=password,
+            UserAttributes=user_attributes or [],
+        )
         print(f"Successfully signed up user {username}.")
         return True
     except client.exceptions.UsernameExistsException:
@@ -1029,11 +1026,11 @@ def sign_up(client, email, client_id, username, password, user_attributes: list 
             print(f"Invalid parameter: {str(e)}")
             param_name = input("Please enter the name of the invalid parameter: ")
             param_value = input("Please enter the value of the invalid parameter: ")
-            if param_name == "Username" or "username":
+            if param_name.lower() == "username":
                 return sign_up(
                     client, email, client_id, param_value, password, user_attributes
                 )
-            if param_name == "Password" or "password":
+            if param_name.lower() == "password":
                 return sign_up(
                     client, email, client_id, username, param_value, user_attributes
                 )

@@ -1003,56 +1003,44 @@ def sign_up(client, email, client_id, username, password, user_attributes: list 
     except client.exceptions.InvalidParameterException as e:
         error_message = str(e)
         print(error_message)
-
-        # Use a regular expression to find the required attributes in the error message
-        pattern = r"(\w+): The attribute [^:]+ is required"
-        matches = re.findall(pattern, error_message)
-
-        oidc_reference = (
-            "[INFO] Please refer to the standard claims from OpenID Connect: "
-            "https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims"
-        )
-
-        if not matches:
-            print(
-                "No required attributes found in the error message. Please add them manually."
+        if "attribute is required" in error_message:
+            parameter = re.search(
+                r"schema: (.*?): The attribute is required", error_message
             )
-            print(oidc_reference)
-
-            while True:
-                param_name = input(
-                    "Please enter the name of the invalid parameter (or type 'done' to finish): "
+            if parameter:
+                attribute_name = parameter.group(1)
+                prompt = f"Enter value for {attribute_name}: "
+                param_value = input(prompt)
+                user_attributes.append({"Name": attribute_name, "Value": param_value})
+                return sign_up(
+                    client, email, client_id, username, password, user_attributes
                 )
-                if param_name.lower() == "done":
-                    break
-
-                param_value = input("Please enter the value of the invalid parameter: ")
-
-                if param_name.lower() == "username":
-                    username = param_value
-                elif param_name.lower() == "password":
-                    password = param_value
-                else:
-                    user_attributes.append({"Name": param_name, "Value": param_value})
-
-        else:
-            print("The following required attributes were found in the error message:")
-            for match in matches:
-                attribute_name = match.split(":")[0].strip()
-                print(f"- {attribute_name}")
-
-            print(oidc_reference)
-
-            for match in matches:
-                attribute_name = match.split(":")[0].strip()
-                param_name = input(
-                    f"Enter correct attribute name for [{attribute_name}]: "
+            else:
+                print(f"Required attribute: {str(e)}")
+                param_name = input("Please enter the name of the required attribute: ")
+                param_value = input(
+                    "Please enter the value of the required attribute: "
                 )
-                param_value = input(f"Please enter the value for {param_name}: ")
                 user_attributes.append({"Name": param_name, "Value": param_value})
-
-        return sign_up(client, email, client_id, username, password, user_attributes)
-
+                return sign_up(
+                    client, email, client_id, username, password, user_attributes
+                )
+        else:
+            print(f"Invalid parameter: {str(e)}")
+            param_name = input("Please enter the name of the invalid parameter: ")
+            param_value = input("Please enter the value of the invalid parameter: ")
+            if param_name == "Username" or "username":
+                return sign_up(
+                    client, email, client_id, param_value, password, user_attributes
+                )
+            if param_name == "Password" or "password":
+                return sign_up(
+                    client, email, client_id, username, param_value, user_attributes
+                )
+            user_attributes.append({"Name": param_name, "Value": param_value})
+            return sign_up(
+                client, email, client_id, username, password, user_attributes
+            )
     except Exception as e:
         print(f"Error signing up user {username}: {str(e)}")
         return False

@@ -975,11 +975,7 @@ def parse_user_attributes(user_attributes: str) -> List[Dict[str, str]]:
 
 
 def sign_up(client, email, client_id, username, password, user_attributes=None):
-    if user_attributes is None:
-        user_attributes = []
-    print(user_attributes)
-    print(email)
-
+    user_attributes = user_attributes or []
     email_exists = any(attribute["Name"] == "email" for attribute in user_attributes)
 
     if email and not email_exists:
@@ -990,7 +986,7 @@ def sign_up(client, email, client_id, username, password, user_attributes=None):
             ClientId=client_id,
             Username=username,
             Password=password,
-            UserAttributes=user_attributes or [],
+            UserAttributes=user_attributes,
         )
         print(f"Successfully signed up user {username}.")
         return True
@@ -1006,19 +1002,8 @@ def sign_up(client, email, client_id, username, password, user_attributes=None):
             )
             if parameter:
                 attribute_name = parameter.group(1)
-                prompt = f"Enter value for {attribute_name}: "
-                param_value = input(prompt)
+                param_value = input(f"Enter value for {attribute_name}: ")
                 user_attributes.append({"Name": attribute_name, "Value": param_value})
-                return sign_up(
-                    client, email, client_id, username, password, user_attributes
-                )
-            else:
-                print(f"Required attribute: {str(e)}")
-                param_name = input("Please enter the name of the required attribute: ")
-                param_value = input(
-                    "Please enter the value of the required attribute: "
-                )
-                user_attributes.append({"Name": param_name, "Value": param_value})
                 return sign_up(
                     client, email, client_id, username, password, user_attributes
                 )
@@ -1026,13 +1011,14 @@ def sign_up(client, email, client_id, username, password, user_attributes=None):
             print(f"Invalid parameter: {str(e)}")
             param_name = input("Please enter the name of the invalid parameter: ")
             param_value = input("Please enter the value of the invalid parameter: ")
-            if param_name.lower() == "username":
+            if param_name.lower() in ["username", "password"]:
                 return sign_up(
-                    client, email, client_id, param_value, password, user_attributes
-                )
-            if param_name.lower() == "password":
-                return sign_up(
-                    client, email, client_id, username, param_value, user_attributes
+                    client,
+                    email,
+                    client_id,
+                    param_name.lower() == "username" and param_value or username,
+                    param_name.lower() == "password" and param_value or password,
+                    user_attributes,
                 )
             user_attributes.append({"Name": param_name, "Value": param_value})
             return sign_up(

@@ -529,3 +529,7 @@ modules/lambda__backdoor_new_users/lambda_function.zip
 modules/lambda__backdoor_new_roles/lambda_function.py
 modules/lambda__backdoor_new_roles/lambda_function.zip
 modules/iam__privesc_scan/PassExistingRoleToNewCodeStarProject/codestar_cf_template.json
+
+# vscode
+
+.vscode/

@@ -423,7 +423,7 @@ def main(args, pacu_main: Main):
 
         try:
             aws = AWSSRP(
-                username=args.username,
+                username=username,
                 password=args.password,
                 pool_id=up_client["UserPoolId"],
                 client_id=up_client["ClientId"],
@@ -431,7 +431,7 @@ def main(args, pacu_main: Main):
             )
             tokens = aws.authenticate_user()
             if "AuthenticationResult" in tokens:
-                print("You're signed in as " + args.username + "!")
+                print("You're signed in as " + username + "!")
                 print(
                     "Your access token is: "
                     + tokens["AuthenticationResult"]["AccessToken"]
@@ -444,7 +444,7 @@ def main(args, pacu_main: Main):
                 print(
                     "Your token type is: " + tokens["AuthenticationResult"]["TokenType"]
                 )
-                attack_user["Username"] = args.username
+                attack_user["Username"] = username
                 attack_user["Region"] = up_client["Region"]
                 attack_user["UserPoolId"] = up_client["UserPoolId"]
                 attack_user["ClientId"] = up_client["ClientId"]
@@ -527,14 +527,14 @@ def main(args, pacu_main: Main):
                     ChallengeName="SOFTWARE_TOKEN_MFA",
                     Session=aws2sessionfinal,
                     ChallengeResponses={
-                        "USERNAME": args.username,
+                        "USERNAME": username,
                         "SOFTWARE_TOKEN_MFA_CODE": code,
                     },
                 )
             except ClientError as err:
                 print(err)
                 continue
-            print("You're signed in as " + args.username + "!")
+            print("You're signed in as " + username + "!")
             print(
                 "Your access token is: " + tokens["AuthenticationResult"]["AccessToken"]
             )
@@ -544,7 +544,7 @@ def main(args, pacu_main: Main):
                 + tokens["AuthenticationResult"]["RefreshToken"]
             )
             print("Your token type is: " + tokens["AuthenticationResult"]["TokenType"])
-            attack_user["Username"] = args.username
+            attack_user["Username"] = username
             attack_user["Region"] = up_client["Region"]
             attack_user["UserPoolId"] = up_client["UserPoolId"]
             attack_user["ClientId"] = up_client["ClientId"]
@@ -611,7 +611,7 @@ def main(args, pacu_main: Main):
                     Session=tokens["Session"]
                 )
                 qr_img = qrcode.make(
-                    f"otpauth://totp/{args.username}?secret={associate_token_response['SecretCode']}"
+                    f"otpauth://totp/{username}?secret={associate_token_response['SecretCode']}"
                 )
                 qr_img.save("qr.png")
                 print(
@@ -638,7 +638,7 @@ def main(args, pacu_main: Main):
                 )
                 try:
                     aws2 = AWSSRP(
-                        username=args.username,
+                        username=username,
                         password=args.password,
                         pool_id=up_client["UserPoolId"],
                         client_id=up_client["ClientId"],
@@ -664,14 +664,14 @@ def main(args, pacu_main: Main):
                             ChallengeName="SOFTWARE_TOKEN_MFA",
                             Session=aws2sessionfinal,
                             ChallengeResponses={
-                                "USERNAME": args.username,
+                                "USERNAME": username,
                                 "SOFTWARE_TOKEN_MFA_CODE": code,
                             },
                         )
                     except ClientError as err:
                         print(err)
                         continue
-                print("You're signed in as " + args.username + "!")
+                print("You're signed in as " + username + "!")
                 print(
                     "Your access token is: "
                     + tokens["AuthenticationResult"]["AccessToken"]
@@ -684,7 +684,7 @@ def main(args, pacu_main: Main):
                 print(
                     "Your token type is: " + tokens["AuthenticationResult"]["TokenType"]
                 )
-                attack_user["Username"] = args.username
+                attack_user["Username"] = username
                 attack_user["Region"] = up_client["Region"]
                 attack_user["UserPoolId"] = up_client["UserPoolId"]
                 attack_user["ClientId"] = up_client["ClientId"]
@@ -774,7 +774,7 @@ def main(args, pacu_main: Main):
             tokens = client.verify_software_token(
                 Session=associate_token_response["Session"], UserCode=mfa_code
             )
-            print("You're signed in as " + args.username + "!")
+            print("You're signed in as " + username + "!")
             print(
                 "Your access token is: " + tokens["AuthenticationResult"]["AccessToken"]
             )
@@ -784,7 +784,7 @@ def main(args, pacu_main: Main):
                 + tokens["AuthenticationResult"]["RefreshToken"]
             )
             print("Your token type is: " + tokens["AuthenticationResult"]["TokenType"])
-            attack_user["Username"] = args.username
+            attack_user["Username"] = username
             attack_user["Region"] = up_client["Region"]
             attack_user["UserPoolId"] = up_client["UserPoolId"]
             attack_user["ClientId"] = up_client["ClientId"]

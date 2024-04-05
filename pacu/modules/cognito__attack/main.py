@@ -5,10 +5,11 @@ import qrcode
 import argparse
 import json
 from pycognito.aws_srp import AWSSRP
-from typing import List, Dict
+from typing import List, Dict, Optional
 from pycognito.exceptions import SoftwareTokenMFAChallengeException
 from copy import deepcopy
 from botocore.exceptions import ClientError
+from pacu import Main
 
 # Using Spencer's iam_enum.py as a template
 
@@ -136,7 +137,7 @@ ARG_FIELD_MAPPER = {
 }
 
 
-def main(args, pacu_main):
+def main(args, pacu_main: Main):
     attack_users = []
     all_new_regions = []
     attack_user_pool_clients = []
@@ -974,7 +975,14 @@ def parse_user_attributes(user_attributes: str) -> List[Dict[str, str]]:
     return json_data
 
 
-def sign_up(client, email, client_id, username, password, user_attributes=None):
+def sign_up(
+    client,
+    email: str,
+    client_id: str,
+    username: str,
+    password: str,
+    user_attributes: List[Dict[str, str]] = None,
+) -> Optional[str]:
     user_attributes = user_attributes or []
     email_exists = any(attribute["Name"] == "email" for attribute in user_attributes)
 
@@ -989,10 +997,10 @@ def sign_up(client, email, client_id, username, password, user_attributes=None):
             UserAttributes=user_attributes,
         )
         print(f"Successfully signed up user {username}.")
-        return True
+        return username
     except client.exceptions.UsernameExistsException:
         print(f"Username {username} already exists. Attempting to log in.")
-        return "exists"
+        return None
     except client.exceptions.InvalidParameterException as e:
         error_message = str(e)
         print(error_message)
@@ -1026,7 +1034,7 @@ def sign_up(client, email, client_id, username, password, user_attributes=None):
             )
     except Exception as e:
         print(f"Error signing up user {username}: {str(e)}")
-        return False
+        return None
 
 
 def verify(client, username, client_id, user_pool_id, region):

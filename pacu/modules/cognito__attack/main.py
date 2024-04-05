@@ -5,6 +5,7 @@ import qrcode
 import argparse
 import json
 from pycognito.aws_srp import AWSSRP
+from dataclasses import dataclass
 from typing import List, Dict, Optional
 from pycognito.exceptions import SoftwareTokenMFAChallengeException
 from copy import deepcopy
@@ -51,6 +52,7 @@ module_info = {
         "--user_attributes",
     ],
 }
+
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info["description"])
 parser.add_argument(
@@ -135,6 +137,12 @@ ARG_FIELD_MAPPER = {
     "username": "Username",
     "password": "Password",
 }
+
+
+@dataclass
+class SignUpResponse:
+    username: Optional[str] = None
+    is_new_user: bool = True
 
 
 def main(args, pacu_main: Main):
@@ -396,7 +404,7 @@ def main(args, pacu_main: Main):
             "cognito-identity", up_client["Region"]
         )
         try:
-            username = sign_up(
+            sign_up_resposne = sign_up(
                 client,
                 args.email,
                 up_client["ClientId"],
@@ -408,17 +416,20 @@ def main(args, pacu_main: Main):
             print("User exists.")
             break
 
+        username = sign_up_resposne.username
+
         if username is None:
             break
 
-        tokens = verify(
-            client,
-            username,
-            up_client["ClientId"],
-            up_client["UserPoolId"],
-            up_client["Region"],
-        )
-        all_new_regions.append(up_client["Region"])
+        if sign_up_resposne.is_new_user:
+            tokens = verify(
+                client,
+                username,
+                up_client["ClientId"],
+                up_client["UserPoolId"],
+                up_client["Region"],
+            )
+            all_new_regions.append(up_client["Region"])
 
         try:
             aws = AWSSRP(
@@ -938,7 +949,10 @@ def sign_up(
     username: str,
     password: str,
     user_attributes: List[Dict[str, str]] = None,
-) -> Optional[str]:
+) -> SignUpResponse:
+
+    response = SignUpResponse(username=username)
+
     user_attributes = user_attributes or []
     email_exists = any(attribute["Name"] == "email" for attribute in user_attributes)
 
@@ -953,10 +967,11 @@ def sign_up(
             UserAttributes=user_attributes,
         )
         print(f"Successfully signed up user {username}.")
-        return username
+        return response
     except client.exceptions.UsernameExistsException:
         print(f"Username {username} already exists. Attempting to log in.")
-        return None
+        response.is_new_user = False
+        return response
     except client.exceptions.InvalidParameterException as e:
         error_message = str(e)
         print(error_message)
@@ -990,7 +1005,7 @@ def sign_up(
             )
     except Exception as e:
         print(f"Error signing up user {username}: {str(e)}")
-        return None
+        return SignUpResponse()
 
 
 def verify(client, username, client_id, user_pool_id, region):

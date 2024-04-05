@@ -269,19 +269,19 @@ def main(args, pacu_main: Main):
         for user_pool in args.user_pools.split(","):
             region = user_pool.split("_")[0]
             client = pacu_main.get_boto3_client("cognito-idp", region)
-            response = None
+            username = None
             next_token = None
-            while response is None or next_token is not None:
+            while username is None or next_token is not None:
                 if next_token is None:
                     try:
                         print(
                             f"Trying to list original user pool clients for UserPoolId: {user_pool} in region {region}"
                         )
-                        response = client.list_user_pool_clients(
+                        username = client.list_user_pool_clients(
                             UserPoolId=user_pool, MaxResults=60
                         )
 
-                        for user_pool_client in response["UserPoolClients"]:
+                        for user_pool_client in username["UserPoolClients"]:
                             client_info = {}
                             print("User pool client found.")
                             client_info["ClientId"] = user_pool_client["ClientId"]
@@ -290,12 +290,12 @@ def main(args, pacu_main: Main):
                             up_clients.append(client_info)
                             attack_user_pool_clients.append(client_info)
 
-                        if "NextToken" in response:
-                            next_token = response["NextToken"]
+                        if "NextToken" in username:
+                            next_token = username["NextToken"]
 
                     except ClientError as error:
                         code = error.response["Error"]["Code"]
-                        print(response)
+                        print(username)
                         print("FAILURE: ")
                         if code == "UnauthorizedOperation":
                             print("  Access denied to ListUserPoolClients.")
@@ -313,11 +313,11 @@ def main(args, pacu_main: Main):
                         print(
                             f"Trying to list else-block user pool clients for UserPoolId: {user_pool}"
                         )
-                        response = client.list_user_pool_clients(
+                        username = client.list_user_pool_clients(
                             NextToken=next_token, UserPoolId=user_pool, MaxResults=60
                         )
 
-                        for user_pool_client in response["UserPoolClients"]:
+                        for user_pool_client in username["UserPoolClients"]:
                             client_info = {}
                             print("User pool client found.")
                             client_info["ClientId"] = user_pool_client["ClientId"]
@@ -340,9 +340,9 @@ def main(args, pacu_main: Main):
                         print("  Skipping user pool client enumeration...")
                         break
 
-                    if "NextToken" in response:
+                    if "NextToken" in username:
                         print("NextToken found.")
-                        next_token = response["NextToken"]
+                        next_token = username["NextToken"]
                     else:
                         print("No NextToken found.")
                         break
@@ -397,7 +397,7 @@ def main(args, pacu_main: Main):
             "cognito-identity", up_client["Region"]
         )
         try:
-            response = sign_up(
+            username = sign_up(
                 client,
                 args.email,
                 up_client["ClientId"],
@@ -409,20 +409,18 @@ def main(args, pacu_main: Main):
             print("User exists.")
             break
 
-        if response is None:
+        if username is None:
             break
 
-        if response is True:
-            tokens = verify(
-                client,
-                response,
-                up_client["ClientId"],
-                up_client["UserPoolId"],
-                up_client["Region"],
-            )
-            all_new_regions.append(up_client["Region"])
-        elif "yes" in test:
-            print("User exists.")
+        tokens = verify(
+            client,
+            username,
+            up_client["ClientId"],
+            up_client["UserPoolId"],
+            up_client["Region"],
+        )
+        all_new_regions.append(up_client["Region"])
+
         try:
             aws = AWSSRP(
                 username=args.username,

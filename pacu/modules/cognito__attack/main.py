@@ -390,7 +390,6 @@ def main(args, pacu_main: Main):
         aws = []
         aws2session = ""
         qr_img = []
-        test = ""
         tokens = []
         client = pacu_main.get_boto3_client("cognito-idp", up_client["Region"])
         identity_client = pacu_main.get_boto3_client(

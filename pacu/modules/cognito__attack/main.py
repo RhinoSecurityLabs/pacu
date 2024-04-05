@@ -406,10 +406,11 @@ def main(args, pacu_main: Main):
                 args.user_attributes,
             )
         except Exception:
-            test = "yes"
+            print("User exists.")
+            break
 
         if response is None:
-            return
+            break
 
         if response is True:
             tokens = verify(

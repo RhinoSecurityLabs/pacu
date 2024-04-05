@@ -941,7 +941,6 @@ def sign_up(
     password: str,
     user_attributes: List[Dict[str, str]] = None,
 ) -> Optional[str]:
-    return None
     user_attributes = user_attributes or []
     email_exists = any(attribute["Name"] == "email" for attribute in user_attributes)
 

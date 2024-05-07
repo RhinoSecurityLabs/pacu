@@ -2,6 +2,7 @@
 """Module for ebs_snapshot_explorer"""
 import argparse
 import sys
+import os
 from typing import List
 from typing_extensions import TypedDict
 
@@ -79,6 +80,9 @@ def main(args, pacu: Main):
 
     try:
         out_dir = downloads_dir()/'ebs/snapshots'
+        # Check if the directory exists, create if not
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
         snap = snapshot.LocalSnapshot(str(out_dir), snapshot_id, pacu.get_boto_session(region=region), pacu.get_botocore_conf())
     except UserWarning as e:
         print(*e.args)

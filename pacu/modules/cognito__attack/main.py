@@ -404,7 +404,7 @@ def main(args, pacu_main: Main):
             "cognito-identity", up_client["Region"]
         )
         try:
-            sign_up_resposne = sign_up(
+            sign_up_response = sign_up(
                 client,
                 args.email,
                 up_client["ClientId"],
@@ -416,12 +416,12 @@ def main(args, pacu_main: Main):
             print("User exists.")
             break
 
-        username = sign_up_resposne.username
+        username = sign_up_response.username
 
         if username is None:
             break
 
-        if sign_up_resposne.is_new_user:
+        if sign_up_response.is_new_user:
             tokens = verify(
                 client,
                 username,

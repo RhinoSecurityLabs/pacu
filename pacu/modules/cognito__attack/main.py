@@ -11,6 +11,7 @@ from pycognito.exceptions import SoftwareTokenMFAChallengeException
 from copy import deepcopy
 from botocore.exceptions import ClientError
 from pacu import Main
+from botocore.client import BaseClient
 
 # Using Spencer's iam_enum.py as a template
 
@@ -143,6 +144,21 @@ ARG_FIELD_MAPPER = {
 class SignUpResponse:
     username: Optional[str] = None
     is_new_user: bool = True
+
+
+def _verify_user(
+    client: BaseClient, username: str, up_client: dict, all_new_regions: list
+):
+    tokens = verify(
+        client,
+        username,
+        up_client["ClientId"],
+        up_client["UserPoolId"],
+        up_client["Region"],
+    )
+    all_new_regions.append(up_client["Region"])
+
+    return tokens
 
 
 def main(args, pacu_main: Main):
@@ -422,14 +438,7 @@ def main(args, pacu_main: Main):
             break
 
         if sign_up_response.is_new_user:
-            tokens = verify(
-                client,
-                username,
-                up_client["ClientId"],
-                up_client["UserPoolId"],
-                up_client["Region"],
-            )
-            all_new_regions.append(up_client["Region"])
+            _verify_user(client, username, up_client, all_new_regions)
 
         try:
             aws = AWSSRP(
@@ -439,7 +448,17 @@ def main(args, pacu_main: Main):
                 client_id=up_client["ClientId"],
                 client=client,
             )
-            tokens = aws.authenticate_user()
+            try:
+                tokens = aws.authenticate_user()
+            except ClientError as e:
+
+                error_response = e.response["Error"]
+                if error_response["Code"] == "UserNotConfirmedException":
+                    print(
+                        "User already exists, but not confirmed! Please verify first."
+                    )
+                    _verify_user(client, username, up_client, all_new_regions)
+
             if "AuthenticationResult" in tokens:
                 print("You're signed in as " + username + "!")
                 print(

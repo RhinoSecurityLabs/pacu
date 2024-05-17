@@ -3301,14 +3301,14 @@ def PassExistingRoleToNewDataPipeline(pacu_main, print, input, fetch_data):
     print(
         "No auto-exploitation setup for PassExistingRoleToNewDataPipeline, visit the blog for manual exploitation steps: https://rhinosecuritylabs.com/aws/aws-privilege-escalation-methods-mitigation/\n"
     )
-    return
+    return False
 
 
 def CodeStarCreateProjectFromTemplate(pacu_main, print, input, fetch_data):
     print(
         "No auto-exploitation setup for CodeStarCreateProjectFromTemplate, visit the blog on this privilege escalation method for a standalone exploitation script: https://rhinosecuritylabs.com/aws/escalating-aws-iam-privileges-undocumented-codestar-api"
     )
-    return
+    return False
 
 
 def PassExistingRoleToNewCodeStarProject(pacu_main, print, input, fetch_data):

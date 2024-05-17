@@ -262,7 +262,11 @@ def main(args, pacu_main):
         regions = []
         instances_id_regions = args.target_instances.split(',')
         for instance_id_region in instances_id_regions:
-            instance_id, instance_region = instance_id_region.split('@')
+            try:
+                instance_id, instance_region = instance_id_region.split('@')
+            except ValueError as error:
+                print('  Unable to validate provided target_instances. Ensure they match the format instance-id@region. Error: {}\n'.format(str(error)))
+                return
             regions.append(instance_region)
             client = pacu_main.get_boto3_client('ec2', instance_region)
             instance = client.describe_instances(InstanceIds=[instance_id])["Reservations"][0]["Instances"][0]

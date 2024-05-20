@@ -559,7 +559,7 @@ def summary(data, pacu_main):
                                                                                   count_max_len=count_max_len)
     else:
         out += "{:>{count_max_len}} Unconfirmed permissions for {} user(s).\n".format(data["users_unconfirmed_perm_count"],
-                                                                                  data["single_user"],
+                                                                                  data["users_unconfirmed"],
                                                                                   count_max_len=count_max_len)
 
     if data["roles_unconfirmed"] == 1:

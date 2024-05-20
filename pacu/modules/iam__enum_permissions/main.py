@@ -91,7 +91,7 @@ def main(args, pacu_main: "Main"):
     summary_data = {"users_confirmed": 0, "roles_confirmed": 0,
                    "users_unconfirmed": 0, "roles_unconfirmed": 0,
                    "users_confirmed_perm_count": 0, "roles_confirmed_perm_count": 0,
-                   "users_unconfirmed_perm_count": 0, "roles_unconfirmed_perm_count": 0}}
+                   "users_unconfirmed_perm_count": 0, "roles_unconfirmed_perm_count": 0}
 
     users = []
     roles = []
@@ -529,35 +529,47 @@ def summary(data, pacu_main):
     if not data:
         return "  Unable to find users/roles to enumerate permissions\n"
 
+    count_max_len = 2 + max(data["users_confirmed_perm_count"],
+                            data["roles_confirmed_perm_count"],
+                            data["users_unconfirmed_perm_count"],
+                            data["roles_unconfirmed_perm_count"])
+
     # Create Confirmed listings
     if data.get("single_user") and data["users_confirmed"] == 1:
-            out += "  Confirmed permissions for user: {}.\n".format(data["single_user"])
+        out += "{:>{count_max_len}} Confirmed permissions for user: {}.\n".format(data["users_confirmed_perm_count"],
+                                                                                  data["single_user"],
+                                                                                  count_max_len=count_max_len)
     else:
-        out += "  Confirmed permissions for {} user(s).\n".format(
-            data["users_confirmed"]
-        )
+        out += "{:>{count_max_len}} Confirmed permissions for {} user(s).\n".format(data["users_confirmed_perm_count"],
+                                                                                    data["users_confirmed"],
+                                                                                    count_max_len=count_max_len)
 
     if data["roles_confirmed"] == 1:
-        out += "  Confirmed permissions for role: {}.\n".format(data["single_role"])
+        out += "{:>{count_max_len}} Confirmed permissions for role: {}.\n".format(data["roles_confirmed_perm_count"],
+                                                                                  data["single_role"],
+                                                                                  count_max_len=count_max_len)
     else:
-        out += "  Confirmed permissions for {} role(s).\n".format(
-            data["roles_confirmed"]
-        )
-
+        out += "{:>{count_max_len}} Confirmed permissions for {} role(s).\n".format(data["roles_confirmed_perm_count"],
+                                                                                    data["roles_confirmed"],
+                                                                                    count_max_len=count_max_len)
     # Create Unconfirmed listings
     if data.get("single_user") and data["users_unconfirmed"] == 1:
-            out += "  Unconfirmed permissions for user: {}.\n".format(data["single_user"])
+            out += "{:>{count_max_len}} Unconfirmed permissions for user: {}.\n".format(data["users_unconfirmed_perm_count"],
+                                                                                  data["single_user"],
+                                                                                  count_max_len=count_max_len)
     else:
-        out += "  Unconfirmed permissions for {} user(s).\n".format(
-            data["users_unconfirmed"]
-        )
+        out += "{:>{count_max_len}} Unconfirmed permissions for {} user(s).\n".format(data["users_unconfirmed_perm_count"],
+                                                                                  data["single_user"],
+                                                                                  count_max_len=count_max_len)
 
     if data["roles_unconfirmed"] == 1:
-        out += "  Unconfirmed permissions for role: {}.\n".format(data["single_role"])
+        out += "{:>{count_max_len}} Unconfirmed permissions for role: {}.\n".format(data["roles_unconfirmed_perm_count"],
+                                                                                    data["single_role"],
+                                                                                    count_max_len=count_max_len)
     else:
-        out += "  Unconfirmed permissions for {} role(s).\n".format(
-            data["roles_unconfirmed"]
-        )
+        out += "{:>{count_max_len}} Unconfirmed permissions for {} role(s).\n".format(data["roles_unconfirmed_perm_count"],
+                                                                                      data["roles_unconfirmed"],
+                                                                                      count_max_len=count_max_len)
     return out
 
 

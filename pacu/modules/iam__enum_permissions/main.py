@@ -529,10 +529,10 @@ def summary(data, pacu_main):
     if not data:
         return "  Unable to find users/roles to enumerate permissions\n"
 
-    count_max_len = 2 + max(data["users_confirmed_perm_count"],
-                            data["roles_confirmed_perm_count"],
-                            data["users_unconfirmed_perm_count"],
-                            data["roles_unconfirmed_perm_count"])
+    count_max_len = 2 + max(len(str(data["users_confirmed_perm_count"])),
+                            len(str(data["roles_confirmed_perm_count"])),
+                            len(str(data["users_unconfirmed_perm_count"])),
+                            len(str(data["roles_unconfirmed_perm_count"])))
 
     # Create Confirmed listings
     if data.get("single_user") and data["users_confirmed"] == 1:

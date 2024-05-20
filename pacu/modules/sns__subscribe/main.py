@@ -78,8 +78,6 @@ def main(args, pacu_main: "Main"):
             Endpoint=args.email,
             ReturnSubscriptionArn=True,
         )
-        print(response)
-        print(type(response))
         print(
             "Subscribed successfully, check email for subscription confirmation. Confirmation ARN: {}".format(
                 response["SubscriptionArn"]

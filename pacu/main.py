@@ -1899,7 +1899,7 @@ aws_secret_access_key = {}
         parser.add_argument('--set-regions', nargs='+', default=None, help='<region1 region2 ...> or <all> for all', metavar='')
         parser.add_argument('--whoami', action='store_true', help='Display information on current IAM user')
         parser.add_argument('--version', action='version', version=f'Pacu {self.get_pacu_version()}', help='Display Pacu version')
-        arser.add_argument('-q', '--quiet', action='store_true', help='Do not print the banner on startup')
+        parser.add_argument('-q', '--quiet', action='store_true', help='Do not print the banner on startup')
         args = parser.parse_args()
 
         if any([args.session, args.data, args.module_args, args.exec, args.set_regions, args.whoami, args.new_session, args.set_keys, args.activate_session]):

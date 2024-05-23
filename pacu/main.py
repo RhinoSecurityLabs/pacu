@@ -1587,7 +1587,7 @@ aws_secret_access_key = {}
                 category_path = os.path.realpath(root)
 
                 # Skip any directories inside module directories.
-                if os.path.dirname(category_path) != modules_directory_path:
+                if os.path.dirname(category_path) == modules_directory_path:
                     continue
                 # Skip the root directory.
                 elif modules_directory_path == category_path:
@@ -1621,7 +1621,7 @@ aws_secret_access_key = {}
                     if len(line) == 1 and (line[0] == 'help'):
                         return [c + ' ' for c in MODULES + self.COMMANDS][state]
 
-                    if len(line) == 1 and (line[0] == 'exec' or line[0] == 'run'):
+                    if len(line) == 1 and (line[0] in ['exec', 'run']):
                         return [c + ' ' for c in MODULES][state]
 
                     # account for last argument ending in a space

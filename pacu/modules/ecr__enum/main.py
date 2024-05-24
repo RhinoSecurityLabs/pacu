@@ -108,7 +108,7 @@ def main(args, pacu_main):
                         )
                     )
 
-                # Adding repositories to region for extraction ater on
+                # Adding repositories to region for extraction later on
                 summary_data['ecr']['regions'][region] = {}
                 summary_data['ecr']['regions'][region]['num_repos_found'] = num_repos_found
                 summary_data['ecr']['regions'][region]['repositories'] = region_repositories

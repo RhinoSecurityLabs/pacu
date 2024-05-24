@@ -100,6 +100,17 @@ def main(args, pacu_main: "Main"):
                 topic_details["SubscriptionsPending"]
             )
 
+            summary_data["sns"][region][topic["TopicArn"]]["Subscribers"] = []
+            try:
+                # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sns/client/list_subscriptions_by_topic.html
+                subscribers = client.list_subscriptions_by_topic(TopicArn=topic["TopicArn"])
+                subscribers = subscribers['Subscriptions']
+                for subscriber in subscribers:
+                    summary_data["sns"][region][topic["TopicArn"]]["Subscribers"].append({"Protocol": subscriber['Protocol'], "Endpoint": subscriber['Endpoint']}) 
+            except Exception as error:
+                print("  Error listing subscribers, likely permissions problem. Error: {}\n".format(error))
+                continue
+
     # Write all the data to the output file
     print("Writing all SNS results to file: {}".format(outfile_path))
     with open(outfile_path, "w+") as f:
@@ -112,7 +123,11 @@ def summary(data, pacu_main):
     out = ""
 
     total_topics = 0
+    total_users = 0
     for region in data["sns"]:
         total_topics += len(data["sns"][region])
+        for topic in data["sns"][region]:
+            total_users += len(data["sns"][region][topic]["Subscribers"])
     out += "Num of SNS topics found: {} \n".format(total_topics)
+    out += "Num of SNS subscribers found: {} \n".format(total_users)
     return out

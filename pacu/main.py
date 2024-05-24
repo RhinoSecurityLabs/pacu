@@ -1770,14 +1770,15 @@ aws_secret_access_key = {}
         if arg.whoami is True:
             self.print_key_info()
 
-    def run_gui(self) -> None:
+    def run_gui(self, quiet=False) -> None:
         idle_ready = False
 
         while True:
             try:
                 if not idle_ready:
                     try:
-                        print(f"""
+                        if not quiet:
+                            print("""
  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⣶⣿⣿⣿⣿⣿⣿⣶⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣾⣿⡿⠛⠉⠁⠀⠀⠈⠙⠻⣿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -1802,8 +1803,8 @@ aws_secret_access_key = {}
  ⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⡏⠉⠉⠉⠉⠀⠀⠀⢸⣿⣿⡏⠉⠉⢹⣿⣿⡇⠀⢸⣿⣿⣇⣀⣀⣸⣿⣿⣿⠀⢸⣿⣿⣿⣀⣀⣀⣿⣿⣿
  ⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⢸⣿⣿⡇⠀⠸⣿⣿⣿⣿⣿⣿⣿⣿⡿⠀⠀⢿⣿⣿⣿⣿⣿⣿⣿⡟
  ⠀⠀⠀⠀⠀⠀⠀⠀⠘⠛⠛⠃⠀⠀⠀⠀⠀⠀⠀⠘⠛⠛⠃⠀⠀⠘⠛⠛⠃⠀⠀⠉⠛⠛⠛⠛⠛⠛⠋⠀⠀⠀⠀⠙⠛⠛⠛⠛⠛⠉⠀
-Version: {self.get_pacu_version()}
 """)
+                        print(f"Version: {self.get_pacu_version()}")
                     except UnicodeEncodeError:
                         pass
 
@@ -1898,6 +1899,7 @@ Version: {self.get_pacu_version()}
         parser.add_argument('--set-regions', nargs='+', default=None, help='<region1 region2 ...> or <all> for all', metavar='')
         parser.add_argument('--whoami', action='store_true', help='Display information on current IAM user')
         parser.add_argument('--version', action='version', version=f'Pacu {self.get_pacu_version()}', help='Display Pacu version')
+        parser.add_argument('-q', '--quiet', action='store_true', help='Do not print the banner on startup')
         args = parser.parse_args()
 
         if any([args.session, args.data, args.module_args, args.exec, args.set_regions, args.whoami, args.new_session, args.set_keys, args.activate_session]):
@@ -1908,7 +1910,7 @@ Version: {self.get_pacu_version()}
         elif any([args.list_modules, args.pacu_help, args.module_info]):
             self.run_cli(args)
         else:
-            self.run_gui()
+            self.run_gui(args.quiet)
 
     def assume_role(self, role_arn: str):
         sts = self.get_boto3_client('sts')

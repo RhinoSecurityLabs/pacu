@@ -7,7 +7,7 @@ from pacu.core.lib import strip_lines, save
 from pacu import Main
 
 module_info = {
-    'name': 'enum__secrets',
+    'name': 'secrets__enum',
     'author': 'Nick Spagnola From RSL',
     'category': 'ENUM',
     'one_liner': 'Enumerates and dumps secrets from AWS Secrets Manager and AWS parameter store',

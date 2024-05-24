@@ -68,6 +68,12 @@ def main(args, pacu_main: "Main"):
         )
         return
 
+    if args.topic.endswith(".fifo"):
+        print(
+            "  Please use a valid topic, fifo topics can't be subscribed to via email\n"
+        )
+        return
+
     region_from_arn = args.topic.split(":")[3]
     client = pacu_main.get_boto3_client("sns", region=region_from_arn)
 

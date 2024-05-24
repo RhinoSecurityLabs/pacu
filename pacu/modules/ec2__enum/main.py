@@ -270,7 +270,7 @@ def main(args, pacu_main):
                 with save(p, 'w+') as f:    
                     for public in public_ips:
                         f.write('{}\n'.format(public))
-                print('  {} publics IP address(es) found and added to text file located at: ~/.local/share/pacu/{}/downloads/{}'.format(len(public_ips),session.name,p))                
+                print('  {} public IP address(es) found and added to text file located at: ~/.local/share/pacu/{}/downloads/{}'.format(len(public_ips),session.name,p))                
             all_public_ips += public_ips
 
         # VPN Customer Gateways

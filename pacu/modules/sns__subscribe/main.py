@@ -68,7 +68,8 @@ def main(args, pacu_main: "Main"):
         )
         return
 
-    client = pacu_main.get_boto3_client("sns")
+    region_from_arn = args.topic.split(":")[3]
+    client = pacu_main.get_boto3_client("sns", region=region_from_arn)
 
     # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sns/client/subscribe.html
     try:

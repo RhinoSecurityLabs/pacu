@@ -5,7 +5,7 @@ from pacu.utils import decode_accesskey_id
 module_info = {
     'name': 'iam__decode_accesskey_id',
     'author': 'Rhino Security Labs',
-    'category': 'enum',
+    'category': 'ENUM',
     'one_liner': 'This module decodes an access key ID to get the AWS account ID. Based on: https://medium.com/@TalBeerySec/a-short-note-on-aws-key-id-f88cc4317489',
     'description': 'This module decodes an access key ID to get the AWS account ID without making and AWS API calls. Based on: https://medium.com/@TalBeerySec/a-short-note-on-aws-key-id-f88cc4317489',
     'services': ['IAM'],

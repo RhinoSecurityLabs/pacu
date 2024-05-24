@@ -118,7 +118,7 @@ def main(args, pacu_main):
                 func['Versions'] = fetch_lambda_data(client, 'list_versions_by_function', 'Versions', print, FunctionName=func_arn)
 
             # Check for secrets in data
-            check_evn_secrets(func)
+            check_env_secrets(func)
             if args.checksource:
                 check_source_secrets(func)
 
@@ -139,7 +139,7 @@ def summary(data, pacu_main):
     return out
 
 
-def check_evn_secrets(function):
+def check_env_secrets(function):
     try:
         env_vars = function['Environment']['Variables']
         [Color.print(Color.GREEN, '\t[+] Secret (ENV): {}= {}'.format(key, env_vars[key])) for key in env_vars if contains_secret(env_vars[key])]

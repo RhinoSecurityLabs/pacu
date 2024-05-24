@@ -39,7 +39,7 @@ parser.add_argument('--target-os', required=False, default='All', help='This arg
 parser.add_argument('--all-instances', required=False, default=False, action='store_true', help='Skip vulnerable operating system check and just target every instance')
 parser.add_argument('--target-instances', required=False, default=None, help='A comma-separated list of instances and regions to set as the attack targets in the format of instance-id@region,instance2-id@region...')
 parser.add_argument('--replace', required=False, default=False, action='store_true', help='For EC2 instances that already have an instance profile attached to them, this argument will replace those with the Systems Manager instance profile. WARNING: This can cause bad things to happen! You never know what negative side effects this may have on a server without further inspection, because you do not know what permissions you are removing/replacing that the instance already had')
-parser.add_argument('--ip-name', required=False, default=None, help='The name of an existing instance profile with an "EC2 Role for Simple Systems Manager" attached to it. This will skip the automatic role/instance profile enumeration and the searching for a Systems Manager role/instance profile')
+parser.add_argument('--ip-name', required=False, default=None, help='The name of an existing instance profile with an "EC2 Role for Simple Systems Manager" attached to it. This will skip the automatic role/instance profile enumeration and the searching for a Systems Manager role/instance profile. Example: "arn:aws:iam::1111111111111:user/example"')
 
 
 def main(args, pacu_main):
@@ -140,9 +140,13 @@ def main(args, pacu_main):
         # Begin Systems Manager role finder/creator
         client = pacu_main.get_boto3_client('iam')
 
-        ssm_policy = client.get_policy(
-            PolicyArn='arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
-        )['Policy']
+        try:
+            ssm_policy = client.get_policy(
+                PolicyArn='arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
+            )['Policy']
+        except ClientError as error:
+            print('  Unable to retrieve policy (arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM). Try specifying the ip-name manually. Error: {}\n'.format(str(error)))
+            return
 
         if ssm_policy['AttachmentCount'] > 0:
             if fetch_data(['IAM', 'Roles'], module_info['prerequisite_modules'][1], '--roles') is False:
@@ -258,7 +262,11 @@ def main(args, pacu_main):
         regions = []
         instances_id_regions = args.target_instances.split(',')
         for instance_id_region in instances_id_regions:
-            instance_id, instance_region = instance_id_region.split('@')
+            try:
+                instance_id, instance_region = instance_id_region.split('@')
+            except ValueError as error:
+                print('  Unable to validate provided target_instances. Ensure they match the format instance-id@region. Error: {}\n'.format(str(error)))
+                return
             regions.append(instance_region)
             client = pacu_main.get_boto3_client('ec2', instance_region)
             instance = client.describe_instances(InstanceIds=[instance_id])["Reservations"][0]["Instances"][0]

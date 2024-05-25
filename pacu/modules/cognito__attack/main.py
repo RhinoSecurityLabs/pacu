@@ -161,6 +161,38 @@ def _verify_user(
     return tokens
 
 
+def _authenticate_user(
+    aws: AWSSRP,
+    client: BaseClient,
+    username: str,
+    up_client: Dict,
+    all_new_regions: List,
+):
+    try_again = True
+
+    while try_again:
+        try:
+            return aws.authenticate_user()
+        except ClientError as e:
+            error_response = e.response["Error"]
+            if error_response["Code"] == "UserNotConfirmedException":
+                print("User already exists, but not confirmed. Please verify first.")
+
+                choice = input("Send new confirmation code? (y/n): ")
+                if choice.lower() in ["y", "yes"]:
+                    client.resend_confirmation_code(
+                        ClientId=up_client["ClientId"], Username=username
+                    )
+
+                _verify_user(client, username, up_client, all_new_regions)
+            else:
+                print(f"An unexpected error occurred: {error_response}")
+                try_again = False
+
+            user_input = input("Do you want to try again? (y/n): ")
+            try_again = user_input.lower() in ["y", "yes"]
+
+
 def main(args, pacu_main: Main):
     attack_users = []
     all_new_regions = []
@@ -448,27 +480,14 @@ def main(args, pacu_main: Main):
                 client_id=up_client["ClientId"],
                 client=client,
             )
-            try:
-                tokens = aws.authenticate_user()
-            except ClientError as e:
 
-                error_response = e.response["Error"]
-                if error_response["Code"] == "UserNotConfirmedException":
-                    print(
-                        "User already exists, but not confirmed! Please verify first."
-                    )
+            tokens = _authenticate_user(
+                aws, client, username, up_client, all_new_regions
+            )
 
-                    client.resend_confirmation_code(
-                        ClientId=up_client["ClientId"],
-                        Username=username,
-                    )
-
-                    print(
-                        "A new token has been send!",
-                    )
-
-                    _verify_user(client, username, up_client, all_new_regions)
-                    tokens = aws.authenticate_user()
+            if not tokens:
+                print("Authentication process failed! Aborting...")
+                return
 
             if "AuthenticationResult" in tokens:
                 print("You're signed in as " + username + "!")

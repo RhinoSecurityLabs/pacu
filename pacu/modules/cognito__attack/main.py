@@ -468,6 +468,7 @@ def main(args, pacu_main: Main):
                     )
 
                     _verify_user(client, username, up_client, all_new_regions)
+                    tokens = aws.authenticate_user()
 
             if "AuthenticationResult" in tokens:
                 print("You're signed in as " + username + "!")
@@ -907,7 +908,7 @@ def main(args, pacu_main: Main):
     search_string = "custom"
 
     choice = input("List all custom attributes for all users in all user pools (y/n)?")
-    if choice.lower() == "y" and session.Cognito["UsersInPools"] is not None:
+    if choice.lower() == "y" and session.Cognito.get("UsersInPools", None) is not None:
         for user in session.Cognito["UsersInPools"]:
             if any(
                 search_string in attribute["Name"] for attribute in user["Attributes"]

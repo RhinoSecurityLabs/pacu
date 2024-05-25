@@ -457,6 +457,16 @@ def main(args, pacu_main: Main):
                     print(
                         "User already exists, but not confirmed! Please verify first."
                     )
+
+                    client.resend_confirmation_code(
+                        ClientId=up_client["ClientId"],
+                        Username=username,
+                    )
+
+                    print(
+                        "A new token has been send!",
+                    )
+
                     _verify_user(client, username, up_client, all_new_regions)
 
             if "AuthenticationResult" in tokens:

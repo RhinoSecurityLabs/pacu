@@ -2,6 +2,7 @@
 import argparse
 import time
 import json
+from copy import deepcopy
 
 from pacu.core.lib import downloads_dir
 from pacu.core.lib import strip_lines
@@ -115,6 +116,11 @@ def main(args, pacu_main: "Main"):
     print("Writing all SNS results to file: {}".format(outfile_path))
     with open(outfile_path, "w+") as f:
         f.write(json.dumps(summary_data, indent=4, default=str))
+
+    sns_data = deepcopy(session.SNS)
+    for key, value in summary_data.items():
+        sns_data[key] = value
+    session.update(pacu_main.database, SNS=sns_data)
 
     return summary_data
 

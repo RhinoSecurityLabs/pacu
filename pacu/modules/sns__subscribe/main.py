@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import re
+from copy import deepcopy
 
 from pacu.core.lib import strip_lines
 from pacu import Main
@@ -90,6 +91,25 @@ def main(args, pacu_main: "Main"):
                 response["SubscriptionArn"]
             )
         )
+
+        new_data = {
+            "Protocol": "email",
+            "Endpoint": args.email,
+            "SubscriptionArn": response["SubscriptionArn"],
+        }
+
+        sns_data = deepcopy(session.SNS)
+        if "sns" not in sns_data:
+            sns_data["sns"] = {}
+        if not region_from_arn in sns_data["sns"]:
+            sns_data["sns"][region_from_arn] = {}
+        if not args.topic in sns_data["sns"][region_from_arn]:
+            sns_data["sns"][region_from_arn][args.topic] = {}
+        if not "Subscribers" in sns_data["sns"][region_from_arn][args.topic]:
+            sns_data["sns"][region_from_arn][args.topic]["Subscribers"] = [new_data]
+        else:
+            sns_data["sns"][region_from_arn][args.topic]["Subscribers"].append(new_data)
+        session.update(pacu_main.database, SNS=sns_data)
     except Exception as error:
         print(
             "Unable to subscribe, check permissions and topic. Error: {}".format(error)

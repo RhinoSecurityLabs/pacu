@@ -104,12 +104,25 @@ def main(args, pacu_main: "Main"):
             summary_data["sns"][region][topic["TopicArn"]]["Subscribers"] = []
             try:
                 # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sns/client/list_subscriptions_by_topic.html
-                subscribers = client.list_subscriptions_by_topic(TopicArn=topic["TopicArn"])
-                subscribers = subscribers['Subscriptions']
+                subscribers = client.list_subscriptions_by_topic(
+                    TopicArn=topic["TopicArn"]
+                )
+                subscribers = subscribers["Subscriptions"]
                 for subscriber in subscribers:
-                    summary_data["sns"][region][topic["TopicArn"]]["Subscribers"].append({"Protocol": subscriber['Protocol'], "Endpoint": subscriber['Endpoint']}) 
+                    summary_data["sns"][region][topic["TopicArn"]][
+                        "Subscribers"
+                    ].append(
+                        {
+                            "Protocol": subscriber["Protocol"],
+                            "Endpoint": subscriber["Endpoint"],
+                        }
+                    )
             except Exception as error:
-                print("  Error listing subscribers, likely permissions problem. Error: {}\n".format(error))
+                print(
+                    "  Error listing subscribers, likely permissions problem. Error: {}\n".format(
+                        error
+                    )
+                )
                 continue
 
     # Write all the data to the output file

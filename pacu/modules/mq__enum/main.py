@@ -83,7 +83,7 @@ def main(args, pacu_main: "Main"):
                 )
             )
             continue
-        print("Found {} brokers".format(len(response["BrokerSummaries"])))
+        print("  Found {} brokers".format(len(response["BrokerSummaries"])))
         for broker in response["BrokerSummaries"]:
             broker_details = client.describe_broker(BrokerId=broker["BrokerId"])
             summary_data["mq"][region][broker["BrokerId"]] = {}

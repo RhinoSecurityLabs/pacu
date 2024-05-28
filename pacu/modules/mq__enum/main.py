@@ -12,7 +12,7 @@ module_info = {
     "name": "mq__enum",
     "author": "6a6f656c & h00die of nDepth Security",
     "category": "ENUM",
-    "one_liner": "Listo and describe brokers",
+    "one_liner": "List and describe brokers",
     "description": strip_lines(
         """
         This module will attempt to list and gather information from available brokers.

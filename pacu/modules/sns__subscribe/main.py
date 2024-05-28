@@ -90,6 +90,9 @@ def main(args, pacu_main: "Main"):
         print('--topics <topics> or --all required')
         return
     
+    if not topics_list:
+        print("  No valid topics found")
+        return
     for topic in topics_list.split(","):
         topic = topic.strip()
         if not topic.startswith("arn:aws:sns:"):

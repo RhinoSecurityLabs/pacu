@@ -79,6 +79,12 @@ def main(args, pacu_main: "Main"):
             )
             continue
         print("  Found {} topics".format(len(response["Topics"])))
+
+        # don't store empty data
+        if len(response["Topics"]) == 0:
+            del(summary_data["sns"][region])
+            continue
+
         for topic in response["Topics"]:
             # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sns/client/get_topic_attributes.html
             topic_details = client.get_topic_attributes(TopicArn=topic["TopicArn"])

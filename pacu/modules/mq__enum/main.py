@@ -67,10 +67,6 @@ def main(args, pacu_main: "Main"):
             print("Unable to connect to MQ service. Error: {}".format(error))
             continue
 
-        # Prepare output file to store MQ data
-        now = time.time()
-        outfile_path = str(downloads_dir() / f"mq_enum_{now}.json")
-
         try:
             response = client.list_brokers(
                 MaxResults=100,
@@ -109,10 +105,6 @@ def main(args, pacu_main: "Main"):
                 url["ConsoleURL"] for url in broker_details["BrokerInstances"]
             ]
 
-    # Write all the data to the output file
-    print("Writing all MQ results to file: {}".format(outfile_path))
-    with open(outfile_path, "w+") as f:
-        f.write(json.dumps(summary_data, indent=4, default=str))
 
     mq_data = deepcopy(session.MQ)
     for key, value in summary_data.items():

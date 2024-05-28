@@ -43,7 +43,7 @@ module_info = {
     "arguments_to_autocomplete": ["--offline", "--folder", "--scan-only"],
 }
 
-parser = argparse.ArgumentParser(add_help=False, description=module_info["description"])
+parser = argparse.ArgumentParser(add_help=True, description=module_info["description"])
 
 parser.add_argument(
     "--offline",
@@ -103,7 +103,28 @@ parser.add_argument(
 """
     ),
 )
-
+parser.add_argument(
+    "--user-methods",
+    required=False,
+    default=None,
+    nargs='+',
+    help=strip_lines(
+        """
+    Specify user methods to attempt.
+    """
+    ),
+)
+parser.add_argument(
+    "--role-methods",
+    required=False,
+    default=None,
+    nargs='+',
+    help=strip_lines(
+        """
+    Specify role methods to attempt.
+"""
+    ),
+)
 
 # 18) GreenGrass passrole privesc ?
 # 19) Redshift passrole privesc ?
@@ -484,17 +505,6 @@ def main(args, pacu_main: "Main"):
             """)
         },
     }
-    if args.method_info:
-        def dict_lower(input_dict):
-            return {key.lower(): value for key, value in input_dict.items()}
-        escalation_methods_info = dict_lower(escalation_methods_info)
-        print(escalation_methods_info[args.method_info.lower()]["info"])
-        return
-    if args.method_list:
-        print("Available escalation methods:")
-        for method in escalation_methods_info:
-            print(method)
-        return
 
     summary_data = {"scan_only": args.scan_only}
 
@@ -557,250 +567,6 @@ def main(args, pacu_main: "Main"):
     ]
 
     checked_perms = {"Allow": {}, "Deny": {}}
-    # user_escalation_methods = {
-    #     "CreateNewPolicyVersion": {
-    #         "iam:CreatePolicyVersion": True,  # Create new policy and set it as default
-    #         "iam:ListAttachedGroupPolicies": False,  # Search for policies belonging to the user
-    #         "iam:ListAttachedUserPolicies": False,  # ^
-    #         "iam:ListAttachedRolePolicies": False,  # ^
-    #         "iam:ListGroupsForUser": False,  # ^
-    #     },
-    #     "SetExistingDefaultPolicyVersion": {
-    #         "iam:SetDefaultPolicyVersion": True,  # Set a different policy version as default
-    #         "iam:ListPolicyVersions": False,  # Find a version to change to
-    #         "iam:ListAttachedGroupPolicies": False,  # Search for policies belonging to the user
-    #         "iam:ListAttachedUserPolicies": False,  # ^
-    #         "iam:ListAttachedRolePolicies": False,  # ^
-    #         "iam:ListGroupsForUser": False,  # ^
-    #     },
-    #     "CreateEC2WithExistingIP": {
-    #         "iam:PassRole": True,  # Pass the instance profile/role to the EC2 instance
-    #         "ec2:RunInstances": True,  # Run the EC2 instance
-    #         "iam:ListInstanceProfiles": False,  # Find an IP to pass
-    #     },
-    #     "CreateAccessKey": {
-    #         "iam:CreateAccessKey": True,  # Create a new access key for some user
-    #         "iam:ListUsers": False,  # Find a user to create a key for
-    #     },
-    #     "CreateLoginProfile": {
-    #         "iam:CreateLoginProfile": True,  # Create a login profile for some user
-    #         "iam:ListUsers": False,  # Find a user to create a profile for
-    #     },
-    #     "UpdateLoginProfile": {
-    #         "iam:UpdateLoginProfile": True,  # Update the password for an existing login profile
-    #         "iam:ListUsers": False,  # Find a user to update the password for
-    #     },
-    #     "AttachUserPolicy": {
-    #         "iam:AttachUserPolicy": True,  # Attach an existing policy to a user
-    #         "iam:ListUsers": False,  # Find a user to attach to
-    #     },
-    #     "AttachGroupPolicy": {
-    #         "iam:AttachGroupPolicy": True,  # Attach an existing policy to a group
-    #         "iam:ListGroupsForUser": False,  # Find a group to attach to
-    #     },
-    #     "AttachRolePolicy": {
-    #         "iam:AttachRolePolicy": True,  # Attach an existing policy to a role
-    #         "sts:AssumeRole": True,  # Assume that role
-    #         "iam:ListRoles": False,  # Find a role to attach to
-    #     },
-    #     "PutUserPolicy": {
-    #         "iam:PutUserPolicy": True,  # Alter an existing-attached inline user policy
-    #         "iam:ListUserPolicies": False,  # Find a users inline policies
-    #     },
-    #     "PutGroupPolicy": {
-    #         "iam:PutGroupPolicy": True,  # Alter an existing-attached inline group policy
-    #         "iam:ListGroupPolicies": False,  # Find a groups inline policies
-    #     },
-    #     "PutRolePolicy": {
-    #         "iam:PutRolePolicy": True,  # Alter an existing-attached inline role policy
-    #         "sts:AssumeRole": True,  # Assume that role
-    #         "iam:ListRolePolicies": False,  # Find a roles inline policies
-    #     },
-    #     "AddUserToGroup": {
-    #         "iam:AddUserToGroup": True,  # Add a user to a higher level group
-    #         "iam:ListGroups": False,  # Find a group to add the user to
-    #     },
-    #     "UpdateRolePolicyToAssumeIt": {
-    #         "iam:UpdateAssumeRolePolicy": True,  # Update the roles AssumeRolePolicyDocument to allow the user to assume it
-    #         "sts:AssumeRole": True,  # Assume the newly update role
-    #         "iam:ListRoles": False,  # Find a role to assume
-    #     },
-    #     "PassExistingRoleToNewLambdaThenInvoke": {
-    #         "iam:PassRole": True,  # Pass the role to the Lambda function
-    #         "lambda:CreateFunction": True,  # Create a new Lambda function
-    #         "lambda:InvokeFunction": True,  # Invoke the newly created function
-    #         "iam:ListRoles": False,  # Find a role to pass
-    #     },
-    #     "PassExistingRoleToNewLambdaThenInvokeCrossAccount": {
-    #         "iam:PassRole": True,  # Pass the role to the Lambda function
-    #         "lambda:CreateFunction": True,  # Create a new Lambda function
-    #         "lambda:AddPermission": True,  # Invoke the newly created function
-    #         "iam:ListRoles": False,  # Find a role to pass
-    #     },
-    #     "PassExistingRoleToNewLambdaThenTriggerWithNewDynamo": {
-    #         "iam:PassRole": True,  # Pass the role to the Lambda function
-    #         "lambda:CreateFunction": True,  # Create a new Lambda function
-    #         "lambda:CreateEventSourceMapping": True,  # Create a trigger for the Lambda function
-    #         "dynamodb:CreateTable": True,  # Create a new table to use as the trigger ^
-    #         "dynamodb:PutItem": True,  # Put a new item into the table to trigger the trigger
-    #         "iam:ListRoles": False,  # Find a role to pass to the function
-    #     },
-    #     "PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo": {
-    #         "iam:PassRole": True,  # Pass the role to the Lambda function
-    #         "lambda:CreateFunction": True,  # Create a new Lambda function
-    #         "lambda:CreateEventSourceMapping": True,  # Create a trigger for the Lambda function
-    #         "dynamodb:ListStreams": False,  # Find existing streams
-    #         "dynamodb:PutItem": False,  # Put a new item into the table to trigger the trigger
-    #         "dynamodb:DescribeTables": False,  # Find an existing DynamoDB table
-    #         "iam:ListRoles": False,  # Find a role to pass to the function
-    #     },
-    #     "PassExistingRoleToNewGlueDevEndpoint": {
-    #         "iam:PassRole": True,  # Pass the role to the Glue Dev Endpoint
-    #         "glue:CreateDevEndpoint": True,  # Create the new Glue Dev Endpoint
-    #         "glue:GetDevEndpoint": True,  # Get the public address of it after creation
-    #         "iam:ListRoles": False,  # Find a role to pass to the endpoint
-    #     },
-    #     "UpdateExistingGlueDevEndpoint": {
-    #         "glue:UpdateDevEndpoint": True,  # Update the associated SSH key for the Glue endpoint
-    #         "glue:DescribeDevEndpoints": False,  # Find a dev endpoint to update
-    #     },
-    #     "PassExistingRoleToNewCloudFormation": {
-    #         "iam:PassRole": True,  # Pass role to the new stack
-    #         "cloudformation:CreateStack": True,  # Create the stack
-    #         "cloudformation:DescribeStacks": False,  # Fetch the values returned from the stack. Most likely needed, but possibly not
-    #         "iam:ListRoles": False,  # Find roles to pass to the stack
-    #     },
-    #     "PassExistingRoleToNewDataPipeline": {
-    #         "iam:PassRole": True,  # Pass roles to the Pipeline
-    #         "datapipeline:CreatePipeline": True,  # Create the pipieline
-    #         "datapipeline:PutPipelineDefinition": True,  # Update the pipeline to do something
-    #         "iam:ListRoles": False,  # List roles to pass to the pipeline
-    #     },
-    #     "EditExistingLambdaFunctionWithRole": {
-    #         "lambda:UpdateFunctionCode": True,  # Edit existing Lambda functions
-    #         "lambda:ListFunctions": False,  # Find existing Lambda functions
-    #         "lambda:InvokeFunction": False,  # Invoke it afterwards
-    #     },
-    #     "PassExistingRoleToNewCodeStarProject": {
-    #         "codestar:CreateProject": True,  # Create the CodeStar project
-    #         "iam:PassRole": True,  # Pass the service role to CodeStar
-    #     },
-    #     "CodeStarCreateProjectFromTemplate": {
-    #         "codestar:CreateProjectFromTemplate": True  # Create a project from a template
-    #     },
-    #     "CodeStarCreateProjectThenAssociateTeamMember": {
-    #         "codestar:CreateProject": True,  # Create the CodeStar project
-    #         "codestar:AssociateTeamMember": True,  # Associate themselves with the project
-    #     },
-    # }
-
-    # role_escalation_methods = {
-    #     "CreateNewPolicyVersion": {
-    #         "iam:CreatePolicyVersion": True,  # Create new policy and set it as default
-    #         "iam:ListAttachedGroupPolicies": False,  # Search for policies belonging to the user
-    #         "iam:ListAttachedUserPolicies": False,  # ^
-    #         "iam:ListAttachedRolePolicies": False,  # ^
-    #         "iam:ListGroupsForUser": False,  # ^
-    #     },
-    #     "SetExistingDefaultPolicyVersion": {
-    #         "iam:SetDefaultPolicyVersion": True,  # Set a different policy version as default
-    #         "iam:ListPolicyVersions": False,  # Find a version to change to
-    #         "iam:ListAttachedGroupPolicies": False,  # Search for policies belonging to the user
-    #         "iam:ListAttachedUserPolicies": False,  # ^
-    #         "iam:ListAttachedRolePolicies": False,  # ^
-    #         "iam:ListGroupsForUser": False,  # ^
-    #     },
-    #     "CreateEC2WithExistingIP": {
-    #         "iam:PassRole": True,  # Pass the instance profile/role to the EC2 instance
-    #         "ec2:RunInstances": True,  # Run the EC2 instance
-    #         "iam:ListInstanceProfiles": False,  # Find an IP to pass
-    #     },
-    #     "CreateAccessKey": {
-    #         "iam:CreateAccessKey": True,  # Create a new access key for some user
-    #         "iam:ListUsers": False,  # Find a user to create a key for
-    #     },
-    #     "CreateLoginProfile": {
-    #         "iam:CreateLoginProfile": True,  # Create a login profile for some user
-    #         "iam:ListUsers": False,  # Find a user to create a profile for
-    #     },
-    #     "UpdateLoginProfile": {
-    #         "iam:UpdateLoginProfile": True,  # Update the password for an existing login profile
-    #         "iam:ListUsers": False,  # Find a user to update the password for
-    #     },
-    #     "AttachRolePolicy": {
-    #         "iam:AttachRolePolicy": True,  # Attach an existing policy to a role
-    #         "iam:ListRoles": False,  # Find a role to attach to
-    #     },
-    #     "PutRolePolicy": {
-    #         "iam:PutRolePolicy": True,  # Alter an existing-attached inline role policy
-    #         "iam:ListRolePolicies": False,  # Find a roles inline policies
-    #     },
-    #     "UpdateRolePolicyToAssumeIt": {
-    #         "iam:UpdateAssumeRolePolicy": True,  # Update the roles AssumeRolePolicyDocument to allow the user to assume it
-    #         "sts:AssumeRole": True,  # Assume the newly update role
-    #         "iam:ListRoles": False,  # Find a role to assume
-    #     },
-    #     "PassExistingRoleToNewLambdaThenInvoke": {
-    #         "iam:PassRole": True,  # Pass the role to the Lambda function
-    #         "lambda:CreateFunction": True,  # Create a new Lambda function
-    #         "lambda:InvokeFunction": True,  # Invoke the newly created function
-    #         "iam:ListRoles": False,  # Find a role to pass
-    #     },
-    #     "PassExistingRoleToNewLambdaThenInvokeCrossAccount": {
-    #         "iam:PassRole": True,  # Pass the role to the Lambda function
-    #         "lambda:CreateFunction": True,  # Create a new Lambda function
-    #         "lambda:AddPermission": True,  # Invoke the newly created function
-    #         "iam:ListRoles": False,  # Find a role to pass
-    #     },
-    #     "PassExistingRoleToNewLambdaThenTriggerWithNewDynamo": {
-    #         "iam:PassRole": True,  # Pass the role to the Lambda function
-    #         "lambda:CreateFunction": True,  # Create a new Lambda function
-    #         "lambda:CreateEventSourceMapping": True,  # Create a trigger for the Lambda function
-    #         "dynamodb:CreateTable": True,  # Create a new table to use as the trigger ^
-    #         "dynamodb:PutItem": True,  # Put a new item into the table to trigger the trigger
-    #         "iam:ListRoles": False,  # Find a role to pass to the function
-    #     },
-    #     "PassExistingRoleToNewLambdaThenTriggerWithExistingDynamo": {
-    #         "iam:PassRole": True,  # Pass the role to the Lambda function
-    #         "lambda:CreateFunction": True,  # Create a new Lambda function
-    #         "lambda:CreateEventSourceMapping": True,  # Create a trigger for the Lambda function
-    #         "dynamodb:ListStreams": False,  # Find existing streams
-    #         "dynamodb:PutItem": False,  # Put a new item into the table to trigger the trigger
-    #         "dynamodb:DescribeTables": False,  # Find an existing DynamoDB table
-    #         "iam:ListRoles": False,  # Find a role to pass to the function
-    #     },
-    #     "PassExistingRoleToNewGlueDevEndpoint": {
-    #         "iam:PassRole": True,  # Pass the role to the Glue Dev Endpoint
-    #         "glue:CreateDevEndpoint": True,  # Create the new Glue Dev Endpoint
-    #         "glue:GetDevEndpoint": True,  # Get the public address of it after creation
-    #         "iam:ListRoles": False,  # Find a role to pass to the endpoint
-    #     },
-    #     "UpdateExistingGlueDevEndpoint": {
-    #         "glue:UpdateDevEndpoint": True,  # Update the associated SSH key for the Glue endpoint
-    #         "glue:DescribeDevEndpoints": False,  # Find a dev endpoint to update
-    #     },
-    #     "PassExistingRoleToNewCloudFormation": {
-    #         "iam:PassRole": True,  # Pass role to the new stack
-    #         "cloudformation:CreateStack": True,  # Create the stack
-    #         "cloudformation:DescribeStacks": False,  # Fetch the values returned from the stack. Most likely needed, but possibly not
-    #         "iam:ListRoles": False,  # Find roles to pass to the stack
-    #     },
-    #     "PassExistingRoleToNewDataPipeline": {
-    #         "iam:PassRole": True,  # Pass roles to the Pipeline
-    #         "datapipeline:CreatePipeline": True,  # Create the pipieline
-    #         "datapipeline:PutPipelineDefinition": True,  # Update the pipeline to do something
-    #         "iam:ListRoles": False,  # List roles to pass to the pipeline
-    #     },
-    #     "EditExistingLambdaFunctionWithRole": {
-    #         "lambda:UpdateFunctionCode": True,  # Edit existing Lambda functions
-    #         "lambda:ListFunctions": False,  # Find existing Lambda functions
-    #         "lambda:InvokeFunction": False,  # Invoke it afterwards
-    #     },
-    #     "PassExistingRoleToNewCodeStarProject": {
-    #         "codestar:CreateProject": True,  # Create the CodeStar project
-    #         "iam:PassRole": True,  # Pass the service role to CodeStar
-    #     },
-    # }
 
     user_escalation_methods = {
         "AddUserToGroup": {
@@ -1045,6 +811,44 @@ def main(args, pacu_main: "Main"):
             "sts:assumerole": True,
         },
     }
+    
+    if args.method_info:
+        def dict_lower(input_dict):
+            return {key.lower(): value for key, value in input_dict.items()}
+        escalation_methods_info = dict_lower(escalation_methods_info)
+        print(escalation_methods_info[args.method_info.lower()]["info"])
+        return
+    if args.method_list:
+        user_methods = []
+        role_methods = []
+        for method in escalation_methods_info:
+            if method in user_escalation_methods:
+                user_methods.append(method)
+            if method in role_escalation_methods:
+                role_methods.append(method)
+        print("User Escalation Methods:")
+        for method in user_methods:
+            print(method)
+        print()
+        print("Role Escalation Methods:")
+        for method in role_methods:
+            print(method)
+        return
+        
+    # Setup the methods to attempt
+    role_methods_to_try = []
+    user_methods_to_try = []
+    if args.user_methods is not None and args.role_methods is not None:
+        user_methods_to_try = args.user_methods
+        role_methods_to_try = args.role_methods
+    elif args.user_methods is not None:
+        user_methods_to_try = args.user_methods
+    elif args.role_methods is not None:
+        role_methods_to_try = args.role_methods
+    else:
+        user_methods_to_try = user_escalation_methods.keys()
+        role_methods_to_try = role_escalation_methods.keys()
+    
     # Check if this is an offline scan
     if args.offline is True:
         potential_methods = {}
@@ -1107,7 +911,7 @@ def main(args, pacu_main: "Main"):
 
                     potential_methods[name] = []
 
-                    for method in user_escalation_methods.keys():
+                    for method in user_methods_to_try:
                         is_possible = True
 
                         for permission in user_escalation_methods[method]:
@@ -1149,7 +953,7 @@ def main(args, pacu_main: "Main"):
 
                     potential_methods[name] = []
 
-                    for method in role_escalation_methods.keys():
+                    for method in role_methods_to_try:
                         is_possible = True
 
                         for permission in role_escalation_methods[method]:
@@ -1245,7 +1049,7 @@ def main(args, pacu_main: "Main"):
 
     if target["UserName"]:  # If they are a user
         print("Escalation methods for current user:")
-        for method in user_escalation_methods.keys():
+        for method in user_methods_to_try:
             potential = True
             confirmed = True
 
@@ -1295,7 +1099,7 @@ def main(args, pacu_main: "Main"):
                 checked_methods["Potential"].append(method)
     elif target["RoleName"]:
         print("Escalation methods for current role:")
-        for method in role_escalation_methods.keys():
+        for method in role_methods_to_try:
             potential = True
             confirmed = True
 
@@ -2283,7 +2087,7 @@ def AttachGroupPolicy(pacu_main, print, input, fetch_data):
 def AttachRolePolicy(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
 
-    print("  Starting method PutRolePolicy...\n")
+    print("  Starting method AttachRolePolicy...\n")
 
     client = pacu_main.get_boto3_client("iam")
 
@@ -3301,14 +3105,14 @@ def PassExistingRoleToNewDataPipeline(pacu_main, print, input, fetch_data):
     print(
         "No auto-exploitation setup for PassExistingRoleToNewDataPipeline, visit the blog for manual exploitation steps: https://rhinosecuritylabs.com/aws/aws-privilege-escalation-methods-mitigation/\n"
     )
-    return
+    return False
 
 
 def CodeStarCreateProjectFromTemplate(pacu_main, print, input, fetch_data):
     print(
         "No auto-exploitation setup for CodeStarCreateProjectFromTemplate, visit the blog on this privilege escalation method for a standalone exploitation script: https://rhinosecuritylabs.com/aws/escalating-aws-iam-privileges-undocumented-codestar-api"
     )
-    return
+    return False
 
 
 def PassExistingRoleToNewCodeStarProject(pacu_main, print, input, fetch_data):
@@ -3729,4 +3533,6 @@ def EditExistingLambdaFunctionWithRole(pacu_main, print, input, fetch_data):
     print(
         'You can now view the enumerated Lambda data by running the "data Lambda" command in Pacu.\n'
     )
-    return True
+    # Even when this method completes successfully, it is not considered a success because it does not actually
+    # modify the function. It is up to the user to modify the function.
+    return False

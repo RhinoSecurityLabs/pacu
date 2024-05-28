@@ -36,6 +36,7 @@ class AWSKey(Base, ModelUpdateMixin):
     permissions_confirmed = Column(JSONType)
     allow_permissions = Column(JSONType, nullable=False, default=dict)
     deny_permissions = Column(JSONType, nullable=False, default=dict)
+    mq = Column(JSONType)
 
     def __repr__(self):
         return '<AWSKey #{}: {}>'.format(self.id, self.key_alias)
@@ -60,6 +61,7 @@ class AWSKey(Base, ModelUpdateMixin):
                 'Allow': remove_empty_from_dict(self.allow_permissions),
                 'Deny': remove_empty_from_dict(self.deny_permissions),
             },
+            'MQ':self.mq
         })
 
 
@@ -84,6 +86,7 @@ class PacuSession(Base, ModelUpdateMixin):
         'Inspector',
         'Lambda',
         'Lightsail',
+        'MQ',
         'S3',
         'SecretsManager',
         'Shield',
@@ -129,6 +132,7 @@ class PacuSession(Base, ModelUpdateMixin):
     Inspector = Column(JSONType, nullable=False, default=dict)
     Lambda = Column(JSONType, nullable=False, default=dict)
     Lightsail = Column(JSONType, nullable=False, default=dict)
+    MQ = Column(JSONType, nullable=False, default=dict)
     RDS = Column(JSONType, nullable=False, default=dict)
     S3 = Column(JSONType, nullable=False, default=dict)
     SecretsManager = Column(JSONType, nullable=False, default=dict)

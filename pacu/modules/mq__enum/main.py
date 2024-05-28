@@ -6,12 +6,13 @@ import json
 from pacu.core.lib import downloads_dir
 from pacu.core.lib import strip_lines
 from pacu import Main
+from copy import deepcopy
 
 module_info = {
     "name": "mq__enum",
     "author": "6a6f656c & h00die of nDepth Security",
-    "category": "ENUM",  # or maybe persistence? kind of depends what may come over the topic, like creds
-    "one_liner": "List and describer brokers",
+    "category": "ENUM",
+    "one_liner": "Listo and describe brokers",
     "description": strip_lines(
         """
         This module will attempt to list and gather information from available brokers.
@@ -24,9 +25,17 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info["description"])
 
-parser.add_argument('--regions', required=False, default=None, help=strip_lines('''
+parser.add_argument(
+    "--regions",
+    required=False,
+    default=None,
+    help=strip_lines(
+        """
     One or more (comma separated) AWS regions in the format "us-east-1". Defaults to all session regions.
-'''))
+"""
+    ),
+)
+
 
 def main(args, pacu_main: "Main"):
     session = pacu_main.get_active_session()
@@ -41,15 +50,15 @@ def main(args, pacu_main: "Main"):
     # End don't modify
     get_regions = pacu_main.get_regions
     if not args.regions:
-        regions = get_regions('mq')
+        regions = get_regions("mq")
     else:
-        regions = args.regions.split(',')
+        regions = args.regions.split(",")
 
     summary_data = {}
     summary_data["mq"] = {}
 
     for region in regions:
-        print('Starting region {}...'.format(region))
+        print("Starting region {}...".format(region))
         summary_data["mq"][region] = {}
 
         try:
@@ -58,7 +67,7 @@ def main(args, pacu_main: "Main"):
             print("Unable to connect to MQ service. Error: {}".format(error))
             continue
 
-        # Prepare output file to store ECR data
+        # Prepare output file to store MQ data
         now = time.time()
         outfile_path = str(downloads_dir() / f"mq_enum_{now}.json")
 
@@ -81,19 +90,21 @@ def main(args, pacu_main: "Main"):
             summary_data["mq"][region][broker["BrokerId"]]["AuthenticationStrategy"] = (
                 broker_details["AuthenticationStrategy"]
             )
-            summary_data["mq"][region][broker["BrokerId"]]["PubliclyAccessible"] = broker_details[
-                "PubliclyAccessible"
+            summary_data["mq"][region][broker["BrokerId"]]["PubliclyAccessible"] = (
+                broker_details["PubliclyAccessible"]
+            )
+            summary_data["mq"][region][broker["BrokerId"]]["BrokerName"] = (
+                broker_details["BrokerName"]
+            )
+            summary_data["mq"][region][broker["BrokerId"]]["BrokerState"] = (
+                broker_details["BrokerState"]
+            )
+            summary_data["mq"][region][broker["BrokerId"]]["Users"] = broker_details[
+                "Users"
             ]
-            summary_data["mq"][region][broker["BrokerId"]]["BrokerName"] = broker_details[
-                "BrokerName"
-            ]
-            summary_data["mq"][region][broker["BrokerId"]]["BrokerState"] = broker_details[
-                "BrokerState"
-            ]
-            summary_data["mq"][region][broker["BrokerId"]]["Users"] = broker_details["Users"]
-            summary_data["mq"][region][broker["BrokerId"]]["EngineType"] = broker_details[
-                "EngineType"
-            ]
+            summary_data["mq"][region][broker["BrokerId"]]["EngineType"] = (
+                broker_details["EngineType"]
+            )
             summary_data["mq"][region][broker["BrokerId"]]["ConsoleURL"] = [
                 url["ConsoleURL"] for url in broker_details["BrokerInstances"]
             ]
@@ -103,11 +114,17 @@ def main(args, pacu_main: "Main"):
     with open(outfile_path, "w+") as f:
         f.write(json.dumps(summary_data, indent=4, default=str))
 
+    mq_data = deepcopy(session.MQ)
+    for key, value in summary_data.items():
+        mq_data[key] = value
+    session.update(pacu_main.database, MQ=mq_data)
+
     return summary_data
+
 
 def summary(data, pacu_main):
     out = ""
- 
+
     total_users = 0
     total_brokers = 0
     for region in data["mq"]:

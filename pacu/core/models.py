@@ -62,8 +62,6 @@ class AWSKey(Base, ModelUpdateMixin):
                 'Allow': remove_empty_from_dict(self.allow_permissions),
                 'Deny': remove_empty_from_dict(self.deny_permissions),
             },
-            'MQ':self.mq,
-            'SNS': self.sns,
         })
 
 

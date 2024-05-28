@@ -71,44 +71,53 @@ def main(args, pacu_main: "Main"):
             paginator = client.get_paginator("list_brokers")
             # Create a PageIterator from the paginator
             page_iterator = paginator.paginate()
+            # This also allows the page_iterator to throw any errors
+            broker_summaries = [brkr_summary for response in page_iterator for brkr_summary in response["BrokerSummaries"]]
+            number_of_brokers = len(broker_summaries)
         except Exception as error:
             print(
-                "Unable to list brokers; Check credentials or No brokers are available. Error: {}".format(
+                "Unable to list brokers in {}; Check credentials or No brokers are available. Error: {}".format(
+                    region,
                     error
                 )
             )
             continue
-        print("  Found {} brokers".format(len(response["BrokerSummaries"])))
-        broker_id = broker["BrokerId"]
-        for broker in response["BrokerSummaries"]:
+        
+        for broker in broker_summaries:
+            broker_id = broker["BrokerId"]
+            if broker["BrokerState"] == "CREATION_IN_PROGRESS":
+                print(
+                    "Broker {} is still being created. Skipping.".format(
+                        broker["BrokerName"]
+                    )
+                )
+                continue
+            
+            broker_details = client.describe_broker(BrokerId=broker_id)
 
-            for response in page_iterator:
-                if broker_id["BrokerState"] == "CREATION_IN_PROGRESS":
-                    continue
-                broker_details = client.describe_broker(BrokerId=broker_id["BrokerId"])
-
-                summary_data["mq"][region][broker_id["BrokerId"]] = {}
-                summary_data["mq"][region][broker_id["BrokerId"]][
-                    "AuthenticationStrategy"
-                ] = broker_details["AuthenticationStrategy"]
-                summary_data["mq"][region][broker_id["BrokerId"]][
-                    "PubliclyAccessible"
-                ] = broker_details["PubliclyAccessible"]
-                summary_data["mq"][region][broker_id["BrokerId"]]["BrokerName"] = (
-                    broker_details["BrokerName"]
-                )
-                summary_data["mq"][region][broker_id["BrokerId"]]["BrokerState"] = (
-                    broker_details["BrokerState"]
-                )
-                summary_data["mq"][region][broker_id["BrokerId"]]["Users"] = (
-                    broker_details["Users"]
-                )
-                summary_data["mq"][region][broker_id["BrokerId"]]["EngineType"] = (
-                    broker_details["EngineType"]
-                )
-                summary_data["mq"][region][broker_id["BrokerId"]]["ConsoleURL"] = [
-                    url["ConsoleURL"] for url in broker_details["BrokerInstances"]
-                ]
+            summary_data["mq"][region][broker_id] = {}
+            summary_data["mq"][region][broker_id][
+                "AuthenticationStrategy"
+            ] = broker_details["AuthenticationStrategy"]
+            summary_data["mq"][region][broker_id][
+                "PubliclyAccessible"
+            ] = broker_details["PubliclyAccessible"]
+            summary_data["mq"][region][broker_id]["BrokerName"] = (
+                broker_details["BrokerName"]
+            )
+            summary_data["mq"][region][broker_id]["BrokerState"] = (
+                broker_details["BrokerState"]
+            )
+            summary_data["mq"][region][broker_id]["Users"] = (
+                broker_details["Users"]
+            )
+            summary_data["mq"][region][broker_id]["EngineType"] = (
+                broker_details["EngineType"]
+            )
+            summary_data["mq"][region][broker_id]["ConsoleURL"] = [
+                url["ConsoleURL"] for url in broker_details["BrokerInstances"]
+            ]
+        print("  Found {} brokers".format(number_of_brokers))
 
     mq_data = deepcopy(session.MQ)
     for key, value in summary_data.items():

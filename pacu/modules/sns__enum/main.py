@@ -67,10 +67,6 @@ def main(args, pacu_main: "Main"):
             print("Unable to connect to SNS service. Error: {}".format(error))
             continue
 
-        # Prepare output file to store SNS data
-        now = time.time()
-        outfile_path = str(downloads_dir() / f"sns_enum_{now}.json")
-
         try:
             # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sns/client/list_topics.html
             response = client.list_topics()
@@ -125,11 +121,7 @@ def main(args, pacu_main: "Main"):
                 )
                 continue
 
-    # Write all the data to the output file
-    print("Writing all SNS results to file: {}".format(outfile_path))
-    with open(outfile_path, "w+") as f:
-        f.write(json.dumps(summary_data, indent=4, default=str))
-
+    # Write all the data to the database for storage
     sns_data = deepcopy(session.SNS)
     for key, value in summary_data.items():
         sns_data[key] = value

@@ -43,7 +43,7 @@ module_info = {
     "arguments_to_autocomplete": ["--offline", "--folder", "--scan-only"],
 }
 
-parser = argparse.ArgumentParser(add_help=False, description=module_info["description"])
+parser = argparse.ArgumentParser(add_help=True, description=module_info["description"])
 
 parser.add_argument(
     "--offline",
@@ -103,7 +103,28 @@ parser.add_argument(
 """
     ),
 )
-
+parser.add_argument(
+    "--user-methods",
+    required=False,
+    default=None,
+    nargs='+',
+    help=strip_lines(
+        """
+    Specify user methods to attempt.
+    """
+    ),
+)
+parser.add_argument(
+    "--role-methods",
+    required=False,
+    default=None,
+    nargs='+',
+    help=strip_lines(
+        """
+    Specify role methods to attempt.
+"""
+    ),
+)
 
 # 18) GreenGrass passrole privesc ?
 # 19) Redshift passrole privesc ?
@@ -484,17 +505,6 @@ def main(args, pacu_main: "Main"):
             """)
         },
     }
-    if args.method_info:
-        def dict_lower(input_dict):
-            return {key.lower(): value for key, value in input_dict.items()}
-        escalation_methods_info = dict_lower(escalation_methods_info)
-        print(escalation_methods_info[args.method_info.lower()]["info"])
-        return
-    if args.method_list:
-        print("Available escalation methods:")
-        for method in escalation_methods_info:
-            print(method)
-        return
 
     summary_data = {"scan_only": args.scan_only}
 
@@ -801,6 +811,44 @@ def main(args, pacu_main: "Main"):
             "sts:assumerole": True,
         },
     }
+    
+    if args.method_info:
+        def dict_lower(input_dict):
+            return {key.lower(): value for key, value in input_dict.items()}
+        escalation_methods_info = dict_lower(escalation_methods_info)
+        print(escalation_methods_info[args.method_info.lower()]["info"])
+        return
+    if args.method_list:
+        user_methods = []
+        role_methods = []
+        for method in escalation_methods_info:
+            if method in user_escalation_methods:
+                user_methods.append(method)
+            if method in role_escalation_methods:
+                role_methods.append(method)
+        print("User Escalation Methods:")
+        for method in user_methods:
+            print(method)
+        print()
+        print("Role Escalation Methods:")
+        for method in role_methods:
+            print(method)
+        return
+        
+    # Setup the methods to attempt
+    role_methods_to_try = []
+    user_methods_to_try = []
+    if args.user_methods is not None and args.role_methods is not None:
+        user_methods_to_try = args.user_methods
+        role_methods_to_try = args.role_methods
+    elif args.user_methods is not None:
+        user_methods_to_try = args.user_methods
+    elif args.role_methods is not None:
+        role_methods_to_try = args.role_methods
+    else:
+        user_methods_to_try = user_escalation_methods.keys()
+        role_methods_to_try = role_escalation_methods.keys()
+    
     # Check if this is an offline scan
     if args.offline is True:
         potential_methods = {}
@@ -863,7 +911,7 @@ def main(args, pacu_main: "Main"):
 
                     potential_methods[name] = []
 
-                    for method in user_escalation_methods.keys():
+                    for method in user_methods_to_try:
                         is_possible = True
 
                         for permission in user_escalation_methods[method]:
@@ -905,7 +953,7 @@ def main(args, pacu_main: "Main"):
 
                     potential_methods[name] = []
 
-                    for method in role_escalation_methods.keys():
+                    for method in role_methods_to_try:
                         is_possible = True
 
                         for permission in role_escalation_methods[method]:
@@ -1001,7 +1049,7 @@ def main(args, pacu_main: "Main"):
 
     if target["UserName"]:  # If they are a user
         print("Escalation methods for current user:")
-        for method in user_escalation_methods.keys():
+        for method in user_methods_to_try:
             potential = True
             confirmed = True
 
@@ -1051,7 +1099,7 @@ def main(args, pacu_main: "Main"):
                 checked_methods["Potential"].append(method)
     elif target["RoleName"]:
         print("Escalation methods for current role:")
-        for method in role_escalation_methods.keys():
+        for method in role_methods_to_try:
             potential = True
             confirmed = True
 
@@ -2039,7 +2087,7 @@ def AttachGroupPolicy(pacu_main, print, input, fetch_data):
 def AttachRolePolicy(pacu_main, print, input, fetch_data):
     session = pacu_main.get_active_session()
 
-    print("  Starting method PutRolePolicy...\n")
+    print("  Starting method AttachRolePolicy...\n")
 
     client = pacu_main.get_boto3_client("iam")
 

@@ -3485,4 +3485,6 @@ def EditExistingLambdaFunctionWithRole(pacu_main, print, input, fetch_data):
     print(
         'You can now view the enumerated Lambda data by running the "data Lambda" command in Pacu.\n'
     )
-    return True
+    # Even when this method completes successfully, it is not considered a success because it does not actually
+    # modify the function. It is up to the user to modify the function.
+    return False

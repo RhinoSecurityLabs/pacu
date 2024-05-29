@@ -126,6 +126,7 @@ def display_pacu_help():
         swap_session <session name>         Change the active Pacu session to another one in the database
         delete_session                      Delete a Pacu session from the database. Note that the output
                                               folder for that session will not be deleted
+        history                             List the previously typed commands
 
         exit/quit                           Exit Pacu
 
@@ -179,7 +180,7 @@ class Main:
         'aws', 'data', 'exec', 'exit', 'help', 'import_keys', 'assume_role', 'list', 'load_commands_file',
         'ls', 'quit', 'regions', 'run', 'search', 'services', 'set_keys', 'set_regions',
         'swap_keys', 'update_regions', 'set_ua_suffix', 'unset_ua_suffix', 'whoami', 'swap_session', 'sessions',
-        'list_sessions', 'delete_session', 'export_keys', 'open_console', 'console'
+        'list_sessions', 'delete_session', 'export_keys', 'open_console', 'console', 'history'
     ]
 
     def __init__(self):
@@ -366,6 +367,12 @@ class Main:
         else:
             return valid_regions
 
+    def display_history(self):
+        # https://stackoverflow.com/a/7008316
+        import readline
+        for i in range(readline.get_current_history_length()):
+            print("{0:>3}: {}".format(i,readline.get_history_item(i + 1))
+    
     def display_all_regions(self):
         for region in sorted(self.get_regions('all')):
             print('  {}'.format(region))
@@ -595,6 +602,8 @@ class Main:
             self.parse_commands_from_file(command)
         elif command[0] == 'regions':
             self.display_all_regions()
+        elif command[0] == 'history':
+            self.display_history()
         elif command[0] == 'run' or command[0] == 'exec':
             self.print_user_agent_suffix()
             self.parse_exec_module_command(command)
@@ -780,7 +789,7 @@ class Main:
         elif len(command) == 3:
             if command[1] in ('cat', 'category'):
                 self.list_modules(command[2], by_category=True)
-
+    
     def parse_exec_module_command(self, command: List[str]) -> None:
         if len(command) > 1:
             self.exec_module(command)

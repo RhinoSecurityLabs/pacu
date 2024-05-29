@@ -795,7 +795,7 @@ class Main:
         elif len(command) == 3:
             if command[1] in ('cat', 'category'):
                 self.list_modules(command[2], by_category=True)
-    
+
     def parse_exec_module_command(self, command: List[str]) -> None:
         if len(command) > 1:
             self.exec_module(command)

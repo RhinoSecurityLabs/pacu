@@ -1,7 +1,3 @@
-**Update 5/4/2021:** We recently added support for installing via pip, take a look at the [Installation](#Installation) section for running pacu when installed with pip. If you want to run pacu directly from the checked out repo you'll want to use `./cli.py` instead of `python3 pacu.py`.
-
-With this change files that where written to `./sessions/<session>` before are now output to `~/.local/share/pacu/<session>`.
-
 # Quick reference
 - **Where to get help**:
 [the Rhino Security Labs Discord](https://discord.gg/8vFE7ucx9W), or [Stack Overflow](https://stackoverflow.com/search?tab=newest&q=pacu)

@@ -371,7 +371,7 @@ class Main:
         # https://stackoverflow.com/a/7008316
         import readline
         for i in range(readline.get_current_history_length()):
-            print("{:>3}: {}".format(i,readline.get_history_item(i + 1)))
+            print("{:>3}: {}".format(i+1, readline.get_history_item(i + 1)))
     
     def display_all_regions(self):
         for region in sorted(self.get_regions('all')):

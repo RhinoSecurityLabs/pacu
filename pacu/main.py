@@ -45,7 +45,7 @@ except ModuleNotFoundError:
 
 # arbitrary number, seems reasonable though
 readline.set_history_length(200)
-readline.read_history_file(home_dir() + 'command_history.txt')
+readline.read_history_file(f'{home_dir()}/command_history.txt')
 
 def load_categories() -> set:
     categories = set()
@@ -633,7 +633,7 @@ class Main:
             self.print_key_info()
         elif command[0] == 'exit' or command[0] == 'quit':
             # write out command history for loading later
-            readline.write_history_file(home_dir() + 'command_history.txt')
+            readline.write_history_file(f'{home_dir()}/command_history.txt')
             self.exit()
         else:
             print('  Error: Unrecognized command')

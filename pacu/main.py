@@ -45,7 +45,8 @@ except ModuleNotFoundError:
 
 # arbitrary number, seems reasonable though
 readline.set_history_length(200)
-readline.read_history_file(f'{home_dir()}/command_history.txt')
+if os.path.isfile(f'{home_dir()}/command_history.txt') and os.access(file, os.R_OK):
+    readline.read_history_file(f'{home_dir()}/command_history.txt')
 
 def load_categories() -> set:
     categories = set()

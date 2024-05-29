@@ -5,6 +5,7 @@ import json
 import os
 import random
 import re
+import readline
 import shlex
 import subprocess
 import sys
@@ -16,7 +17,7 @@ from pathlib import Path
 from typing import List, Optional, Any, Dict, Union, Tuple
 
 from pacu.core import lib
-from pacu.core.lib import session_dir
+from pacu.core.lib import session_dir, home_dir
 
 try:
     import jq  # type: ignore
@@ -42,6 +43,9 @@ except ModuleNotFoundError:
     print('Refer to https://github.com/RhinoSecurityLabs/pacu/wiki/Installation')
     sys.exit(1)
 
+# arbitrary number, seems reasonable though
+readline.set_history_length(200)
+readline.read_history_file(home_dir() + 'command_history.txt')
 
 def load_categories() -> set:
     categories = set()
@@ -369,7 +373,6 @@ class Main:
 
     def display_history(self):
         # https://stackoverflow.com/a/7008316
-        import readline
         for i in range(readline.get_current_history_length()):
             print("{:>3}: {}".format(i+1, readline.get_history_item(i + 1)))
     
@@ -629,6 +632,8 @@ class Main:
         elif command[0] == 'whoami':
             self.print_key_info()
         elif command[0] == 'exit' or command[0] == 'quit':
+            # write out command history for loading later
+            readline.write_history_file(home_dir() + 'command_history.txt')
             self.exit()
         else:
             print('  Error: Unrecognized command')
@@ -1586,7 +1591,6 @@ aws_secret_access_key = {}
 
     def initialize_tab_completion(self) -> None:
         try:
-            import readline
             # Big thanks to samplebias: https://stackoverflow.com/a/5638688
             MODULES = []
             CATEGORIES = []

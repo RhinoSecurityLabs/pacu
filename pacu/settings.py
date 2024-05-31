@@ -12,16 +12,18 @@ import os
 # at the time an error is written to the logs. Use with extreme caution.
 from pathlib import Path
 
-ERROR_LOG_VERBOSITY = 'minimal'
+ERROR_LOG_VERBOSITY = "minimal"
 
-_home_dir = Path('~/.local/share/pacu')
+REGION = "us-east-1"
+
+_home_dir = Path("~/.local/share/pacu")
 home_dir = _home_dir.expanduser().absolute()
 
 os.makedirs(home_dir, exist_ok=True, mode=0o700)
 
-DATABASE_FILE_PATH = os.path.join(home_dir, 'sqlite.db')
+DATABASE_FILE_PATH = os.path.join(home_dir, "sqlite.db")
 
 if os.path.isabs(DATABASE_FILE_PATH):
-    DATABASE_CONNECTION_PATH = 'sqlite:///' + DATABASE_FILE_PATH
+    DATABASE_CONNECTION_PATH = "sqlite:///" + DATABASE_FILE_PATH
 else:
-    DATABASE_CONNECTION_PATH = 'sqlite://' + DATABASE_FILE_PATH
+    DATABASE_CONNECTION_PATH = "sqlite://" + DATABASE_FILE_PATH

@@ -500,9 +500,12 @@ def main(args, pacu_main: Main):
                     "Your refresh token is: "
                     + tokens["AuthenticationResult"]["RefreshToken"]
                 )
-                print(
-                    "Your token type is: " + tokens["AuthenticationResult"]["TokenType"]
-                )
+
+                if "TokenType" in tokens["AuthenticationResult"]:
+                    print(
+                        "Your token type is: "
+                        + tokens["AuthenticationResult"]["TokenType"]
+                    )
                 attack_user["Username"] = username
                 attack_user["Region"] = up_client["Region"]
                 attack_user["UserPoolId"] = up_client["UserPoolId"]
@@ -516,9 +519,11 @@ def main(args, pacu_main: Main):
                 attack_user["Tokens"]["RefreshToken"] = tokens["AuthenticationResult"][
                     "RefreshToken"
                 ]
-                attack_user["Tokens"]["TokenType"] = tokens["AuthenticationResult"][
-                    "TokenType"
-                ]
+
+                if "TokenType" in tokens["AuthenticationResult"]:
+                    attack_user["Tokens"]["TokenType"] = tokens["AuthenticationResult"][
+                        "TokenType"
+                    ]
                 credentials = get_identity_credentials(
                     cognito_identity_pools,
                     identity_client,
@@ -944,7 +949,7 @@ def main(args, pacu_main: Main):
     for var in vars(args):
         if var == "regions":
             continue
-        if not getattr(args, var) and ARG_FIELD_MAPPER[var] in gathered_data:
+        if not getattr(args, var) and ARG_FIELD_MAPPER.get(var) in gathered_data:
             del gathered_data[ARG_FIELD_MAPPER[var]]
 
     cognito_data = deepcopy(session.Cognito)

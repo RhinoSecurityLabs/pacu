@@ -1,5 +1,3 @@
-import boto3
-import moto
 import os
 import pytest
 from pacu import settings, Main
@@ -10,6 +8,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy_utils import JSONType
 from sqlalchemy.engine import Engine
 
+from pacu.modules.cognito__attack.tests.dataclasses import AWSCredentials
 
 settings.DATABASE_CONNECTION_PATH = "sqlite:///:memory:"
 
@@ -23,10 +22,18 @@ def db() -> core.base:
 
 
 @pytest.fixture(scope="function")
-def pacu(db):
+def pacu(db, aws_credentials: AWSCredentials, active_session: PacuSession):
     pacu = Main()
     pacu.database = db
-    return pacu
+
+    pacu.set_keys(
+        key_alias="pytest",
+        access_key_id=aws_credentials.access_key_id,
+        secret_access_key=aws_credentials.secret_access_key,
+        session_token=aws_credentials.session_token,
+    )
+
+    yield pacu
 
 
 @pytest.fixture(scope="function")
@@ -40,7 +47,7 @@ def pacu_session(db: orm.session.Session):
     query: orm.Query = db.query(PacuSession)
     assert query.count() == 0
 
-    pacu_session = PacuSession()
+    pacu_session = PacuSession(name="test")
     db.add(pacu_session)
     yield pacu_session
 
@@ -56,21 +63,24 @@ def db_new_column(db: Session):
 @pytest.fixture(scope="function")
 def pacu_with_data(pacu: Main, active_session: PacuSession):
     active_session.update(pacu.database, CloudWatch={"test_key": "test_value"})
-    return pacu
+    yield pacu
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def aws_credentials():
     """Mocked AWS Credentials for moto."""
 
-    original_env = dict(os.environ)
+    value = "testing"
+    creds = AWSCredentials(
+        access_key_id=value,
+        secret_access_key=value,
+        session_token=value,
+        security_token=value,
+    )
 
-    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
-    os.environ["AWS_SECURITY_TOKEN"] = "testing"
-    os.environ["AWS_SESSION_TOKEN"] = "testing"
+    os.environ["AWS_ACCESS_KEY_ID"] = creds.access_key_id
+    os.environ["AWS_SECRET_ACCESS_KEY"] = creds.secret_access_key
+    os.environ["AWS_SECURITY_TOKEN"] = creds.session_token
+    os.environ["AWS_SESSION_TOKEN"] = creds.session_token
 
-    yield
-
-    os.environ.clear()
-    os.environ.update(original_env)
+    yield creds

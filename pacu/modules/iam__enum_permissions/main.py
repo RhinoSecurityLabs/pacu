@@ -569,7 +569,6 @@ def summary(data, pacu_main):
     else:
         out += "{:>{count_max_len}} Unconfirmed permissions for {} role(s).\n".format(data["roles_unconfirmed_perm_count"],
                                                                                       data["roles_unconfirmed"],
-    
                                                                                       count_max_len=count_max_len)
     out += "Type 'whoami' to see detailed list of permissions.\n" 
     return out

@@ -606,13 +606,9 @@ class Main:
             self.parse_commands_from_file(command)
         elif command[0] == 'regions':
             self.display_all_regions()
-<<<<<<< HEAD
         elif command[0] == 'history':
             self.display_history()
-        elif command[0] == 'run' or command[0] == 'exec':
-=======
         elif command[0] in ['run', 'exec', 'use']:
->>>>>>> master
             self.print_user_agent_suffix()
             self.parse_exec_module_command(command)
         elif command[0] == 'search':

@@ -48,6 +48,7 @@ readline.set_history_length(200)
 if os.path.isfile(f'{home_dir()}/command_history.txt') and os.access(f'{home_dir()}/command_history.txt', os.R_OK):
     readline.read_history_file(f'{home_dir()}/command_history.txt')
 
+
 def load_categories() -> set:
     categories = set()
     current_directory = os.getcwd()
@@ -184,8 +185,8 @@ class Main:
     COMMANDS = [
         'assume_role', 'aws', 'console', 'data', 'delete_session', 'exec', 'exit', 'export_keys', 'help',
         'history', 'import_keys', 'list', 'list_sessions', 'load_commands_file', 'ls', 'open_console', 'quit',
-        'regions','run', 'search', 'services', 'sessions', 'set_keys', 'set_regions', 'set_ua_suffix',
-        'swap_keys','swap_session', 'unset_ua_suffix', 'update_regions', 'use', 'whoami'
+        'regions', 'run', 'search', 'services', 'sessions', 'set_keys', 'set_regions', 'set_ua_suffix',
+        'swap_keys', 'swap_session', 'unset_ua_suffix', 'update_regions', 'use', 'whoami'
     ]
 
     def __init__(self):
@@ -376,7 +377,7 @@ class Main:
         # https://stackoverflow.com/a/7008316
         for i in range(readline.get_current_history_length()):
             print("{:>3}: {}".format(i+1, readline.get_history_item(i + 1)))
-    
+
     def display_all_regions(self):
         for region in sorted(self.get_regions('all')):
             print('  {}'.format(region))

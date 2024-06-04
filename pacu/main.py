@@ -782,7 +782,9 @@ class Main:
                 self.list_modules(command[2], by_category=True)
 
     def parse_exec_module_command(self, command: List[str]) -> None:
-        if len(command) > 1:
+        if len(command) > 1 and command[-1] == "-h":
+            self.parse_help_command(command)
+        elif len(command) > 1:
             self.exec_module(command)
         else:
             print('The {} command requires a module name. Try using the module search function.'.format(command))

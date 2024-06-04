@@ -136,10 +136,24 @@ def main(args, pacu_main: "Main"):
         client = pacu_main.get_boto3_client('apigateway', region)
         print(f"Enumerating {region}")
 
-        summary_data['apiKeys'] = get_api_keys(client)
-        summary_data['clientCerts'] = get_client_certs(client)
+        # Get global API data
+        try:
+            summary_data['apiKeys'] = get_api_keys(client)
+        except Exception as e:
+            print(f"Failed to get API Keys in {region}: {e}")
+        try:
+            summary_data['clientCerts'] = get_client_certs(client)
+        except Exception as e:
+            print(f"Failed to get Client Certs in {region}: {e}")
 
-        response = client.get_rest_apis()
+        # Currently this only supports REST apis
+        # Get all apis in AWS Gatway
+        try:
+            response = client.get_rest_apis()
+        except Exception as e:
+            print(f"Failed to get APIs in {region}: {e}")
+            continue
+
         items = response['items']
 
         for api in items:

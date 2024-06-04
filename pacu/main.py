@@ -1821,7 +1821,8 @@ aws_secret_access_key = {}
                     self.check_sessions()
 
                     self.initialize_tab_completion()
-                    display_pacu_help()
+                    if not quiet:
+                        display_pacu_help()
 
                     idle_ready = True
 

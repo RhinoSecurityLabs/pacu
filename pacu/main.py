@@ -12,6 +12,7 @@ import time
 import traceback
 import argparse
 import uuid
+import textwrap
 from pathlib import Path
 from typing import List, Optional, Any, Dict, Union, Tuple
 
@@ -69,83 +70,6 @@ def load_categories() -> set:
                 categories.add(module.module_info['category'])
     return categories
 
-
-def display_pacu_help():
-    print("""
-    Pacu - https://github.com/RhinoSecurityLabs/pacu
-    Written and researched by Spencer Gietzen of Rhino Security Labs - https://rhinosecuritylabs.com/
-
-    This was built as a modular, open source tool to assist in penetration testing an AWS environment.
-    For usage and developer documentation, please visit the GitHub page.
-
-    Modules that have pre-requisites will have those listed in that modules help info, but if it is
-    executed before its pre-reqs have been filled, it will prompt you to run that module then continue
-    once that is finished, so you have the necessary data for the module you want to run.
-
-    Pacu command info:
-        list/ls                             List all modules
-        load_commands_file <file>           Load an existing file with list of commands to execute
-        search [cat[egory]] <search term>   Search the list of available modules by name or category
-        help                                Display this page of information
-        help <module name>                  Display information about a module
-        whoami                              Display information regarding to the active access keys
-        data                                Display all data that is stored in this session. Only fields
-                                              with values will be displayed
-        data <service> [<sub-service>]      Display all data for a specified service in this session
-        jq <query> <service> [<sub-service>] Run a jq statement on the specified service's data
-        services                            Display a list of services that have collected data in the
-                                              current session to use with the "data" command
-        regions                             Display a list of all valid AWS regions
-        update_regions                      Run a script to update the regions database to the newest
-                                              version
-        set_regions <region> [<region>...]  Set the default regions for this session. These space-separated
-                                              regions will be used for modules where regions are required,
-                                              but not supplied by the user. The default set of regions is
-                                              every supported region for the service. Supply "all" to this
-                                              command to reset the region set to the default of all
-                                              supported regions
-        set_ua_suffix [<suffix>]            Set the user agent suffix for this session. The suffix will be
-                                              appended to the user agent for all API calls. If no suffix is
-                                              supplied a UUID-based suffix will be generated.
-        unset_ua_suffix                     Remove the user agent suffix for this session.
-        run/exec/use <module name>          Execute a module
-        set_keys                            Add a set of AWS keys to the session and set them as the
-                                              default
-        swap_keys                           Change the currently active AWS key to another key that has
-                                              previously been set for this session
-        import_keys <profile name>|--all    Import AWS keys from the AWS CLI credentials file (located
-                                              at ~/.aws/credentials) to the current sessions database.
-                                              Enter the name of a profile you would like to import or
-                                              supply --all to import all the credentials in the file.
-        assume_role <role arn>              Call AssumeRole on the specified role from the current
-                                              credentials, add the resulting temporary keys to the Pacu
-                                              key database and start using these new credentials.
-        export_keys                         Export the active credentials to a profile in the AWS CLI
-                                              credentials file (~/.aws/credentials)
-        sessions/list_sessions              List all sessions in the Pacu database
-        swap_session <session name>         Change the active Pacu session to another one in the database
-        delete_session                      Delete a Pacu session from the database. Note that the output
-                                              folder for that session will not be deleted
-
-        exit/quit                           Exit Pacu
-
-    Other command info:
-        aws <command>                       Run an AWS CLI command directly. Note: If Pacu detects "aws"
-                                              as the first word of the command, the whole command will
-                                              instead be run in a shell so that you can use the AWS CLI
-                                              from within Pacu. Due to the command running in a shell,
-                                              this enables you to pipe output where needed. An example
-                                              would be to run an AWS CLI command and pipe it into "jq"
-                                              to parse the data returned. Warning: The AWS CLI's
-                                              authentication is not related to Pacu. Be careful to
-                                              ensure that you are using the keys you want when using
-                                              the AWS CLI. It is suggested to use AWS CLI profiles
-                                              to solve this problem
-        console/open_console                Generate a URL that will log the current user/role in to
-                                              the AWS web console
-    """)
-
-
 def import_module_by_name(module_name: str, include: List[str] = []) -> Any:  # TODO: define module type
     file_path = str(Path(__file__).parent/'modules'/module_name/'main.py')
     if os.path.exists(file_path):
@@ -175,12 +99,68 @@ def get_data_from_traceback(tb) -> Tuple[Optional[PacuSession], List[str], List[
 
 
 class Main:
-    COMMANDS = [
-        'assume_role', 'aws', 'console', 'data', 'delete_session', 'exec', 'exit', 'export_keys', 'help',
-        'import_keys', 'list', 'list_sessions', 'load_commands_file', 'ls', 'open_console', 'quit', 'regions',
-        'run', 'search', 'services', 'sessions', 'set_keys', 'set_regions', 'set_ua_suffix', 'swap_keys',
-        'swap_session', 'unset_ua_suffix', 'update_regions', 'use', 'whoami'
-    ]
+    COMMANDS = {
+        'list': {'description': 'List all modules', 'aliases': ['ls'], 'args': [], 'type': 'pacu'},
+        'load_commands_file': {'description': 'Load an existing file with list of commands to execute', 'aliases': [], 'args': ['<file>'], 'type': 'pacu'},
+        'search': {'description': 'Search the list of available modules by name or category', 'aliases': [], 'args': ['[cat[egory]]', '<search term>'], 'type': 'pacu'},
+        'help': {'description': 'Display this page of information or information about a module', 'aliases': [], 'args': ['<module name>'], 'type': 'pacu'},
+        'whoami': {'description': 'Display information regarding the active access keys', 'aliases': [], 'args': [], 'type': 'pacu'},
+        'data': {'description': 'Display all data stored in this session or for a specified service', 'aliases': [], 'args': ['<service>', '[<sub-service>]'], 'type': 'pacu'},
+        'jq': {'description': 'Run a jq statement on the specified service\'s data', 'aliases': [], 'args': ['<query>', '<service>', '[<sub-service>]'], 'type': 'pacu'},
+        'services': {'description': 'Display a list of services that have collected data in the current session', 'aliases': [], 'args': [], 'type': 'pacu'},
+        'regions': {'description': 'Display a list of all valid AWS regions', 'aliases': [], 'args': [], 'type': 'pacu'},
+        'update_regions': {'description': 'Run a script to update the regions database to the newest version', 'aliases': [], 'args': [], 'type': 'pacu'},
+        'set_regions': {'description': 'Set the default regions for this session', 'aliases': [], 'args': ['<region>', '[<region>...]'], 'type': 'pacu'},
+        'set_ua_suffix': {'description': 'Set the user agent suffix for this session', 'aliases': [], 'args': ['[<suffix>]'], 'type': 'pacu'},
+        'unset_ua_suffix': {'description': 'Remove the user agent suffix for this session', 'aliases': [], 'args': [], 'type': 'pacu'},
+        'run': {'description': 'Execute a module', 'aliases': ['exec', 'use'], 'args': ['<module name>'], 'type': 'pacu'},
+        'set_keys': {'description': 'Add a set of AWS keys to the session and set them as the default', 'aliases': [], 'args': [], 'type': 'pacu'},
+        'swap_keys': {'description': 'Change the currently active AWS key to another key that has previously been set for this session', 'aliases': [], 'args': [], 'type': 'pacu'},
+        'import_keys': {'description': 'Import AWS keys from the AWS CLI credentials file to the current sessions database', 'aliases': [], 'args': ['<profile name>|--all'], 'type': 'pacu'},
+        'assume_role': {'description': 'Call AssumeRole on the specified role from the current credentials and start using these new credentials', 'aliases': [], 'args': ['<role arn>'], 'type': 'pacu'},
+        'export_keys': {'description': 'Export the active credentials to a profile in the AWS CLI credentials file', 'aliases': [], 'args': [], 'type': 'pacu'},
+        'sessions': {'description': 'List all sessions in the Pacu database', 'aliases': ['list_sessions'], 'args': [], 'type': 'pacu'},
+        'swap_session': {'description': 'Change the active Pacu session to another one in the database', 'aliases': [], 'args': ['<session name>'], 'type': 'pacu'},
+        'delete_session': {'description': 'Delete a Pacu session from the database', 'aliases': [], 'args': [], 'type': 'pacu'},
+        'exit': {'description': 'Exit Pacu', 'aliases': ['quit'], 'args': [], 'type': 'pacu'},
+        'aws': {'description': 'Run an AWS CLI command directly', 'aliases': [], 'args': ['<command>'], 'type': 'other'},
+        'console': {'description': 'Generate a URL that will log the current user/role into the AWS web console', 'aliases': ['open_console'], 'args': [], 'type': 'other'},
+    }
+
+    def display_pacu_help(self):
+        help_text = textwrap.dedent("""
+        Pacu - https://github.com/RhinoSecurityLabs/pacu
+        Written and researched by Spencer Gietzen of Rhino Security Labs - https://rhinosecuritylabs.com/
+
+        This was built as a modular, open source tool to assist in penetration testing an AWS environment.
+        For usage and developer documentation, please visit the GitHub page.
+
+        Modules that have pre-requisites will have those listed in that module's help info, but if it is
+        executed before its pre-reqs have been filled, it will prompt you to run that module then continue
+        once that is finished, so you have the necessary data for the module you want to run.
+
+        """)
+        print(help_text)
+        
+        max_command_length = max(
+            len(f"{name} {' '.join(details['args'])}") for name, details in self.COMMANDS.items()
+        ) + 5  # add some padding for spacing
+        def get_command_help_string(name, details):
+            if details['aliases']:
+                name = f"{name}/{'/'.join(details['aliases'])}"
+            command_str = f"{name} {' '.join(details['args'])}".ljust(max_command_length)
+            description = details['description'].rjust(30)
+            return f"    {command_str} {description}"
+
+        print("Pacu command info:")
+        for name, details in self.COMMANDS.items():
+            if details['type'] == 'pacu':
+                print(get_command_help_string(name, details))
+
+        print("\nOther command info:")
+        for name, details in self.COMMANDS.items():
+            if details['type'] == 'other':
+                print(get_command_help_string(name, details))
 
     def __init__(self):
         # NOTE: self.database is the sqlalchemy session since 'session' is reserved for PacuSession objects.
@@ -759,7 +739,7 @@ class Main:
 
     def parse_help_command(self, command: List[str]) -> None:
         if len(command) <= 1:
-            display_pacu_help()
+            self.display_pacu_help()
         elif len(command) > 1 and command[1] in self.COMMANDS:
             self.display_command_help(command[1])
         else:
@@ -1822,7 +1802,7 @@ aws_secret_access_key = {}
 
                     self.initialize_tab_completion()
                     if not quiet:
-                        display_pacu_help()
+                        self.display_pacu_help()
 
                     idle_ready = True
 

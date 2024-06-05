@@ -185,8 +185,8 @@ def get_data_from_traceback(tb) -> Tuple[Optional[PacuSession], List[str], List[
 class Main:
     COMMANDS = [
         'assume_role', 'aws', 'console', 'data', 'delete_session', 'exec', 'exit', 'export_keys', 'help',
-        'history', 'import_keys', 'list', 'list_sessions', 'load_commands_file', 'ls', 'open_console', 'quit', 
-        'regions', 'run', 'search', 'services', 'sessions', 'set_keys', 'set_regions', 'set_ua_suffix', 
+        'history', 'import_keys', 'list', 'list_sessions', 'load_commands_file', 'ls', 'open_console', 'quit',
+        'regions', 'run', 'search', 'services', 'sessions', 'set_keys', 'set_regions', 'set_ua_suffix',
         'swap_keys', 'swap_session', 'unset_ua_suffix', 'update_regions', 'use', 'whoami', 'debug'
     ]
 
@@ -219,7 +219,7 @@ class Main:
                 log_file_path = '{}/global_error_log.txt'.format(session_dir())
 
             print('\n[{}] Pacu encountered an error while running the previous command. Check {} for technical '
-                  'details, or use the debug command. [LOG LEVEL: {}]\n\n    {}\n'.format(timestamp, log_file_path, 
+                  'details, or use the debug command. [LOG LEVEL: {}]\n\n    {}\n'.format(timestamp, log_file_path,
                                                                                           settings.ERROR_LOG_VERBOSITY.upper(), exception_info))
 
             log_file_directory = os.path.dirname(log_file_path)

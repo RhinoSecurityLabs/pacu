@@ -1,6 +1,6 @@
-from botocore.client import BaseClient
 from dataclasses import dataclass
-from typing import Any
+
+from botocore.client import BaseClient
 
 
 @dataclass

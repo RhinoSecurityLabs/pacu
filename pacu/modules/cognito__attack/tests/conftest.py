@@ -3,7 +3,7 @@ import moto
 import boto3
 from pacu.settings import REGION
 
-from pacu.modules.cognito__attack.tests.dataclasses import CognitoCredentials
+from pacu.modules.cognito__attack.tests.dataclasses import CognitoServiceConfig
 
 
 @pytest.fixture
@@ -37,25 +37,21 @@ def mock_cognito_user_pool():
             UserPoolId=user_pool_id,
         )
 
-        cog = CognitoCredentials(
+        with moto.mock_cognitoidentity():
+            c = boto3.client(
+                "cognito-identity",
+                region_name=REGION,
+            )
+
+            c_resposnse = c.create_identity_pool(
+                IdentityPoolName="TestIdentityPool",
+                AllowUnauthenticatedIdentities=False,
+            )
+
+        yield CognitoServiceConfig(
             client=client,
             user_pool_id=user_pool_id,
             client_id=client_response["UserPoolClient"]["ClientId"],
             client_name=client_response["UserPoolClient"]["ClientName"],
-            identity_pool_id=None,
+            identity_pool_id=c_resposnse["IdentityPoolId"],
         )
-
-    with moto.mock_cognitoidentity():
-        c = boto3.client(
-            "cognito-identity",
-            region_name=REGION,
-        )
-
-        c_resposnse = c.create_identity_pool(
-            IdentityPoolName="TestIdentityPool",
-            AllowUnauthenticatedIdentities=False,
-        )
-
-        cog.identity_pool_id = c_resposnse["IdentityPoolId"]
-
-    yield cog

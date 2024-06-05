@@ -5,6 +5,7 @@ import json
 import os
 import random
 import re
+import readline
 import shlex
 import subprocess
 import sys
@@ -41,6 +42,11 @@ except ModuleNotFoundError:
     print('Traceback (most recent call last):\n{}{}: {}\n'.format(''.join(traceback.format_tb(tb)), str(exception_type), str(exception_value)))
     print('Refer to https://github.com/RhinoSecurityLabs/pacu/wiki/Installation')
     sys.exit(1)
+
+# arbitrary number, seems reasonable though
+readline.set_history_length(200)
+if os.path.isfile(settings.history_file) and os.access(settings.history_file, os.R_OK):
+    readline.read_history_file(settings.history_file)
 
 
 def load_categories() -> set:
@@ -126,6 +132,7 @@ def display_pacu_help():
         swap_session <session name>         Change the active Pacu session to another one in the database
         delete_session                      Delete a Pacu session from the database. Note that the output
                                               folder for that session will not be deleted
+        history                             List the previously typed commands
 
         exit/quit                           Exit Pacu
 
@@ -177,9 +184,9 @@ def get_data_from_traceback(tb) -> Tuple[Optional[PacuSession], List[str], List[
 class Main:
     COMMANDS = [
         'assume_role', 'aws', 'console', 'data', 'delete_session', 'exec', 'exit', 'export_keys', 'help',
-        'import_keys', 'list', 'list_sessions', 'load_commands_file', 'ls', 'open_console', 'quit', 'regions',
-        'run', 'search', 'services', 'sessions', 'set_keys', 'set_regions', 'set_ua_suffix', 'swap_keys',
-        'swap_session', 'unset_ua_suffix', 'update_regions', 'use', 'whoami'
+        'history', 'import_keys', 'list', 'list_sessions', 'load_commands_file', 'ls', 'open_console', 'quit',
+        'regions', 'run', 'search', 'services', 'sessions', 'set_keys', 'set_regions', 'set_ua_suffix',
+        'swap_keys', 'swap_session', 'unset_ua_suffix', 'update_regions', 'use', 'whoami'
     ]
 
     def __init__(self):
@@ -365,6 +372,11 @@ class Main:
                 return session.session_regions
         else:
             return valid_regions
+
+    def display_history(self):
+        # https://stackoverflow.com/a/7008316
+        for i in range(readline.get_current_history_length()):
+            print("{:>3}: {}".format(i+1, readline.get_history_item(i + 1)))
 
     def display_all_regions(self):
         for region in sorted(self.get_regions('all')):
@@ -595,6 +607,8 @@ class Main:
             self.parse_commands_from_file(command)
         elif command[0] == 'regions':
             self.display_all_regions()
+        elif command[0] == 'history':
+            self.display_history()
         elif command[0] in ['run', 'exec', 'use']:
             self.print_user_agent_suffix()
             self.parse_exec_module_command(command)
@@ -620,6 +634,8 @@ class Main:
         elif command[0] == 'whoami':
             self.print_key_info()
         elif command[0] == 'exit' or command[0] == 'quit':
+            # write out command history for loading later
+            readline.write_history_file(settings.history_file)
             self.exit()
         else:
             print('  Error: Unrecognized command')
@@ -1579,7 +1595,6 @@ aws_secret_access_key = {}
 
     def initialize_tab_completion(self) -> None:
         try:
-            import readline
             # Big thanks to samplebias: https://stackoverflow.com/a/5638688
             MODULES = []
             CATEGORIES = []

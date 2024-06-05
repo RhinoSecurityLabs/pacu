@@ -18,7 +18,6 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
-
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
     args = parser.parse_args(args)
@@ -40,28 +39,48 @@ def main(args, pacu_main):
     )
 
     # Process and print the results
+    allow_permissions = []
+    deny_permissions = []
+
     print('Enumerated IAM Permissions:')
     for service, actions in results.items():
         print(f'{service}:')
-        for action, status in actions.items():
-            print(f'  {action}: {status}')
+        for action, result in actions.items():
+            print(f'  {action}: {result}')
+            if result:  # If result is not empty or False, consider it allowed
+                allow_permissions.append(f'{service}:{action}')
+            else:
+                deny_permissions.append(f'{service}:{action}')
+
+    # Update the active AWS key with the new permissions
+    active_aws_key = session.get_active_aws_key(pacu_main.database)
+    active_aws_key.update(
+        pacu_main.database,
+        allow_permissions=allow_permissions,
+        deny_permissions=deny_permissions
+    )
 
     # Write all the data to the Pacu DB for storage
     iam_data = deepcopy(session.IAM)
-    for key, value in results.items():
-        if key in iam_data:
-            iam_data[key].update(value)
-        else:
-            iam_data[key] = value
+    if 'permissions' not in iam_data:
+        iam_data['permissions'] = {}
+
+    iam_data['permissions']['allow'] = allow_permissions
+    iam_data['permissions']['deny'] = deny_permissions
+
     session.update(pacu_main.database, IAM=iam_data)
 
-    return results
+    # Prepare the summary data
+    summary_data = {
+        'allow': allow_permissions,
+        'deny': deny_permissions,
+    }
+
+    return summary_data
 
 def summary(data, pacu_main):
     out = ""
 
-    total_permissions = 0
-    for service in data['bruteforce']:
-        total_permissions += len(data['bruteforce'][service])
+    total_permissions = len(data['allow'])
     out += "Num of IAM permissions found: {} \n".format(total_permissions)
     return out

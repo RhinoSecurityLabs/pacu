@@ -18,6 +18,25 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
+# List of attributes to exclude from permissions
+EXCLUDED_ATTRIBUTES = ['arn', 'arn_id', 'arn_path', 'root_account']
+
+def format_permission(action):
+    """
+    Format the permission to match AWS IAM action format.
+    Converts dots to colons and snake_case to camelCase for the action part.
+    Removes the "bruteforce:" prefix if present.
+    """
+    if action.startswith('bruteforce:'):
+        action = action[len('bruteforce:'):]
+    parts = action.split('.')
+    if len(parts) > 1:
+        service = parts[0]
+        action_part = parts[1].split('_')
+        formatted_action = action_part[0].capitalize() + ''.join(word.capitalize() for word in action_part[1:])
+        return f'{service}:{formatted_action}'
+    return action
+
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
     args = parser.parse_args(args)
@@ -47,10 +66,15 @@ def main(args, pacu_main):
         print(f'{service}:')
         for action, result in actions.items():
             print(f'  {action}: {result}')
+            formatted_perm = format_permission(action)
             if result:  # If result is not empty or False, consider it allowed
-                allow_permissions.append(f'{service}:{action}')
+                allow_permissions.append(formatted_perm)
             else:
-                deny_permissions.append(f'{service}:{action}')
+                deny_permissions.append(formatted_perm)
+
+    # Remove non-permission attributes
+    allow_permissions = [perm for perm in allow_permissions if ':' in perm and perm.split(':', 1)[1] not in EXCLUDED_ATTRIBUTES]
+    deny_permissions = [perm for perm in deny_permissions if ':' in perm and perm.split(':', 1)[1] not in EXCLUDED_ATTRIBUTES]
 
     # Update the active AWS key with the new permissions
     active_aws_key = session.get_active_aws_key(pacu_main.database)

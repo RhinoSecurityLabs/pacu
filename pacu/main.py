@@ -212,8 +212,8 @@ class Main:
                 log_file_path = '{}/global_error_log.txt'.format(session_dir())
 
             print('\n[{}] Pacu encountered an error while running the previous command. Check {} for technical '
-                  'details, or use the debug command. [LOG LEVEL: {}]\n\n    {}\n'.format(timestamp, log_file_path,
-                                                                settings.ERROR_LOG_VERBOSITY.upper(), exception_info))
+                  'details, or use the debug command. [LOG LEVEL: {}]\n\n    {}\n'.format(timestamp, log_file_path, 
+                                                                                          settings.ERROR_LOG_VERBOSITY.upper(), exception_info))
 
             log_file_directory = os.path.dirname(log_file_path)
             if log_file_directory and not os.path.exists(log_file_directory):
@@ -256,7 +256,7 @@ class Main:
             print('Error while saving exception information. This means the exception was not added to any error log '
                   'and should most likely be provided to the developers.\n    Exception raised: {}'.format(str(error)))
             raise
-    
+
     def read_log_file(self):
         log_file_path = '{}/error_log.txt'.format(session_dir())
         if os.path.exists(log_file_path):

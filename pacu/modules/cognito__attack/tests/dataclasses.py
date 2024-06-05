@@ -1,10 +1,11 @@
+from botocore.client import BaseClient
 from dataclasses import dataclass
 from typing import Any
 
 
 @dataclass
-class CognitoCredentials:
-    client: Any
+class CognitoServiceConfig:
+    client: BaseClient
     user_pool_id: str
     client_id: str
     client_name: str

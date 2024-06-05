@@ -1,9 +1,9 @@
-import pytest
-import moto
 import boto3
-from pacu.settings import REGION
+import moto
+import pytest
 
 from pacu.modules.cognito__attack.tests.dataclasses import CognitoServiceConfig
+from pacu.settings import REGION
 
 
 @pytest.fixture

@@ -17,6 +17,12 @@ module_info = {
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
+parser.add_argument(
+    '--region',
+    required=False,
+    default=None,
+    help='The region to run the enumeration in (default: all regions)'
+)
 
 # List of attributes to exclude from permissions
 EXCLUDED_ATTRIBUTES = ['arn', 'arn_id', 'arn_path', 'root_account']
@@ -47,30 +53,37 @@ def main(args, pacu_main):
     access_key = aws_key.access_key_id
     secret_key = aws_key.secret_access_key
     session_token = aws_key.session_token if aws_key.session_token else None
-    region = 'us-east-1'  # You can change this to the desired region
-
-    # Call the enumerate_iam function from the enumerate-iam library
-    results = enumerate_iam(
-        access_key=access_key,
-        secret_key=secret_key,
-        session_token=session_token,
-        region=region
-    )
+    regions = args.region.split(',') if args.region else ['us-east-1', 'us-east-2', 'us-west-1', 'us-west-2']  # You can add more regions as needed
 
     # Process and print the results
     allow_permissions = []
     deny_permissions = []
 
     print('Enumerated IAM Permissions:')
-    for service, actions in results.items():
-        print(f'{service}:')
-        for action, result in actions.items():
-            print(f'  {action}: {result}')
-            formatted_perm = format_permission(action)
-            if result:  # If result is not empty or False, consider it allowed
-                allow_permissions.append(formatted_perm)
-            else:
-                deny_permissions.append(formatted_perm)
+    for region in regions:
+        client = pacu_main.get_boto3_client('apigateway', region)
+        print(f"Enumerating {region}")
+
+        try:
+            results = enumerate_iam(
+                access_key=access_key,
+                secret_key=secret_key,
+                session_token=session_token,
+                region=region
+            )
+        except Exception as e:
+            print(f"Failed to enumerate IAM permissions in {region}: {e}")
+            continue
+
+        for service, actions in results.items():
+            print(f'{service}:')
+            for action, result in actions.items():
+                print(f'  {action}: {result}')
+                formatted_perm = format_permission(action)
+                if result:  # If result is not empty or False, consider it allowed
+                    allow_permissions.append(formatted_perm)
+                else:
+                    deny_permissions.append(formatted_perm)
 
     # Remove non-permission attributes
     allow_permissions = [perm for perm in allow_permissions if ':' in perm and perm.split(':', 1)[1] not in EXCLUDED_ATTRIBUTES]

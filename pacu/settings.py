@@ -17,6 +17,8 @@ ERROR_LOG_VERBOSITY = 'minimal'
 _home_dir = Path('~/.local/share/pacu')
 home_dir = _home_dir.expanduser().absolute()
 
+history_file = f'{home_dir}/command_history.txt'
+
 os.makedirs(home_dir, exist_ok=True, mode=0o700)
 
 DATABASE_FILE_PATH = os.path.join(home_dir, 'sqlite.db')

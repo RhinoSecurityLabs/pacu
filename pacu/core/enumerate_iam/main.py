@@ -22,7 +22,7 @@ import logging
 import boto3
 import botocore
 import random
-from typing import Dict, Tuple, Generator, Any
+from typing import Dict, Tuple, Generator, Any, Optional
 
 from botocore.client import Config
 from botocore.endpoint import MAX_POOL_CONNECTIONS
@@ -33,10 +33,10 @@ from .utils.json_utils import json_encoder
 from .bruteforce_tests import BRUTEFORCE_TESTS
 
 MAX_THREADS = 25
-CLIENT_POOL: Dict[str, boto3.client] = {}
+CLIENT_POOL: Dict[str, botocore.client.BaseClient] = {}
 
 
-def report_arn(candidate: str) -> Tuple[str, str, str]:
+def report_arn(candidate: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
     Attempt to extract and slice up an ARN from the input string
     """
@@ -63,7 +63,7 @@ def enumerate_using_bruteforce(access_key: str, secret_key: str, session_token: 
     """
     Attempt to brute-force common describe calls.
     """
-    output = dict()
+    output: Dict[str, Any] = {}
 
     logger = logging.getLogger()
     logger.info('Attempting common-service describe / list brute force.')
@@ -114,7 +114,7 @@ def generate_args(access_key: str, secret_key: str, session_token: str, region: 
             yield access_key, secret_key, session_token, region, service_name, action
 
 
-def get_client(access_key: str, secret_key: str, session_token: str, service_name: str, region: str) -> boto3.client:
+def get_client(access_key: str, secret_key: str, session_token: str, service_name: str, region: str) -> Optional[botocore.client.BaseClient]:
     key = '%s-%s-%s-%s-%s' % (access_key, secret_key, session_token, service_name, region)
 
     client = CLIENT_POOL.get(key, None)
@@ -148,7 +148,7 @@ def get_client(access_key: str, secret_key: str, session_token: str, service_nam
     return client
 
 
-def check_one_permission(arg_tuple: Tuple[str, str, str, str, str, str]) -> Tuple[str, Any]:
+def check_one_permission(arg_tuple: Tuple[str, str, str, str, str, str]) -> Optional[Tuple[str, Any]]:
     access_key, secret_key, session_token, region, service_name, operation_name = arg_tuple
     logger = logging.getLogger()
 
@@ -210,7 +210,7 @@ def enumerate_iam(access_key: str, secret_key: str, session_token: str, region: 
     This code provides a mechanism to attempt to validate the permissions assigned
     to a given set of AWS tokens.
     """
-    output = dict()
+    output: Dict[str, Any] = {}
     configure_logging()
 
     output['iam'] = enumerate_using_iam(access_key, secret_key, session_token, region)
@@ -220,7 +220,7 @@ def enumerate_iam(access_key: str, secret_key: str, session_token: str, region: 
 
 
 def enumerate_using_iam(access_key: str, secret_key: str, session_token: str, region: str) -> Dict[str, Any]:
-    output = dict()
+    output: Dict[str, Any] = {}
     logger = logging.getLogger()
 
     # Connect to the IAM API and start testing.
@@ -251,7 +251,7 @@ def enumerate_using_iam(access_key: str, secret_key: str, session_token: str, re
     return output
 
 
-def enumerate_role(iam_client: boto3.client, output: Dict[str, Any]) -> Dict[str, Any]:
+def enumerate_role(iam_client: botocore.client.BaseClient, output: Dict[str, Any]) -> Dict[str, Any]:
     logger = logging.getLogger()
 
     # This is the closest thing we have to a role ARN
@@ -322,7 +322,7 @@ def enumerate_role(iam_client: boto3.client, output: Dict[str, Any]) -> Dict[str
     return output
 
 
-def enumerate_user(iam_client: boto3.client, output: Dict[str, Any]) -> Dict[str, Any]:
+def enumerate_user(iam_client: botocore.client.BaseClient, output: Dict[str, Any]) -> Dict[str, Any]:
     logger = logging.getLogger()
     output['root_account'] = False
 
@@ -391,7 +391,7 @@ def enumerate_user(iam_client: boto3.client, output: Dict[str, Any]) -> Dict[str
             logger.info('-- Policy "%s"', policy)
 
     # Attempt to get the groups attached to this user.
-    user_groups = dict()
+    user_groups: Dict[str, Any] = {}
     user_groups['Groups'] = []
 
     try:

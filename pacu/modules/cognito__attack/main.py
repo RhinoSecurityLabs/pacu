@@ -1,17 +1,19 @@
-import re
-import base64
-import webbrowser
-import qrcode
 import argparse
+import base64
 import json
-from pycognito.aws_srp import AWSSRP
-from dataclasses import dataclass
-from typing import List, Dict, Optional
-from pycognito.exceptions import SoftwareTokenMFAChallengeException
+import re
+import webbrowser
 from copy import deepcopy
-from botocore.exceptions import ClientError
-from pacu import Main
+from dataclasses import dataclass
+from typing import Dict, List, Optional
+
+import qrcode
 from botocore.client import BaseClient
+from botocore.exceptions import ClientError
+from pycognito.aws_srp import AWSSRP
+from pycognito.exceptions import SoftwareTokenMFAChallengeException
+
+from pacu import Main
 
 # Using Spencer's iam_enum.py as a template
 

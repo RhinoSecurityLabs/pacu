@@ -12,7 +12,7 @@ from pacu.settings import REGION
 
 EMAIL = "test@example.com"
 USERNAME = "random"
-PASSWORD = "XXXXXXXXXXXXX"
+PASSWORD = "1R@nd0mP4$$word"
 
 
 def test_cognito__attack_minimal(

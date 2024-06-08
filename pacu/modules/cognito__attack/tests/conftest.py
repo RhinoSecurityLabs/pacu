@@ -17,8 +17,7 @@ def mock_cognito_user_pool():
         )
 
         response = client.create_user_pool(
-            PoolName="TestUserPool",
-            AutoVerifiedAttributes=["email"],
+            PoolName="TestUserPool", UsernameAttributes=["email"]
         )
 
         user_pool_id = response["UserPool"]["Id"]

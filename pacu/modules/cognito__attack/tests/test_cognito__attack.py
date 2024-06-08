@@ -1,9 +1,14 @@
+import base64
 import builtins
+import hashlib
+import hmac
 import unittest.mock
+import uuid
 
 from pacu.main import Main
 from pacu.modules.cognito__attack.main import main
 from pacu.modules.cognito__attack.tests.dataclasses import CognitoServiceConfig
+from pacu.settings import REGION
 
 EMAIL = "test@example.com"
 USERNAME = "random"

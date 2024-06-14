@@ -150,6 +150,7 @@ def display_pacu_help():
                                               to solve this problem
         console/open_console                Generate a URL that will log the current user/role in to
                                               the AWS web console
+        debug                               Display the contents of the error log file
     """)
 
 
@@ -186,7 +187,7 @@ class Main:
         'assume_role', 'aws', 'console', 'data', 'delete_session', 'exec', 'exit', 'export_keys', 'help',
         'history', 'import_keys', 'list', 'list_sessions', 'load_commands_file', 'ls', 'open_console', 'quit',
         'regions', 'run', 'search', 'services', 'sessions', 'set_keys', 'set_regions', 'set_ua_suffix',
-        'swap_keys', 'swap_session', 'unset_ua_suffix', 'update_regions', 'use', 'whoami'
+        'swap_keys', 'swap_session', 'unset_ua_suffix', 'update_regions', 'use', 'whoami', 'debug'
     ]
 
     def __init__(self):
@@ -218,8 +219,8 @@ class Main:
                 log_file_path = '{}/global_error_log.txt'.format(session_dir())
 
             print('\n[{}] Pacu encountered an error while running the previous command. Check {} for technical '
-                  'details. [LOG LEVEL: {}]\n\n    {}\n'.format(timestamp, log_file_path,
-                                                                settings.ERROR_LOG_VERBOSITY.upper(), exception_info))
+                  'details, or use the debug command. [LOG LEVEL: {}]\n\n    {}\n'.format(timestamp, log_file_path,
+                                                                                          settings.ERROR_LOG_VERBOSITY.upper(), exception_info))
 
             log_file_directory = os.path.dirname(log_file_path)
             if log_file_directory and not os.path.exists(log_file_directory):
@@ -262,6 +263,14 @@ class Main:
             print('Error while saving exception information. This means the exception was not added to any error log '
                   'and should most likely be provided to the developers.\n    Exception raised: {}'.format(str(error)))
             raise
+
+    def read_log_file(self):
+        log_file_path = '{}/error_log.txt'.format(session_dir())
+        if os.path.exists(log_file_path):
+            with open(log_file_path, 'r') as log_file:
+                print(log_file.read())
+        else:
+            print('No error log file found.')
 
     # @message: String - message to print and/or write to file
     # @output: String - where to output the message: both, file, or screen
@@ -633,6 +642,8 @@ class Main:
             self.unset_user_agent_suffix()
         elif command[0] == 'whoami':
             self.print_key_info()
+        elif command[0] == 'debug':
+            self.read_log_file()
         elif command[0] == 'exit' or command[0] == 'quit':
             # write out command history for loading later
             readline.write_history_file(settings.history_file)

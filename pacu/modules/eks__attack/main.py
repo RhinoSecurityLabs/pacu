@@ -18,7 +18,7 @@ module_info = {
     'category': 'EXPLOIT',
     'one_liner': 'This modules gets all the service account tokens of pods running on a node in EKS.',
     'description': '''This modules gets all the service account tokens of pods running on a node in EKS.
-      The tokens can be later used to gain other permissions in the EKS cluster.''',
+      The tokens can be later used to gain other permissions in the EKS cluster. Credits : https://blog.calif.io/p/privilege-escalation-in-eks''',
     'services': ['EKS'],
     'prerequisite_modules': [],
     'external_dependencies': [],

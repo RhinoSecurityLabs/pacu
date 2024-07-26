@@ -7,8 +7,6 @@ from pacu.core.lib import save
 from botocore.exceptions import ClientError
 from pacu.core.secretfinder.utils import regex_checker, Color
 
-import pdb
-
 module_info = {
     # Name of the module (should be the same as the filename)
     'name': 'ds__enum',

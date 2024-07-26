@@ -7,6 +7,7 @@ from pacu.core.lib import save
 from botocore.exceptions import ClientError
 from pacu.core.secretfinder.utils import regex_checker, Color
 
+import pdb
 
 module_info = {
     # Name of the module (should be the same as the filename)
@@ -48,7 +49,6 @@ module_info = {
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
 
 parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format "us-east-1". Defaults to all session regions')
-parser.add_argument('--managed-ad', required=False, default=False, action='store_true', help='Enumerate AWS Managed Microsoft AD')
 parser.add_argument('--directories', required=False, default=False, action='store_true', help='Enumerate Directories')
 parser.add_argument('--domain-controllers', required=False, default=False, action='store_true', help='Enumerate Domain Controllers')
 parser.add_argument('--trusts', required=False, default=False, action='store_true', help='Enumerate Domain Trusts')
@@ -75,14 +75,18 @@ def get_directories(client, do_print=True):
         return directories
 
     for directory_id,directory in directories.items():
-        # add created at datetime
+        directory_type = directory['Type']
+
         print(f"DirectoryId: {directory_id}")
         print(f"  DNSName: {directory['Name']}")
         print(f"  NetBIOSName: {directory['ShortName']}")
-        print(f"  DirectoryType: {directory['Type']}")
-        print(f"  Edition: {directory['Edition']}")
+        print(f"  DirectoryType: {directory_type}")
+        if "Description" in directory:
+            print(f"  Description: {directory['Description']}")
+        if "Edition" in directory:
+            print(f"  Edition: {directory['Edition']}")
         print(f"  Size: {directory['Size']}")
-        print(f"  Description: {directory['Description']}")
+        print(f"  CreatedAt: {str(directory['LaunchTime'])}")
 
     return directories    
 
@@ -202,14 +206,11 @@ def get_shared_directories(client, directories):
 
 
 def main(args, pacu_main):
-    # do we need this here?
-    #session = pacu_main.get_active_session()
 
     args = parser.parse_args(args)
     print = pacu_main.print
     get_regions = pacu_main.get_regions
 
-    # for each new cli flag, add here
     if args.directories is False and args.domain_controllers is False and args.trusts is False and args.settings is False and args.shared_directories is False:
         args.directories = args.domain_controllers = args.trusts = args.settings = args.shared_directories = True
 
@@ -223,7 +224,6 @@ def main(args, pacu_main):
 
     client = pacu_main.get_boto3_client('ds', choice(regions))
 
-    # do we actually need these for anything if we are printing
     all_directories = []
     all_domain_controllers = []
     all_trusts = []

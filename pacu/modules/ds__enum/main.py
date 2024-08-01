@@ -92,8 +92,7 @@ def get_directories(client, do_print=True):
 def get_domain_controllers(client, directories):
     directory_domain_controllers = {}
 
-    if directories == None:
-        directories = get_directories(client, do_print=False)
+    
     directory_ids = list(directories)
 
     for directory_id in directory_ids:
@@ -126,9 +125,6 @@ def get_domain_controllers(client, directories):
 def get_trusts(client, directories):
     trusts = {}
 
-    if directories == None:
-        directories = get_directories(client, do_print=False)
-
     paginator = client.get_paginator("describe_trusts")
     for resource_records in paginator.paginate():
         for trust in resource_records["Trusts"]:
@@ -145,7 +141,6 @@ def get_trusts(client, directories):
         for trust_id,trust in directory_trusts.items():
             remote_domain_name = trust['RemoteDomainName']
             trust_direction = trust['TrustDirection']
-            # remote_domain_name trusts directory_name
             if trust_direction == 'One-Way: Outgoing':
                 print(f"{remote_domain_name} trusts {domain_name}")
             elif trust_direction == 'One-Way: Incoming':
@@ -157,15 +152,11 @@ def get_trusts(client, directories):
             print(f"  TrustId: {trust_id}")
             print(f"  TrustState: {trust['TrustState']}")
             print(f"  TrustType: {trust['TrustType']}")
-            # add datetime and TrustStateReason
 
     return trusts
 
 def get_settings(client, directories):
     settings = {}
-
-    if directories == None:
-        directories = get_directories(client, do_print=False)
 
     for directory_id,directory in directories.items():
         print(f"Settings for {directory_id}/{directory['Name']}")
@@ -200,10 +191,9 @@ def get_shared_directories(client, directories):
 
     return shared_directories
     
-    
-
 
 def main(args, pacu_main):
+    session = pacu_main.get_active_session()
 
     args = parser.parse_args(args)
     print = pacu_main.print
@@ -228,12 +218,11 @@ def main(args, pacu_main):
     all_settings = []
     all_shared_directories = []
     for region in regions:
+
         if any([args.directories]):
             print('Starting region {}...'.format(region))
-
         client = pacu_main.get_boto3_client('ds', region)
 
-        # There is edge case where like --domain-controllers and --trusts  is called but not --directories, we make 2x calls to DescribeDirectories.  should return as value
         directories = None    
         if args.directories:
             try:
@@ -244,6 +233,8 @@ def main(args, pacu_main):
 
         if args.domain_controllers:
             try:
+                if directories == None:
+                    directories = get_directories(client, do_print=False)
                 domain_controllers = get_domain_controllers(client, directories)
                 all_domain_controllers.append(domain_controllers)
             except ClientError as error:
@@ -251,6 +242,8 @@ def main(args, pacu_main):
 
         if args.trusts:
             try:
+                if directories == None:
+                    directories = get_directories(client, do_print=False)
                 trusts = get_trusts(client, directories)
                 all_trusts.append(trusts)
             except ClientError as error:
@@ -258,6 +251,8 @@ def main(args, pacu_main):
 
         if args.settings:
             try:
+                if directories == None:
+                    directories = get_directories(client, do_print=False)
                 settings = get_settings(client, directories)
                 all_settings.append(settings)
             except ClientError as error:
@@ -265,8 +260,66 @@ def main(args, pacu_main):
 
         if args.shared_directories:
              try:
+                if directories == None:
+                    directories = get_directories(client, do_print=False)
                 shared_directories = get_shared_directories(client, directories)
                 all_shared_directories.append(shared_directories)
              except ClientError as error:
                 print(f"Failed to list settings: {error}")
-           
+
+
+    gathered_data = {
+        'Directories': all_directories,
+        'DomainControllers': all_domain_controllers,
+        'Trusts': all_trusts,
+        'Settings': all_settings,
+        'SharedDirectories': all_shared_directories
+    }
+
+    for var in vars(args):
+        if var == 'regions':
+            continue
+        if not getattr(args, var):
+            del gathered_data[ARG_FIELD_MAPPER[var]]
+
+    ds_data = deepcopy(session.DS)
+    for key, value in gathered_data.items():
+        ds_data[key] = value
+    session.update(pacu_main.database, DS=ds_data)
+
+    gathered_data['regions'] = regions
+
+    if any([args.directories, args.domain_controllers, args.trusts, args.settings, args.shared_directories]):
+        return gathered_data
+    else:
+        print('No data successfully enumerated.\n')
+        return None 
+
+
+
+def summary(data, pacu_main):
+    results = []
+
+    results.append('  Regions:')
+    for region in data['regions']:
+        results.append('     {}'.format(region))
+
+    results.append('')
+
+    if 'Directories' in data:
+        results.append('    {} total directorie(s) found.'.format(len(data['Directories'])))
+
+    if 'DomainControllers' in data:
+        results.append('    {} total domain controller(s) found.'.format(len(data['DomainControllers'][0])))
+
+    if 'Trusts' in data:
+        results.append('    {} total trust(s) found.'.format(len(data['Trusts'][0])))
+
+    if 'Settings' in data:
+        results.append('    {} total setting(s) found.'.format(len(data['Settings'][0])))
+
+    if 'SharedDirectories' in data:
+        directory_id = list(data['SharedDirectories'][0])[0]
+        results.append('    {} total shared directorie(s) found.'.format(len(data['SharedDirectories'][0][directory_id])))
+
+    return '\n'.join(results)

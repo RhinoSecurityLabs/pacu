@@ -83,7 +83,8 @@ def get_directories(client, do_print=True):
             print(f"  Description: {directory['Description']}")
         if "Edition" in directory:
             print(f"  Edition: {directory['Edition']}")
-        print(f"  Size: {directory['Size']}")
+        if "Size" in directory:
+            print(f"  Size: {directory['Size']}")
         print(f"  CreatedAt: {str(directory['LaunchTime'])}")
 
     return directories    
@@ -119,8 +120,8 @@ def get_domain_controllers(client, directories):
             print(f"    SubnetId: {domain_controller['SubnetId']}")
             print(f"    AvailabilityZone: {domain_controller['AvailabilityZone']}")
 
+    return directory_domain_controllers
 
-    return domain_controllers
 
 def get_trusts(client, directories):
     trusts = {}
@@ -147,7 +148,6 @@ def get_trusts(client, directories):
                 print(f"{remote_domain_name} trusts {domain_name}")
             elif trust_direction == 'Two-Way':
                 print(f"{remote_domain_name} and {domain_name} trust each other")
-
 
             print(f"  TrustId: {trust_id}")
             print(f"  TrustState: {trust['TrustState']}")
@@ -188,7 +188,6 @@ def get_shared_directories(client, directories):
             print(f"    ShareMethod: {setting['ShareMethod']}")
             print(f"    ShareNotes: {setting['ShareNotes']}")
     
-
     return shared_directories
     
 
@@ -319,7 +318,8 @@ def summary(data, pacu_main):
         results.append('    {} total setting(s) found.'.format(len(data['Settings'][0])))
 
     if 'SharedDirectories' in data:
-        directory_id = list(data['SharedDirectories'][0])[0]
-        results.append('    {} total shared directorie(s) found.'.format(len(data['SharedDirectories'][0][directory_id])))
+        if len(list(data['SharedDirectories'][0])) != 0:
+            directory_id = list(data['SharedDirectories'][0])[0]
+            results.append('    {} total shared directorie(s) found.'.format(len(data['SharedDirectories'][0][directory_id])))
 
     return '\n'.join(results)

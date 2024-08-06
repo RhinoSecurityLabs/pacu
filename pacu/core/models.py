@@ -77,6 +77,7 @@ class PacuSession(Base, ModelUpdateMixin):
         'Config',
         'DataPipeline',
         'DynamoDB',
+        'DS',
         'EC2',
         'ECS',
         'EKS',
@@ -124,6 +125,7 @@ class PacuSession(Base, ModelUpdateMixin):
     Config = Column(JSONType, nullable=False, default=dict)
     DataPipeline = Column(JSONType, nullable=False, default=dict)
     DynamoDB = Column(JSONType, nullable=False, default=dict)
+    DS = Column(JSONType, nullable=False, default=dict)
     EC2 = Column(JSONType, nullable=False, default=dict)
     ECS = Column(JSONType, nullable=False, default=dict)
     EKS = Column(JSONType, nullable=False, default=dict)

@@ -97,12 +97,14 @@ def main(args, pacu_main: 'Main'):
 
                 if response:
                     for secret in response['SecretList']:
+                        print(' Found secret: {}'.format(secret["Name"]))
                         secret_ids.append({"name": secret["Name"], "region": region})
 
             all_secrets_ids_sm += secret_ids
 
         for sec in all_secrets_ids_sm:
             secret_values = []
+            print("Probing Secret: {}".format(sec['name']))
             client = pacu_main.get_boto3_client('secretsmanager', sec["region"])
 
             response = None
@@ -113,24 +115,24 @@ def main(args, pacu_main: 'Main'):
                     )
                 except ClientError as error:
                     code = error.response['Error']['Code']
-                    print('FAILURE: ')
+                    print(' FAILURE: ')
                     if code == 'UnauthorizedOperation':
-                        print('  Access denied to GetSecretsValue.')
+                        print('   Access denied to GetSecretsValue.')
                     else:
-                        print(' ' + code)
-                    print('    Could not get secrets value... Exiting')
+                        print('  ' + code)
+                    print('     Could not get secrets value... Exiting')
                     response = None
                     break
                 except EndpointConnectionError as error:
-                    print('    Error connecting to SecretsManager Endpoint for getting secret for region: {}'.format(
+                    print('     Error connecting to SecretsManager Endpoint for getting secret for region: {}'.format(
                         sec["region"]))
-                    print('        Error: {}, {}'.format(error.__class__, str(error)))
+                    print('         Error: {}, {}'.format(error.__class__, str(error)))
                     response = None
                     break
                 except Exception as error:
-                    print('    Generic Error when getting Secret from Secrets Manager for region: {}'.format(
+                    print('     Generic Error when getting Secret from Secrets Manager for region: {}'.format(
                         sec["region"]))
-                    print('        Error: {}, {}'.format(error.__class__, str(error)))
+                    print('         Error: {}, {}'.format(error.__class__, str(error)))
                     response = None
                     break
 
@@ -139,6 +141,7 @@ def main(args, pacu_main: 'Main'):
                     f.write("{}:{}\n".format(sec["name"], response["SecretString"]))
 
         if args.parameter_store:
+            print("Probing parameter store")
             client = pacu_main.get_boto3_client('ssm', region)
 
             response = None
@@ -147,23 +150,23 @@ def main(args, pacu_main: 'Main'):
                     response = client.describe_parameters()
                 except ClientError as error:
                     code = error.response['Error']['Code']
-                    print('FAILURE: ')
+                    print(' FAILURE: ')
                     if code == 'UnauthorizedOperation':
-                        print('  Access denied to DescribeParameters.')
+                        print('   Access denied to DescribeParameters.')
                     else:
-                        print(' ' + code)
-                    print('    Could not list parameters... Exiting')
+                        print('  ' + code)
+                    print('     Could not list parameters... Exiting')
                     response = None
                     break
                 except EndpointConnectionError as error:
-                    print('    Error connecting to SSM Endpoint for describing SSM Parameters for region: {}'.format(
+                    print('     Error connecting to SSM Endpoint for describing SSM Parameters for region: {}'.format(
                         region))
-                    print('        Error: {}, {}'.format(error.__class__, str(error)))
+                    print('         Error: {}, {}'.format(error.__class__, str(error)))
                     response = None
                     break
                 except Exception as error:
-                    print('    Generic Error when describing SSM Parameters for region: {}'.format(region))
-                    print('        Error: {}, {}'.format(error.__class__, str(error)))
+                    print('     Generic Error when describing SSM Parameters for region: {}'.format(region))
+                    print('         Error: {}, {}'.format(error.__class__, str(error)))
                     response = None
                     break
 

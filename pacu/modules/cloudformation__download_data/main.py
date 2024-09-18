@@ -25,14 +25,24 @@ module_info = {
 
 parser = argparse.ArgumentParser(add_help=False, description=(module_info['description']))
 
-parser.add_argument('--regions', required=False, default=None, help='One or more (comma separated) AWS regions in the format '
+parser.add_argument('--regions', required=False, default=None, help='One or more comma-separated AWS regions in the format '
                                                                     'us-east-1. Defaults to all regions.')
 
 def main(args, pacu_main):
+    # Parse the arguments using argparse
+    args = parser.parse_args(args)
+
     session = pacu_main.get_active_session()
     print = pacu_main.print
     get_regions = pacu_main.get_regions
-    regions = get_regions('cloudformation')
+
+    # Fixing the code so it accepts the regions flag without scanning all regions
+    if args.regions:
+        # Process the regions provided by the user
+        regions = [region.strip() for region in args.regions.split(',')]
+    else:
+        # Use all regions if none are specified
+        regions = get_regions('cloudformation')
 
     def find_secrets(string):
         detections = regex_checker(string)

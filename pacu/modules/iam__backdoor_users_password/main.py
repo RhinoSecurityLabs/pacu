@@ -126,7 +126,7 @@ def summary(data, pacu_main):
 
 
 def create_valid_password(password_policy: None) -> str:
-    symbols = '!@#$%^&*()_+=-\][{}|;:",./?><`~'
+    symbols = r'!@#$%^&*()_+=-\][{}|;:",./?><`~'
     password = ''.join(choice(string.ascii_lowercase) for _ in range(3))
     try:
         if password_policy['RequireNumbers'] is True:

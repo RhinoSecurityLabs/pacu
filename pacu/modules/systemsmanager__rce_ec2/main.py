@@ -82,10 +82,10 @@ def main(args, pacu_main):
 
     if args.all_instances is False and args.target_instances is None:
         os_with_default_ssm_agent = [
-            '[\s\S]*Windows[\s\S]*Server[\s\S]*',
-            '[\s\S]*Amazon[\s\S]*Linux[\s\S]*',
-            '[\s\S]*Ubuntu[\s\S]*Server[\s\S]*16\\.04[\s\S]*',
-            '[\s\S]*Ubuntu[\s\S]*Server[\s\S]*18\\.04[\s\S]*',
+            r'[\s\S]*Windows[\s\S]*Server[\s\S]*',
+            r'[\s\S]*Amazon[\s\S]*Linux[\s\S]*',
+            r'[\s\S]*Ubuntu[\s\S]*Server[\s\S]*16\\.04[\s\S]*',
+            r'[\s\S]*Ubuntu[\s\S]*Server[\s\S]*18\\.04[\s\S]*',
             # 'Windows Server 2003-2012 R2 released after November 2016'
         ]
 

@@ -103,6 +103,7 @@ def main(args, pacu_main):
                     response = client.list_clusters()
                 except ClientError as error:
                     code = error.response['Error']['Code']
+                    response = {}
                     print('FAILURE: ')
                     if code == 'UnauthorizedOperation':
                         print('  Access denied to ListClusters.')
@@ -113,7 +114,7 @@ def main(args, pacu_main):
                 else:
                     response = client.list_clusters()
 
-                for arn in response['clusterArns']:
+                for arn in response.get('clusterArns', []):
                     clusters.append(arn)
             print('  {} cluster arn(s) found.'.format(len(clusters)))
             all_clusters += clusters

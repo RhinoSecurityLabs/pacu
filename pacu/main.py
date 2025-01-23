@@ -125,8 +125,10 @@ def display_pacu_help():
                                               supply --all to import all the credentials in the file.
         delete_keys                         Delete a set of AWS keys in the current session from the Pacu database
         assume_role <role arn>              Call AssumeRole on the specified role from the current
-                                              credentials, add the resulting temporary keys to the Pacu
+           [<serial arn>] [<token code>]      credentials, add the resulting temporary keys to the Pacu
                                               key database and start using these new credentials.
+                                              Optionally you can provide serial number arn and token code
+                                              in case MFA is required to assume the role
         export_keys                         Export the active credentials to a profile in the AWS CLI
                                               credentials file (~/.aws/credentials)
         sessions/list_sessions              List all sessions in the Pacu database
@@ -612,7 +614,7 @@ class Main:
         elif command[0] == 'import_keys':
             self.parse_awscli_keys_import(command)
         elif command[0] == 'assume_role':
-            self.assume_role(command[1])
+            self.assume_role(command)
         elif command[0] == 'list' or command[0] == 'ls':
             self.parse_list_command(command)
         elif command[0] == 'load_commands_file':
@@ -1078,8 +1080,9 @@ aws_secret_access_key = {}
                   'current sessions database. Enter the name of a profile you would like to import or supply --all to import all the credentials in the '
                   'file. No argument will import the default system AWS credentials.\n')
         elif command_name == 'assume_role':
-            print('\n    assume_role <role arn>\n        Call AssumeRole on the specified role from the current credentials, add the resulting temporary '
-                  'keys to the Pacu key database and start using these new credentials.')
+            print('\n    assume_role <role arn> [<serial arn>] [<token code>]\n        Call AssumeRole on the specified role from the current credentials, '
+                  'add the resulting temporary keys to the Pacu key database and start using these new credentials.'
+                  'Optionally you can provide serial number arn and token code in case MFA is required to assume the role')
         elif command_name == 'aws':
             print('\n    aws <command>\n        Use the AWS CLI directly. This command runs in your local shell to use the AWS CLI. Warning: The AWS CLI\'s '
                   'authentication is not related to Pacu. Be careful to ensure that you are using the keys you want when using the AWS CLI. It is suggested '
@@ -1974,11 +1977,30 @@ aws_secret_access_key = {}
         else:
             self.run_gui(args.quiet)
 
-    def assume_role(self, role_arn: str):
+    def assume_role(self, command: list[str]):
+        if len(command) == 1:
+            print("No role ARN provided")
+            return
+
+        role_arn = command[1]
+        mfa = {}
+
+        if len(command) == 3:
+            print('Invalid number of arguments.')
+            self.display_command_help(command[0])
+            return
+
+        if len(command) == 4:
+            mfa = {
+                "SerialNumber": command[2],
+                "TokenCode": command[3]
+            }
+
         sts = self.get_boto3_client('sts')
         resp = sts.assume_role(
             RoleArn=role_arn,
             RoleSessionName='assume-role',
+            **mfa
         )
         cur_key_name = self.get_active_session().name
         new_key_name = f"{cur_key_name}/{resp['AssumedRoleUser']['Arn']}"

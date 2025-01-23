@@ -1220,7 +1220,7 @@ aws_secret_access_key = {}
             print('\nNo modules found.')
         print()
 
-    def set_keys(self, key_alias: str = None, access_key_id: str = None, secret_access_key: str = None, session_token: str = None):
+    def set_keys(self, key_alias: Optional[str] = None, access_key_id: Optional[str] = None, secret_access_key: Optional[str] = None, session_token: Optional[str] = None):
         session = self.get_active_session()
         reservered_key_names = ['imported-', 'from_default-', 'import_from_default']
 
@@ -1312,7 +1312,7 @@ aws_secret_access_key = {}
         if key_alias is None:
             self.print('\nKeys saved to database.\n')
 
-    def swap_keys(self, key_name: str = None) -> None:
+    def swap_keys(self, key_name: Optional[str] = None) -> None:
         session: PacuSession = self.get_active_session()
 
         # On attr-defined ignore: https://github.com/dropbox/sqlalchemy-stubs/issues/168
@@ -1498,7 +1498,7 @@ aws_secret_access_key = {}
                 self.print('  User agent for this session set to:')
                 self.print('    {}'.format(new_ua))
 
-    def get_boto_session(self, region: str = None) -> boto3.session.Session:
+    def get_boto_session(self, region: Optional[str] = None) -> boto3.session.Session:
         def set_keys_in_session(boto3_sess, key_alias=None):
             creds = boto3_sess.get_credentials()
             account_id = decode_accesskey_id(creds.access_key)

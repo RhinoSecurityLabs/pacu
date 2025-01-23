@@ -1004,7 +1004,7 @@ def sign_up(
     client_id: str,
     username: str,
     password: str,
-    user_attributes: List[Dict[str, str]] = None,
+    user_attributes: Optional[List[Dict[str, str]]] = None,
 ) -> SignUpResponse:
 
     response = SignUpResponse(username=username)

@@ -10,7 +10,7 @@ include = ["pyproject.toml"]
 pacu = "pacu.__main__:main"
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.9"
 awscli = "^1.18"
 boto3 = "^1.16"
 botocore = "^1.16"
@@ -31,7 +31,7 @@ types-urllib3 = "^1.26.25.14"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^3.9.1"
-mypy = "^0.812"
+mypy = "^1.14.1"
 sqlalchemy-stubs = "^0.4"
 pytest = "^6.2.3"
 freezegun = "^1.1.0"
@@ -42,6 +42,8 @@ importlib-metadata = "4.13.0"
 
 [tool.poetry.group.dev.dependencies]
 types-urllib3 = "^1.26.25.14"
+mypy = "^1.14.1"
+sqlalchemy-stubs = "^0.4"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

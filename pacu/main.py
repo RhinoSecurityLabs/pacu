@@ -21,7 +21,7 @@ from pacu.core.lib import session_dir
 
 try:
     import jq  # type: ignore
-    import requests
+    import requests  # type: ignore
     import boto3
     import botocore
     import botocore.config
@@ -1220,10 +1220,10 @@ aws_secret_access_key = {}
             print('\nNo modules found.')
         print()
 
-    def set_keys(self, 
-                 key_alias: Optional[str] = None, 
-                 access_key_id: Optional[str] = None, 
-                 secret_access_key: Optional[str] = None, 
+    def set_keys(self,
+                 key_alias: Optional[str] = None,
+                 access_key_id: Optional[str] = None,
+                 secret_access_key: Optional[str] = None,
                  session_token: Optional[str] = None):
         session = self.get_active_session()
         reservered_key_names = ['imported-', 'from_default-', 'import_from_default']

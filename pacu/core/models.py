@@ -1,6 +1,7 @@
 import datetime
 import json
 import copy
+from typing import Any, Optional
 
 from sqlalchemy import (
     Boolean, Column, DateTime, ForeignKey, inspect, Integer, Text, orm
@@ -19,20 +20,20 @@ class AWSKey(Base, ModelUpdateMixin):
     id = Column(Integer, primary_key=True)
 
     session_id = Column(Integer, ForeignKey('pacu_session.id', ondelete='CASCADE'))
-    session = relationship("PacuSession", back_populates="aws_keys")
+    session: Any = relationship("PacuSession", back_populates="aws_keys")
 
-    user_name = Column(Text)
-    role_name = Column(Text)
-    arn = Column(Text)
-    account_id = Column(Text)
-    user_id = Column(Text)
+    user_name: Any = Column(Text)
+    role_name: Any = Column(Text)
+    arn: Any = Column(Text)
+    account_id: Any = Column(Text)
+    user_id: Any = Column(Text)
     roles = Column(JSONType)
     groups = Column(JSONType)
     policies = Column(JSONType)
-    access_key_id = Column(Text)
-    secret_access_key = Column(Text)
-    session_token = Column(Text)
-    key_alias = Column(Text)
+    access_key_id: Any = Column(Text)
+    secret_access_key: Any = Column(Text)
+    session_token: Any = Column(Text)
+    key_alias: Any = Column(Text)
     permissions_confirmed = Column(JSONType)
     allow_permissions = Column(JSONType, nullable=False, default=dict)
     deny_permissions = Column(JSONType, nullable=False, default=dict)
@@ -103,18 +104,18 @@ class PacuSession(Base, ModelUpdateMixin):
         'Organizations'
     )
 
-    aws_keys = relationship('AWSKey', back_populates='session', cascade='all, delete-orphan', lazy='dynamic')
+    aws_keys: Any = relationship('AWSKey', back_populates='session', cascade='all, delete-orphan', lazy='dynamic')
 
     id = Column(Integer, primary_key=True)
     created = Column(DateTime, default=datetime.datetime.utcnow)
     is_active = Column(Boolean, nullable=False, default=False)
-    name = Column(Text)
-    boto_user_agent = Column(Text)
-    user_agent_suffix = Column(Text)
-    key_alias = Column(Text)
-    access_key_id = Column(Text)
-    secret_access_key = Column(Text)
-    session_token = Column(Text)
+    name: Any = Column(Text)
+    boto_user_agent: Any = Column(Text)
+    user_agent_suffix: Any = Column(Text)
+    key_alias: Any = Column(Text)
+    access_key_id: Any = Column(Text)
+    secret_access_key: Any = Column(Text)
+    session_token: Any = Column(Text)
     session_regions = Column(JSONType, nullable=False, default=['all'])
 
     APIGateway = Column(JSONType, nullable=False, default=dict)

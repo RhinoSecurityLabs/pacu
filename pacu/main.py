@@ -123,6 +123,7 @@ def display_pacu_help():
                                               at ~/.aws/credentials) to the current sessions database.
                                               Enter the name of a profile you would like to import or
                                               supply --all to import all the credentials in the file.
+        delete_keys                         Delete a set of AWS keys in the current session from the Pacu database
         assume_role <role arn>              Call AssumeRole on the specified role from the current
                                               credentials, add the resulting temporary keys to the Pacu
                                               key database and start using these new credentials.
@@ -1093,8 +1094,6 @@ aws_secret_access_key = {}
             print('\n    sessions/list_sessions\n        List all sessions stored in the Pacu database\n')
         elif command_name == 'swap_session':
             print('\n    swap_session\n        Swap the active Pacu session for another one stored in the database or a brand new session\n')
-        elif command_name == 'delete_keys':
-            print('\n    delete_keys\n        Delete a set of AWS keys in the current session from the Pacu database\n')
         elif command_name == 'delete_session':
             print('\n    delete_session\n        Delete a session from the Pacu database. Note that this does not delete the output folder for that session\n')
         elif command_name == 'help':
@@ -1126,6 +1125,8 @@ aws_secret_access_key = {}
             print('\n    set_keys\n        Add a set of AWS keys to the session and set them as the default\n')
         elif command_name == 'swap_keys':
             print('\n    swap_keys\n        Change the currently active AWS key to another key that has previously been set for this session\n')
+        elif command_name == 'delete_keys':
+            print('\n    delete_keys\n        Delete a set of AWS keys in the current session from the Pacu database\n')
         elif command_name == 'exit' or command_name == 'quit':
             print('\n    exit/quit\n        Exit Pacu\n')
         elif command_name == 'load_commands_file':

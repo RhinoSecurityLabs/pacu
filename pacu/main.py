@@ -123,6 +123,7 @@ def display_pacu_help():
                                               at ~/.aws/credentials) to the current sessions database.
                                               Enter the name of a profile you would like to import or
                                               supply --all to import all the credentials in the file.
+        delete_keys                         Delete a set of AWS keys in the current session from the Pacu database
         assume_role <role arn>              Call AssumeRole on the specified role from the current
                                               credentials, add the resulting temporary keys to the Pacu
                                               key database and start using these new credentials.
@@ -184,7 +185,7 @@ def get_data_from_traceback(tb) -> Tuple[Optional[PacuSession], List[str], List[
 
 class Main:
     COMMANDS = [
-        'assume_role', 'aws', 'console', 'data', 'delete_session', 'exec', 'exit', 'export_keys', 'help',
+        'assume_role', 'aws', 'console', 'data', 'delete_keys', 'delete_session', 'exec', 'exit', 'export_keys', 'help',
         'history', 'import_keys', 'list', 'list_sessions', 'load_commands_file', 'ls', 'open_console', 'quit',
         'regions', 'run', 'search', 'services', 'sessions', 'set_keys', 'set_regions', 'set_ua_suffix',
         'swap_keys', 'swap_session', 'unset_ua_suffix', 'update_regions', 'use', 'whoami', 'debug'
@@ -600,6 +601,8 @@ class Main:
             self.check_sessions(command)
         elif command[0] == 'delete_session':
             self.delete_session()
+        elif command[0] == 'delete_keys':
+            self.delete_keys()
         elif command[0] == 'export_keys':
             self.export_keys(command)
         elif command[0] == 'help':
@@ -1122,6 +1125,8 @@ aws_secret_access_key = {}
             print('\n    set_keys\n        Add a set of AWS keys to the session and set them as the default\n')
         elif command_name == 'swap_keys':
             print('\n    swap_keys\n        Change the currently active AWS key to another key that has previously been set for this session\n')
+        elif command_name == 'delete_keys':
+            print('\n    delete_keys\n        Delete a set of AWS keys in the current session from the Pacu database\n')
         elif command_name == 'exit' or command_name == 'quit':
             print('\n    exit/quit\n        Exit Pacu\n')
         elif command_name == 'load_commands_file':
@@ -1357,6 +1362,35 @@ aws_secret_access_key = {}
         self.database.add(session)
         self.database.commit()
         self.print('AWS key is now {}.'.format(session.key_alias))
+
+    def delete_keys(self) -> None:
+        active_session = self.get_active_session()
+        all_keys = self.database.query(AWSKey).filter(AWSKey.session_id == active_session.id).all()
+        print('Delete which key set?')
+
+        for index, key in enumerate(all_keys, 0):
+            if key.key_alias == active_session.key_alias:
+                print('  [{}] {} (ACTIVE)'.format(index, key.key_alias))
+            else:
+                print('  [{}] {}'.format(index, key.key_alias))
+
+        choice = input('Choose an option: ')
+
+        try:
+            key = all_keys[int(choice)]
+            if key.key_alias == active_session.key_alias:
+                print('Cannot delete the active keys! Switch keys and try again.')
+                return
+        except (ValueError, IndexError):
+            print('Please choose a number from 0 to {}.'.format(len(all_keys) - 1))
+            return self.delete_keys()
+
+        self.database.delete(key)
+        self.database.commit()
+
+        print('Deleted {} from the database!'.format(key.key_alias))
+
+        return
 
     def activate_session(self, session_name) -> None:
         sessions = self.database.query(PacuSession).all()

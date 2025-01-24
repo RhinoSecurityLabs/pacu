@@ -91,7 +91,7 @@ def main(args, pacu: Main):
     snap.fetch()
 
     return SummaryData(
-        out_dir=str(out_dir.relative_to('.')),
+        out_dir=out_dir,
         snapshot_id=snapshot_id,
         snapshot_path=str(snap.path),
         vagrantfile=str(utils.init_vagrant(out_dir, True)),

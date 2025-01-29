@@ -138,7 +138,6 @@ def test_update(s3, upload_json):
     update(s3, bucket, key)
 
     body = s3.get_object(Bucket=bucket, Key=key)["Body"].read()
-    print(body.decode())
     assert clean_json(modified_cfn_json.decode()) == clean_json(body.decode())
 
 

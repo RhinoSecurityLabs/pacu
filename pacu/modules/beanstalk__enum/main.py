@@ -9,7 +9,7 @@ from pacu.core.lib import save
 
 module_info = {
     'name': 'elasticbeanstalk__enum',
-    'author': 'Your Name or Team',
+    'author': 'Tyler Ramsbey',
     'category': 'ENUM',
     'one_liner': 'Enumerates Elastic Beanstalk applications, environments, checks for secrets.',
     'description': (

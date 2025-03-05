@@ -1,6 +1,8 @@
-#!/usr/bin/env python3
 import argparse
 import datetime
+import os
+import tempfile
+import zipfile
 from copy import deepcopy
 
 from botocore.exceptions import ClientError
@@ -13,10 +15,10 @@ module_info = {
     'category': 'ENUM',
     'one_liner': 'Enumerates Elastic Beanstalk applications, environments, checks for secrets.',
     'description': (
-        'Enumerates Elastic Beanstalk applications, environments, configuration settings '
-        'and tags, scanning for possible secrets in environment variables.'
+        'Enumerates Elastic Beanstalk applications, environments, configuration settings, '
+        'and tags, scanning for possible secrets in environment variables and source code. '
+        'This will also download the source code for the deployed application for static review.'
     ),
-    # Updated service name in module info.
     'services': ['BeanStalk'],
     'prerequisite_modules': [],
     'external_dependencies': [],
@@ -25,7 +27,8 @@ module_info = {
         '--applications',
         '--environments',
         '--config',
-        '--tags'
+        '--tags',
+        '--source'
     ],
 }
 
@@ -41,12 +44,16 @@ parser.add_argument('--config', required=False, default=False, action='store_tru
     help='Enumerate configuration settings (including environment variables).')
 parser.add_argument('--tags', required=False, default=False, action='store_true',
     help='Enumerate resource tags for environments.')
+# New argument for downloading and scanning source code
+parser.add_argument('--source', required=False, default=False, action='store_true',
+    help='Download the source code of the deployed application and scan it for secrets.')
 
 ARG_FIELD_MAPPER = {
     'applications': 'Applications',
     'environments': 'Environments',
     'config': 'ConfigurationSettings',
-    'tags': 'Tags'
+    'tags': 'Tags',
+    'source': 'Source'
 }
 
 
@@ -58,8 +65,8 @@ def main(args, pacu_main):
     get_regions = pacu_main.get_regions
 
     # If no flags are specified, enumerate everything
-    if not any([args.applications, args.environments, args.config, args.tags]):
-        args.applications = args.environments = args.config = args.tags = True
+    if not any([args.applications, args.environments, args.config, args.tags, args.source]):
+        args.applications = args.environments = args.config = args.tags = args.source = True
 
     # Use "beanstalk" to get regions
     if args.regions is None:
@@ -74,14 +81,16 @@ def main(args, pacu_main):
     all_environments = []
     all_config_settings = []
     all_tags = []
-    all_secrets = []  # Collect secrets across regions
+    all_secrets = []  # Secrets found in config settings
+    all_source_secrets = []  # Secrets discovered in source code
 
     for region in regions:
         region_apps = []
         region_envs = []
         region_cfgs = []
         region_tags = []
-        region_secrets = []  # Secrets found in this region
+        region_secrets = []  # Secrets from configuration settings in this region
+        region_source_secrets = []  # Secrets from source code in this region
 
         try:
             # Use the official AWS service name for boto3 client
@@ -90,10 +99,10 @@ def main(args, pacu_main):
             print(f'Could not create BeanStalk client for {region}: {e}')
             continue
 
-        if any([args.applications, args.environments, args.config, args.tags]):
+        if any([args.applications, args.environments, args.config, args.tags, args.source]):
             print(f'Enumerating BeanStalk data in region {region}...')
 
-        # 1) Applications
+        # Applications
         if args.applications:
             try:
                 resp = client.describe_applications()
@@ -105,7 +114,7 @@ def main(args, pacu_main):
             except ClientError as err:
                 handle_eb_client_error(err, 'DescribeApplications', print)
 
-        # 2) Environments
+        # Environments
         if args.environments:
             # If we haven't enumerated apps yet, do so now
             if not region_apps and not args.applications:
@@ -132,7 +141,7 @@ def main(args, pacu_main):
             else:
                 print(f'  No environments found in {region}.')
 
-        # 3) Configuration settings
+        # Configuration settings
         if args.config:
             if not region_envs and not args.environments:
                 try:
@@ -163,15 +172,15 @@ def main(args, pacu_main):
             if region_cfgs:
                 print(f'  {len(region_cfgs)} configuration setting(s) found in {region}.')
 
-            # Save discovered secrets to file using "beanstalk" in the filename.
+            # Save discovered config secrets to file using "beanstalk" in the filename.
             if region_secrets:
                 p = 'beanstalk_secrets_{}_{}.txt'.format(session.name, region)
                 with save(p, 'w+') as f:
                     for secret in region_secrets:
                         f.write('{}: {}\n'.format(secret['OptionName'], secret['Value']))
-                print(f'  {len(region_secrets)} potential secret(s) found and saved to: ~/.local/share/pacu/{session.name}/downloads/{p}')
+                print(f'  {len(region_secrets)} potential secret(s) found in config settings and saved to: ~/.local/share/pacu/{session.name}/downloads/{p}')
 
-        # 4) Tags
+        # Tags
         if args.tags:
             if not region_envs and not args.environments:
                 try:
@@ -207,12 +216,92 @@ def main(args, pacu_main):
             if region_tags:
                 print(f'  {len(region_tags)} environment(s) with tags found in {region}.')
 
+        # Source Code Download and Scan
+        if args.source:
+            # For each environment, use its VersionLabel to retrieve source bundle info
+            for env in region_envs:
+                version_label = env.get('VersionLabel')
+                if not version_label:
+                    print(f"  Skipping {env['EnvironmentName']}: No VersionLabel found.")
+                    continue
+                app_name = env['ApplicationName']
+                try:
+                    ver_resp = client.describe_application_versions(
+                        ApplicationName=app_name,
+                        VersionLabels=[version_label]
+                    )
+                except ClientError as err:
+                    print_failure_for_resource(err, f"DescribeApplicationVersions for {env['EnvironmentName']}")
+                    continue
+                app_versions = ver_resp.get('ApplicationVersions', [])
+                if not app_versions:
+                    print(f"  No application version info found for {env['EnvironmentName']} (version: {version_label}).")
+                    continue
+                # Assume the first matching version
+                app_version = app_versions[0]
+                source_bundle = app_version.get('SourceBundle', {})
+                bucket = source_bundle.get('S3Bucket')
+                key = source_bundle.get('S3Key')
+                if not bucket or not key:
+                    print(f"  No source bundle info for environment {env['EnvironmentName']}.")
+                    continue
+
+                # Build a filename similar to how secrets are saved
+                download_filename = f'beanstalk_source_{session.name}_{env["EnvironmentName"]}_{version_label}.zip'
+                # Construct the full download path (the save() function saves in ~/.local/share/pacu/{session.name}/downloads/)
+                download_path = os.path.join(os.path.expanduser('~/.local/share/pacu/'), session.name, 'downloads', download_filename)
+                s3_client = pacu_main.get_boto3_client('s3', region)
+                try:
+                    s3_client.download_file(bucket, key, download_path)
+                    print(f"  Source bundle for environment {env['EnvironmentName']} downloaded to: {download_path}")
+                except ClientError as err:
+                    print_failure_for_resource(err, f"Downloading source bundle for {env['EnvironmentName']}")
+                    continue
+
+                # Now scan the downloaded file for secrets
+                found_source_secrets = []
+                if zipfile.is_zipfile(download_path):
+                    with zipfile.ZipFile(download_path, 'r') as zip_ref:
+                        with tempfile.TemporaryDirectory() as tempdir:
+                            zip_ref.extractall(tempdir)
+                            # Walk through the extracted files
+                            for root, _, files in os.walk(tempdir):
+                                for file in files:
+                                    file_path = os.path.join(root, file)
+                                    try:
+                                        with open(file_path, 'r', errors='ignore') as f:
+                                            for i, line in enumerate(f, start=1):
+                                                if regex_checker(line):
+                                                    secret_info = f'{env["EnvironmentName"]} - {file_path} (line {i}): {line.strip()}'
+                                                    found_source_secrets.append(secret_info)
+                                    except Exception:
+                                        continue
+                else:
+                    # Not a zip file; scan directly
+                    try:
+                        with open(download_path, 'r', errors='ignore') as f:
+                            for i, line in enumerate(f, start=1):
+                                if regex_checker(line):
+                                    secret_info = f'{env["EnvironmentName"]} - {download_path} (line {i}): {line.strip()}'
+                                    found_source_secrets.append(secret_info)
+                    except Exception:
+                        continue
+
+                if found_source_secrets:
+                    secrets_output_filename = f'beanstalk_source_secrets_{session.name}_{env["EnvironmentName"]}_{version_label}.txt'
+                    with save(secrets_output_filename, 'w+') as f:
+                        for secret in found_source_secrets:
+                            f.write(secret + "\n")
+                    print(f"  {len(found_source_secrets)} potential secret(s) found in source code for environment {env['EnvironmentName']}, saved to: ~/.local/share/pacu/{session.name}/downloads/{secrets_output_filename}")
+                    region_source_secrets += found_source_secrets
+
         # Aggregate data for this region
         all_applications += region_apps
         all_environments += region_envs
         all_config_settings += region_cfgs
         all_tags += region_tags
         all_secrets += region_secrets
+        all_source_secrets += region_source_secrets
 
     # Prepare final gathered data
     gathered_data = {
@@ -221,6 +310,7 @@ def main(args, pacu_main):
         'ConfigurationSettings': all_config_settings,
         'Tags': all_tags,
         'Secrets': all_secrets,
+        'Source': all_source_secrets,
         'Regions': regions
     }
     for var in vars(args):
@@ -234,20 +324,17 @@ def main(args, pacu_main):
     bs_data = deepcopy(getattr(session, 'BeanStalk', {}))
     for key, value in gathered_data.items():
         bs_data[key] = value
-    # Sanitize the data to convert any datetime objects to strings
     bs_data = sanitize_for_json(bs_data)
     session.update(pacu_main.database, BeanStalk=bs_data)
     setattr(session, 'BeanStalk', bs_data)
 
-    # (Optional) Register "BeanStalk" in the session's services list so it shows in the "data" command.
     services = getattr(session, 'services', [])
     if 'BeanStalk' not in services:
         services.append('BeanStalk')
     session.update(pacu_main.database, services=services)
     setattr(session, 'services', services)
 
-    # Return the gathered data so summary() can print final results.
-    if any([args.applications, args.environments, args.config, args.tags]):
+    if any([args.applications, args.environments, args.config, args.tags, args.source]):
         return gathered_data
     else:
         print('No BeanStalk data was successfully enumerated.\n')
@@ -255,9 +342,6 @@ def main(args, pacu_main):
 
 
 def handle_eb_client_error(error, operation_name, print_func):
-    """
-    Top-level calls (e.g. describing all apps in a region) => skip entire step but not the entire region.
-    """
     code = error.response['Error']['Code']
     print_func(Color.RED + 'FAILURE:' + Color.ENDC)
     print_func(f'  {code}')
@@ -267,10 +351,6 @@ def handle_eb_client_error(error, operation_name, print_func):
 
 
 def print_failure_for_resource(error, resource_action):
-    """
-    Per-environment error => skip only that environment, continue enumerating others.
-    Prints a user-friendly message indicating likely environment issues or partial config.
-    """
     code = error.response["Error"]["Code"]
     print(Color.RED + 'FAILURE:' + Color.ENDC)
     print(f'  {code}')
@@ -279,10 +359,6 @@ def print_failure_for_resource(error, resource_action):
 
 
 def scan_option_settings_for_secrets(option_settings, secrets):
-    """
-    Scans environment variable settings for possible secrets using regex_checker.
-    Collects any discovered secrets in the provided secrets list.
-    """
     for option in option_settings:
         val = option.get('Value', '')
         if val and regex_checker(val):
@@ -294,9 +370,6 @@ def scan_option_settings_for_secrets(option_settings, secrets):
 
 
 def summary(data, pacu_main):
-    """
-    Summarize the results after the module completes.
-    """
     print = pacu_main.print
     results = []
     regions = data.get('Regions', [])
@@ -313,15 +386,14 @@ def summary(data, pacu_main):
     if 'Tags' in data:
         results.append(f'    {len(data["Tags"])} environment(s) with tags enumerated.')
     if 'Secrets' in data:
-        results.append(f'    {len(data["Secrets"])} potential secret(s) discovered.')
+        results.append(f'    {len(data["Secrets"])} potential secret(s) discovered in config settings.')
+    if 'Source' in data:
+        results.append(f'    {len(data["Source"])} potential secret(s) discovered in source code.')
 
     return '\n'.join(results)
 
 
 def sanitize_for_json(obj):
-    """
-    Recursively convert datetime objects to strings for JSON serialization.
-    """
     if isinstance(obj, dict):
         return {k: sanitize_for_json(v) for k, v in obj.items()}
     elif isinstance(obj, list):

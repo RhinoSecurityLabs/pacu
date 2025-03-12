@@ -157,7 +157,7 @@ def summary(data, pacu_main):
 
 def writeTableData(directory, table, data):
     if not os.path.exists(directory):
-        os.mkdir(directory)
+        os.makedirs(directory, exist_ok=True)
     path = os.path.join(directory, table + '.txt')
     with open(path, 'w+') as writeTableDump:
         writeTableDump.write(pprint.pformat(data))

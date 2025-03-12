@@ -83,7 +83,7 @@ def main(args, pacu: Main):
         # Check if the directory exists, create if not
         if not os.path.exists(out_dir):
             os.makedirs(out_dir)
-        # Fixes error of not grabbing the correct region from dsnap 
+        # Fixes error of not grabbing the correct region from dsnap
         snap = snapshot.LocalSnapshot(str(out_dir), snapshot_id, pacu.get_boto_session(region=region), region=region, botocore_conf=pacu.get_botocore_conf())
     except UserWarning as e:
         print(*e.args)

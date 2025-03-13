@@ -100,7 +100,8 @@ class PacuSession(Base, ModelUpdateMixin):
         'Route53',
         'RDS',
         'Transfer',
-        'Organizations'
+        'Organizations', 
+        'BeanStalk'
     )
 
     aws_keys = relationship('AWSKey', back_populates='session', cascade='all, delete-orphan', lazy='dynamic')
@@ -151,6 +152,7 @@ class PacuSession(Base, ModelUpdateMixin):
     RDS = Column(JSONType, nullable=False, default=dict)
     Transfer = Column(JSONType, nullable=False, default=dict)
     Organizations = Column(JSONType, nullable=False, default=dict)
+    BeanStalk = Column(JSONType, nullable=False, default=dict)
 
     def __repr__(self) -> str:
         if self.key_alias:

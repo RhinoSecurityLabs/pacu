@@ -51,7 +51,7 @@ def snapshot_prompt(snapshots: List[dict], region) -> dict:
         return snapshots[answer]
     except IndexError:
         print(f"Invalid selection, valid inputs are 0 through {len(snapshots) - 1}", file=sys.stderr)
-        return snapshot_prompt(snapshots)
+        return snapshot_prompt(snapshots, region)
 
 
 SummaryData = TypedDict('SummaryData', {

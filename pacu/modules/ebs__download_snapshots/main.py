@@ -34,12 +34,16 @@ parser.add_argument(
 parser.add_argument(
     '--region',
     required=False,
-    help='InstanceId of instance to target'
+    help='Region to target'
 )
 
 
-def snapshot_prompt(snapshots: List[dict]) -> dict:
+def snapshot_prompt(snapshots: List[dict], region) -> dict:
     """Prompt's the user for an item to select from the items passed. Item is expected to support the Item protocol."""
+    if region:
+        snapshots = [ss for ss in snapshots if ss['Region'] == region]
+    if not snapshots:
+        raise UserWarning("No snapshots found.")
     for i, snap in enumerate(snapshots):
         print(f"{i}) Id: {snap['SnapshotId']}, VolumeId: {snap['VolumeId']}, OwnerId {snap['OwnerId']}, Size: {snap['VolumeSize']}, {snap['Description']})")
     answer = int(input('Select Snapshot: '))
@@ -47,7 +51,7 @@ def snapshot_prompt(snapshots: List[dict]) -> dict:
         return snapshots[answer]
     except IndexError:
         print(f"Invalid selection, valid inputs are 0 through {len(snapshots) - 1}", file=sys.stderr)
-        return snapshot_prompt(snapshots)
+        return snapshot_prompt(snapshots, region)
 
 
 SummaryData = TypedDict('SummaryData', {
@@ -71,7 +75,7 @@ def main(args, pacu: Main):
             return False
 
         try:
-            s = snapshot_prompt(session.EC2['Snapshots'])
+            s = snapshot_prompt(session.EC2['Snapshots'], region)
             snapshot_id = s['SnapshotId']
             region = s['Region']
         except UserWarning as e:
@@ -83,7 +87,8 @@ def main(args, pacu: Main):
         # Check if the directory exists, create if not
         if not os.path.exists(out_dir):
             os.makedirs(out_dir)
-        snap = snapshot.LocalSnapshot(str(out_dir), snapshot_id, pacu.get_boto_session(region=region), pacu.get_botocore_conf())
+        # Fixes error of not grabbing the correct region from dsnap
+        snap = snapshot.LocalSnapshot(str(out_dir), snapshot_id, pacu.get_boto_session(region=region), region=region, botocore_conf=pacu.get_botocore_conf())
     except UserWarning as e:
         print(*e.args)
         return False

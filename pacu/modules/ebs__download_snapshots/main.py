@@ -34,12 +34,16 @@ parser.add_argument(
 parser.add_argument(
     '--region',
     required=False,
-    help='InstanceId of instance to target'
+    help='Region to target'
 )
 
 
-def snapshot_prompt(snapshots: List[dict]) -> dict:
+def snapshot_prompt(snapshots: List[dict], region) -> dict:
     """Prompt's the user for an item to select from the items passed. Item is expected to support the Item protocol."""
+    if region:
+        snapshots = [ss for ss in snapshots if ss['Region'] == region]
+    if not snapshots:
+        raise UserWarning("No snapshots found.")
     for i, snap in enumerate(snapshots):
         print(f"{i}) Id: {snap['SnapshotId']}, VolumeId: {snap['VolumeId']}, OwnerId {snap['OwnerId']}, Size: {snap['VolumeSize']}, {snap['Description']})")
     answer = int(input('Select Snapshot: '))
@@ -71,7 +75,7 @@ def main(args, pacu: Main):
             return False
 
         try:
-            s = snapshot_prompt(session.EC2['Snapshots'])
+            s = snapshot_prompt(session.EC2['Snapshots'], region)
             snapshot_id = s['SnapshotId']
             region = s['Region']
         except UserWarning as e:

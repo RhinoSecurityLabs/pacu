@@ -70,7 +70,7 @@ def main(args, pacu_main):
 
     # Use "beanstalk" to get regions
     if args.regions is None:
-        regions = get_regions('beanstalk')
+        regions = get_regions('elasticbeanstalk')
         if not regions:
             print('No supported regions found for BeanStalk in this session. Exiting...')
             return

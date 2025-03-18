@@ -7,7 +7,7 @@ from copy import deepcopy
 
 from botocore.exceptions import ClientError
 from pacu.core.secretfinder.utils import regex_checker, Color
-from pacu.core.lib import save
+from pacu.core.lib import save, downloads_dir
 
 module_info = {
     'name': 'elasticbeanstalk__enum',
@@ -178,7 +178,7 @@ def main(args, pacu_main):
                 with save(p, 'w+') as f:
                     for secret in region_secrets:
                         f.write('{}: {}\n'.format(secret['OptionName'], secret['Value']))
-                print(f'  {len(region_secrets)} potential secret(s) found in config settings and saved to: ~/.local/share/pacu/{session.name}/downloads/{p}')
+                print(f'  {len(region_secrets)} potential secret(s) found in config settings and saved to: {str(downloads_dir())}/{p}')
 
         # Tags
         if args.tags:
@@ -249,7 +249,7 @@ def main(args, pacu_main):
                 # Build a filename similar to how secrets are saved
                 download_filename = f'beanstalk_source_{session.name}_{env["EnvironmentName"]}_{version_label}.zip'
                 # Construct the full download path (the save() function saves in ~/.local/share/pacu/{session.name}/downloads/)
-                download_path = os.path.join(os.path.expanduser('~/.local/share/pacu/'), session.name, 'downloads', download_filename)
+                download_path = str(downloads_dir()/{download_filename})
                 s3_client = pacu_main.get_boto3_client('s3', region)
                 try:
                     s3_client.download_file(bucket, key, download_path)
@@ -292,7 +292,7 @@ def main(args, pacu_main):
                     with save(secrets_output_filename, 'w+') as f:
                         for secret in found_source_secrets:
                             f.write(secret + "\n")
-                    print(f"  {len(found_source_secrets)} potential secret(s) found in source code for environment {env['EnvironmentName']}, saved to: ~/.local/share/pacu/{session.name}/downloads/{secrets_output_filename}")
+                    print(f"  {len(found_source_secrets)} potential secret(s) found in source code for environment {env['EnvironmentName']}, saved to: {str(downloads_dir())}/{secrets_output_filename}")
                     region_source_secrets += found_source_secrets
 
         # Aggregate data for this region

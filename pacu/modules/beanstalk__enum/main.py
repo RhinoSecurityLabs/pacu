@@ -370,12 +370,7 @@ def scan_option_settings_for_secrets(option_settings, secrets):
 
 
 def summary(data, pacu_main):
-    print = pacu_main.print
     results = []
-    regions = data.get('Regions', [])
-    results.append('  Regions:')
-    for region in regions:
-        results.append(f'    {region}')
 
     if 'Applications' in data:
         results.append(f'    {len(data["Applications"])} total application(s) found.')

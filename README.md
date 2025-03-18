@@ -23,6 +23,11 @@ Pacu is a fairly lightweight program, as it requires only [Python3.7+](https://w
   > pip3 install -U pacu
   > pacu
 ```
+## Install with Pipx
+This is the preferred method when using Kali Linux as `pip` is no longer installed by default. This will install Pacu with the latest updates which may not be included in the official release. 
+```
+> pipx install git+https://github.com/RhinoSecurityLabs/pacu.git
+```
 
 For a more detailed and user-friendly set of user instructions, please check out the Wiki's [installation guide](https://github.com/RhinoSecurityLabs/pacu/wiki/Installation).
 

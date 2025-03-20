@@ -10,7 +10,7 @@ from pacu.core.secretfinder.utils import regex_checker, Color
 from pacu.core.lib import save, downloads_dir
 
 module_info = {
-    'name': 'elasticbeanstalk__enum',
+    'name': 'beanstalk__enum',
     'author': 'Tyler Ramsbey',
     'category': 'ENUM',
     'one_liner': 'Enumerates Elastic Beanstalk applications, environments, checks for secrets.',

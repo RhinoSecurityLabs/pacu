@@ -17,7 +17,8 @@ module_info = {
     'description': (
         'Enumerates Elastic Beanstalk applications, environments, configuration settings, '
         'and tags, scanning for possible secrets in environment variables and source code. '
-        'This will also download the source code for the deployed application for static review.'
+        'By default, this will not download the source code. To download the source code, '
+        'use the --source flag.'
     ),
     'services': ['BeanStalk'],
     'prerequisite_modules': [],
@@ -64,9 +65,9 @@ def main(args, pacu_main):
     # Use "beanstalk" (lowercase) to get regions from the session configuration.
     get_regions = pacu_main.get_regions
 
-    # If no flags are specified, enumerate everything
+    # If no flags are specified, enumerate everything except source code
     if not any([args.applications, args.environments, args.config, args.tags, args.source]):
-        args.applications = args.environments = args.config = args.tags = args.source = True
+        args.applications = args.environments = args.config = args.tags = True
 
     # Use "beanstalk" to get regions
     if args.regions is None:

@@ -66,6 +66,7 @@ If you are ever stuck, `help` will bring up a list of available commands.
 * `help module_name` will return the applicable help information for the specified module.
 * `run module_name` will run the specified module with its default parameters.
 * `run module_name --regions eu-west-1,us-west-1` will run the specified module against the eu-west-1 and us-west-1 regions (for modules that support the --regions argument)
+* `python3 pacu/report.py` for generate report on pacu/reports/index.html)
 
 ## Running Pacu From the CLI
 

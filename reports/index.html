@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module Execution Dashboard</title>
+    <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="header">
+            <h1>Module Execution Dashboard</h1>
+        </header>
+        <section class="summary-section">
+            <div class="summary-box" id="total-modules">
+                <h2>Total Modules Executed</h2>
+                <p id="module-count">0</p>
+            </div>
+            <div class="summary-box" id="total-success">
+                <h2>Total Successes</h2>
+                <p id="success-count">0</p>
+            </div>
+            <div class="summary-box" id="total-errors">
+                <h2>Total Errors</h2>
+                <p id="error-count">0</p>
+            </div>
+        </section>
+        <section class="details-section">
+            <h2>Módulos Executados</h2>
+            <table id="module-table">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Module Name</th>
+                        <th>Resources Found</th>
+                    </tr>
+                </thead>
+                <tbody id="module-tbody">
+                    <!-- Data wit inser here -->
+                </tbody>
+            </table>
+        </section>
+        <section class="chart-section">
+            <h2>Modules Chart</h2>
+            <canvas id="module-chart"></canvas>
+        </section>
+        <button id="toggle-resources">Resources Details</button>
+        <section id="resource-details">
+            <h2>Resources Details</h2>
+            <table id="resource-table">
+                <thead>
+                    <tr>
+                        <th>Resource Type</th>
+                        <th>Data</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- JSON data here -->
+                </tbody>
+            </table>
+        </section>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="assets/script.js"></script>
+</body>
+</html>

@@ -43,6 +43,11 @@ except ModuleNotFoundError:
     print('Refer to https://github.com/RhinoSecurityLabs/pacu/wiki/Installation')
     sys.exit(1)
 
+
+#Backspace interpretation 
+readline.parse_and_bind('set editing-mode emacs')
+
+
 # arbitrary number, seems reasonable though
 readline.set_history_length(200)
 if os.path.isfile(settings.history_file) and os.access(settings.history_file, os.R_OK):

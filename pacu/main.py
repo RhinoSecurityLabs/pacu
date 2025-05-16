@@ -44,7 +44,7 @@ except ModuleNotFoundError:
     sys.exit(1)
 
 
-#Backspace interpretation 
+# backspace interpretation 
 readline.parse_and_bind('set editing-mode emacs')
 
 

@@ -93,6 +93,7 @@ def display_pacu_help():
         load_commands_file <file>           Load an existing file with list of commands to execute
         search [cat[egory]] <search term>   Search the list of available modules by name or category
         help                                Display this page of information
+        clear                               Clear the terminal 
         help <module name>                  Display information about a module
         whoami                              Display information regarding to the active access keys
         data                                Display all data that is stored in this session. Only fields
@@ -190,7 +191,7 @@ class Main:
         'assume_role', 'aws', 'console', 'data', 'delete_keys', 'delete_session', 'exec', 'exit', 'export_keys', 'help',
         'history', 'import_keys', 'list', 'list_sessions', 'load_commands_file', 'ls', 'open_console', 'quit',
         'regions', 'run', 'search', 'services', 'sessions', 'set_keys', 'set_regions', 'set_ua_suffix',
-        'swap_keys', 'swap_session', 'unset_ua_suffix', 'update_regions', 'use', 'whoami', 'debug'
+        'swap_keys', 'swap_session', 'unset_ua_suffix', 'update_regions', 'use', 'whoami', 'debug' ,'clear'
     ]
 
     def __init__(self):
@@ -647,6 +648,11 @@ class Main:
             self.unset_user_agent_suffix()
         elif command[0] == 'whoami':
             self.print_key_info()
+        elif command[0] == 'clear':
+            if sys.platform == "win32":
+                os.system("cls")
+            else:
+                os.system("clear")
         elif command[0] == 'debug':
             self.read_log_file()
         elif command[0] == 'exit' or command[0] == 'quit':
@@ -1103,6 +1109,8 @@ aws_secret_access_key = {}
             print('\n    help\n        Display information about all Pacu commands\n    help <module name>\n        Display information about a module\n')
         elif command_name == 'whoami':
             print('\n    whoami\n        Display information regarding to the active access keys\n')
+        elif command_name == 'clear':
+            print('\n    clear\n        Clears the Terminal\n')
         elif command_name == 'data':
             print('\n    data\n        Display all data that is stored in this session. Only fields with values will be displayed\n    data <service>\n       '
                   ' Display all data for a specified service in this session\n')

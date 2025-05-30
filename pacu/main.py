@@ -93,7 +93,7 @@ def display_pacu_help():
         load_commands_file <file>           Load an existing file with list of commands to execute
         search [cat[egory]] <search term>   Search the list of available modules by name or category
         help                                Display this page of information
-        clear                               Clear the terminal 
+        clear                               Clear the terminal
         help <module name>                  Display information about a module
         whoami                              Display information regarding to the active access keys
         data                                Display all data that is stored in this session. Only fields
@@ -191,7 +191,7 @@ class Main:
         'assume_role', 'aws', 'console', 'data', 'delete_keys', 'delete_session', 'exec', 'exit', 'export_keys', 'help',
         'history', 'import_keys', 'list', 'list_sessions', 'load_commands_file', 'ls', 'open_console', 'quit',
         'regions', 'run', 'search', 'services', 'sessions', 'set_keys', 'set_regions', 'set_ua_suffix',
-        'swap_keys', 'swap_session', 'unset_ua_suffix', 'update_regions', 'use', 'whoami', 'debug' ,'clear'
+        'swap_keys', 'swap_session', 'unset_ua_suffix', 'update_regions', 'use', 'whoami', 'debug', 'clear'
     ]
 
     def __init__(self):

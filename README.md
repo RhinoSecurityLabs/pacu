@@ -19,14 +19,14 @@ Pacu is a fairly lightweight program, as it requires only [Python3.7+](https://w
 ## Quick Installation
 
 ```
-  > pip3 install -U pip
-  > pip3 install -U pacu
-  > pacu
+  pip3 install -U pip
+  pip3 install -U pacu
+  pacu
 ```
 ## Install with Pipx
 This is the preferred method when using Kali Linux as `pip` is no longer installed by default. This will install Pacu with the latest updates which may not be included in the official release. 
 ```
-> pipx install git+https://github.com/RhinoSecurityLabs/pacu.git
+pipx install git+https://github.com/RhinoSecurityLabs/pacu.git
 ```
 
 For a more detailed and user-friendly set of user instructions, please check out the Wiki's [installation guide](https://github.com/RhinoSecurityLabs/pacu/wiki/Installation).
@@ -37,12 +37,12 @@ For a more detailed and user-friendly set of user instructions, please check out
 
 ### Option 1: Run with default entrypoint which directly runs  Pacu
 ```console
-$ docker run -it rhinosecuritylabs/pacu:latest
+docker run -it rhinosecuritylabs/pacu:latest
 ```
 
 ### Option 2: Run without default entrypoint
 ```console
-$ docker run -it --entrypoint /bin/sh rhinosecuritylabs/pacu:latest
+docker run -it --entrypoint /bin/sh rhinosecuritylabs/pacu:latest
 ```
 
 ### Option 3: Run with AWS config and credentials
@@ -50,7 +50,7 @@ $ docker run -it --entrypoint /bin/sh rhinosecuritylabs/pacu:latest
 > Warning: Running this command will mount your local AWS configuration files into the Docker container when it is launched. This means that any user with access to the container will have access to your host computer's AWS credentials.
 
 ```console
-$ docker run -it -v ~/.aws:/root/.aws rhinosecuritylabs/pacu:latest
+docker run -it -v ~/.aws:/root/.aws rhinosecuritylabs/pacu:latest
 ```
 ## Getting Started
 

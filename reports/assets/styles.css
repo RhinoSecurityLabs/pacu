@@ -1,0 +1,129 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    color: #333;
+    margin: 0;
+    padding: 0;
+}
+
+.dashboard-container {
+    width: 90%;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #ffffff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.summary-section {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.summary-box {
+    width: 30%;
+    padding: 20px;
+    text-align: center;
+    border-radius: 8px;
+}
+
+#total-modules {
+    background-color: #007bff;
+    color: #fff;
+}
+
+#total-success {
+    background-color: #ccffcc;
+    color: #333;
+}
+
+#total-errors {
+    background-color: #ffcccc;
+    color: #333;
+}
+
+.details-section {
+    margin-bottom: 20px;
+}
+
+.chart-section {
+    margin-bottom: 20px;
+}
+
+#resource-details {
+    display: none;
+    margin-top: 20px;
+}
+
+#resource-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+#resource-table, th, td {
+    border: 1px solid #dddddd;
+}
+
+#resource-table th, #resource-table td {
+    padding: 8px;
+    text-align: left;
+}
+
+#resource-table th {
+    background-color: #f2f2f2;
+}
+
+/* Estilos para a tabela */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+table, th, td {
+    border: 1px solid #dddddd;
+}
+
+th, td {
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    background-color: #f2f2f2;
+}
+
+.status-success {
+    color: green;
+    font-weight: bold;
+}
+
+.status-error {
+    color: red;
+    font-weight: bold;
+}
+
+.error-message {
+    background-color: #ffe6e6;
+    color: #cc0000;
+    font-weight: bold;
+    padding: 10px;
+    border-top: none;
+    border-bottom: 1px solid #dddddd;
+}
+
+.resources-message {
+    background-color: #ccffcc;
+    color: #006600;
+    font-weight: bold;
+    padding: 10px;
+    border-top: none;
+    border-bottom: 1px solid #dddddd;
+    white-space: pre-line;
+}

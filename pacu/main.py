@@ -119,10 +119,12 @@ def display_pacu_help():
                                               default
         swap_keys                           Change the currently active AWS key to another key that has
                                               previously been set for this session
-        import_keys <profile name>|--all    Import AWS keys from the AWS CLI credentials file (located
-                                              at ~/.aws/credentials) to the current sessions database.
+        import_keys <profile name>|--all|   Import AWS keys from the AWS CLI credentials file (located
+                    --env                         at ~/.aws/credentials) to the current sessions database.
                                               Enter the name of a profile you would like to import or
                                               supply --all to import all the credentials in the file.
+                                              Use --env to import from environment variables
+                                              (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).
         delete_keys                         Delete a set of AWS keys in the current session from the Pacu database
         assume_role <role arn>              Call AssumeRole on the specified role from the current
            [<serial arn>] [<token code>]      credentials, add the resulting temporary keys to the Pacu
@@ -681,6 +683,10 @@ class Main:
             self.import_awscli_key_default()
             return
 
+        if command[1] == '--env':
+            self.import_env_keys()
+            return
+
         boto3_session = boto3.session.Session()
 
         if command[1] == '--all':
@@ -710,6 +716,61 @@ class Main:
             self.print('\n  Did not find the AWS CLI profile: {}\n'.format(profile_name))
             boto3_session = boto3.session.Session()
             print('  Profiles that are available:\n    {}\n'.format('\n    '.join(boto3_session.available_profiles)))
+
+    def import_env_keys(self) -> None:
+        """Import AWS credentials from environment variables."""
+        import os
+        
+        access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+        secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+        session_token = os.getenv('AWS_SESSION_TOKEN')
+        
+        if not access_key_id or not secret_access_key:
+            self.print('\n  Error: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables must be set.')
+            self.print('  Available environment variables:')
+            env_vars = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN', 'AWS_DEFAULT_REGION']
+            for var in env_vars:
+                value = os.getenv(var)
+                if value:
+                    if 'SECRET' in var or 'TOKEN' in var:
+                        self.print(f'    {var}: ******* (hidden)')
+                    else:
+                        self.print(f'    {var}: {value}')
+                else:
+                    self.print(f'    {var}: Not set')
+            return
+        
+        # Set the keys with environment variable source identifier
+        key_alias = 'env-vars'
+        
+        # Check if session token is provided
+        if session_token:
+            self.set_keys(
+                key_alias=key_alias,
+                access_key_id=access_key_id,
+                secret_access_key=secret_access_key,
+                session_token=session_token
+            )
+            self.print('  Successfully imported temporary AWS credentials from environment variables.')
+        else:
+            self.set_keys(
+                key_alias=key_alias,
+                access_key_id=access_key_id,
+                secret_access_key=secret_access_key,
+                session_token='c'  # Clear any existing session token
+            )
+            self.print('  Successfully imported AWS credentials from environment variables.')
+        
+        # Validate credentials by attempting to get caller identity
+        try:
+            sts_client = self.get_boto3_client('sts')
+            if sts_client:
+                identity = sts_client.get_caller_identity()
+                self.print(f'  Validated credentials for: {identity.get("Arn", "Unknown")}')
+                self.print(f'  Account ID: {identity.get("Account", "Unknown")}')
+        except Exception as e:
+            self.print(f'  Warning: Could not validate credentials: {str(e)}')
+            self.print('  Credentials imported but may be invalid or lack necessary permissions.')
 
     def run_aws_cli_command(self, command: List[str]) -> None:
         try:

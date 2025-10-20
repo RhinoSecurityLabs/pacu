@@ -1427,22 +1427,30 @@ aws_secret_access_key = {}
                 return
         else:
             while True:
+                
+                ###1Edited Code Begins1###
+                #Keeps UI consistent with Pacu’s [0]/[1] index style#
+                #The .strip() call prevents newline issues#
+                #The continue ensures the loop redisplays the updated session list after deletion#
                 print('Found existing sessions:')
                 print('  [0] New session')
 
                 for index, session in enumerate(sessions, 1):
                     print('  [{}] {}'.format(index, session.name))
 
-                choice = input('Choose an option: ')
+                # === Added functionality: directory deletion option ===
+                print('  [d] Delete a session directory')
 
-                try:
-                    if int(choice) == 0:
-                        session = self.new_session()
-                    else:
-                        session = sessions[int(choice) - 1]
-                except (ValueError, IndexError):
-                    print('Please choose a number from 0 to {}.'.format(len(sessions)))
+                choice = input('Choose an option: ').strip()
+
+                # Handle directory deletion request
+                if choice.lower() == 'd':
+                    # Allow user to remove a session folder directly from disk
+                    self.delete_session_directory()
+                    # Refresh session list in case folders were deleted
+                    sessions = self.database.query(PacuSession).all()
                     continue
+                ###1Edited Code Ends1###
                 break
 
         session.activate(self.database)
@@ -1517,6 +1525,68 @@ aws_secret_access_key = {}
               'if necessary.'.format(session.name))
 
         return
+    ###2Begin Edited Code###
+    def delete_session_directory(self) -> None:
+    ###Delete a Pacu session's directory from the local filesystem.
+    ###Purpose:
+        ###Pacu's 'delete_session()' only removes the database record.
+        ###This method allows safe removal of the associated session folder
+        ###under ~/.local/share/pacu/sessions/<session_name>.
+    ###Notes for developers:
+        ###• Keeps file system clean of obsolete sessions.
+        ###• Confirms before performing any irreversible deletion.
+        ###• Separate from DB logic to preserve ORM integrity.###
+    import shutil
+    import os
+
+    base_path = os.path.expanduser("~/.local/share/pacu/sessions")
+
+    # Guard: ensure base directory exists
+    if not os.path.exists(base_path):
+        print(f"No session directories found at {base_path}")
+        return
+
+    # Collect directories in the base session path
+    all_dirs = [d for d in os.listdir(base_path)
+                if os.path.isdir(os.path.join(base_path, d))]
+
+    if not all_dirs:
+        print(f"No session directories found in {base_path}")
+        return
+
+    print("\nDelete which session directory?")
+    for index, dirname in enumerate(all_dirs, 0):
+        print(f"  [{index}] {dirname}")
+
+    choice = input("Choose an option (or press Enter to cancel): ").strip()
+    if choice == "":
+        print("Deletion cancelled.")
+        return
+
+    # Validate numeric input
+    try:
+        idx = int(choice)
+        if idx not in range(len(all_dirs)):
+            raise ValueError
+    except ValueError:
+        print(f"Please choose a number from 0 to {len(all_dirs) - 1}.")
+        return
+
+    target_dir = os.path.join(base_path, all_dirs[idx])
+    confirm = input(
+        f"Confirm delete '{target_dir}'? This cannot be undone. (y/n): "
+    ).strip().lower()
+
+    if confirm != "y":
+        print("Deletion cancelled.")
+        return
+
+    try:
+        shutil.rmtree(target_dir)
+        print(f"Deleted session directory: {target_dir}")
+    except Exception as e:
+        print(f"Error deleting {target_dir}: {e}")
+    ###2End of Edited Code###
 
     def check_user_agent(self) -> None:
         session = self.get_active_session()

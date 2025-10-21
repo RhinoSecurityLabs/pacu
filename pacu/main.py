@@ -1527,17 +1527,18 @@ aws_secret_access_key = {}
         return
     ###2Begin Edited Code###
     def delete_session_directory(self) -> None:
-    ###Delete a Pacu session's directory from the local filesystem.
-    ###Purpose:
-        ###Pacu's 'delete_session()' only removes the database record.
-        ###This method allows safe removal of the associated session folder
-        ###under ~/.local/share/pacu/sessions/<session_name>.
-    ###Notes for developers:
-        ###• Keeps file system clean of obsolete sessions.
-        ###• Confirms before performing any irreversible deletion.
-        ###• Separate from DB logic to preserve ORM integrity.###
-    import shutil
-    import os
+        """Delete a Pacu session's directory from the local filesystem.
+        Purpose:
+            Pacu's 'delete_session()' only removes the database record.
+            This method allows safe removal of the associated session folder
+            under ~/.local/share/pacu/sessions/<session_name>.
+        Notes for developers:
+            • Keeps file system clean of obsolete sessions.
+            • Confirms before performing any irreversible deletion.
+            • Separate from DB logic to preserve ORM integrity.
+        """
+        import shutil
+        import os
 
     base_path = os.path.expanduser("~/.local/share/pacu/sessions")
 
@@ -1558,7 +1559,7 @@ aws_secret_access_key = {}
     for index, dirname in enumerate(all_dirs, 0):
         print(f"  [{index}] {dirname}")
 
-    choice = input("Choose an option (or press Enter to cancel): ").strip()
+    choice = input("Choose a session number (or press Enter to cancel): ").strip()
     if choice == "":
         print("Deletion cancelled.")
         return

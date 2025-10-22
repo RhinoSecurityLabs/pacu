@@ -1540,53 +1540,53 @@ aws_secret_access_key = {}
         import shutil
         import os
 
-    base_path = os.path.expanduser("~/.local/share/pacu/sessions")
+        base_path = os.path.expanduser("~/.local/share/pacu/sessions")
 
-    # Guard: ensure base directory exists
-    if not os.path.exists(base_path):
-        print(f"No session directories found at {base_path}")
-        return
+        # Guard: ensure base directory exists
+        if not os.path.exists(base_path):
+            print(f"No session directories found at {base_path}")
+            return
 
-    # Collect directories in the base session path
-    all_dirs = [d for d in os.listdir(base_path)
-                if os.path.isdir(os.path.join(base_path, d))]
+        # Collect directories in the base session path
+        all_dirs = [d for d in os.listdir(base_path)
+                    if os.path.isdir(os.path.join(base_path, d))]
 
-    if not all_dirs:
-        print(f"No session directories found in {base_path}")
-        return
+        if not all_dirs:
+            print(f"No session directories found in {base_path}")
+            return
 
-    print("\nDelete which session directory?")
-    for index, dirname in enumerate(all_dirs, 0):
-        print(f"  [{index}] {dirname}")
+        print("\nDelete which session directory?")
+        for index, dirname in enumerate(all_dirs, 0):
+            print(f"  [{index}] {dirname}")
 
-    choice = input("Choose a session number (or press Enter to cancel): ").strip()
-    if choice == "":
-        print("Deletion cancelled.")
-        return
+        choice = input("Choose a session number (or press Enter to cancel): ").strip()
+        if choice == "":
+            print("Deletion cancelled.")
+            return
 
-    # Validate numeric input
-    try:
-        idx = int(choice)
-        if idx not in range(len(all_dirs)):
-            raise ValueError
-    except ValueError:
-        print(f"Please choose a number from 0 to {len(all_dirs) - 1}.")
-        return
+        # Validate numeric input
+        try:
+            idx = int(choice)
+            if idx not in range(len(all_dirs)):
+                raise ValueError
+        except ValueError:
+            print(f"Please choose a number from 0 to {len(all_dirs) - 1}.")
+            return
 
-    target_dir = os.path.join(base_path, all_dirs[idx])
-    confirm = input(
-        f"Confirm delete '{target_dir}'? This cannot be undone. (y/n): "
-    ).strip().lower()
+        target_dir = os.path.join(base_path, all_dirs[idx])
+        confirm = input(
+            f"Confirm delete '{target_dir}'? This cannot be undone. (y/n): "
+        ).strip().lower()
 
-    if confirm != "y":
-        print("Deletion cancelled.")
-        return
+        if confirm != "y":
+            print("Deletion cancelled.")
+            return
 
-    try:
-        shutil.rmtree(target_dir)
-        print(f"Deleted session directory: {target_dir}")
-    except Exception as e:
-        print(f"Error deleting {target_dir}: {e}")
+        try:
+            shutil.rmtree(target_dir)
+            print(f"Deleted session directory: {target_dir}")
+        except Exception as e:
+            print(f"Error deleting {target_dir}: {e}")
     ###2End of Edited Code###
 
     def check_user_agent(self) -> None:

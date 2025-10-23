@@ -1588,18 +1588,18 @@ aws_secret_access_key = {}
             return
 
         # Collect directories in the base session path
-        all_dirs = [d for d in os.listdir(base_path)
-                    if os.path.isdir(os.path.join(base_path, d))]
+        sessions = self.database.query(PacuSession).order_by(PacuSession.name).all()
         
          # Early exit if no directories to delete
-        if not all_dirs:
-            print(f"No session directories found in {base_path}")
+        if not sessions:
+            print(f"No sessions found in database")
             return
 
         # Display available directories for deletion
         print("\nDelete which session directory?")
-        for index, dirname in enumerate(all_dirs, 0):
-            print(f"  [{index}] {dirname}")
+        for index, session in enumerate(sessions, 0):
+            is_active = "(ACTIVE)" if session.name == self.get_active_session().name else ""
+            print(f"  [{index}] {session.name} {is_active}")
 
         # Get user selection with cancellation option
         choice = input("Choose a session number (or press Enter to cancel): ").strip()
@@ -1610,14 +1610,14 @@ aws_secret_access_key = {}
         # Validate numeric input
         try:
             idx = int(choice)
-            if idx not in range(len(all_dirs)):
+            if idx not in range(len(sessions)):
                 raise ValueError
         except ValueError:
-            print(f"Please choose a number from 0 to {len(all_dirs) - 1}.")
+            print(f"Please choose a number from 0 to {len(sessions) - 1}.")
             return
         # Build full path to target directory
-        target_dir = os.path.join(base_path, all_dirs[idx])
-        session_name = all_dirs[idx]
+        target_dir = os.path.join(base_path, sessions[idx].name)
+        session_name = sessions[idx].name
 
         # Require explicit confirmation before destructive operation
         confirm = input(

@@ -1588,7 +1588,7 @@ aws_secret_access_key = {}
             return
 
         # Collect directories in the base session path
-        sessions = self.database.query(PacuSession).order_by(PacuSession.name).all()
+        sessions = self.database.query(PacuSession).all()
         
          # Early exit if no directories to delete
         if not sessions:
@@ -1597,7 +1597,8 @@ aws_secret_access_key = {}
 
         # Display available directories for deletion
         print("\nDelete which session directory?")
-        for index, session in enumerate(sessions, 0):
+        print(" [0] New Session")
+        for index, session in enumerate(sessions, 1):
             is_active = "(ACTIVE)" if session.name == self.get_active_session().name else ""
             print(f"  [{index}] {session.name} {is_active}")
 
@@ -1605,6 +1606,8 @@ aws_secret_access_key = {}
         choice = input("Choose a session number (or press Enter to cancel): ").strip()
         if choice == "":
             print("Deletion cancelled.")
+        if choice == "0":
+            print("Cannot delete 'New session'.")
             return
 
         # Validate numeric input

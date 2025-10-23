@@ -1548,7 +1548,7 @@ aws_secret_access_key = {}
         self.database.commit()
 
         print('Deleted {} from the database!'.format(session.name))
-        print('Note that the output folder at ~/.local/share/pacu/{}/ will not be deleted. Do it manually '
+        print('Note that the output folder at ~/.local/share/pacu{}/ will not be deleted. Do it manually '
               'if necessary.'.format(session.name))
 
         return
@@ -1580,7 +1580,7 @@ aws_secret_access_key = {}
         import shutil
         import os
 
-        base_path = os.path.expanduser("~/.local/share/pacu/sessions")
+        base_path = os.path.expanduser("~/.local/share/pacu")
 
         # Guard: ensure base directory exists
         if not os.path.exists(base_path):

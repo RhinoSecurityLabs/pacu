@@ -1552,101 +1552,110 @@ aws_secret_access_key = {}
               'if necessary.'.format(session.name))
 
         return
-    # ============================================
-    # METHOD: delete_session_directory
-    # ============================================
-    # Added: Session directory management feature
-    # Purpose: Remove orphaned session folders from filesystem
-    # Related: Complements delete_session() which only removes DB records
-    # ============================================
-    def delete_session_directory(self) -> None:
-        """Delete a Pacu session's directory from the local filesystem.
-        Purpose:
-            Pacu's 'delete_session()' only removes the database record.
-            This method allows safe removal of the associated session folder
-            under ~/.local/share/pacu/<session_name>.
-        Notes for developers:
-            - Keeps file system clean of obsolete sessions.
-            - Confirms before performing any irreversible deletion.
-            - Separate from DB logic to preserve ORM integrity.
-            - Uses 0-indexed display consistent with other Pacu menus
-        Returns:
-            None
-        Raises
-            None - ALL excpetions are caught and handled gracefully
-            
-        Added: Session directory cleanup feature
-        """
-        import shutil
-        import os
+# ============================================
+# METHOD: delete_session_directory
+# ============================================
+def delete_session_directory(self) -> None:
+    base_path = os.path.expanduser("~/.local/share/pacu")
+    if not os.path.exists(base_path):
+        print(f"No session directories found at {base_path}")
+        return
 
-        base_path = os.path.expanduser("~/.local/share/pacu")
+    sessions = self.database.query(PacuSession).all()
+    if not sessions:
+        print("No sessions found in database")
+        return
 
-        # Guard: ensure base directory exists
-        if not os.path.exists(base_path):
-            print(f"No session directories found at {base_path}")
-            return
+    print("\nDelete which session directory?")
+    print("  [0] New session")  # ← fixed indentation + lowercase
+    for index, session in enumerate(sessions, 1):
+        is_active = "(ACTIVE)" if session.name == self.get_active_session().name else ""
+        print(f"  [{index}] {session.name} {is_active}")
 
-        # Collect directories in the base session path
-        sessions = self.database.query(PacuSession).all()
-        
-         # Early exit if no directories to delete
-        if not sessions:
-            print(f"No sessions found in database")
-            return
+    choice = input("Choose a session number (or press Enter to cancel): ").strip()
+    if choice == "": 
+        print("Deletion cancelled."); return
+    if choice == "0": 
+        print("Cannot delete 'New session'."); return
 
-        # Display available directories for deletion
-        print("\nDelete which session directory?")
-        print(" [0] New Session")
-        for index, session in enumerate(sessions, 1):
-            is_active = "(ACTIVE)" if session.name == self.get_active_session().name else ""
-            print(f"  [{index}] {session.name} {is_active}")
+    try:
+        idx = int(choice)
+        if idx not in range(1, len(sessions)+1):
+            raise ValueError
+    except ValueError:
+        print(f"Please choose a number from 1 to {len(sessions)}.")
+        return
 
-        # Get user selection with cancellation option
-        choice = input("Choose a session number (or press Enter to cancel): ").strip()
-        if choice == "":
-            print("Deletion cancelled.")
-        if choice == "0":
-            print("Cannot delete 'New session'.")
-            return
+    target_dir = os.path.join(base_path, sessions[idx-1].name)
+    session_name = sessions[idx-1].name
 
-        # Validate numeric input
+    confirm = input(f"Confirm delete '{target_dir}'? This cannot be undone. (y/n): ").strip().lower()
+    if confirm != "y":
+        print("Deletion cancelled."); return
+
+    try:
+        shutil.rmtree(target_dir)
+        print(f"Deleted session directory: {target_dir}")
+        session = self.database.query(PacuSession).filter(PacuSession.name == session_name).first()
+        if session:
+            self.database.delete(session); self.database.commit()
+            print(f"Deleted {session_name} from the database!")
+        else:
+            print(f"Note: No database entry found for {session_name}")
+    except Exception as e:
+        print(f"Error deleting {target_dir}: {e}")
+# ============================================
+# END METHOD
+# ============================================
+
+# ============================================
+# PATCH: Start menu direct delete via d(n)
+# ============================================
+# In main menu input handler (replace existing choice block):
+choice = input("Choose an option: ").strip().lower()
+
+# Direct delete: d(n), dn, d n, d(n)
+if choice.startswith('d') and len(choice) > 1:
+    num = ''.join(filter(str.isdigit, choice))
+    if num in {'3','7','0','33','30','300','330','333','70','77','700','770','777'}:
+        print("Choose (d session number) to delete a session from start menu")
+        return
+    if num:
         try:
-            idx = int(choice)
-            if idx not in range(len(sessions)):
-                raise ValueError
-        except ValueError:
-            print(f"Please choose a number from 0 to {len(sessions) - 1}.")
-            return
-        # Build full path to target directory
-        target_dir = os.path.join(base_path, sessions[idx].name)
-        session_name = sessions[idx].name
-
-        # Require explicit confirmation before destructive operation
-        confirm = input(
-            f"Confirm delete '{target_dir}'? This cannot be undone. (y/n): "
-        ).strip().lower()
-        if confirm != "y":
-            print("Deletion cancelled.")
-            return
-        # Attempt deletion with graceful error handling
-        try:
-            shutil.rmtree(target_dir)
-            print(f"Deleted session directory: {target_dir}")
-
-            #Delete from database - Based on delete_session() method
-            session = self.database.query(PacuSession).filter(PacuSession.name == session_name).first()
-            if session:
-                self.database.delete(session)
-                self.database.commit()
-                print(f"Deleted {session_name} from the database!")
+            idx = int(num)
+            sessions = self.database.query(PacuSession).all()
+            if 1 <= idx <= len(sessions):
+                self.delete_session_directory_direct(idx)  # new helper
             else:
-                print(f"Note: No database entry found for {session_name}")
-        except Exception as e:
-            print(f"Error deleting {target_dir}: {e}")
-    # ============================================
-    # END METHOD: delete_session_directory
-    # ============================================
+                print("Invalid session number.")
+        except:
+            print("Invalid input.")
+    else:
+        self.delete_session_directory()  # fallback to menu
+else:
+    # normal menu logic...
+    pass
+
+# New helper method
+def delete_session_directory_direct(self, idx: int):
+    sessions = self.database.query(PacuSession).all()
+    session = sessions[idx-1]
+    if session.name == self.get_active_session().name:
+        print("Cannot delete active session.")
+        return
+    target_dir = os.path.join(os.path.expanduser("~/.local/share/pacu"), session.name)
+    confirm = input(f"Delete '{target_dir}' and DB entry? (y/n): ").lower()
+    if confirm != 'y': 
+        print("Cancelled."); return
+    try:
+        shutil.rmtree(target_dir, ignore_errors=True)
+        self.database.delete(session); self.database.commit()
+        print(f"Deleted: {session.name}")
+    except Exception as e:
+        print(f"Error: {e}")
+# ============================================
+# END PATCH: Start menu direct delete via d(n)
+# ============================================
 
     
     def check_user_agent(self) -> None:

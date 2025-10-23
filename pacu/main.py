@@ -1548,7 +1548,7 @@ aws_secret_access_key = {}
         self.database.commit()
 
         print('Deleted {} from the database!'.format(session.name))
-        print('Note that the output folder at ~/.local/share/pacu/sessions/{}/ will not be deleted. Do it manually '
+        print('Note that the output folder at ~/.local/share/pacu/{}/ will not be deleted. Do it manually '
               'if necessary.'.format(session.name))
 
         return
@@ -1564,7 +1564,7 @@ aws_secret_access_key = {}
         Purpose:
             Pacu's 'delete_session()' only removes the database record.
             This method allows safe removal of the associated session folder
-            under ~/.local/share/pacu/sessions/<session_name>.
+            under ~/.local/share/pacu/<session_name>.
         Notes for developers:
             - Keeps file system clean of obsolete sessions.
             - Confirms before performing any irreversible deletion.

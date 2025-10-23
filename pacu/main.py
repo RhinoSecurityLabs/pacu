@@ -1428,10 +1428,15 @@ aws_secret_access_key = {}
         else:
             while True:
                 
-                ###1Edited Code Begins1###
-                #Keeps UI consistent with Pacu’s [0]/[1] index style#
-                #The .strip() call prevents newline issues#
-                #The continue ensures the loop redisplays the updated session list after deletion#
+                # ============================================
+                # FEATURE: Session Directory Management
+                # ============================================
+                # Added by: [Tom Griffin/TBY86]
+                # Date: 2025-10-23
+                # Added: Option to delete session directories from filesystem
+                # Purpose: Makes session deletion a feature, instead of having to delete session manualy
+                # Notes: .strip() prevents newline issues; continue redisplays updated list after deletion
+                # Notes: Keeps UI consistent with Pacu's [0]/[1] index style - (d) for delete session feature handles edge cases
                 print('Found existing sessions:')
                 print('  [0] New session')
 
@@ -1456,7 +1461,7 @@ aws_secret_access_key = {}
                 if choice == '0':
                     session = self.new_session()
                     break
-                elif choice.isdigit()
+                elif choice.isdigit():
                     idx = int(choice) - 1
                     if 0 <= idx < len(sessions):
                         session = sessions[idx]
@@ -1470,7 +1475,9 @@ aws_secret_access_key = {}
                 else:
                     print('Invalid choice')
                     continue
-                ###1Edited Code Ends1###
+                # ============================================
+                # END FEATURE: Session Directory Manage
+                # ============================================
                 
 
         session.activate(self.database)
@@ -1545,7 +1552,13 @@ aws_secret_access_key = {}
               'if necessary.'.format(session.name))
 
         return
-    ###2Begin Edited Code###
+    # ============================================
+    # METHOD: delete_session_directory
+    # ============================================
+    # Added: Session directory management feature
+    # Purpose: Remove orphaned session folders from filesystem
+    # Related: Complements delete_session() which only removes DB records
+    # ============================================
     def delete_session_directory(self) -> None:
         """Delete a Pacu session's directory from the local filesystem.
         Purpose:
@@ -1553,9 +1566,16 @@ aws_secret_access_key = {}
             This method allows safe removal of the associated session folder
             under ~/.local/share/pacu/sessions/<session_name>.
         Notes for developers:
-            • Keeps file system clean of obsolete sessions.
-            • Confirms before performing any irreversible deletion.
-            • Separate from DB logic to preserve ORM integrity.
+            - Keeps file system clean of obsolete sessions.
+            - Confirms before performing any irreversible deletion.
+            - Separate from DB logic to preserve ORM integrity.
+            - Uses 0-indexed display consistent with other Pacu menus
+        Returns:
+            None
+        Raises
+            None - ALL excpetions are caught and handled gracefully
+            
+        Added: Session directory cleanup feature
         """
         import shutil
         import os
@@ -1570,15 +1590,18 @@ aws_secret_access_key = {}
         # Collect directories in the base session path
         all_dirs = [d for d in os.listdir(base_path)
                     if os.path.isdir(os.path.join(base_path, d))]
-
+        
+         # Early exit if no directories to delete
         if not all_dirs:
             print(f"No session directories found in {base_path}")
             return
 
+        # Display available directories for deletion
         print("\nDelete which session directory?")
         for index, dirname in enumerate(all_dirs, 0):
             print(f"  [{index}] {dirname}")
 
+        # Get user selection with cancellation option
         choice = input("Choose a session number (or press Enter to cancel): ").strip()
         if choice == "":
             print("Deletion cancelled.")
@@ -1592,23 +1615,27 @@ aws_secret_access_key = {}
         except ValueError:
             print(f"Please choose a number from 0 to {len(all_dirs) - 1}.")
             return
-
+        # Build full path to target directory
         target_dir = os.path.join(base_path, all_dirs[idx])
+
+        # Require explicit confirmation before destructive operation
         confirm = input(
             f"Confirm delete '{target_dir}'? This cannot be undone. (y/n): "
         ).strip().lower()
-
         if confirm != "y":
             print("Deletion cancelled.")
             return
-
+        # Attempt deletion with graceful error handling
         try:
             shutil.rmtree(target_dir)
             print(f"Deleted session directory: {target_dir}")
         except Exception as e:
             print(f"Error deleting {target_dir}: {e}")
-    ###2End of Edited Code###
+    # ============================================
+    # END METHOD: delete_session_directory
+    # ============================================
 
+    
     def check_user_agent(self) -> None:
         session = self.get_active_session()
 

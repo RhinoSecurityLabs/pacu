@@ -1449,9 +1449,29 @@ aws_secret_access_key = {}
                     self.delete_session_directory()
                     # Refresh session list in case folders were deleted
                     sessions = self.database.query(PacuSession).all()
+                    if not sessions: #if all sessions deleted
+                        session = self.new_session()
+                        break
+                    continue
+                if choice == '0':
+                    session = self.new_session()
+                    break
+                elif choice.isdigit()
+                    idx = int(choice) - 1
+                    if 0 <= idx < len(sessions):
+                        session = sessions[idx]
+                        break
+                    else:
+                        print(f'Please choose 0-{len(sessions)} or "d"')
+                        continue
+                elif choice == '':
+                    print('Please make a selection')
+                    continue
+                else:
+                    print('Invalid choice')
                     continue
                 ###1Edited Code Ends1###
-                break
+                
 
         session.activate(self.database)
 

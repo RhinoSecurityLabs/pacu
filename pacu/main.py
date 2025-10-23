@@ -1617,6 +1617,7 @@ aws_secret_access_key = {}
             return
         # Build full path to target directory
         target_dir = os.path.join(base_path, all_dirs[idx])
+        session_name = all_dirs[idx]
 
         # Require explicit confirmation before destructive operation
         confirm = input(
@@ -1629,6 +1630,15 @@ aws_secret_access_key = {}
         try:
             shutil.rmtree(target_dir)
             print(f"Deleted session directory: {target_dir}")
+
+            #Delete from database - Based on delete_session() method
+            session = self.database.query(PacuSession).filter(PacuSession.name == session_name).first()
+            if session:
+                self.database.delete(session)
+                self.database.commit()
+                print(f"Deleted {session_name} from the database!")
+            else:
+                print(f"Note: No database entry found for {session_name}")
         except Exception as e:
             print(f"Error deleting {target_dir}: {e}")
     # ============================================

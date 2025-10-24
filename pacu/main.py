@@ -1441,7 +1441,7 @@ aws_secret_access_key = {}
                 """
                 
                 print('Found existing sessions:')
-                print('  [0] New session')
+                print('   [0] New session')
 
                 for index, session in enumerate(sessions, 1):
                     print('  [{}] {}'.format(index, session.name))

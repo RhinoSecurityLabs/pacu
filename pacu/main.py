@@ -1619,7 +1619,6 @@ if choice.startswith('d') and len(choice) > 1:
     num = ''.join(filter(str.isdigit, choice))
     if num in {'3','7','0','33','30','300','330','333','70','77','700','770','777'}:
         print("Choose (d session number) to delete a session from start menu")
-        return
     if num:
         try:
             idx = int(num)

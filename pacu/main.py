@@ -1618,7 +1618,7 @@ aws_secret_access_key = {}
 
         if not choice.isdigit():
             print("Please enter a valid number.")
-        return
+            return
 
         idx = int(choice) - 1
         if not (0 <= idx < len(sessions)):

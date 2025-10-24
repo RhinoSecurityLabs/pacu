@@ -1607,20 +1607,24 @@ aws_secret_access_key = {}
 
         # Get user selection with cancellation option
         choice = input("Choose a session number (or press Enter to cancel): ").strip()
+
         if choice == "":
             print("Deletion cancelled.")
+            return
+
         if choice == "0":
             print("Cannot delete 'New session'.")
             return
 
-        # Validate numeric input
-        try:
-            idx = int(choice)
-            if idx not in range(len(sessions)):
-                raise ValueError
-        except ValueError:
-            print(f"Please choose a number from 0 to {len(sessions) - 1}.")
+        if not choice.isdigit():
+            print("Please enter a valid number.")
+        return
+
+        idx = int(choice) - 1
+        if not (0 <= idx < len(sessions)):
+            print(f"Please choose a number from 1 to {len(sessions)}.")
             return
+            
         # Build full path to target directory
         target_dir = os.path.join(base_path, sessions[idx].name)
         session_name = sessions[idx].name

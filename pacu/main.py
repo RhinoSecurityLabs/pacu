@@ -1441,7 +1441,7 @@ aws_secret_access_key = {}
                 """
                 
                 print('Found existing sessions:')
-                print('   [0] New session')
+                print('  [0] New session')
 
                 for index, session in enumerate(sessions, 1):
                     print('  [{}] {}'.format(index, session.name))
@@ -1600,7 +1600,7 @@ aws_secret_access_key = {}
 
         # Display available directories for deletion
         print("\nDelete which session directory?")
-        print(" [0] New Session")
+        print("  [0] New Session")
         for index, session in enumerate(sessions, 1):
             is_active = "(ACTIVE)" if session.name == self.get_active_session().name else ""
             print(f"  [{index}] {session.name} {is_active}")

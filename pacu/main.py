@@ -1604,59 +1604,7 @@ def delete_session_directory(self) -> None:
             print(f"Note: No database entry found for {session_name}")
     except Exception as e:
         print(f"Error deleting {target_dir}: {e}")
-# ============================================
-# END METHOD
-# ============================================
-
-# ============================================
-# PATCH: Start menu direct delete via d(n)
-# ============================================
-# In main menu input handler (replace existing choice block):
-choice = input("Choose an option: ").strip().lower()
-
-# Direct delete: d(n), dn, d n, d(n)
-if choice.startswith('d') and len(choice) > 1:
-    num = ''.join(filter(str.isdigit, choice))
-    if num in {'3','7','0','33','30','300','330','333','70','77','700','770','777'}:
-        print("Choose (d session number) to delete a session from start menu")
-    if num:
-        try:
-            idx = int(num)
-            sessions = self.database.query(PacuSession).all()
-            if 1 <= idx <= len(sessions):
-                self.delete_session_directory_direct(idx)  # new helper
-            else:
-                print("Invalid session number.")
-        except:
-            print("Invalid input.")
-    else:
-        self.delete_session_directory()  # fallback to menu
-else:
-    # normal menu logic...
-    pass
-
-# New helper method
-def delete_session_directory_direct(self, idx: int):
-    sessions = self.database.query(PacuSession).all()
-    session = sessions[idx-1]
-    if session.name == self.get_active_session().name:
-        print("Cannot delete active session.")
-        return
-    target_dir = os.path.join(os.path.expanduser("~/.local/share/pacu"), session.name)
-    confirm = input(f"Delete '{target_dir}' and DB entry? (y/n): ").lower()
-    if confirm != 'y': 
-        print("Cancelled."); return
-    try:
-        shutil.rmtree(target_dir, ignore_errors=True)
-        self.database.delete(session); self.database.commit()
-        print(f"Deleted: {session.name}")
-    except Exception as e:
-        print(f"Error: {e}")
-# ============================================
-# END PATCH: Start menu direct delete via d(n)
-# ============================================
-
-    
+        
     def check_user_agent(self) -> None:
         session = self.get_active_session()
 

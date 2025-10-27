@@ -1672,8 +1672,8 @@ aws_secret_access_key = {}
                     
                 if not sessions:
                     session = self.new_session()
-                        break
-                continue
+                    break
+                    continue
 
                 if choice == '0':
                     session = self.new_session()

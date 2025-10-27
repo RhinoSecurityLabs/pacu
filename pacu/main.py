@@ -1584,26 +1584,19 @@ aws_secret_access_key = {}
         import os
 
         base_path = os.path.expanduser("~/.local/share/pacu")
+        sessions = self.database.query(PacuSession).all()
 
         # Guard: ensure base directory exists
-        if not os.path.exists(base_path):
-            print(f"No session directories found at {base_path}")
-            return
-
-        # Collect directories in the base session path
-        sessions = self.database.query(PacuSession).all()
-        
-         # Early exit if no directories to delete
         if not sessions:
-            print(f"No sessions found in database")
+            print(f"No session found in database")
             return
 
         # Display available directories for deletion
         print("\nDelete which session directory?")
         print("  [0] New Session")
-        for index, session in enumerate(sessions, 1):
-            is_active = "(ACTIVE)" if session.name == self.get_active_session().name else ""
-            print(f"  [{index}] {session.name} {is_active}")
+        for index, sess in enumerate(sessions, 1):
+            is_active = "(ACTIVE)" if sess.name == self.get_active_session().name else ""
+            print(f"  [{index}] {sess.name} {is_active}")
 
         # Get user selection with cancellation option
         choice = input("Choose a session number (or press Enter to cancel): ").strip()
@@ -1626,31 +1619,41 @@ aws_secret_access_key = {}
             return
             
         # Build full path to target directory
-        target_dir = os.path.join(base_path, sessions[idx].name)
         session_name = sessions[idx].name
+        target_dir = os.path.join(base_path, session_name)
 
         # Require explicit confirmation before destructive operation
         confirm = input(
-            f"Confirm delete '{target_dir}'? This cannot be undone. (y/n): "
+            f"Confirm delete session '{session_name}'? This cannot be undone. (y/n): "
         ).strip().lower()
         if confirm != "y":
             print("Deletion cancelled.")
             return
-        # Attempt deletion with graceful error handling
+            
+          # Delete directory if it exists (silent if not)
+        if os.path.exists(target_dir):
+            try:
+                shutil.rmtree(target_dir)
+                print(f"Deleted session directory: {target_dir}")
+            except Exception as e:
+                print(f"Error deleting directory: {e}")
+                
+        #Always delete from database
         try:
-            shutil.rmtree(target_dir)
-            print(f"Deleted session directory: {target_dir}")
+            session_to_delete = self.database.query(PacuSession).filter(
+                PacuSession.name == session_name
+            ).first()
 
-            #Delete from database - Based on delete_session() method
-            session = self.database.query(PacuSession).filter(PacuSession.name == session_name).first()
-            if session:
-                self.database.delete(session)
+            if session_to_delete:
+                self.database.delete(session_to_delete)
                 self.database.commit()
+                self.database.expire_all()
                 print(f"Deleted {session_name} from the database!")
             else:
-                print(f"Note: No database entry found for {session_name}")
+                print(f"Warning: no database entry found for {session_name}!")
         except Exception as e:
-            print(f"Error deleting {target_dir}: {e}")
+            print(f"Error deleting from database: {e}")
+            self.database.rollback()
     # ============================================
     # END METHOD: delete_session_directory
     # ============================================

@@ -1562,16 +1562,14 @@ aws_secret_access_key = {}
     # Purpose: Remove orphaned session folders from filesystem
     # Related: Complements delete_session() which only removes DB records
     # ============================================
-    def delete_session_directory(self) -> None:
-        """Delete a Pacu session's directory from the local filesystem.
+    def delete_session_directory(self, session_index: int = None) -> None:
+        """Delete a Pacu session's directory from the sql database and local filesystem.
         Purpose:
-            Pacu's 'delete_session()' only removes the database record.
             This method allows safe removal of the associated session folder
-            under ~/.local/share/pacu/<session_name>.
+            under ~/.local/share/pacu/<session_name> as well as the database entry
         Notes for developers:
             - Keeps file system clean of obsolete sessions.
             - Confirms before performing any irreversible deletion.
-            - Separate from DB logic to preserve ORM integrity.
             - Uses 0-indexed display consistent with other Pacu menus
         Returns:
             None
@@ -1591,9 +1589,17 @@ aws_secret_access_key = {}
             print(f"No session found in database")
             return
 
+        # If session_index provided, use it directly
+        if session_index is not None:
+            if session_index < 0 or session_index >= len(sessions):
+                print (f"Invalide session index")
+                return
+            session_to_delete = sessions[session_index]
+        else:
+
         # Display available directories for deletion
-        print("\nDelete which session directory?")
-        print("  [0] New Session")
+            print("\nDelete which session directory?")
+            print("  [0] Cancel Delete Session")
         for index, sess in enumerate(sessions, 1):
             is_active = "(ACTIVE)" if sess.name == self.get_active_session().name else ""
             print(f"  [{index}] {sess.name} {is_active}")
@@ -1601,12 +1607,8 @@ aws_secret_access_key = {}
         # Get user selection with cancellation option
         choice = input("Choose a session number (or press Enter to cancel): ").strip()
 
-        if choice == "":
+        if choice == "" or "0":
             print("Deletion cancelled.")
-            return
-
-        if choice == "0":
-            print("Cannot delete 'New session'.")
             return
 
         if not choice.isdigit():
@@ -1654,6 +1656,29 @@ aws_secret_access_key = {}
         except Exception as e:
             print(f"Error deleting from database: {e}")
             self.database.rollback()
+
+            #Allows for "d(n)" command at startup screen to run delete screen function
+            choice = input('Choose an option: ').strip()
+            delete_match = re.match(r'^d\s*\(?\s*(\d+)\s*\)?$', choice.lower())
+            
+            if delete_match:
+                 session_num = int(delete_match.group(1))
+            if session_num < 1 or session_num > len(sessions):
+                 print(f'Please choose a number from 1 to {len(sessions)}.')
+                 continue
+                
+                self.delete_session_directory(session_num - 1)
+                sessions = self.database.query(PacuSession).all()
+                    
+            if not sessions:
+                session = self.new_session()
+                break
+                continue
+
+            if choice == '0':
+                session = self.new_session()
+                break
+    
     # ============================================
     # END METHOD: delete_session_directory
     # ============================================

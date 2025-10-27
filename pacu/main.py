@@ -1562,14 +1562,16 @@ aws_secret_access_key = {}
     # Purpose: Remove orphaned session folders from filesystem
     # Related: Complements delete_session() which only removes DB records
     # ============================================
-    def delete_session_directory(self, session_index: int = None) -> None:
-        """Delete a Pacu session's directory from the sql database and local filesystem.
+    def delete_session_directory(self) -> None:
+        """Delete a Pacu session's directory from the local filesystem.
         Purpose:
+            Pacu's 'delete_session()' only removes the database record.
             This method allows safe removal of the associated session folder
-            under ~/.local/share/pacu/<session_name> as well as the database entry
+            under ~/.local/share/pacu/<session_name>.
         Notes for developers:
             - Keeps file system clean of obsolete sessions.
             - Confirms before performing any irreversible deletion.
+            - Separate from DB logic to preserve ORM integrity.
             - Uses 0-indexed display consistent with other Pacu menus
         Returns:
             None
@@ -1584,67 +1586,64 @@ aws_secret_access_key = {}
         base_path = os.path.expanduser("~/.local/share/pacu")
         sessions = self.database.query(PacuSession).all()
 
+        # Guard: ensure base directory exists
         if not sessions:
-            print("No session found in database")
+            print(f"No session found in database")
             return
 
-        if session_index is not None:
-            if session_index < 0 or session_index >= len(sessions):
-                print("Invalid session index")
-                return
-            session_to_delete = sessions[session_index]
-        else:
-            print("\nDelete which session directory?")
-            print("  [0] Cancel Delete Session")
-            for index, sess in enumerate(sessions, 1):
-                is_active = "(ACTIVE)" if sess.name == self.get Burch_active_session().name else ""
-                print(f"  [{index}] {sess.name} {is_active}")
+        # Display available directories for deletion
+        print("\nDelete which session directory?")
+        print("  [0] New Session")
+        for index, sess in enumerate(sessions, 1):
+            is_active = "(ACTIVE)" if sess.name == self.get_active_session().name else ""
+            print(f"  [{index}] {sess.name} {is_active}")
 
-            choice = input("Choose a session number (or press Enter to cancel): ").strip()
+        # Get user selection with cancellation option
+        choice = input("Choose a session number (or press Enter to cancel): ").strip()
 
-            if choice == "" or choice == "0":
-                print("Deletion cancelled.")
-                return
-
-            # === d(n) recursion handler ===
-            delete_match = re.match(r'^d\s*\(?\s*(\d+)\s*\)?$', choice.lower())
-            if delete_match:
-                session_num = int(delete_match.group(1))
-                if session_num < 1 or session_num > len(sessions):
-                    print(f'Please choose a number from 1 to {len(sessions)}.')
-                    return
-                self.delete_session_directory(session_num - 1)
-                return
-
-            if not choice.isdigit():
-                print("Please enter a valid number.")
-                return
-
-            idx = int(choice) - 1
-            if not (0 <= idx < len(sessions)):
-                print(f"Please choose a number from 1 to {len(sessions)}.")
-                return
-
-            session_name = sessions[idx].name
-        # === End recursion ===
-
-        session_name = sessions[idx].name if 'idx' in locals() else sessions[session_index].name
-        target_dir = os.path.join(base_path, session_name)
-
-        confirm = input(f"Confirm delete session '{session_name}'? This cannot be undone. (y/n): ").strip().lower()
-        if confirm != "y":
+        if choice == "":
             print("Deletion cancelled.")
             return
 
+        if choice == "0":
+            print("Cannot delete 'New session'.")
+            return
+
+        if not choice.isdigit():
+            print("Please enter a valid number.")
+            return
+
+        idx = int(choice) - 1
+        if not (0 <= idx < len(sessions)):
+            print(f"Please choose a number from 1 to {len(sessions)}.")
+            return
+            
+        # Build full path to target directory
+        session_name = sessions[idx].name
+        target_dir = os.path.join(base_path, session_name)
+
+        # Require explicit confirmation before destructive operation
+        confirm = input(
+            f"Confirm delete session '{session_name}'? This cannot be undone. (y/n): "
+        ).strip().lower()
+        if confirm != "y":
+            print("Deletion cancelled.")
+            return
+            
+          # Delete directory if it exists (silent if not)
         if os.path.exists(target_dir):
             try:
                 shutil.rmtree(target_dir)
                 print(f"Deleted session directory: {target_dir}")
             except Exception as e:
                 print(f"Error deleting directory: {e}")
-
+                
+        #Always delete from database
         try:
-            session_to_delete = self.database.query(PacuSession).filter(PacuSession.name == session_name).first()
+            session_to_delete = self.database.query(PacuSession).filter(
+                PacuSession.name == session_name
+            ).first()
+
             if session_to_delete:
                 self.database.delete(session_to_delete)
                 self.database.commit()
@@ -1655,28 +1654,6 @@ aws_secret_access_key = {}
         except Exception as e:
             print(f"Error deleting from database: {e}")
             self.database.rollback()
-
-            #Allows for "d(n)" command at startup screen to run delete screen function
-            choice = input('Choose an option: ').strip()
-            delete_match = re.match(r'^d\s*\(?\s*(\d+)\s*\)?$', choice.lower())
-            
-            if delete_match:
-                session_num = int(delete_match.group(1))
-                if session_num < 1 or session_num > len(sessions):
-                    print(f'Please choose a number from 1 to {len(sessions)}.')
-                    return
-                
-                self.delete_session_directory(session_num - 1)
-                sessions = self.database.query(PacuSession).all()
-                    
-                if not sessions:
-                    session = self.new_session()
-                    return
-    
-                if choice == '0':
-                    session = self.new_session()
-                    break
-    
     # ============================================
     # END METHOD: delete_session_directory
     # ============================================

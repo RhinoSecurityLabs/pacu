@@ -1665,7 +1665,7 @@ aws_secret_access_key = {}
                 session_num = int(delete_match.group(1))
                 if session_num < 1 or session_num > len(sessions):
                     print(f'Please choose a number from 1 to {len(sessions)}.')
-                    continue
+                    return
                 
                 self.delete_session_directory(session_num - 1)
                 sessions = self.database.query(PacuSession).all()

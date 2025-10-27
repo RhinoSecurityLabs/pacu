@@ -1632,7 +1632,7 @@ aws_secret_access_key = {}
             print("Deletion cancelled.")
             return
             
-          # Delete directory if it exists (silent if not)
+        # Delete directory if it exists (silent if not)
         if os.path.exists(target_dir):
             try:
                 shutil.rmtree(target_dir)
@@ -1662,7 +1662,7 @@ aws_secret_access_key = {}
             delete_match = re.match(r'^d\s*\(?\s*(\d+)\s*\)?$', choice.lower())
             
             if delete_match:
-                 session_num = int(delete_match.group(1))
+                session_num = int(delete_match.group(1))
                 if session_num < 1 or session_num > len(sessions):
                     print(f'Please choose a number from 1 to {len(sessions)}.')
                     continue
@@ -1672,12 +1672,12 @@ aws_secret_access_key = {}
                     
                 if not sessions:
                     session = self.new_session()
-                    break
+                        break
                 continue
 
-            if choice == '0':
-                session = self.new_session()
-                break
+                if choice == '0':
+                    session = self.new_session()
+                    break
     
     # ============================================
     # END METHOD: delete_session_directory

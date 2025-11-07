@@ -941,18 +941,29 @@ class Main:
             })
         }
 
-        fed_resp = requests.get(url='https://signin.aws.amazon.com/federation', params=params)
+        region_name = sts.meta.region_name
+        partition = botocore.session.Session().get_partition_for_region(region_name)
+
+        domain_map = {
+            "aws": "aws.amazon.com",
+            "aws-us-gov": "amazonaws-us-gov.com",
+            "aws-cn": "amazonaws.cn",
+        }
+
+        partition_domain = domain_map.get(partition, "aws.amazon.com")
+        
+        fed_resp = requests.get(url=f'https://signin.{partition_domain}/federation', params=params)
 
         signin_token = fed_resp.json()['SigninToken']
 
         params = {
             'Action': 'login',
             'Issuer': active_session.key_alias or '',
-            'Destination': 'https://console.aws.amazon.com/console/home',
+            'Destination': f'https://console.{partition_domain}/console/home',
             'SigninToken': signin_token
         }
 
-        url = 'https://signin.aws.amazon.com/federation?' + urllib.parse.urlencode(params)
+        url = f'https://signin.{partition_domain}/federation?' + urllib.parse.urlencode(params)
 
         print('Paste the following URL into a web browser to login as session {}...\n'.format(active_session.name))
 
@@ -1621,6 +1632,12 @@ aws_secret_access_key = {}
         except UserWarning as e:
             print(e.args)
             return None
+
+        # To support GovCloud we can update the region here from self.get_active_session.session_regions[0] UNLESS regions == all
+        if region is None:
+            session_regions = self.get_active_session().session_regions
+            if 'all' not in session_regions:
+                region = session_regions[0]
 
         conf = self.get_botocore_conf(region, user_agent, parameter_validation)
         return aws_sess.client(service, config=conf)

@@ -1,7 +1,7 @@
 FROM python:3.9-alpine
 
 LABEL maintainer="Rhino Assessment Team <pacu@rhinosecuritylabs.com>"
-LABEL pacu.version="1.6.0"
+LABEL pacu.version="1.6.1"
 
 # Install necessary packages
 RUN apk add --no-cache \

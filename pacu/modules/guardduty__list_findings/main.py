@@ -165,7 +165,7 @@ def main(args, pacu_main):
                     print('    Generic Error collecting GuardDuty stats for region: {}, detector: {}'.format(region, detector_id))
                     print('        Error: {}, {}'.format(error.__class__, str(error)))
 
-    outfile = 'guardduty/list_findings_{}.json'.format(session.name, now)
+    outfile = 'guardduty/list_findings_{}.json'.format(now)
     print("Writing ALL findings to JSON output file: {}".format(downloads_dir() / outfile))
     with save(outfile) as f:
         f.write(json.dumps(data, indent=4, default=str))

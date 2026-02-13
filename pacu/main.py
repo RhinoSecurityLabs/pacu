@@ -1475,23 +1475,61 @@ aws_secret_access_key = {}
                 return
         else:
             while True:
+                
+                # ============================================
+                # FEATURE: Session Directory Management
+                # ============================================
+                # Added by: [Tom Griffin/TBY86]
+                # Date: 2025-10-23
+                # Added: Option to delete session directories from filesystem
+                """ 
+                Purpose: Makes session deletion a feature, instead of having to delete session manualy
+                Notes: .strip() prevents newline issues; continue redisplays updated list after deletion
+                Notes: Keeps UI consistent with Pacu's [0]/[1] index style - (d) for delete session feature handles edge cases
+                """
+                
                 print('Found existing sessions:')
                 print('  [0] New session')
 
                 for index, session in enumerate(sessions, 1):
                     print('  [{}] {}'.format(index, session.name))
 
-                choice = input('Choose an option: ')
+                # === Added functionality: directory deletion option ===
+                print('  [d] Delete a session directory')
 
-                try:
-                    if int(choice) == 0:
+                choice = input('Choose an option: ').strip()
+
+                # Handle directory deletion request
+                if choice.lower() == 'd':
+                    # Allow user to remove a session folder directly from disk
+                    self.delete_session_directory()
+                    # Refresh session list in case folders were deleted
+                    sessions = self.database.query(PacuSession).all()
+                    if not sessions: #if all sessions deleted
                         session = self.new_session()
-                    else:
-                        session = sessions[int(choice) - 1]
-                except (ValueError, IndexError):
-                    print('Please choose a number from 0 to {}.'.format(len(sessions)))
+                        break
                     continue
-                break
+                if choice == '0':
+                    session = self.new_session()
+                    break
+                elif choice.isdigit():
+                    idx = int(choice) - 1
+                    if 0 <= idx < len(sessions):
+                        session = sessions[idx]
+                        break
+                    else:
+                        print(f'Please choose 0-{len(sessions)} or "d"')
+                        continue
+                elif choice == '':
+                    print('Please make a selection')
+                    continue
+                else:
+                    print('Invalid choice')
+                    continue
+                # ============================================
+                # END FEATURE: Session Directory Manage
+                # ============================================
+                
 
         session.activate(self.database)
 
@@ -1561,11 +1599,114 @@ aws_secret_access_key = {}
         self.database.commit()
 
         print('Deleted {} from the database!'.format(session.name))
-        print('Note that the output folder at ~/.local/share/pacu/sessions/{}/ will not be deleted. Do it manually '
+        print('Note that the output folder at ~/.local/share/pacu{}/ will not be deleted. Do it manually '
               'if necessary.'.format(session.name))
 
         return
+    # ============================================
+    # METHOD: delete_session_directory
+    # ============================================
+    # Added: Session directory management feature
+    # Purpose: Remove orphaned session folders from filesystem
+    # Related: Complements delete_session() which only removes DB records
+    # ============================================
+    def delete_session_directory(self) -> None:
+        """Delete a Pacu session's directory from the local filesystem.
+        Purpose:
+            Pacu's 'delete_session()' only removes the database record.
+            This method allows safe removal of the associated session folder
+            under ~/.local/share/pacu/<session_name>.
+        Notes for developers:
+            - Keeps file system clean of obsolete sessions.
+            - Confirms before performing any irreversible deletion.
+            - Separate from DB logic to preserve ORM integrity.
+            - Uses 0-indexed display consistent with other Pacu menus
+        Returns:
+            None
+        Raises
+            None - ALL excpetions are caught and handled gracefully
+            
+        Added: Session directory cleanup feature
+        """
+        import shutil
+        import os
 
+        base_path = os.path.expanduser("~/.local/share/pacu")
+        sessions = self.database.query(PacuSession).all()
+
+        # Guard: ensure base directory exists
+        if not sessions:
+            print(f"No session found in database")
+            return
+
+        # Display available directories for deletion
+        print("\nDelete which session directory?")
+        print("  [0] New Session")
+        for index, sess in enumerate(sessions, 1):
+            is_active = "(ACTIVE)" if sess.name == self.get_active_session().name else ""
+            print(f"  [{index}] {sess.name} {is_active}")
+
+        # Get user selection with cancellation option
+        choice = input("Choose a session number (or press Enter to cancel): ").strip()
+
+        if choice == "":
+            print("Deletion cancelled.")
+            return
+
+        if choice == "0":
+            print("Cannot delete 'New session'.")
+            return
+
+        if not choice.isdigit():
+            print("Please enter a valid number.")
+            return
+
+        idx = int(choice) - 1
+        if not (0 <= idx < len(sessions)):
+            print(f"Please choose a number from 1 to {len(sessions)}.")
+            return
+            
+        # Build full path to target directory
+        session_name = sessions[idx].name
+        target_dir = os.path.join(base_path, session_name)
+
+        # Require explicit confirmation before destructive operation
+        confirm = input(
+            f"Confirm delete session '{session_name}'? This cannot be undone. (y/n): "
+        ).strip().lower()
+        if confirm != "y":
+            print("Deletion cancelled.")
+            return
+            
+          # Delete directory if it exists (silent if not)
+        if os.path.exists(target_dir):
+            try:
+                shutil.rmtree(target_dir)
+                print(f"Deleted session directory: {target_dir}")
+            except Exception as e:
+                print(f"Error deleting directory: {e}")
+                
+        #Always delete from database
+        try:
+            session_to_delete = self.database.query(PacuSession).filter(
+                PacuSession.name == session_name
+            ).first()
+
+            if session_to_delete:
+                self.database.delete(session_to_delete)
+                self.database.commit()
+                self.database.expire_all()
+                print(f"Deleted {session_name} from the database!")
+            else:
+                print(f"Warning: no database entry found for {session_name}!")
+        except Exception as e:
+            print(f"Error deleting from database: {e}")
+            self.database.rollback()
+    # ============================================
+    # END METHOD: delete_session_directory
+    # ============================================
+
+    
     def check_user_agent(self) -> None:
         session = self.get_active_session()
 

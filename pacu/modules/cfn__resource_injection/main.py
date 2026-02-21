@@ -178,7 +178,7 @@ def main(args, pacu_main: 'Main'):
     if args.bucket:
         bucket = args.bucket
     else:
-        sess = get_aws_key_by_name(pacu_main, args.s3_access_key, 'us-east-1')
+        sess = get_aws_key_by_name(pacu_main, args.s3_access_key)
         bucket = get_bucket_name(sess.resource('s3'), lambda_dir)
 
     deploy_key: 'AWSKey' = pacu_main.get_aws_key_by_alias(args.attacker_key)
@@ -277,30 +277,36 @@ def delete_lambda(bucket_lambda_dir, env):
     shutil.rmtree(bucket_lambda_dir)
 
 
-def get_session_from_key_name(pacu_main: 'Main', key_name: str, region: str = 'us-east-1'):
+def get_session_from_key_name(pacu_main: 'Main', key_name: str, region: str = None):
     key: 'AWSKey' = pacu_main.get_aws_key_by_alias(key_name)
     if not key:
         raise PacuException(f"Did not find the key {key_name} in pacu, make sure to set this with `set_keys` first.")
 
-    return boto3.Session(
-        region_name=region,
-        aws_access_key_id=key.access_key_id,
-        aws_secret_access_key=key.secret_access_key,
-        aws_session_token=key.session_token,
-    )
+    session_args = {
+        'aws_access_key_id': key.access_key_id,
+        'aws_secret_access_key': key.secret_access_key,
+        'aws_session_token': key.session_token,
+    }
+    if region:
+        session_args['region_name'] = region
+        
+    return boto3.Session(**session_args)
 
 
-def get_aws_key_by_name(pacu_main: 'Main', key_name: str, region: str = 'us-east-1'):
+def get_aws_key_by_name(pacu_main: 'Main', key_name: str, region: str = None):
     key: 'AWSKey' = pacu_main.get_aws_key_by_alias_from_db(key_name)
     if not key:
         raise PacuException(f"Did not find the key {key_name} in pacu, make sure to set this with `set_keys` first.")
 
-    return boto3.Session(
-        region_name=region,
-        aws_access_key_id=key.access_key_id,
-        aws_secret_access_key=key.secret_access_key,
-        aws_session_token=key.session_token,
-    )    
+    session_args = {
+        'aws_access_key_id': key.access_key_id,
+        'aws_secret_access_key': key.secret_access_key,
+        'aws_session_token': key.session_token,
+    }
+    if region:
+        session_args['region_name'] = region
+        
+    return boto3.Session(**session_args)   
 
 
 def put_bucket_notification(sess: 'boto3.Session', bucket: str, lambda_arn: str):

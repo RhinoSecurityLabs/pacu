@@ -181,11 +181,14 @@ def main(args, pacu_main: 'Main'):
         sess = get_aws_key_by_name(pacu_main, args.s3_access_key, 'us-east-1')
         bucket = get_bucket_name(sess.resource('s3'), lambda_dir)
 
+    region = get_region(bucket, pacu_main.get_regions('lambda'))
+    attacker_sess = get_session_from_key_name(pacu_main, args.attacker_key, region)
+
     deploy_key: 'AWSKey' = pacu_main.get_aws_key_by_alias(args.attacker_key)
     if not deploy_key:
         print(f"Did not find the key {args.attacker_key} in pacu, make sure to set this with `set_keys` first.")
 
-    env = lambda_env(pacu_main, bucket, deploy_key)
+    env = lambda_env(deploy_key, region)
 
     deploy_dir = (lambda_dir / bucket)
     if args.delete:
@@ -195,7 +198,6 @@ def main(args, pacu_main: 'Main'):
         s3_access_key: 'AWSKey' = pacu_main.get_aws_key_by_alias_from_db(args.s3_access_key)
         deploy_lambda(pacu_main, env, deploy_dir, bucket, principal, s3_access_key)
 
-    region = get_region(bucket, pacu_main.get_regions('lambda'))
     s3_notifications_sess = get_aws_key_by_name(pacu_main, s3_notifications_setup_key, region)
 
     # No need to remove this on args.delete since we are deleting the lambda either way.
@@ -226,7 +228,7 @@ to explicitly set this name if needed however this is not supported at the momen
     return msg
 
 
-def lambda_env(pacu: 'Main', bucket: str, key: 'AWSKey'):
+def lambda_env(key: 'AWSKey', region: str):
     env = {
         "AWS_ACCESS_KEY_ID": key.access_key_id,
         "AWS_SECRET_ACCESS_KEY": key.secret_access_key,
@@ -234,7 +236,7 @@ def lambda_env(pacu: 'Main', bucket: str, key: 'AWSKey'):
     }
     if key.session_token:
         env["AWS_SESSION_TOKEN"] = key.session_token
-    env["AWS_DEFAULT_REGION"] = get_region(bucket, pacu.get_regions('lambda'))
+    env["AWS_DEFAULT_REGION"] = region
     return env
 
 

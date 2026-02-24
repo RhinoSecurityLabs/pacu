@@ -632,9 +632,9 @@ urllib3==1.26.16 ; python_version >= "3.7" and python_version < "4.0" \
 wcwidth==0.2.6 ; python_version >= "3.7" and python_version < "4.0" \
     --hash=sha256:795b138f6875577cd91bba52baf9e445cd5118fd32723b460e30a0af30ea230e \
     --hash=sha256:a5220780a404dbe3353789870978e472cfe477761f06ee55077256e509b156d0
-werkzeug==2.2.3 ; python_version >= "3.7" and python_version < "4.0" \
-    --hash=sha256:2e1ccc9417d4da358b9de6f174e3ac094391ea1d4fbef2d667865d819dfd0afe \
-    --hash=sha256:56433961bc1f12533306c624f3be5e744389ac61d722175d543e1751285da612
+werkzeug==3.1.6 ; python_version >= "3.7" and python_version < "4.0" \
+    --hash=sha256:210c6bede5a420a913956b4791a7f4d6843a43b6fcee4dfa08a65e93007d0d25 \
+    --hash=sha256:7ddf3357bb9564e407607f988f683d72038551200c704012bb9a4c523d42f131
 wheel==0.41.2 ; python_version >= "3.7" and python_version < "4.0" \
     --hash=sha256:0c5ac5ff2afb79ac23ab82bab027a0be7b5dbcf2e54dc50efe4bf507de1f7985 \
     --hash=sha256:75909db2664838d015e3d9139004ee16711748a52c8f336b52882266540215d8

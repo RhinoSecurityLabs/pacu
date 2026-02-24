@@ -291,9 +291,9 @@ jq==1.6.0 ; python_version >= "3.7" and python_version < "4.0" \
     --hash=sha256:f42264fafc6166efb5611b5d4cb01058887d050a6c19334f6a3f8a13bb369df5 \
     --hash=sha256:f4eed167322662f4b7e65235723c54aa6879f6175b6f9b68bc24887549637ffb \
     --hash=sha256:fd28f8395687e45bba56dc771284ebb6492b02037f74f450176c102f3f4e86a3
-pip==23.1.2 ; python_version >= "3.7" and python_version < "4.0" \
-    --hash=sha256:0e7c86f486935893c708287b30bd050a36ac827ec7fe5e43fe7cb198dd835fba \
-    --hash=sha256:3ef6ac33239e4027d9a5598a381b9d30880a1477e50039db2eac6e8a8f6d1b18
+pip==26.0 ; python_version >= "3.7" and python_version < "4.0" \
+    --hash=sha256:3ce220a0a17915972fbf1ab451baae1521c4539e778b28127efa79b974aff0fa \
+    --hash=sha256:98436feffb9e31bc9339cf369fd55d3331b1580b6a6f1173bacacddcf9c34754
 policyuniverse==1.5.1.20230817 ; python_version >= "3.7" and python_version < "4.0" \
     --hash=sha256:6317928273b18de8ed28ddf9f06faf501e044344d86f86b7681817fb32fff67a \
     --hash=sha256:7920896195af163230635f1a5cee0958f56003ef8c421f805ec81f134f80a57c

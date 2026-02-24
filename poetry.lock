@@ -39,23 +39,23 @@ files = [
 
 [[package]]
 name = "awscli"
-version = "1.44.45"
+version = "1.29.85"
 description = "Universal Command Line Environment for AWS."
 optional = false
-python-versions = ">=3.9"
+python-versions = ">= 3.7"
 groups = ["main"]
 files = [
-    {file = "awscli-1.44.45-py3-none-any.whl", hash = "sha256:aaee40b71a3a6d5deedceca616e5c5a38fc8a5af55a6e663e42ef350099defd7"},
-    {file = "awscli-1.44.45.tar.gz", hash = "sha256:b829dad1b17be994e65c3e0e1fb690bf7d50eed24ea4c127a45757c95fe64569"},
+    {file = "awscli-1.29.85-py3-none-any.whl", hash = "sha256:fcb5e3debbcabfd3db1126d1ac040fd6ec7d9b2df9e18cd6040f02ccaf3a73ed"},
+    {file = "awscli-1.29.85.tar.gz", hash = "sha256:36715409d1103114a66eb204fd5d7e8928cf991b6cf4d62f7735a67a397ac5c1"},
 ]
 
 [package.dependencies]
-botocore = "1.42.55"
-colorama = ">=0.2.5,<0.4.7"
-docutils = ">=0.18.1,<=0.19"
+botocore = "1.31.85"
+colorama = ">=0.2.5,<0.4.5"
+docutils = ">=0.10,<0.17"
 PyYAML = ">=3.10,<6.1"
 rsa = ">=3.1.2,<4.8"
-s3transfer = ">=0.16.0,<0.17.0"
+s3transfer = ">=0.7.0,<0.8.0"
 
 [[package]]
 name = "blessed"
@@ -78,20 +78,20 @@ docs = ["Pillow", "Sphinx (>3)", "sphinx-paramlinks", "sphinx_rtd_theme", "sphin
 
 [[package]]
 name = "boto3"
-version = "1.42.55"
+version = "1.28.85"
 description = "The AWS SDK for Python"
 optional = false
-python-versions = ">=3.9"
+python-versions = ">= 3.7"
 groups = ["main", "dev"]
 files = [
-    {file = "boto3-1.42.55-py3-none-any.whl", hash = "sha256:cb4bc94c0ba522242e291d16b4f631e139f525fbc9772229f3e84f5d834fd88e"},
-    {file = "boto3-1.42.55.tar.gz", hash = "sha256:e7b8fcc123da442449da8a2be65b3e60a3d8cfb2b26a52f7b3c6f9f8e84cbdf0"},
+    {file = "boto3-1.28.85-py3-none-any.whl", hash = "sha256:1fb7e7ba32a6701990168eb7a08e1fb624ae48130784dfab25904ed47deabb31"},
+    {file = "boto3-1.28.85.tar.gz", hash = "sha256:96b4cb2708933cef7dbe1177df37ef0593839942978784147aade0e49511eb2b"},
 ]
 
 [package.dependencies]
-botocore = ">=1.42.55,<1.43.0"
+botocore = ">=1.31.85,<1.32.0"
 jmespath = ">=0.7.1,<2.0.0"
-s3transfer = ">=0.16.0,<0.17.0"
+s3transfer = ">=0.7.0,<0.8.0"
 
 [package.extras]
 crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
@@ -537,14 +537,14 @@ xray = ["mypy-boto3-xray (>=1.42.0,<1.43.0)"]
 
 [[package]]
 name = "botocore"
-version = "1.42.55"
+version = "1.31.85"
 description = "Low-level, data-driven core of boto 3."
 optional = false
-python-versions = ">=3.9"
+python-versions = ">= 3.7"
 groups = ["main", "dev"]
 files = [
-    {file = "botocore-1.42.55-py3-none-any.whl", hash = "sha256:c092eb99d17b653af3ec9242061a7cde1c7b1940ed4abddfada68a9e1a3492d6"},
-    {file = "botocore-1.42.55.tar.gz", hash = "sha256:af22a7d7881883bcb475a627d0750ec6f8ee3d7b2f673e9ff342ebaa498447ee"},
+    {file = "botocore-1.31.85-py3-none-any.whl", hash = "sha256:b8f35d65f2b45af50c36fc25cc1844d6bd61d38d2148b2ef133b8f10e198555d"},
+    {file = "botocore-1.31.85.tar.gz", hash = "sha256:ce58e688222df73ec5691f934be1a2122a52c9d11d3037b586b3fff16ed6d25f"},
 ]
 
 [package.dependencies]
@@ -552,11 +552,11 @@ jmespath = ">=0.7.1,<2.0.0"
 python-dateutil = ">=2.1,<3.0.0"
 urllib3 = [
     {version = ">=1.25.4,<1.27", markers = "python_version < \"3.10\""},
-    {version = ">=1.25.4,<2.2.0 || >2.2.0,<3", markers = "python_version >= \"3.10\""},
+    {version = ">=1.25.4,<2.1", markers = "python_version >= \"3.10\""},
 ]
 
 [package.extras]
-crt = ["awscrt (==0.31.2)"]
+crt = ["awscrt (==0.19.12)"]
 
 [[package]]
 name = "botocore-stubs"
@@ -871,14 +871,14 @@ colorama = {version = "*", markers = "platform_system == \"Windows\""}
 
 [[package]]
 name = "colorama"
-version = "0.4.6"
+version = "0.4.4"
 description = "Cross-platform colored terminal text."
 optional = false
-python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 groups = ["main", "dev"]
 files = [
-    {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
-    {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
+    {file = "colorama-0.4.4-py2.py3-none-any.whl", hash = "sha256:9f47eda37229f68eee03b24b9748937c7dc3868f906e8ba69fbcbdd3bc5dc3e2"},
+    {file = "colorama-0.4.4.tar.gz", hash = "sha256:5941b2b48a20143d2267e95b1c2a7603ce057ee39fd88e7329b0c292aa16869b"},
 ]
 markers = {dev = "sys_platform == \"win32\""}
 
@@ -1009,14 +1009,14 @@ test-randomorder = ["pytest-randomly"]
 
 [[package]]
 name = "docutils"
-version = "0.19"
+version = "0.16"
 description = "Docutils -- Python Documentation Utilities"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 groups = ["main"]
 files = [
-    {file = "docutils-0.19-py3-none-any.whl", hash = "sha256:5e1de4d849fee02c63b040a4a3fd567f4ab104defd8a5511fbbc24a8a017efbc"},
-    {file = "docutils-0.19.tar.gz", hash = "sha256:33995a6753c30b7f577febfc2c50411fec6aac7f7ffeb7c4cfe5991072dcf9e6"},
+    {file = "docutils-0.16-py2.py3-none-any.whl", hash = "sha256:0c5b78adfbf7762415433f5515cd5c9e762339e23369dbe8000d84a4bf4ab3af"},
+    {file = "docutils-0.16.tar.gz", hash = "sha256:c2de3a60e9e7d07be26b7f2b00ca0309c207e06c100f9cc2a94931fc75a478fc"},
 ]
 
 [[package]]
@@ -2191,21 +2191,21 @@ xmod = "*"
 
 [[package]]
 name = "s3transfer"
-version = "0.16.0"
+version = "0.7.0"
 description = "An Amazon S3 Transfer Manager"
 optional = false
-python-versions = ">=3.9"
+python-versions = ">= 3.7"
 groups = ["main", "dev"]
 files = [
-    {file = "s3transfer-0.16.0-py3-none-any.whl", hash = "sha256:18e25d66fed509e3868dc1572b3f427ff947dd2c56f844a5bf09481ad3f3b2fe"},
-    {file = "s3transfer-0.16.0.tar.gz", hash = "sha256:8e990f13268025792229cd52fa10cb7163744bf56e719e0b9cb925ab79abf920"},
+    {file = "s3transfer-0.7.0-py3-none-any.whl", hash = "sha256:10d6923c6359175f264811ef4bf6161a3156ce8e350e705396a7557d6293c33a"},
+    {file = "s3transfer-0.7.0.tar.gz", hash = "sha256:fd3889a66f5fe17299fe75b82eae6cf722554edca744ca5d5fe308b104883d2e"},
 ]
 
 [package.dependencies]
-botocore = ">=1.37.4,<2.0a.0"
+botocore = ">=1.12.36,<2.0a.0"
 
 [package.extras]
-crt = ["botocore[crt] (>=1.37.4,<2.0a.0)"]
+crt = ["botocore[crt] (>=1.20.29,<2.0a.0)"]
 
 [[package]]
 name = "setuptools"
@@ -2589,4 +2589,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.9"
-content-hash = "2ba77badef93e46c3647171afd087fd06c8ca0bdf9fe39d8f179b07d1d441451"
+content-hash = "fb2252641b192e45ff5a37d0984dca89a9947ace8f75179a7c945decae4d7a0f"

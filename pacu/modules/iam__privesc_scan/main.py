@@ -15,6 +15,13 @@ from pacu.core.lib import save, strip_lines, downloads_dir, session_dir
 from pacu import Main
 from pacu.utils import remove_empty_from_dict
 
+# Import the enhanced managed policy analyzer
+try:
+    from .managed_policy_analyzer import enhance_privesc_scan_with_managed_policies, AWSManagedPolicyAnalyzer
+    MANAGED_POLICY_ANALYZER_AVAILABLE = True
+except ImportError:
+    MANAGED_POLICY_ANALYZER_AVAILABLE = False
+
 
 module_info = {
     "name": "iam__privesc_scan",
@@ -40,7 +47,7 @@ module_info = {
         "glue__enum",
         "lambda__enum",
     ],
-    "arguments_to_autocomplete": ["--offline", "--folder", "--scan-only"],
+    "arguments_to_autocomplete": ["--offline", "--folder", "--scan-only", "--include-managed-policies"],
 }
 
 parser = argparse.ArgumentParser(add_help=True, description=module_info["description"])
@@ -100,6 +107,18 @@ parser.add_argument(
     help=strip_lines(
         """
     List all privesc methods.
+"""
+    ),
+)
+parser.add_argument(
+    "--include-managed-policies",
+    required=False,
+    default=False,
+    action="store_true",
+    help=strip_lines(
+        """
+    Include analysis of AWS managed policies for additional privilege escalation vectors.
+    This provides enhanced detection of escalation paths through managed policy attachments.
 """
     ),
 )
@@ -1211,6 +1230,27 @@ def main(args, pacu_main: "Main"):
             if escalated is False:
                 print("No potential privilege escalation methods worked.")
         summary_data["success"] = escalated
+        
+    # Enhanced Managed Policy Analysis (Issue #445)
+    if args.include_managed_policies and MANAGED_POLICY_ANALYZER_AVAILABLE:
+        print("\n" + "="*60)
+        print("ENHANCED AWS MANAGED POLICY ANALYSIS")
+        print("="*60)
+        
+        try:
+            client = pacu_main.get_boto3_client('iam')
+            if client:
+                managed_policy_results = enhance_privesc_scan_with_managed_policies(
+                    session, client, pacu_main
+                )
+                summary_data["managed_policy_analysis"] = managed_policy_results
+            else:
+                print("  Could not create IAM client for managed policy analysis.")
+        except Exception as e:
+            print(f"  Error during managed policy analysis: {str(e)}")
+    elif args.include_managed_policies and not MANAGED_POLICY_ANALYZER_AVAILABLE:
+        print("\n  Warning: Managed policy analyzer not available. Skipping enhanced analysis.")
+        
     elif (
         len(checked_methods["Confirmed"]) == 0
         and len(checked_methods["Potential"]) == 0

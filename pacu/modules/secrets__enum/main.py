@@ -63,42 +63,40 @@ def main(args, pacu_main: 'Main'):
         if args.secrets_manager:
             client = pacu_main.get_boto3_client('secretsmanager', region)
 
-            response = None
-            next_token = False
-            while (response is None) or 'NextToken' in response:
-                if next_token is False:
-                    try:
-                        response = client.list_secrets()
-                    except ClientError as error:
-                        code = error.response['Error']['Code']
-                        print('FAILURE: ')
-                        if code == 'UnauthorizedOperation':
-                            print('  Access denied to ListSecrets.')
-                        else:
-                            print('  ' + code)
-                        print('    Could not list secrets... Exiting')
-                        response = None
-                        break
-                    except EndpointConnectionError as error:
-                        print(
-                            '    Error connecting to SecretsManager Endpoint for listing secrets for region: {}'.format(
-                                region))
-                        print('        Error: {}, {}'.format(error.__class__, str(error)))
-                        response = None
-                        break
-                    except Exception as error:
-                        print('    Generic Error when Listing SecretsManager for region: {}'.format(region))
-                        print('        Error: {}, {}'.format(error.__class__, str(error)))
-                        response = None
-                        break
+            next_token = None
+            while True:
+                try:
+                    kwargs = {}
+                    if next_token:
+                        kwargs['NextToken'] = next_token
+                    response = client.list_secrets(**kwargs)
+                except ClientError as error:
+                    code = error.response['Error']['Code']
+                    print('FAILURE: ')
+                    if code == 'UnauthorizedOperation':
+                        print('  Access denied to ListSecrets.')
+                    else:
+                        print('  ' + code)
+                    print('    Could not list secrets... Exiting')
+                    break
+                except EndpointConnectionError as error:
+                    print(
+                        '    Error connecting to SecretsManager Endpoint for listing secrets for region: {}'.format(
+                            region))
+                    print('        Error: {}, {}'.format(error.__class__, str(error)))
+                    break
+                except Exception as error:
+                    print('    Generic Error when Listing SecretsManager for region: {}'.format(region))
+                    print('        Error: {}, {}'.format(error.__class__, str(error)))
+                    break
 
-                else:
-                    response = client.list_secrets()
+                for secret in response['SecretList']:
+                    print(' Found secret: {}'.format(secret["Name"]))
+                    secret_ids.append({"name": secret["Name"], "region": region})
 
-                if response:
-                    for secret in response['SecretList']:
-                        print(' Found secret: {}'.format(secret["Name"]))
-                        secret_ids.append({"name": secret["Name"], "region": region})
+                next_token = response.get('NextToken')
+                if not next_token:
+                    break
 
             all_secrets_ids_sm += secret_ids
 
@@ -144,10 +142,13 @@ def main(args, pacu_main: 'Main'):
             print("Probing parameter store")
             client = pacu_main.get_boto3_client('ssm', region)
 
-            response = None
-            while response is None:
+            next_token = None
+            while True:
                 try:
-                    response = client.describe_parameters()
+                    kwargs = {}
+                    if next_token:
+                        kwargs['NextToken'] = next_token
+                    response = client.describe_parameters(**kwargs)
                 except ClientError as error:
                     code = error.response['Error']['Code']
                     print(' FAILURE: ')
@@ -156,23 +157,23 @@ def main(args, pacu_main: 'Main'):
                     else:
                         print('  ' + code)
                     print('     Could not list parameters... Exiting')
-                    response = None
                     break
                 except EndpointConnectionError as error:
                     print('     Error connecting to SSM Endpoint for describing SSM Parameters for region: {}'.format(
                         region))
                     print('         Error: {}, {}'.format(error.__class__, str(error)))
-                    response = None
                     break
                 except Exception as error:
                     print('     Generic Error when describing SSM Parameters for region: {}'.format(region))
                     print('         Error: {}, {}'.format(error.__class__, str(error)))
-                    response = None
                     break
 
-                if response:
-                    for param in response["Parameters"]:
-                        secrets_ssm.append({"name": param["Name"], "type": param["Type"], "region": region})
+                for param in response["Parameters"]:
+                    secrets_ssm.append({"name": param["Name"], "type": param["Type"], "region": region})
+
+                next_token = response.get('NextToken')
+                if not next_token:
+                    break
 
             all_secrets_ids_ssm += secrets_ssm
 

@@ -462,11 +462,13 @@ class Main:
 
     def get_pacu_version(self):
         try:
-            # Get the directory where this file is located
+            from importlib.metadata import version
+            return version('pacu')
+        except Exception:
+            pass
+        try:
             current_dir = os.path.dirname(__file__)
-            # Go up one level to the root of package
             package_root = os.path.abspath(os.path.join(current_dir, os.pardir))
-            # Construct the path to pyproject.toml
             toml_path = os.path.join(package_root, 'pyproject.toml')
             with open(toml_path, 'r') as file:
                 pyproject = toml.load(file)

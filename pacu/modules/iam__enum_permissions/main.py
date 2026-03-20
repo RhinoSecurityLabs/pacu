@@ -262,6 +262,7 @@ def main(args, pacu_main: "Main"):
                         else:
                             print("      {}".format(error.response["Error"]["Code"]))
                         role["PermissionsConfirmed"] = False
+                        continue
                     role = parse_document(document, role)
 
                 # Get attached role policies
@@ -395,6 +396,7 @@ def main(args, pacu_main: "Main"):
                                     "      {}".format(error.response["Error"]["Code"])
                                 )
                             user["PermissionsConfirmed"] = False
+                            continue
                         user = parse_document(document, user)
 
                     # Get attached group policies
@@ -457,6 +459,7 @@ def main(args, pacu_main: "Main"):
                         else:
                             print("      {}".format(error.response["Error"]["Code"]))
                         user["PermissionsConfirmed"] = False
+                        continue
                     user = parse_document(document, user)
 
                 # Get attached user policies

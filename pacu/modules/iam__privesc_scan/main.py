@@ -1172,7 +1172,7 @@ def main(args, pacu_main: "Main"):
                     )
                     response = False
 
-                if response is False:
+                if not response:
                     print("  Method failed. Trying next potential method...")
                 else:
                     escalated = True
@@ -1202,7 +1202,7 @@ def main(args, pacu_main: "Main"):
                     )
                     response = False
 
-                if response is False:
+                if not response:
                     print("  Method failed. Trying next potential method...")
                 else:
                     escalated = True

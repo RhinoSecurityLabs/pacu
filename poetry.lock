@@ -1894,6 +1894,18 @@ files = [
 ]
 
 [[package]]
+name = "pypng"
+version = "0.20220715.0"
+description = "Pure Python library for saving and loading PNG images"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "pypng-0.20220715.0-py3-none-any.whl", hash = "sha256:4a43e969b8f5aaafb2a415536c1a8ec7e341cd6a3f957fd5b5f32a4cfeed902c"},
+    {file = "pypng-0.20220715.0.tar.gz", hash = "sha256:739c433ba96f078315de54c0db975aee537cbc3e1d0ae4ed9aab0ca1e427e2c1"},
+]
+
+[[package]]
 name = "pytest"
 version = "6.2.5"
 description = "pytest: simple powerful testing with Python"
@@ -2066,6 +2078,7 @@ files = [
 
 [package.dependencies]
 colorama = {version = "*", markers = "sys_platform == \"win32\""}
+pypng = {version = "*", optional = true, markers = "extra == \"png\" or extra == \"all\""}
 
 [package.extras]
 all = ["pillow (>=9.1.0)", "pypng"]
@@ -2573,4 +2586,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.9"
-content-hash = "6f89b6d7bb402d5abbc7c0f2ec26db309a269345ce6c17f87b36b51b61e14f0d"
+content-hash = "81ef4175b715ac4b979699ed3d4c9be8f7492420b42fc0a93d6018aab1145293"

@@ -33,7 +33,7 @@ types-urllib3 = "^1.26.25.14"
 flake8 = "^3.9.1"
 mypy = "^1.0"
 sqlalchemy-stubs = "^0.4"
-pytest = "^6.2.3"
+pytest = "^8.4.2"
 freezegun = "^1.1.0"
 typing-extensions = "^4.0.0"
 boto3-stubs = {extras = ["iam", "s3", "lambda"], version = "^1.17.54"}

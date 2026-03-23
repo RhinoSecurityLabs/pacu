@@ -2467,22 +2467,6 @@ pymysql = ["pymysql"]
 sqlcipher = ["sqlcipher3_binary"]
 
 [[package]]
-name = "sqlalchemy-stubs"
-version = "0.4"
-description = "SQLAlchemy stubs and mypy plugin"
-optional = false
-python-versions = "*"
-groups = ["dev"]
-files = [
-    {file = "sqlalchemy-stubs-0.4.tar.gz", hash = "sha256:c665d6dd4482ef642f01027fa06c3d5e91befabb219dc71fc2a09e7d7695f7ae"},
-    {file = "sqlalchemy_stubs-0.4-py3-none-any.whl", hash = "sha256:5eec7aa110adf9b957b631799a72fef396b23ff99fe296df726645d01e312aa5"},
-]
-
-[package.dependencies]
-mypy = ">=0.790"
-typing-extensions = ">=3.7.4"
-
-[[package]]
 name = "sqlalchemy-utils"
 version = "0.41.2"
 description = "Various utility functions for SQLAlchemy."
@@ -2758,4 +2742,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.9"
-content-hash = "97bbd428931cfb8641500d6232a258b2ccb4659e533a9190145df4dd34ace8ed"
+content-hash = "1a3501193fdc3d7f27c760e3b8e37076416b61e2a26a8f28524f4aadd1c22bdb"

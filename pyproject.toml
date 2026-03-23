@@ -32,7 +32,6 @@ types-urllib3 = "^1.26.25.14"
 [tool.poetry.dev-dependencies]
 flake8 = "^7.3.0"
 mypy = "^1.0"
-sqlalchemy-stubs = "^0.4"
 pytest = "^8.4.2"
 freezegun = "^1.1.0"
 typing-extensions = "^4.0.0"

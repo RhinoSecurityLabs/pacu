@@ -9,7 +9,7 @@ from pacu.settings import REGION
 @pytest.fixture
 def mock_cognito_user_pool():
 
-    with moto.mock_cognitoidp():
+    with moto.mock_aws():
 
         client = boto3.client(
             "cognito-idp",
@@ -28,7 +28,7 @@ def mock_cognito_user_pool():
             UserPoolId=user_pool_id,
         )
 
-        with moto.mock_cognitoidentity():
+        with moto.mock_aws():
             c = boto3.client(
                 "cognito-identity",
                 region_name=REGION,

@@ -9,6 +9,7 @@ import random
 import json
 import math
 import time
+from pacu.core.lib import save, downloads_dir
 
 module_info = {
     'name': 'guardduty__list_findings',
@@ -39,7 +40,6 @@ def main(args, pacu_main):
 
     # Prepare output file to write guardduty findings results
     now = time.time()
-    out_file = Path('sessions/{}/downloads/guardduty/list_findings_{}.json'.format(session.name, now))
 
     # Store all the data in this
     data = {
@@ -165,9 +165,10 @@ def main(args, pacu_main):
                     print('    Generic Error collecting GuardDuty stats for region: {}, detector: {}'.format(region, detector_id))
                     print('        Error: {}, {}'.format(error.__class__, str(error)))
 
-    print("Writing ALL findings to JSON output file: {}".format(str(out_file)))
-    out_file.parent.mkdir(exist_ok=True, parents=True)
-    out_file.write_text(json.dumps(data, indent=4, default=str))
+    outfile = 'guardduty/list_findings_{}.json'.format(now)
+    print("Writing ALL findings to JSON output file: {}".format(downloads_dir() / outfile))
+    with save(outfile) as f:
+        f.write(json.dumps(data, indent=4, default=str))
 
     return data
 

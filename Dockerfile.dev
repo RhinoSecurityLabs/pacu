@@ -2,7 +2,7 @@
 FROM python:3.9-alpine3.12
 
 LABEL maintainer="Rhino Assessment Team <pacu@rhinosecuritylabs.com>"
-LABEL pacu.version="1.6.1"
+LABEL pacu.version="1.7.0"
 
 RUN apk add --no-cache aws-cli
 
@@ -28,7 +28,7 @@ RUN --mount=type=cache,target=/root/.cache/pip pip install poetry
 
 RUN echo 'AWS_EC2_METADATA_DISABLED=true' >> /etc/profile
 
-COPY ./requirements* ./pyproject.toml ./poetry.lock ./
+COPY ./pyproject.toml ./poetry.lock ./
 
 # Some IDE's will override the entrypoint so install everything globally
 RUN poetry export --without-hashes --dev -o /tmp/requirements-dev.txt && \

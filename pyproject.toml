@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pacu"
-version = "1.6.1"
+version = "1.7.0"
 description = "The AWS exploitation framework, designed for testing the security of Amazon Web Services environments."
 authors = ["Rhino Assessment Team <pacu@rhinosecuritylabs.com>"]
 license = "BSD-3"
@@ -13,39 +13,41 @@ pacu = "pacu.__main__:main"
 python = "^3.9"
 awscli = "^1.18"
 boto3 = "^1.16"
-botocore = "^1.16"
+botocore = ">=1.16,<1.32"
 requests = "^2.25.1"
 urllib3 = "^1.26.4"
-SQLAlchemy = "~1.3.0"
-SQLAlchemy-Utils = "^0.37.2"
+SQLAlchemy = ">=1.3,<2.1"
+SQLAlchemy-Utils = ">=0.37.2,<0.42.0"
 typing-extensions = "^4.0.0"
 dsnap = "^1.0.1"
 chalice = "^1.27.3"
 policyuniverse = "^1.5.0.20220613"
 pycognito = "^2023.5.0"
-qrcode = "^7.4.2"
+qrcode = {version = ">=7.4.2,<9.0.0", extras = ["png"]}
 jq = "^1.4.1"
 pyyaml = "^6.0.1"
 toml = "^0.10.2"
 types-urllib3 = "^1.26.25.14"
 
-[tool.poetry.dev-dependencies]
-flake8 = "^3.9.1"
-mypy = "^0.812"
-sqlalchemy-stubs = "^0.4"
-pytest = "^6.2.3"
+[tool.poetry.group.dev.dependencies]
+flake8 = "^7.3.0"
+mypy = "^1.0"
+pytest = "^8.4.2"
 freezegun = "^1.1.0"
 typing-extensions = "^4.0.0"
 boto3-stubs = {extras = ["iam", "s3", "lambda"], version = "^1.17.54"}
-moto = "^2.2.1"
+moto = "^5.1.22"
 importlib-metadata = "4.13.0"
-
-[tool.poetry.group.dev.dependencies]
 types-urllib3 = "^1.26.25.14"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.mypy]
+implicit_optional = true
+ignore_missing_imports = true
+disable_error_code = ["import-untyped", "var-annotated", "assignment"]
 
 [tool.pytest.ini_options]
 testpaths = [

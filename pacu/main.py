@@ -93,6 +93,7 @@ def display_pacu_help():
         load_commands_file <file>           Load an existing file with list of commands to execute
         search [cat[egory]] <search term>   Search the list of available modules by name or category
         help                                Display this page of information
+        clear                               Clear the terminal
         help <module name>                  Display information about a module
         whoami                              Display information regarding to the active access keys
         data                                Display all data that is stored in this session. Only fields
@@ -154,6 +155,9 @@ def display_pacu_help():
         console/open_console                Generate a URL that will log the current user/role in to
                                               the AWS web console
         debug                               Display the contents of the error log file
+    Keyboard Shortcuts:
+        Ctrl+C                              Stop the currently running module and return to the prompt
+                                              Press twice at the prompt to return to session selection
     """)
 
 
@@ -190,8 +194,11 @@ class Main:
         'assume_role', 'aws', 'console', 'data', 'delete_keys', 'delete_session', 'exec', 'exit', 'export_keys', 'help',
         'history', 'import_keys', 'list', 'list_sessions', 'load_commands_file', 'ls', 'open_console', 'quit',
         'regions', 'run', 'search', 'services', 'sessions', 'set_keys', 'set_regions', 'set_ua_suffix',
-        'swap_keys', 'swap_session', 'unset_ua_suffix', 'update_regions', 'use', 'whoami', 'debug'
+        'swap_keys', 'swap_session', 'unset_ua_suffix', 'update_regions', 'use', 'whoami', 'debug', 'clear'
     ]
+
+    # Time window (in seconds) for detecting double Ctrl+C
+    INTERRUPT_TIMEOUT = 2.0
 
     def __init__(self):
         # NOTE: self.database is the sqlalchemy session since 'session' is reserved for PacuSession objects.
@@ -199,8 +206,36 @@ class Main:
         self.running_module_names: List[str] = []
         self.CATEGORIES: set = load_categories()
 
+        # Keyboard interrupt handling state (Issue #474)
+        self._module_running: bool = False
+        self._interrupt_count: int = 0
+        self._last_interrupt_time: float = 0.0
+
         # Hack so we can use session names without passing around Main.
         lib.get_active_session = self.get_active_session
+
+    def _reset_interrupt_state(self) -> None:
+        """Reset the interrupt counter and timestamp."""
+        self._interrupt_count = 0
+        self._last_interrupt_time = 0.0
+
+    def _record_interrupt(self) -> int:
+        """
+        Record an interrupt and return the count within the timeout window.
+
+        Returns:
+            The number of interrupts within the timeout window.
+        """
+        current_time = time.time()
+
+        # Check if we're within the timeout window
+        if current_time - self._last_interrupt_time > self.INTERRUPT_TIMEOUT:
+            self._interrupt_count = 1
+        else:
+            self._interrupt_count += 1
+
+        self._last_interrupt_time = current_time
+        return self._interrupt_count
 
     # Utility methods
     def log_error(self, text, exception_info=None, session=None, local_data=None, global_data=None) -> None:
@@ -381,7 +416,7 @@ class Main:
             if check_session is True:
                 return [region for region in valid_regions if region in session.session_regions]
             else:
-                return session.session_regions
+                return session.session_regions  # type: ignore[return-value]
         else:
             return valid_regions
 
@@ -427,11 +462,13 @@ class Main:
 
     def get_pacu_version(self):
         try:
-            # Get the directory where this file is located
+            from importlib.metadata import version
+            return version('pacu')
+        except Exception:
+            pass
+        try:
             current_dir = os.path.dirname(__file__)
-            # Go up one level to the root of package
             package_root = os.path.abspath(os.path.join(current_dir, os.pardir))
-            # Construct the path to pyproject.toml
             toml_path = os.path.join(package_root, 'pyproject.toml')
             with open(toml_path, 'r') as file:
                 pyproject = toml.load(file)
@@ -647,6 +684,11 @@ class Main:
             self.unset_user_agent_suffix()
         elif command[0] == 'whoami':
             self.print_key_info()
+        elif command[0] == 'clear':
+            if sys.platform == "win32":
+                os.system("cls")
+            else:
+                os.system("clear")
         elif command[0] == 'debug':
             self.read_log_file()
         elif command[0] == 'exit' or command[0] == 'quit':
@@ -947,7 +989,7 @@ class Main:
 
         params = {
             'Action': 'login',
-            'Issuer': active_session.key_alias or '',
+            'Issuer': active_session.key_alias or '',  # type: ignore[dict-item]
             'Destination': 'https://console.aws.amazon.com/console/home',
             'SigninToken': signin_token
         }
@@ -1033,6 +1075,9 @@ aws_secret_access_key = {}
                 return
 
             self.running_module_names.append(module.module_info['name'])
+            self._module_running = True
+            self._reset_interrupt_state()
+
             try:
                 summary_data = module.main(command[2:], self)
                 # If the module's return value is None, it exited early.
@@ -1048,11 +1093,13 @@ aws_secret_access_key = {}
 
                     self.print('{} completed.\n'.format(module.module_info['name']))
                     self.print('MODULE SUMMARY:\n\n{}\n'.format(summary.strip('\n')))
+
             except SystemExit as exception_value:
                 exception_type, _, tb = sys.exc_info()
 
                 if 'SIGINT called' in exception_value.args:
-                    self.print('^C\nExiting the currently running module.')
+                    # Handle Ctrl+C during module execution (Issue #474)
+                    self.print('\n[!] Module {} interrupted by user (Ctrl+C). Returning to Pacu prompt...'.format(module.module_info['name']))
                 else:
                     traceback_text = '\nTraceback (most recent call last):\n{}{}: {}\n\n'.format(
                         ''.join(traceback.format_tb(tb)), str(exception_type), str(exception_value)
@@ -1066,6 +1113,7 @@ aws_secret_access_key = {}
                         global_data=global_data
                     )
             finally:
+                self._module_running = False
                 self.running_module_names.pop()
         elif module_name in self.COMMANDS:
             print('Error: "{}" is the name of a Pacu command, not a module. Try using it without "run" or "exec" in front.'.format(module_name))
@@ -1103,6 +1151,8 @@ aws_secret_access_key = {}
             print('\n    help\n        Display information about all Pacu commands\n    help <module name>\n        Display information about a module\n')
         elif command_name == 'whoami':
             print('\n    whoami\n        Display information regarding to the active access keys\n')
+        elif command_name == 'clear':
+            print('\n    clear\n        Clears the Terminal\n')
         elif command_name == 'data':
             print('\n    data\n        Display all data that is stored in this session. Only fields with values will be displayed\n    data <service>\n       '
                   ' Display all data for a specified service in this session\n')
@@ -1872,21 +1922,52 @@ aws_secret_access_key = {}
             pass
 
     def exit(self) -> None:
-        sys.exit('SIGINT called')
+        sys.exit('Pacu exit')
 
-    def idle(self) -> None:
+    def idle(self) -> bool:
+        """
+        The main command input loop.
+        Returns:
+            True if should return to session selection menu
+            False if should exit Pacu entirely
+        """
         session = self.get_active_session()
 
-        if session.key_alias:
-            alias = session.key_alias
-        else:
-            alias = 'No Keys Set'
+        while True:
+            try:
+                if session.key_alias:
+                    alias = session.key_alias
+                else:
+                    alias = 'No Keys Set'
 
-        command = input('Pacu ({}:{}) > '.format(session.name, alias))
+                command = input('Pacu ({}:{}) > '.format(session.name, alias))
+                self.parse_command(command)
 
-        self.parse_command(command)
+                # Reset interrupt state only AFTER successful command
+                self._reset_interrupt_state()
 
-        self.idle()
+            except (KeyboardInterrupt, SystemExit) as e:
+                # Handle Ctrl+C at the prompt (Issue #474)
+                if isinstance(e, SystemExit):
+                    # 'Pacu exit' = exit command, 'SIGINT called' = Ctrl+C
+                    if e.args and 'SIGINT called' in str(e.args):
+                        # This is Ctrl+C, handle as interrupt
+                        pass
+                    else:
+                        # This is exit command or other SystemExit, re-raise
+                        raise
+
+                interrupt_count = self._record_interrupt()
+                if interrupt_count >= 2:
+                    print('\n[*] Returning to session selection menu...')
+                    return True
+                else:
+                    print('\n[*] Press Ctrl+C again within 2 seconds to return to session menu.')
+                    continue
+
+            except EOFError:
+                print('\n[*] EOF detected. Returning to session selection...')
+                return True
 
     def run_cli(self, *args) -> None:
         self.database = get_database_connection(settings.DATABASE_CONNECTION_PATH)
@@ -2030,13 +2111,20 @@ aws_secret_access_key = {}
                     idle_ready = True
 
                 self.check_user_agent()
-                self.idle()
+
+                # Session command loop with interrupt handling (Issue #474)
+                should_return_to_session_menu = self.idle()
+
+                if should_return_to_session_menu:
+                    # User pressed Ctrl+C twice, go back to session selection
+                    idle_ready = False
+                    continue
 
             except (Exception, SystemExit) as exception_value:
                 exception_type, _, tb = sys.exc_info()
 
                 if exception_type == SystemExit:
-                    if 'SIGINT called' in exception_value.args:
+                    if 'SIGINT called' in exception_value.args or 'Pacu exit' in exception_value.args:
                         print('\nBye!')
                         return
                     else:

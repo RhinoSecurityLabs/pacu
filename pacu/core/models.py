@@ -3,7 +3,7 @@ import json
 import copy
 
 from sqlalchemy import (
-    Boolean, Column, DateTime, ForeignKey, inspect, Integer, Text, orm
+    Boolean, Column, DateTime, ForeignKey, inspect, Integer, Text, orm, text
 )
 from sqlalchemy.orm import relationship, Session
 from sqlalchemy_utils import JSONType  # type: ignore
@@ -242,22 +242,22 @@ def migrations(database: 'Session'):
     NULL.
     """
     rows = []
-    for row in database.execute(f'pragma table_info({PacuSession.__tablename__})').fetchall():
+    for row in database.execute(text(f'pragma table_info({PacuSession.__tablename__})')).fetchall():
         rows.append(row[1])
 
     # If more rows are added here change this to update the db dynamically. Not worrying about this for now since it
     # doesn't happen often, and we'll likely rewrite things before then.
     if "user_agent_suffix" not in rows:
         column_type = PacuSession.user_agent_suffix.type.compile(engine.dialect)
-        database.execute('ALTER TABLE %s ADD COLUMN user_agent_suffix %s' % (PacuSession.__tablename__, column_type))
+        database.execute(text('ALTER TABLE %s ADD COLUMN user_agent_suffix %s' % (PacuSession.__tablename__, column_type)))
 
     for svc in PacuSession.aws_data_field_names:
         if svc not in rows:
             column = getattr(PacuSession, svc)
             column_type = column.type.compile(engine.dialect)
-            database.execute(
+            database.execute(text(
                 'ALTER TABLE %s ADD COLUMN %s %s DEFAULT "{}" NOT NULL'
                 % (PacuSession.__tablename__, svc, column_type)
-            )
+            ))
 
 

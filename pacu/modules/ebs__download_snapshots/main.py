@@ -75,7 +75,7 @@ def main(args, pacu: Main):
             return False
 
         try:
-            s = snapshot_prompt(session.EC2['Snapshots'], region)
+            s = snapshot_prompt(session.EC2['Snapshots'], region)  # type: ignore[arg-type]
             snapshot_id = s['SnapshotId']
             region = s['Region']
         except UserWarning as e:

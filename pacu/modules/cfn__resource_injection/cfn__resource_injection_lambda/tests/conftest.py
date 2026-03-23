@@ -6,7 +6,7 @@ import os
 
 @pytest.fixture(scope="function")
 def s3():
-    with moto.mock_s3():
+    with moto.mock_aws():
         yield boto3.client("s3", region_name="us-east-1")
 
 

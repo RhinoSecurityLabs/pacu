@@ -29,7 +29,7 @@ pyyaml = "^6.0.1"
 toml = "^0.10.2"
 types-urllib3 = "^1.26.25.14"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 flake8 = "^7.3.0"
 mypy = "^1.0"
 pytest = "^8.4.2"
@@ -38,8 +38,6 @@ typing-extensions = "^4.0.0"
 boto3-stubs = {extras = ["iam", "s3", "lambda"], version = "^1.17.54"}
 moto = "^5.1.22"
 importlib-metadata = "4.13.0"
-
-[tool.poetry.group.dev.dependencies]
 types-urllib3 = "^1.26.25.14"
 
 [build-system]

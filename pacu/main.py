@@ -416,7 +416,7 @@ class Main:
             if check_session is True:
                 return [region for region in valid_regions if region in session.session_regions]
             else:
-                return session.session_regions
+                return session.session_regions  # type: ignore[return-value]
         else:
             return valid_regions
 
@@ -989,7 +989,7 @@ class Main:
 
         params = {
             'Action': 'login',
-            'Issuer': active_session.key_alias or '',
+            'Issuer': active_session.key_alias or '',  # type: ignore[dict-item]
             'Destination': 'https://console.aws.amazon.com/console/home',
             'SigninToken': signin_token
         }

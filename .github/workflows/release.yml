@@ -1,0 +1,78 @@
+# This is triggered manually.
+# This will bump the version and open a release pull request.
+# Once the PR is merged, finish-release.yml runs.
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      SemVer_level:
+        type: choice
+        description: Which SemVer to bump
+        options:
+          - major
+          - minor
+          - patch
+        default: patch
+      SemVer_version:
+        type: string
+        description: "Specify an exact version (leave empty to auto-bump)"
+        default: ""
+
+jobs:
+  create_release_branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Determine Version
+        id: determine_version
+        run: |
+          if [ -n "${{ github.event.inputs.SemVer_version }}" ]; then
+            VERSION=${{ github.event.inputs.SemVer_version }}
+            poetry version "$VERSION"
+          else
+            poetry version ${{ github.event.inputs.SemVer_level }}
+            VERSION=$(poetry version -s)
+          fi
+          sed -i "s/pacu.version=\".*\"/pacu.version=\"$VERSION\"/" Dockerfile
+          sed -i "s/pacu.version=\".*\"/pacu.version=\"$VERSION\"/" Dockerfile.dev
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Create Release Branch
+        run: |
+          git checkout -b release-v${{ env.VERSION }}
+
+      - name: Commit Version Change
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git add .
+          git commit -m "chore(release): bump version to ${{ env.VERSION }}"
+          git push origin release-v${{ env.VERSION }}
+
+      - name: Create Pull Request
+        run: |
+          gh pr create \
+            --base master \
+            --head release-v${{ env.VERSION }} \
+            --title "Release v${{ env.VERSION }}" \
+            --body "Automated release PR for version v${{ env.VERSION }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

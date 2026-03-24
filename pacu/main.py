@@ -7,6 +7,7 @@ import random
 import re
 import readline
 import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -134,8 +135,7 @@ def display_pacu_help():
                                               credentials file (~/.aws/credentials)
         sessions/list_sessions              List all sessions in the Pacu database
         swap_session <session name>         Change the active Pacu session to another one in the database
-        delete_session                      Delete a Pacu session from the database. Note that the output
-                                              folder for that session will not be deleted
+        delete_session                      Delete one or more Pacu sessions, with option to delete output files from the file system
         history                             List the previously typed commands
 
         exit/quit                           Exit Pacu
@@ -1146,7 +1146,7 @@ aws_secret_access_key = {}
         elif command_name == 'swap_session':
             print('\n    swap_session\n        Swap the active Pacu session for another one stored in the database or a brand new session\n')
         elif command_name == 'delete_session':
-            print('\n    delete_session\n        Delete a session from the Pacu database. Note that this does not delete the output folder for that session\n')
+            print('\n    delete_session\n        Delete one or more sessions from the Pacu database, with the option to also delete output files\n')
         elif command_name == 'help':
             print('\n    help\n        Display information about all Pacu commands\n    help <module name>\n        Display information about a module\n')
         elif command_name == 'whoami':
@@ -1540,7 +1540,7 @@ aws_secret_access_key = {}
     def delete_session(self) -> None:
         active_session = self.get_active_session()
         all_sessions = self.database.query(PacuSession).all()
-        print('Delete which session?')
+        print('Delete which session(s)? (separate multiple with spaces, e.g. "1 3 5")')
 
         for index, session in enumerate(all_sessions, 0):
             if session.name == active_session.name:
@@ -1548,24 +1548,41 @@ aws_secret_access_key = {}
             else:
                 print('  [{}] {}'.format(index, session.name))
 
-        choice = input('Choose an option: ')
+        choice = input('Choose option(s): ')
+        delete_files = input('Also delete output files? (y/N) ')
+        remove_files = delete_files.lower() == 'y'
 
-        try:
-            session = all_sessions[int(choice)]
+        deleted = 0
+        for part in choice.split():
+            try:
+                idx = int(part)
+                session = all_sessions[idx]
+            except (ValueError, IndexError):
+                print('Invalid selection: {}'.format(part))
+                continue
+
             if session.name == active_session.name:
-                print('Cannot delete the active session! Switch sessions and try again.')
-                return
-        except (ValueError, IndexError):
-            print('Please choose a number from 0 to {}.'.format(len(all_sessions) - 1))
-            return self.delete_session()
+                print('Skipping {} (cannot delete the active session).'.format(session.name))
+                continue
 
-        self.database.delete(session)
-        self.database.commit()
+            self.database.delete(session)
+            print('Deleted {} from the database.'.format(session.name))
+            deleted += 1
 
-        print('Deleted {} from the database!'.format(session.name))
-        print('Note that the output folder at ~/.local/share/pacu/sessions/{}/ will not be deleted. Do it manually '
-              'if necessary.'.format(session.name))
+            if remove_files:
+                session_output_dir = os.path.join(settings.home_dir, session.name)
+                session_files_exist = os.path.exists(session_output_dir)
+                if not session_files_exist:
+                    print(f'No files found at {session_output_dir}')
+                    continue
 
+                shutil.rmtree(session_output_dir)
+                print('Deleted output files at {}'.format(session_output_dir))
+
+        if deleted:
+            self.database.commit()
+        else:
+            print('No sessions deleted.')
         return
 
     def check_user_agent(self) -> None:

@@ -260,9 +260,12 @@ class Main:
             else:
                 log_file_path = '{}/global_error_log.txt'.format(session_dir())
 
-            print_error('\n[{}] Pacu encountered an error while running the previous command. Check {} for technical '
-                       'details, or use the debug command. [LOG LEVEL: {}]\n\n    {}\n'.format(timestamp, log_file_path,
-                                                                                               settings.ERROR_LOG_VERBOSITY.upper(), exception_info))
+            print_error(
+                '\n[{}] Pacu encountered an error while running the previous command. Check {} for technical '
+                'details, or use the debug command. [LOG LEVEL: {}]\n\n    {}\n'.format(
+                    timestamp, log_file_path, settings.ERROR_LOG_VERBOSITY.upper(), exception_info
+                )
+            )
 
             log_file_directory = os.path.dirname(log_file_path)
             if log_file_directory and not os.path.exists(log_file_directory):

@@ -27,6 +27,7 @@ qrcode = {version = ">=7.4.2,<9.0.0", extras = ["png"]}
 jq = "^1.4.1"
 pyyaml = "^6.0.1"
 toml = "^0.10.2"
+rich = ">=13.0.0"
 types-urllib3 = "^1.26.25.14"
 
 [tool.poetry.group.dev.dependencies]

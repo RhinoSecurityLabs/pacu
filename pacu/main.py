@@ -19,6 +19,10 @@ from typing import List, Optional, Any, Dict, Union, Tuple
 
 from pacu.core import lib
 from pacu.core.lib import session_dir
+from pacu.core.console import (
+    print_banner, print_success, print_error, print_warning,
+    print_info, print_module_summary, build_prompt,
+)
 
 try:
     import jq  # type: ignore
@@ -256,9 +260,12 @@ class Main:
             else:
                 log_file_path = '{}/global_error_log.txt'.format(session_dir())
 
-            print('\n[{}] Pacu encountered an error while running the previous command. Check {} for technical '
-                  'details, or use the debug command. [LOG LEVEL: {}]\n\n    {}\n'.format(timestamp, log_file_path,
-                                                                                          settings.ERROR_LOG_VERBOSITY.upper(), exception_info))
+            print_error(
+                '\n[{}] Pacu encountered an error while running the previous command. Check {} for technical '
+                'details, or use the debug command. [LOG LEVEL: {}]\n\n    {}\n'.format(
+                    timestamp, log_file_path, settings.ERROR_LOG_VERBOSITY.upper(), exception_info
+                )
+            )
 
             log_file_directory = os.path.dirname(log_file_path)
             if log_file_directory and not os.path.exists(log_file_directory):
@@ -696,7 +703,7 @@ class Main:
             readline.write_history_file(settings.history_file)
             self.exit()
         else:
-            print('  Error: Unrecognized command')
+            print_error('  Error: Unrecognized command')
         return
 
     def parse_commands_from_file(self, command):
@@ -1035,7 +1042,7 @@ aws_secret_access_key = {}
             with open('{}/.aws/credentials'.format(os.path.expanduser('~')), 'a+') as f:
                 f.write(config)
 
-            print('Successfully exported {}. Use it with the AWS CLI like this: aws ec2 describe instances --profile {}'.format(
+            print_success('Successfully exported {}. Use it with the AWS CLI like this: aws ec2 describe instances --profile {}'.format(
                 session.key_alias, session.key_alias
             ))
         else:
@@ -1061,7 +1068,7 @@ aws_secret_access_key = {}
             # TODO: XML Command Log - Figure out how to auto convert to XML
             # self.print('<command>{}</command>'.format(cmd), output_type='xml', output='file')
 
-            self.print('  Running module {}...'.format(module_name))
+            print_info('  Running module {}...'.format(module_name))
 
             try:
                 args = module.parser.parse_args(command[2:])
@@ -1071,7 +1078,7 @@ aws_secret_access_key = {}
                         if not self.all_region_prompt():
                             return
             except SystemExit:
-                print('  Error: Invalid Arguments')
+                print_error('  Error: Invalid Arguments')
                 return
 
             self.running_module_names.append(module.module_info['name'])
@@ -1091,15 +1098,14 @@ aws_secret_access_key = {}
                         raise TypeError('The {} module\'s summary is {}-type instead of str. Make summary return a '
                                         'string.'.format(module.module_info['name'], type(summary)))
 
-                    self.print('{} completed.\n'.format(module.module_info['name']))
-                    self.print('MODULE SUMMARY:\n\n{}\n'.format(summary.strip('\n')))
+                    print_module_summary(module.module_info['name'], summary)
 
             except SystemExit as exception_value:
                 exception_type, _, tb = sys.exc_info()
 
                 if 'SIGINT called' in exception_value.args:
                     # Handle Ctrl+C during module execution (Issue #474)
-                    self.print('\n[!] Module {} interrupted by user (Ctrl+C). Returning to Pacu prompt...'.format(module.module_info['name']))
+                    print_warning('\n[!] Module {} interrupted by user (Ctrl+C). Returning to Pacu prompt...'.format(module.module_info['name']))
                 else:
                     traceback_text = '\nTraceback (most recent call last):\n{}{}: {}\n\n'.format(
                         ''.join(traceback.format_tb(tb)), str(exception_type), str(exception_value)
@@ -1118,7 +1124,7 @@ aws_secret_access_key = {}
         elif module_name in self.COMMANDS:
             print('Error: "{}" is the name of a Pacu command, not a module. Try using it without "run" or "exec" in front.'.format(module_name))
         else:
-            print('Module not found. Is it spelled correctly? Try using the module search function.')
+            print_error('Module not found. Is it spelled correctly? Try using the module search function.')
 
     def display_command_help(self, command_name: str) -> None:
         if command_name == 'list' or command_name == 'ls':
@@ -1533,7 +1539,7 @@ aws_secret_access_key = {}
         session = PacuSession(**session_data)
         self.database.add(session)
         self.database.commit()
-        print('Session {} created.'.format(name))
+        print_success('Session {} created.'.format(name))
 
         return session
 
@@ -1566,7 +1572,7 @@ aws_secret_access_key = {}
                 continue
 
             self.database.delete(session)
-            print('Deleted {} from the database.'.format(session.name))
+            print_success('Deleted {} from the database.'.format(session.name))
             deleted += 1
 
             if remove_files:
@@ -1816,7 +1822,7 @@ aws_secret_access_key = {}
                 else:
                     alias = 'No Keys Set'
 
-                command = input('Pacu ({}:{}) > '.format(session.name, alias))
+                command = input(build_prompt(session.name, alias))
                 self.parse_command(command)
 
                 # Reset interrupt state only AFTER successful command
@@ -1835,10 +1841,10 @@ aws_secret_access_key = {}
 
                 interrupt_count = self._record_interrupt()
                 if interrupt_count >= 2:
-                    print('\n[*] Returning to session selection menu...')
+                    print_warning('\n[*] Returning to session selection menu...')
                     return True
                 else:
-                    print('\n[*] Press Ctrl+C again within 2 seconds to return to session menu.')
+                    print_warning('\n[*] Press Ctrl+C again within 2 seconds to return to session menu.')
                     continue
 
             except EOFError:
@@ -1941,7 +1947,7 @@ aws_secret_access_key = {}
                 if not idle_ready:
                     try:
                         if not quiet:
-                            print("""
+                            _banner_art = """
  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⣶⣿⣿⣿⣿⣿⣿⣶⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣾⣿⡿⠛⠉⠁⠀⠀⠈⠙⠻⣿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -1966,8 +1972,8 @@ aws_secret_access_key = {}
  ⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⡏⠉⠉⠉⠉⠀⠀⠀⢸⣿⣿⡏⠉⠉⢹⣿⣿⡇⠀⢸⣿⣿⣇⣀⣀⣸⣿⣿⣿⠀⢸⣿⣿⣿⣀⣀⣀⣿⣿⣿
  ⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⢸⣿⣿⡇⠀⠸⣿⣿⣿⣿⣿⣿⣿⣿⡿⠀⠀⢿⣿⣿⣿⣿⣿⣿⣿⡟
  ⠀⠀⠀⠀⠀⠀⠀⠀⠘⠛⠛⠃⠀⠀⠀⠀⠀⠀⠀⠘⠛⠛⠃⠀⠀⠘⠛⠛⠃⠀⠀⠉⠛⠛⠛⠛⠛⠛⠋⠀⠀⠀⠀⠙⠛⠛⠛⠛⠛⠉⠀
-""")
-                        print(f"Version: {self.get_pacu_version()}")
+"""
+                            print_banner(_banner_art, self.get_pacu_version())
                     except UnicodeEncodeError:
                         pass
 
@@ -2001,7 +2007,7 @@ aws_secret_access_key = {}
 
                 if exception_type == SystemExit:
                     if 'SIGINT called' in exception_value.args or 'Pacu exit' in exception_value.args:
-                        print('\nBye!')
+                        print_success('\nBye!')
                         return
                     else:
                         traceback_text = '\nTraceback (most recent call last):\n{}{}: {}\n\n'.format(

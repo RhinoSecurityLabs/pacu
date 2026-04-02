@@ -97,6 +97,7 @@ def display_pacu_help():
         clear                               Clear the terminal
         help <module name>                  Display information about a module
         whoami                              Display information regarding to the active access keys
+        report                              Generate an HTML report for the active session
         data                                Display all data that is stored in this session. Only fields
                                               with values will be displayed
         data <service> [<sub-service>]      Display all data for a specified service in this session
@@ -194,7 +195,8 @@ class Main:
         'assume_role', 'aws', 'console', 'data', 'delete_keys', 'delete_session', 'exec', 'exit', 'export_keys', 'help',
         'history', 'import_keys', 'list', 'list_sessions', 'load_commands_file', 'ls', 'open_console', 'quit',
         'regions', 'run', 'search', 'services', 'sessions', 'set_keys', 'set_regions', 'set_ua_suffix',
-        'swap_keys', 'swap_session', 'unset_ua_suffix', 'update_regions', 'use', 'whoami', 'debug', 'clear'
+        'swap_keys', 'swap_session', 'unset_ua_suffix', 'update_regions', 'use', 'whoami', 'debug', 'clear',
+        'report'
     ]
 
     # Time window (in seconds) for detecting double Ctrl+C
@@ -494,6 +496,12 @@ class Main:
     def print_key_info(self):
         self.print(self.key_info())
 
+    def generate_report(self):
+        from pacu.core.report import generate_report
+        session = self.get_active_session()
+        path = generate_report(session)
+        self.print(f'  Report saved to: {path}')
+
     def print_all_service_data(self, command):
         session = self.get_active_session()
         services = session.get_all_aws_data_fields_as_dict()
@@ -684,6 +692,8 @@ class Main:
             self.unset_user_agent_suffix()
         elif command[0] == 'whoami':
             self.print_key_info()
+        elif command[0] == 'report':
+            self.generate_report()
         elif command[0] == 'clear':
             if sys.platform == "win32":
                 os.system("cls")
@@ -1151,6 +1161,8 @@ aws_secret_access_key = {}
             print('\n    help\n        Display information about all Pacu commands\n    help <module name>\n        Display information about a module\n')
         elif command_name == 'whoami':
             print('\n    whoami\n        Display information regarding to the active access keys\n')
+        elif command_name == 'report':
+            print('\n    report\n        Generate a self-contained HTML report for the active session\n')
         elif command_name == 'clear':
             print('\n    clear\n        Clears the Terminal\n')
         elif command_name == 'data':

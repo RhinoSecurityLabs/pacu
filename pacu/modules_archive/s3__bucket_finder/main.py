@@ -154,10 +154,8 @@ def main(args, pacu_main):
             keywords = [x.strip().lower() for x in file.readlines() if x.strip()]
 
         for domain, region in bucketlist['listable']:
-            command = 'aws s3 ls s3://{}/ --region {} --recursive'.format(domain, region)
-            command = command.split(' ')
-            # with open(os.devnull, 'w') as FNULL:
-            output = subprocess.run(command, shell=True, stderr=None)
+            command = ['aws', 's3', 'ls', f's3://{domain}/', '--region', region, '--recursive']
+            output = subprocess.run(command, stderr=None)
             output = output.lower()
             if any(x in output for x in keywords):
                 print('[!] Found sensitive file on bucket {} in region {}'.format(domain, region))
@@ -249,9 +247,9 @@ def ls_s3(region, domain):
     fails = ['InvalidBucketName', 'NoSuchBucket', 'PermanentRedirect', 'InvalidURI']
     exists = ['AllAccessDisabled', 'AccessDenied', 'InvalidAccessKeyId', 'NoSuchBucketPolicy']
 
-    command = 'aws s3 ls s3://{}/ --region {}'.format(domain, region)
+    command = ['aws', 's3', 'ls', f's3://{domain}/', '--region', region]
 
-    output = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT).decode('utf-8')
+    output = subprocess.check_output(command, stderr=subprocess.STDOUT).decode('utf-8')
 
     logging.debug('Running command: {}'.format(command))
     logging.debug('Output was:\n{}'.format(output))

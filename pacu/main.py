@@ -20,6 +20,9 @@ from typing import List, Optional, Any, Dict, Union, Tuple
 from pacu.core import lib
 from pacu.core.lib import session_dir
 
+import truststore
+truststore.inject_into_ssl()
+
 try:
     import jq  # type: ignore
     import requests

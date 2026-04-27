@@ -10,7 +10,7 @@ include = ["pyproject.toml"]
 pacu = "pacu.__main__:main"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 awscli = "^1.18"
 boto3 = "^1.16"
 botocore = ">=1.16,<1.32"
@@ -28,6 +28,7 @@ jq = "^1.4.1"
 pyyaml = "^6.0.1"
 toml = "^0.10.2"
 types-urllib3 = "^1.26.25.14"
+truststore = "^0.10.4"
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "^7.3.0"

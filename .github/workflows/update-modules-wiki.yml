@@ -1,0 +1,68 @@
+# Keeps the wiki's Module-Details page (https://github.com/RhinoSecurityLabs/pacu/wiki/Module-Details)
+# in sync with the module_info metadata defined in pacu/modules/*/main.py, so the
+# wiki doesn't drift out of date every time a module is added or its module_info changes.
+# See scripts/generate_module_wiki.py for the generator this workflow runs.
+#
+# Requires a repository secret named WIKI_DEPLOY_TOKEN: a GitHub PAT (classic,
+# `repo` scope) belonging to an account with push access to this repository. The
+# default GITHUB_TOKEN cannot push to the wiki, which is a separate git repo
+# (<repo>.wiki.git) that GITHUB_TOKEN has no access to.
+
+name: Update Modules Wiki
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - 'pacu/modules/**/main.py'
+      - 'scripts/generate_module_wiki.py'
+  workflow_dispatch: {}
+
+jobs:
+  update-wiki:
+    runs-on: ubuntu-latest
+    if: github.repository == 'RhinoSecurityLabs/pacu'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install Dependencies
+        run: poetry install
+
+      - name: Generate Module-Details.md
+        run: poetry run python scripts/generate_module_wiki.py > /tmp/Module-Details.md
+
+      - name: Checkout Wiki
+        env:
+          WIKI_DEPLOY_TOKEN: ${{ secrets.WIKI_DEPLOY_TOKEN }}
+        run: |
+          git clone "https://x-access-token:${WIKI_DEPLOY_TOKEN}@github.com/${{ github.repository }}.wiki.git" /tmp/wiki
+
+      - name: Update Wiki Page
+        id: diff
+        run: |
+          cp /tmp/Module-Details.md /tmp/wiki/Module-Details.md
+          cd /tmp/wiki
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and Push
+        if: steps.diff.outputs.changed == 'true'
+        working-directory: /tmp/wiki
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Module-Details.md
+          git commit -m "Auto-update Module-Details from ${{ github.sha }}"
+          git push origin master

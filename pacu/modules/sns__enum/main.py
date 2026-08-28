@@ -74,7 +74,7 @@ def main(args, pacu_main: "Main"):
             # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sns/client/list_topics.html
             response = client.list_topics()
             all_topics.extend(response["Topics"])
-            while "NextToken" in response:
+            while "NextToken" in response and response["NextToken"] != "":
                 response = client.list_topics(NextToken=response["NextToken"])
                 all_topics.extend(response["Topics"])
         except Exception as error:
@@ -119,7 +119,7 @@ def main(args, pacu_main: "Main"):
                     TopicArn=topic["TopicArn"]
                 )
                 all_subscriptions = sub_response["Subscriptions"]
-                while "NextToken" in sub_response:
+                while "NextToken" in sub_response and sub_response["NextToken"] != "":
                     sub_response = client.list_subscriptions_by_topic(
                         TopicArn=topic["TopicArn"],
                         NextToken=sub_response["NextToken"],

@@ -15,7 +15,6 @@ import unittest.mock
 
 import boto3
 import moto
-import pytest
 
 
 # ---------------------------------------------------------------------------
@@ -223,3 +222,103 @@ def test_empty_region_excluded_from_result():
     assert region not in result["sns"], (
         "Empty region should be excluded from result dict"
     )
+
+
+# ---------------------------------------------------------------------------
+# Test 5: a terminal page carrying an EMPTY NextToken must end the loop
+# ---------------------------------------------------------------------------
+
+class _EmptyTokenClient:
+    """
+    Fake SNS client whose last page returns ``NextToken: ""`` rather than
+    omitting the key.  A bare ``while "NextToken" in response`` loop never
+    terminates against this shape, so the loop guard must also test for the
+    empty string -- matching the idiom already used by ``glue__enum`` and
+    ``transfer_family__enum``.
+    """
+
+    #: hard cap so a regression fails fast instead of hanging the suite
+    MAX_CALLS = 25
+
+    def __init__(self):
+        self.topic_calls = 0
+        self.sub_calls = 0
+
+    def list_topics(self, **kwargs):
+        self.topic_calls += 1
+        if self.topic_calls > self.MAX_CALLS:
+            raise AssertionError(
+                "list_topics paged more than {} times: the NextToken loop did "
+                "not terminate on an empty token".format(self.MAX_CALLS)
+            )
+        if "NextToken" not in kwargs:
+            return {
+                "Topics": [{"TopicArn": "arn:aws:sns:us-east-1:000000000000:page1"}],
+                "NextToken": "page-2",
+            }
+        return {
+            "Topics": [{"TopicArn": "arn:aws:sns:us-east-1:000000000000:page2"}],
+            "NextToken": "",
+        }
+
+    def get_topic_attributes(self, TopicArn):
+        return {
+            "Attributes": {
+                "DisplayName": "",
+                "Owner": "000000000000",
+                "SubscriptionsConfirmed": "1",
+                "SubscriptionsPending": "0",
+            }
+        }
+
+    def list_subscriptions_by_topic(self, **kwargs):
+        self.sub_calls += 1
+        if self.sub_calls > self.MAX_CALLS:
+            raise AssertionError(
+                "list_subscriptions_by_topic paged more than {} times: the "
+                "NextToken loop did not terminate on an empty token".format(
+                    self.MAX_CALLS
+                )
+            )
+        if "NextToken" not in kwargs:
+            return {
+                "Subscriptions": [
+                    {"Protocol": "email", "Endpoint": "a@example.com"}
+                ],
+                "NextToken": "page-2",
+            }
+        return {
+            "Subscriptions": [
+                {"Protocol": "email", "Endpoint": "b@example.com"}
+            ],
+            "NextToken": "",
+        }
+
+
+def test_empty_next_token_terminates_pagination():
+    from pacu.modules.sns__enum.main import main
+
+    region = "us-east-1"
+    client = _EmptyTokenClient()
+
+    pacu_main = _make_pacu_main(lambda service, reg: client)
+    result = main(["--regions", region], pacu_main)
+
+    # Two pages of topics, both collected, and the loop stopped.
+    assert client.topic_calls == 2, (
+        "Expected exactly 2 list_topics calls, got {}".format(client.topic_calls)
+    )
+    assert len(result["sns"][region]) == 2
+
+    # Same for subscriptions, per topic (2 topics x 2 pages).
+    assert client.sub_calls == 4, (
+        "Expected exactly 4 list_subscriptions_by_topic calls, got {}".format(
+            client.sub_calls
+        )
+    )
+    for topic_arn, topic in result["sns"][region].items():
+        assert len(topic["Subscribers"]) == 2, (
+            "Expected 2 subscribers for {}, got {}".format(
+                topic_arn, len(topic["Subscribers"])
+            )
+        )

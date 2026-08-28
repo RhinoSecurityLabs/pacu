@@ -67,10 +67,16 @@ def main(args, pacu_main: "Main"):
             print("Unable to connect to SNS service. Error: {}".format(error))
             continue
 
+        # Paginate list_topics — SNS caps each page at 100 topics.
+        # A single call silently under-reports in accounts with >100 topics.
+        all_topics = []
         try:
             # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sns/client/list_topics.html
             response = client.list_topics()
-
+            all_topics.extend(response["Topics"])
+            while "NextToken" in response and response["NextToken"] != "":
+                response = client.list_topics(NextToken=response["NextToken"])
+                all_topics.extend(response["Topics"])
         except Exception as error:
             print(
                 "Unable to list Topics; Check credentials or No topics are available. Error: {}".format(
@@ -78,14 +84,14 @@ def main(args, pacu_main: "Main"):
                 )
             )
             continue
-        print("  Found {} topics".format(len(response["Topics"])))
+        print("  Found {} topics".format(len(all_topics)))
 
         # don't store empty data
-        if len(response["Topics"]) == 0:
+        if len(all_topics) == 0:
             del(summary_data["sns"][region])
             continue
 
-        for topic in response["Topics"]:
+        for topic in all_topics:
             # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sns/client/get_topic_attributes.html
             topic_details = client.get_topic_attributes(TopicArn=topic["TopicArn"])
             topic_details = topic_details["Attributes"]
@@ -103,14 +109,23 @@ def main(args, pacu_main: "Main"):
                 topic_details["SubscriptionsPending"]
             )
 
+            # Paginate list_subscriptions_by_topic — SNS caps each page at 100
+            # subscriptions per topic. A single call silently under-reports in
+            # topics with >100 subscribers.
             summary_data["sns"][region][topic["TopicArn"]]["Subscribers"] = []
             try:
                 # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sns/client/list_subscriptions_by_topic.html
-                subscribers = client.list_subscriptions_by_topic(
+                sub_response = client.list_subscriptions_by_topic(
                     TopicArn=topic["TopicArn"]
                 )
-                subscribers = subscribers["Subscriptions"]
-                for subscriber in subscribers:
+                all_subscriptions = sub_response["Subscriptions"]
+                while "NextToken" in sub_response and sub_response["NextToken"] != "":
+                    sub_response = client.list_subscriptions_by_topic(
+                        TopicArn=topic["TopicArn"],
+                        NextToken=sub_response["NextToken"],
+                    )
+                    all_subscriptions.extend(sub_response["Subscriptions"])
+                for subscriber in all_subscriptions:
                     summary_data["sns"][region][topic["TopicArn"]][
                         "Subscribers"
                     ].append(

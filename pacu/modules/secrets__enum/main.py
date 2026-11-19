@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import json
 from botocore.exceptions import ClientError, EndpointConnectionError
 import os
 
@@ -54,6 +55,10 @@ def main(args, pacu_main: 'Main'):
 
     all_secrets_ids_sm = []
     all_secrets_ids_ssm = []
+
+    # Collect discovered secret values for DB storage
+    sm_secrets_data = []
+    ssm_params_data = []
 
     for region in regions:
         secret_ids = []
@@ -135,6 +140,13 @@ def main(args, pacu_main: 'Main'):
                     break
 
             if response:
+                secret_entry = {
+                    "name": sec["name"],
+                    "region": sec["region"],
+                    "value": response.get("SecretString", ""),
+                }
+                sm_secrets_data.append(secret_entry)
+
                 with save('secrets/secrets_manager/secrets.txt', 'a') as f:
                     f.write("{}:{}\n".format(sec["name"], response["SecretString"]))
 
@@ -239,8 +251,34 @@ def main(args, pacu_main: 'Main'):
                             break
 
                     if response:
+                        param_entry = {
+                            "name": param["name"],
+                            "region": param["region"],
+                            "type": param["type"],
+                            "value": response["Parameter"]["Value"],
+                        }
+                        ssm_params_data.append(param_entry)
+
                         with save('secrets/parameter_store/parameters.txt', 'a') as f:
                             f.write("{}:{}\n".format(param["name"], response["Parameter"]["Value"]))
+
+    # Save structured JSON output for both sources
+    if sm_secrets_data:
+        with save('secrets/secrets_manager/secrets.json', 'w') as f:
+            json.dump(sm_secrets_data, f, indent=2, default=str)
+
+    if ssm_params_data:
+        with save('secrets/parameter_store/parameters.json', 'w') as f:
+            json.dump(ssm_params_data, f, indent=2, default=str)
+
+    # Persist findings to the Pacu session database
+    sm_db_data = session.SecretsManager or {}
+    sm_db_data['Secrets'] = sm_secrets_data
+    session.update(pacu_main.database, SecretsManager=sm_db_data)
+
+    ssm_db_data = session.SSM or {}
+    ssm_db_data['Parameters'] = ssm_params_data
+    session.update(pacu_main.database, SSM=ssm_db_data)
 
     summary_data["SecretsManager"] = len(all_secrets_ids_sm)
     summary_data["ParameterStore"] = len(all_secrets_ids_ssm)
@@ -259,8 +297,9 @@ def main(args, pacu_main: 'Main'):
 # 1000 characters is enforced on strings returned by module summary functions.
 def summary(data, pacu_main: 'Main'):
     output = (
-        "    {} Secret(s) were found in AWS secretsmanager\n'"
-        "    {} Parameter(s) were found in AWS Systems Manager Parameter Store"
+        "    {} Secret(s) were found in AWS Secrets Manager\n"
+        "    {} Parameter(s) were found in AWS Systems Manager Parameter Store\n"
     ).format(data["SecretsManager"], data["ParameterStore"])
-    output += "    \n    Check ~/.local/share/pacu/<session name>/downloads/secrets/ to get the values"
+    output += "    Secrets saved to the session database (use `data SecretsManager` and `data SSM` to view)\n"
+    output += "    Files written to ~/.local/share/pacu/<session>/downloads/secrets/"
     return output
